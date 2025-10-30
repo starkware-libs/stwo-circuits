@@ -1,7 +1,8 @@
 use crate::circuits::context::TraceContext;
 use crate::circuits::ivalue::qm31_from_u32s;
-use crate::circuits::ops::{add, eq, guess, mul, sub};
+use crate::circuits::ops::{eq, guess};
 use crate::circuits::stats::Stats;
+use crate::eval;
 
 #[test]
 fn test_basic_ops() {
@@ -11,10 +12,8 @@ fn test_basic_ops() {
     let mut context = TraceContext::default();
     let a = context.new_var(x);
     let b = context.new_var(y);
-    let c = add(&mut context, a, b);
-    let d = sub(&mut context, a, b);
-    let e = mul(&mut context, c, d);
-    assert_eq!(context.get(e), (x + y) * (x - y));
+    let c = eval!(&mut context, ((a) + (b)) * ((a) - (b)));
+    assert_eq!(context.get(c), (x + y) * (x - y));
 
     assert_eq!(context.values(), &vec![0.into(), 1.into(), x, y, x + y, x - y, (x + y) * (x - y)]);
 
@@ -35,6 +34,14 @@ fn test_eq() {
 }
 
 #[test]
+fn test_eval_macro() {
+    let mut context = TraceContext::default();
+    let a = context.new_var(10.into());
+    let res = eval!(&mut context, (((a) * (20)) - ((2) * (3))) - (10));
+    assert_eq!(context.get(res), 184.into());
+}
+
+#[test]
 fn test_stats() {
     let mut context = TraceContext::default();
 
@@ -45,11 +52,11 @@ fn test_stats() {
     let x = guess(&mut context, 5.into());
     let y = context.constant(25.into());
 
-    let x_sqr = mul(&mut context, x, x);
+    let x_sqr = eval!(&mut context, (x) * (x));
     let stats = Stats { mul: 1, guess: 4, ..stats };
     assert_eq!(context.stats, stats);
 
-    let x_sqr_minus_y = sub(&mut context, x_sqr, y);
+    let x_sqr_minus_y = eval!(&mut context, (x_sqr) - (y));
     let stats = Stats { sub: 1, ..stats };
     assert_eq!(context.stats, stats);
 
@@ -58,7 +65,7 @@ fn test_stats() {
     let stats = Stats { eq: 1, ..stats };
     assert_eq!(context.stats, stats);
 
-    add(&mut context, zero, zero);
+    eval!(&mut context, (0) + (0));
     let stats = Stats { add: 1, ..stats };
     assert_eq!(context.stats, stats);
 
