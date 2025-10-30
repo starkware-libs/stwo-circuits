@@ -1,7 +1,14 @@
+use indexmap::IndexMap;
+use num_traits::{One, Zero};
 use stwo::core::fields::qm31::QM31;
 
 use crate::circuits::circuit::Circuit;
 use crate::circuits::ivalue::IValue;
+use crate::circuits::ops::guess;
+
+#[cfg(test)]
+#[path = "context_test.rs"]
+pub mod test;
 
 /// Represents a variable in a [Circuit].
 #[derive(Clone, Copy)]
@@ -17,6 +24,7 @@ impl std::fmt::Debug for Var {
 /// Represents the information required to build a [Circuit].
 pub struct Context<Value: IValue> {
     pub circuit: Circuit,
+    constants: IndexMap<QM31, Var>,
     n_vars: usize,
     values: Vec<Value>,
 }
@@ -25,9 +33,21 @@ impl<Value: IValue> Context<Value> {
         &self.values
     }
 
+    pub fn constants(&self) -> &IndexMap<QM31, Var> {
+        &self.constants
+    }
+
     /// The number of variables allocated so far.
     pub fn n_vars(&self) -> usize {
         self.n_vars
+    }
+
+    pub fn zero(&self) -> Var {
+        Var { idx: 0 }
+    }
+
+    pub fn one(&self) -> Var {
+        Var { idx: 1 }
     }
 
     /// Creates a new variable.
@@ -42,11 +62,30 @@ impl<Value: IValue> Context<Value> {
     pub fn get(&self, var: Var) -> Value {
         self.values[var.idx]
     }
+
+    pub fn constant(&mut self, value: QM31) -> Var {
+        if let Some(var) = self.constants.get(&value) {
+            *var
+        } else {
+            let var = guess(self, Value::from_qm31(value));
+            self.constants.insert(value, var);
+            var
+        }
+    }
 }
 
 impl<Value: IValue> Default for Context<Value> {
     fn default() -> Self {
-        Self { circuit: Circuit::default(), n_vars: 0, values: vec![] }
+        let mut res = Self {
+            circuit: Circuit::default(),
+            constants: IndexMap::new(),
+            n_vars: 0,
+            values: vec![],
+        };
+        // Register zero and one as the first constants.
+        res.constant(QM31::zero());
+        res.constant(QM31::one());
+        res
     }
 }
 

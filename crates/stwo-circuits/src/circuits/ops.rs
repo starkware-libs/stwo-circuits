@@ -31,3 +31,11 @@ pub fn mul(context: &mut Context<impl IValue>, a: Var, b: Var) -> Var {
     context.circuit.mul.push(Mul { in0: a.idx, in1: b.idx, out: out.idx });
     out
 }
+
+/// Returns a new unconstrained variable with the given value.
+pub fn guess<Value: IValue>(c: &mut Context<Value>, value: Value) -> Var {
+    let out = c.new_var(value);
+    // Add a trivial constraint so that the new variable appears once as a yield.
+    c.circuit.add.push(Add { in0: out.idx, in1: c.zero().idx, out: out.idx });
+    out
+}
