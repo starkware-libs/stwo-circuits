@@ -15,7 +15,7 @@ fn test_basic_ops() {
     let e = mul(&mut context, c, d);
     assert_eq!(context.get(e), (x + y) * (x - y));
 
-    assert_eq!(context.values(), &vec![x, y, x + y, x - y, (x + y) * (x - y)]);
+    assert_eq!(context.values(), &vec![0.into(), 1.into(), x, y, x + y, x - y, (x + y) * (x - y)]);
 
     context.circuit.check(context.values()).unwrap();
 }
@@ -30,5 +30,5 @@ fn test_eq() {
     // The following equality is wrong, it'll be caught by the circuit checker.
     eq(&mut context, a, b);
     context.circuit.check(context.values()).unwrap_err();
-    context.circuit.check(&[x, x]).unwrap();
+    context.circuit.check(&[0.into(), 1.into(), x, x]).unwrap();
 }

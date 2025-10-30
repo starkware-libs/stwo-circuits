@@ -19,12 +19,24 @@ pub trait IValue:
     + std::ops::Mul<Output = Self>
     + std::ops::Div<Output = Self>
 {
+    fn from_qm31(value: QM31) -> Self;
 }
 
-impl IValue for QM31 {}
+impl IValue for QM31 {
+    /// Constructs an [IValue] from the given [QM31].
+    fn from_qm31(value: QM31) -> Self {
+        value
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct NoValue;
+
+impl IValue for NoValue {
+    fn from_qm31(_: QM31) -> Self {
+        Self
+    }
+}
 
 impl std::ops::Add for NoValue {
     type Output = NoValue;
