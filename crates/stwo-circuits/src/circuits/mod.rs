@@ -1,3 +1,4 @@
+pub mod blake;
 pub mod circuit;
 pub mod context;
 pub mod ivalue;

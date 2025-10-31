@@ -5,4 +5,5 @@ pub struct Stats {
     pub sub: usize,
     pub mul: usize,
     pub guess: usize,
+    pub blake_updates: usize,
 }
