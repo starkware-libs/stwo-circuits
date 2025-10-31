@@ -1,6 +1,8 @@
 use itertools::chain;
 use stwo::core::fields::qm31::QM31;
 
+use crate::circuits::blake::blake_qm31;
+
 #[cfg(test)]
 #[path = "circuit_test.rs"]
 pub mod test;
@@ -91,6 +93,40 @@ impl std::fmt::Debug for Eq {
     }
 }
 
+/// Represents a blake hash gate in the circuit: `([out0], [out1]) = blake([input]; n_bytes)`.
+#[derive(PartialEq, Eq)]
+pub struct Blake {
+    pub input: Vec<[usize; 4]>,
+    pub n_bytes: usize,
+    pub out0: usize,
+    pub out1: usize,
+}
+impl Gate for Blake {
+    fn check(&self, values: &[QM31]) -> Result<(), String> {
+        let input = self.input.iter().flatten().map(|idx| values[*idx]).collect::<Vec<_>>();
+        let n_effective_vars = self.n_bytes.div_ceil(16);
+        let main_part = &input[..n_effective_vars];
+        let remaining_part = &input[n_effective_vars..];
+
+        let expected_output = blake_qm31(main_part, self.n_bytes);
+        check_eq(values[self.out0], expected_output.0)?;
+        check_eq(values[self.out1], expected_output.1)?;
+
+        // Check that the remaining input is zero.
+        for val in remaining_part {
+            check_eq(*val, 0.into())?;
+        }
+
+        Ok(())
+    }
+}
+
+impl std::fmt::Debug for Blake {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "([{}], [{}]) = blake({:?}; {})", self.out0, self.out1, self.input, self.n_bytes)
+    }
+}
+
 /// Represents a circuit.
 #[derive(Default, PartialEq, Eq)]
 pub struct Circuit {
@@ -98,16 +134,19 @@ pub struct Circuit {
     pub sub: Vec<Sub>,
     pub mul: Vec<Mul>,
     pub eq: Vec<Eq>,
+    pub blake: Vec<Blake>,
 }
 
 impl Circuit {
     /// Returns an iterator over all the gates in the circuit.
     pub fn all_gates(&self) -> impl Iterator<Item = &dyn Gate> {
+        let Circuit { add, sub, mul, eq, blake } = self;
         chain!(
-            self.add.iter().map(|g| g as &dyn Gate),
-            self.sub.iter().map(|g| g as &dyn Gate),
-            self.mul.iter().map(|g| g as &dyn Gate),
-            self.eq.iter().map(|g| g as &dyn Gate)
+            add.iter().map(|g| g as &dyn Gate),
+            sub.iter().map(|g| g as &dyn Gate),
+            mul.iter().map(|g| g as &dyn Gate),
+            eq.iter().map(|g| g as &dyn Gate),
+            blake.iter().map(|g| g as &dyn Gate),
         )
     }
 
