@@ -5,6 +5,7 @@ use stwo::core::{fields::qm31::QM31, vcs::blake2_hash::reduce_to_m31};
 use crate::circuits::circuit::Blake;
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::{IValue, qm31_from_u32s};
+use crate::circuits::ops::Guess;
 
 #[cfg(test)]
 #[path = "blake_test.rs"]
@@ -12,6 +13,13 @@ pub mod test;
 
 #[derive(Clone, Copy, Debug)]
 pub struct HashValue<T>(pub T, pub T);
+
+impl<Value: IValue> Guess<Value> for HashValue<Value> {
+    type Target = HashValue<Var>;
+    fn guess(&self, context: &mut Context<Value>) -> Self::Target {
+        HashValue(self.0.guess(context), self.1.guess(context))
+    }
+}
 
 /// Convert QM31 to 16 bytes (4 u32s)
 fn to_bytes(value: QM31) -> [u8; 16] {

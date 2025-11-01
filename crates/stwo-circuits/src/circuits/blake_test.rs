@@ -5,7 +5,7 @@ use stwo::core::vcs::blake2_hash::reduce_to_m31;
 use crate::circuits::blake::{blake, qm31_from_bytes};
 use crate::circuits::context::TraceContext;
 use crate::circuits::ivalue::qm31_from_u32s;
-use crate::circuits::ops::eq;
+use crate::circuits::ops::{Guess, eq};
 use crate::circuits::stats::Stats;
 
 #[rstest]
@@ -15,12 +15,13 @@ fn test_blake(#[case] wrong_output: bool) {
     let mut context = TraceContext::default();
 
     let input = [
-        context.new_var(qm31_from_u32s(1, 2, 3, 4)),
-        context.new_var(qm31_from_u32s(5, 6, 7, 8)),
-        context.new_var(qm31_from_u32s(9, 10, 11, 12)),
-        context.new_var(qm31_from_u32s(13, 14, 15, 16)),
-        context.new_var(qm31_from_u32s(17, 0, 0, 0)),
-    ];
+        qm31_from_u32s(1, 2, 3, 4),
+        qm31_from_u32s(5, 6, 7, 8),
+        qm31_from_u32s(9, 10, 11, 12),
+        qm31_from_u32s(13, 14, 15, 16),
+        qm31_from_u32s(17, 0, 0, 0),
+    ]
+    .guess(&mut context);
 
     let mut hasher = Blake2s256::new();
     hasher.update([
@@ -39,7 +40,7 @@ fn test_blake(#[case] wrong_output: bool) {
     eq(&mut context, output.0, out0);
     eq(&mut context, output.1, out1);
 
-    assert_eq!(context.stats, Stats { blake: 2, guess: 2, eq: 2, ..Stats::default() });
+    assert_eq!(context.stats, Stats { blake: 2, guess: 7, eq: 2, ..Stats::default() });
 
     assert_eq!(context.circuit.check(context.values()).is_ok(), !wrong_output);
 }
