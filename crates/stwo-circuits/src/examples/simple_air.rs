@@ -31,6 +31,7 @@ pub mod simple_air_test;
 
 pub const FIB_SEQUENCE_LENGTH: usize = 4;
 pub const LOG_N_INSTANCES: u32 = 4;
+const _: () = assert!(LOG_N_INSTANCES >= LOG_N_LANES);
 
 relation!(SimpleRelation, 2);
 
@@ -80,7 +81,6 @@ impl FrameworkEval for Eval {
 
 /// Generates a trace for the test.
 fn generate_trace() -> ColumnVec<CircleEvaluation<SimdBackend, BaseField, BitReversedOrder>> {
-    assert!(LOG_N_INSTANCES >= LOG_N_LANES);
     let inputs = (0..(1 << (LOG_N_INSTANCES - LOG_N_LANES)))
         .map(|i| FibInput {
             a: PackedBaseField::one(),
