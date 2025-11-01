@@ -12,3 +12,4 @@ stwo.workspace = true
 
 [dev-dependencies]
 rstest.workspace = true
+stwo-constraint-framework.workspace = true
