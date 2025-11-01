@@ -809,6 +809,21 @@ dependencies = [
  "num-traits",
  "rstest",
  "stwo",
+ "stwo-constraint-framework",
+]
+
+[[package]]
+name = "stwo-constraint-framework"
+version = "0.1.1"
+source = "git+https://github.com/starkware-libs/stwo?rev=f7179282#f7179282222b7e976c2b76396ecde63d8da2d330"
+dependencies = [
+ "hashbrown",
+ "itertools 0.12.1",
+ "num-traits",
+ "rand",
+ "std-shims",
+ "stwo",
+ "tracing",
 ]
 
 [[package]]
