@@ -86,3 +86,39 @@ pub fn guess<Value: IValue>(context: &mut Context<Value>, value: Value) -> Var {
     context.circuit.add.push(Add { in0: out.idx, in1: context.zero().idx, out: out.idx });
     out
 }
+
+/// A trait for creating [Var]s from values in a recursive structure.
+///
+/// For example, given a `Vec<Vec<QM31>>` we can create a `Vec<Vec<Var>>`.
+pub trait Guess<Value: IValue> {
+    type Target;
+
+    fn guess(&self, context: &mut Context<Value>) -> Self::Target;
+}
+
+/// Implementation of [Guess] for a single value.
+impl<Value: IValue> Guess<Value> for Value {
+    type Target = Var;
+
+    fn guess(&self, context: &mut Context<Value>) -> Self::Target {
+        guess(context, *self)
+    }
+}
+
+/// Implementation of [Guess] for [Vec].
+impl<Value: IValue, T: Guess<Value>> Guess<Value> for Vec<T> {
+    type Target = Vec<T::Target>;
+
+    fn guess(&self, context: &mut Context<Value>) -> Self::Target {
+        self.iter().map(|value| value.guess(context)).collect()
+    }
+}
+
+/// Implementation of [Guess] for `[T; N]`.
+impl<Value: IValue, T: Guess<Value>, const N: usize> Guess<Value> for [T; N] {
+    type Target = [T::Target; N];
+
+    fn guess(&self, context: &mut Context<Value>) -> Self::Target {
+        self.each_ref().map(|value| value.guess(context))
+    }
+}
