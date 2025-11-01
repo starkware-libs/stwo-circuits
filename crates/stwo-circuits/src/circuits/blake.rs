@@ -1,5 +1,6 @@
 use blake2::{Blake2s256, Digest};
 use itertools::Itertools;
+use stwo::core::vcs::blake2_hash::Blake2sHash;
 use stwo::core::{fields::qm31::QM31, vcs::blake2_hash::reduce_to_m31};
 
 use crate::circuits::circuit::Blake;
@@ -18,6 +19,15 @@ impl<Value: IValue> Guess<Value> for HashValue<Value> {
     type Target = HashValue<Var>;
     fn guess(&self, context: &mut Context<Value>) -> Self::Target {
         HashValue(self.0.guess(context), self.1.guess(context))
+    }
+}
+
+impl From<Blake2sHash> for HashValue<QM31> {
+    fn from(value: Blake2sHash) -> Self {
+        HashValue(
+            qm31_from_bytes(&value.0[0..16].try_into().unwrap()),
+            qm31_from_bytes(&value.0[16..32].try_into().unwrap()),
+        )
     }
 }
 
