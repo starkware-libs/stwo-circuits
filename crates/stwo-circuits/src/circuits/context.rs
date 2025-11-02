@@ -5,6 +5,7 @@ use stwo::core::fields::qm31::QM31;
 use crate::circuits::circuit::Circuit;
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::guess;
+use crate::circuits::stats::Stats;
 
 #[cfg(test)]
 #[path = "context_test.rs"]
@@ -27,6 +28,7 @@ pub struct Context<Value: IValue> {
     constants: IndexMap<QM31, Var>,
     n_vars: usize,
     values: Vec<Value>,
+    pub stats: Stats,
 }
 impl<Value: IValue> Context<Value> {
     pub fn values(&self) -> &Vec<Value> {
@@ -81,6 +83,7 @@ impl<Value: IValue> Default for Context<Value> {
             constants: IndexMap::new(),
             n_vars: 0,
             values: vec![],
+            stats: Stats::default(),
         };
         // Register zero and one as the first constants.
         res.constant(QM31::zero());

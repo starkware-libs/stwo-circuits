@@ -1,6 +1,7 @@
 use crate::circuits::context::TraceContext;
 use crate::circuits::ivalue::qm31_from_u32s;
-use crate::circuits::ops::{add, eq, mul, sub};
+use crate::circuits::ops::{add, eq, guess, mul, sub};
+use crate::circuits::stats::Stats;
 
 #[test]
 fn test_basic_ops() {
@@ -31,4 +32,35 @@ fn test_eq() {
     eq(&mut context, a, b);
     context.circuit.check(context.values()).unwrap_err();
     context.circuit.check(&[0.into(), 1.into(), x, x]).unwrap();
+}
+
+#[test]
+fn test_stats() {
+    let mut context = TraceContext::default();
+
+    // 2 guesses are from the zero and one constants.
+    let stats = Stats { guess: 2, ..Stats::default() };
+    assert_eq!(context.stats, stats);
+
+    let x = guess(&mut context, 5.into());
+    let y = context.constant(25.into());
+
+    let x_sqr = mul(&mut context, x, x);
+    let stats = Stats { mul: 1, guess: 4, ..stats };
+    assert_eq!(context.stats, stats);
+
+    let x_sqr_minus_y = sub(&mut context, x_sqr, y);
+    let stats = Stats { sub: 1, ..stats };
+    assert_eq!(context.stats, stats);
+
+    let zero = context.zero();
+    eq(&mut context, x_sqr_minus_y, zero);
+    let stats = Stats { eq: 1, ..stats };
+    assert_eq!(context.stats, stats);
+
+    add(&mut context, zero, zero);
+    let stats = Stats { add: 1, ..stats };
+    assert_eq!(context.stats, stats);
+
+    context.circuit.check(context.values()).unwrap();
 }
