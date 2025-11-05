@@ -1,6 +1,6 @@
 use crate::circuits::blake::{HashValue, blake};
 use crate::circuits::context::{Context, Var};
-use crate::circuits::ivalue::IValue;
+use crate::circuits::ivalue::{IValue, qm31_from_u32s};
 
 #[cfg(test)]
 #[path = "channel_test.rs"]
@@ -31,8 +31,33 @@ impl Channel {
         self.digest
     }
 
+    #[cfg(test)]
+    pub fn from_digest(
+        context: &mut crate::circuits::context::TraceContext,
+        init_digest: [stwo::core::fields::qm31::QM31; 2],
+    ) -> Self {
+        Self {
+            digest: HashValue(context.constant(init_digest[0]), context.constant(init_digest[1])),
+            n_draws: 0,
+        }
+    }
+
     /// Mixes the given root into the channel's digest.
     pub fn mix_commitment(&mut self, context: &mut Context<impl IValue>, root: HashValue<Var>) {
         self.update_digest(blake(context, &[self.digest.0, self.digest.1, root.0, root.1], 16 * 4));
+    }
+
+    /// Draws one [QM31] random value from the channel.
+    pub fn draw_qm31(&mut self, context: &mut Context<impl IValue>) -> Var {
+        self.draw_two_qm31s(context)[0]
+    }
+
+    /// Draws two [QM31] random values from the channel.
+    pub fn draw_two_qm31s(&mut self, context: &mut Context<impl IValue>) -> [Var; 2] {
+        let n_draws_var =
+            context.constant(qm31_from_u32s(self.n_draws.try_into().unwrap(), 0, 0, 0));
+        let res = blake(context, &[self.digest.0, self.digest.1, n_draws_var], 37);
+        self.n_draws += 1;
+        [res.0, res.1]
     }
 }
