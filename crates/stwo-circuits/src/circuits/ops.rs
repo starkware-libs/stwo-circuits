@@ -134,3 +134,12 @@ impl<Value: IValue, T: Guess<Value>, const N: usize> Guess<Value> for [T; N] {
         self.each_ref().map(|value| value.guess(context))
     }
 }
+
+/// Implementation of [Guess] for `(T, S)`.
+impl<Value: IValue, T: Guess<Value>, S: Guess<Value>> Guess<Value> for (T, S) {
+    type Target = (T::Target, S::Target);
+
+    fn guess(&self, context: &mut Context<Value>) -> Self::Target {
+        (self.0.guess(context), self.1.guess(context))
+    }
+}
