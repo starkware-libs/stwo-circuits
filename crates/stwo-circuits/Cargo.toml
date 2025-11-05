@@ -9,3 +9,6 @@ indexmap.workspace = true
 itertools.workspace = true
 num-traits.workspace = true
 stwo.workspace = true
+
+[dev-dependencies]
+rstest.workspace = true
