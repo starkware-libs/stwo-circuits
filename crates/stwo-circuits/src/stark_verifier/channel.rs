@@ -1,6 +1,10 @@
+use stwo::core::circle::CirclePoint;
+
 use crate::circuits::blake::{HashValue, blake};
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::{IValue, qm31_from_u32s};
+use crate::circuits::ops::div;
+use crate::eval;
 
 #[cfg(test)]
 #[path = "channel_test.rs"]
@@ -61,5 +65,17 @@ impl Channel {
         let res = blake(context, &[self.digest.0, self.digest.1, n_draws_var], 16 + 16 + 4 + 1);
         self.n_draws += 1;
         [res.0, res.1]
+    }
+
+    /// Draws a random point on the ([QM31]) circle from the channel.
+    pub fn draw_point(&mut self, context: &mut Context<impl IValue>) -> CirclePoint<Var> {
+        let t = self.draw_qm31(context);
+        let t2 = eval!(context, (t) * (t));
+
+        let denom = eval!(context, (t2) + (1));
+        let denom_inv = div(context, context.one(), denom);
+        let x = eval!(context, ((1) - (t2)) * (denom_inv));
+        let y = eval!(context, ((2) * (t)) * (denom_inv));
+        CirclePoint { x, y }
     }
 }

@@ -80,3 +80,22 @@ fn test_draw_two_qm31s_regression() {
 
     context.circuit.check(context.values()).unwrap();
 }
+
+#[test]
+fn test_draw_point_regression() {
+    let mut context = TraceContext::default();
+
+    let init_digest = [
+        qm31_from_u32s(2072130922, 1322677507, 1508142866, 1010842681),
+        qm31_from_u32s(967226388, 1861793490, 1980108433, 243066861),
+    ];
+
+    let mut channel = Channel::from_digest(&mut context, init_digest);
+
+    let pt = channel.draw_point(&mut context);
+
+    assert_eq!(context.get(pt.x), qm31_from_u32s(1343313724, 1951183646, 1685075959, 888698585));
+    assert_eq!(context.get(pt.y), qm31_from_u32s(674655034, 1516640953, 569857337, 1549701521));
+
+    context.circuit.check(context.values()).unwrap();
+}
