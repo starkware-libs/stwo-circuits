@@ -47,7 +47,7 @@ macro_rules! eval {
 
 /// Adds an equality gate to the circuit.
 pub fn eq(context: &mut Context<impl IValue>, a: Var, b: Var) {
-    context.stats.eq += 1;
+    context.stats.equals += 1;
     context.circuit.eq.push(Eq { in0: a.idx, in1: b.idx });
 }
 
@@ -72,6 +72,18 @@ pub fn mul(context: &mut Context<impl IValue>, a: Var, b: Var) -> Var {
     context.stats.mul += 1;
     let out = context.new_var(context.get(a) * context.get(b));
     context.circuit.mul.push(Mul { in0: a.idx, in1: b.idx, out: out.idx });
+    out
+}
+
+/// Computes `a / b` by guessing the result and adding a multiplication gate to the circuit to
+/// validate its correctness.
+///
+/// The caller must ensure that `b` is not zero.
+pub fn div(c: &mut Context<impl IValue>, a: Var, b: Var) -> Var {
+    c.stats.div += 1;
+    let out = guess(c, c.get(a) / c.get(b));
+    let mul_res = mul(c, out, b);
+    eq(c, mul_res, a);
     out
 }
 
