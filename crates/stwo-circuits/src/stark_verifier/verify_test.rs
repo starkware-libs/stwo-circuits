@@ -1,7 +1,7 @@
 use crate::circuits::context::{Context, TraceContext};
 use crate::circuits::ivalue::NoValue;
 use crate::circuits::ops::Guess;
-use crate::examples::simple_air::create_proof;
+use crate::examples::simple_air::{LOG_N_INSTANCES, create_proof};
 use crate::stark_verifier::proof::{ProofConfig, empty_proof};
 use crate::stark_verifier::proof_from_stark_proof::proof_from_stark_proof;
 use crate::stark_verifier::verify::verify;
@@ -10,6 +10,7 @@ use crate::stark_verifier::verify::verify;
 fn test_verify() {
     let config = ProofConfig {
         n_proof_of_work_bits: 10,
+        log_evaluation_domain_size: (LOG_N_INSTANCES + 1).try_into().unwrap(),
         n_preprocessed_columns: 1,
         n_trace_columns: 4,
         n_interaction_columns: 4,
