@@ -1,0 +1,144 @@
+use num_traits::One;
+use stwo::core::circle::CirclePoint;
+use stwo::core::fields::m31::M31;
+
+use crate::circuits::context::{Context, Var, same_var};
+use crate::circuits::ivalue::IValue;
+use crate::circuits::ops::{div, from_partial_evals};
+use crate::eval;
+use crate::stark_verifier::circle::double_x;
+use crate::stark_verifier::proof::InteractionAtOods;
+use crate::stark_verifier::statement::Statement;
+
+use super::simple_air::{FIB_SEQUENCE_LENGTH, LOG_N_INSTANCES};
+
+/// Computes the polynomial that vanishes on the canonical coset of size `2^log_trace_size`.
+///
+/// The polynomial is `double_x(...(double_x(x))...)` where `double_x` is repeated
+/// `log_trace_size - 1` times.
+pub fn domain_poly(context: &mut Context<impl IValue>, mut x: Var, log_trace_size: usize) -> Var {
+    assert!(log_trace_size >= 1);
+
+    for _ in 0..(log_trace_size - 1) {
+        x = double_x(context, x);
+    }
+    x
+}
+
+/// Computes the inverse of the domain polynomial at `x`. See [domain_poly].
+pub fn denom_inverse(context: &mut Context<impl IValue>, x: Var, log_trace_size: usize) -> Var {
+    let one = context.one();
+    let denom = domain_poly(context, x, log_trace_size);
+    div(context, one, denom)
+}
+
+/// Computes the denominator of a logup term.
+pub fn combine_term(
+    context: &mut Context<impl IValue>,
+    element: &[Var],
+    interaction_elements: [Var; 2],
+) -> Var {
+    let zero = context.zero();
+    let mut value = zero;
+    for elm in element.iter().rev() {
+        if !same_var(value, zero) {
+            value = eval!(context, (value) * (interaction_elements[1]));
+        }
+        value = eval!(context, (value) + (*elm));
+    }
+    eval!(context, (value) - (interaction_elements[0]))
+}
+
+/// Computes the constraint polynomial for a single logup term.
+pub fn single_logup_term(
+    context: &mut Context<impl IValue>,
+    element: &[Var],
+    fixed_diff: Var,
+    interaction_elements: [Var; 2],
+) -> Var {
+    let denominator = combine_term(context, element, interaction_elements);
+    eval!(context, ((fixed_diff) * (denominator)) - (1))
+}
+
+pub struct SimpleStatement {}
+impl SimpleStatement {
+    /// Computes the expected logup sum.
+    fn expected_logup_sum(
+        &self,
+        context: &mut Context<impl IValue>,
+        interaction_elements: [Var; 2],
+    ) -> Var {
+        let mut sum = context.zero();
+        for j in 0..(1 << LOG_N_INSTANCES) {
+            let mut a: M31 = M31::one();
+            let mut b: M31 = j.into();
+            for _ in 0..(FIB_SEQUENCE_LENGTH - 2) {
+                (a, b) = (b, a * a + b * b + M31::from(j));
+            }
+            let elements = [context.constant(a.into()), context.constant(b.into())];
+            let denom = combine_term(context, &elements, interaction_elements);
+            let inv = div(context, context.one(), denom);
+            sum = eval!(context, (sum) + (inv));
+        }
+        sum
+    }
+}
+
+impl Statement for SimpleStatement {
+    // TODO: test
+    fn evaluate(
+        &self,
+        context: &mut Context<impl IValue>,
+        preprocessed_columns: &Vec<Var>,
+        trace_at_oods: &Vec<Var>,
+        interaction_at_oods: &InteractionAtOods<Var>,
+        pt: CirclePoint<Var>,
+        log_domain_size: usize,
+        composition_polynomial_coef: Var,
+        interaction_elements: [Var; 2],
+    ) -> Var {
+        let [const_val] = preprocessed_columns[..].try_into().unwrap();
+        let [a, b, c, d] = trace_at_oods[..].try_into().unwrap();
+
+        // Constraints.
+        let constraint0_val = eval!(context, (c) - ((((a) * (a)) + ((b) * (b))) + (const_val)));
+        let constraint1_val = eval!(context, (d) - ((((b) * (b)) + ((c) * (c))) + (const_val)));
+
+        // Logup constraint.
+        let prev_interaction = from_partial_evals(
+            context,
+            [
+                interaction_at_oods.at_prev(0),
+                interaction_at_oods.at_prev(1),
+                interaction_at_oods.at_prev(2),
+                interaction_at_oods.at_prev(3),
+            ],
+        );
+        let cur_interaction = from_partial_evals(
+            context,
+            [
+                interaction_at_oods.at_oods(0),
+                interaction_at_oods.at_oods(1),
+                interaction_at_oods.at_oods(2),
+                interaction_at_oods.at_oods(3),
+            ],
+        );
+        let claimed_sum = self.expected_logup_sum(context, interaction_elements);
+        let n_instances = context.constant((1 << LOG_N_INSTANCES).into());
+        let cumsum_shift = div(context, claimed_sum, n_instances);
+        let diff = eval!(context, (cur_interaction) - (prev_interaction));
+        let fixed_diff = eval!(context, (diff) + (cumsum_shift));
+        let logup_constraint_val =
+            single_logup_term(context, &[c, d], fixed_diff, interaction_elements);
+
+        let denom_inverse = denom_inverse(context, pt.x, log_domain_size);
+
+        let constraint_val = constraint0_val;
+        let constraint_val = eval!(context, (constraint_val) * (composition_polynomial_coef));
+        let constraint_val = eval!(context, (constraint_val) + (constraint1_val));
+        let constraint_val = eval!(context, (constraint_val) * (composition_polynomial_coef));
+        let constraint_val = eval!(context, (constraint_val) + (logup_constraint_val));
+
+        eval!(context, (constraint_val) * (denom_inverse))
+    }
+}

@@ -1,4 +1,4 @@
-use crate::circuits::context::{Context, TraceContext};
+use crate::circuits::context::{Context, TraceContext, same_var};
 use crate::circuits::ivalue::qm31_from_u32s;
 
 #[test]
@@ -9,7 +9,7 @@ fn test_constants() {
     let _b = context.constant(x + x);
     // The second time `x` is requested, the same variable is returned.
     let c = context.constant(x);
-    assert_eq!(a.idx, c.idx);
+    assert!(same_var(a, c));
 
     assert_eq!(context.values(), &vec![0.into(), 1.into(), x, x + x]);
 
