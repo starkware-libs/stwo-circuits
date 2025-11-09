@@ -27,5 +27,8 @@ pub fn verify(context: &mut Context<impl IValue>, proof: &Proof<Var>, _config: &
 
     channel.mix_commitment(context, proof.composition_polynomial_root);
 
+    // Draw a random point for the OODS.
+    let _oods_point = channel.draw_point(context);
+
     // TODO(lior): Complete the verification.
 }
