@@ -22,6 +22,11 @@ impl std::fmt::Debug for Var {
     }
 }
 
+/// Returns `true` if `a` and `b` are the same variable.
+pub fn same_var(a: Var, b: Var) -> bool {
+    a.idx == b.idx
+}
+
 /// Represents the information required to build a [Circuit].
 pub struct Context<Value: IValue> {
     pub circuit: Circuit,
