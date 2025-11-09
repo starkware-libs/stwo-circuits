@@ -38,3 +38,45 @@ fn test_mix_commitment_regression() {
 
     context.circuit.check(context.values()).unwrap();
 }
+
+#[test]
+fn test_draw_qm31_regression() {
+    let mut context = TraceContext::default();
+
+    let init_digest = [
+        qm31_from_u32s(800533588, 1994201536, 2099095392, 678020158),
+        qm31_from_u32s(1950435309, 1607451911, 2421030, 565867237),
+    ];
+
+    let mut channel = Channel::from_digest(&mut context, init_digest);
+
+    let res = channel.draw_qm31(&mut context);
+    assert_eq!(context.get(res), qm31_from_u32s(1511219767, 1680262446, 557532573, 1741612347));
+
+    let res2 = channel.draw_qm31(&mut context);
+    assert_eq!(context.get(res2), qm31_from_u32s(1010544646, 1898030754, 53928552, 587440252));
+
+    context.circuit.check(context.values()).unwrap();
+}
+
+#[test]
+fn test_draw_two_qm31s_regression() {
+    let mut context = TraceContext::default();
+
+    let init_digest = [
+        qm31_from_u32s(800533588, 1994201536, 2099095392, 678020158),
+        qm31_from_u32s(1950435309, 1607451911, 2421030, 565867237),
+    ];
+
+    let mut channel = Channel::from_digest(&mut context, init_digest);
+
+    let res = channel.draw_two_qm31s(&mut context);
+    assert_eq!(context.get(res[0]), qm31_from_u32s(1511219767, 1680262446, 557532573, 1741612347));
+    assert_eq!(context.get(res[1]), qm31_from_u32s(1790671546, 1908058358, 2021264888, 1820912939));
+
+    let res2 = channel.draw_two_qm31s(&mut context);
+    assert_eq!(context.get(res2[0]), qm31_from_u32s(1010544646, 1898030754, 53928552, 587440252));
+    assert_eq!(context.get(res2[1]), qm31_from_u32s(868459281, 1035649663, 299576823, 539722878));
+
+    context.circuit.check(context.values()).unwrap();
+}
