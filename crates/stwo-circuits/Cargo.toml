@@ -11,5 +11,6 @@ num-traits.workspace = true
 stwo.workspace = true
 
 [dev-dependencies]
+indoc.workspace = true
 rstest.workspace = true
 stwo-constraint-framework.workspace = true

@@ -1,6 +1,8 @@
+use indoc::formatdoc;
+
 use crate::circuits::context::TraceContext;
 use crate::circuits::ivalue::qm31_from_u32s;
-use crate::circuits::ops::{eq, guess};
+use crate::circuits::ops::{div, eq, guess};
 use crate::circuits::stats::Stats;
 use crate::eval;
 
@@ -42,6 +44,32 @@ fn test_eval_macro() {
 }
 
 #[test]
+fn test_div() {
+    let mut context = TraceContext::default();
+    let x = guess(&mut context, 10.into());
+    let y = guess(&mut context, 2.into());
+    let res = div(&mut context, x, y);
+    assert_eq!(context.get(res), 5.into());
+
+    assert_eq!(
+        format!("{:?}", context.circuit),
+        formatdoc!(
+            "
+            [0] = [0] + [0]
+            [1] = [1] + [0]
+            [2] = [2] + [0]
+            [3] = [3] + [0]
+            [4] = [4] + [0]
+            [5] = [4] * [3]
+            [5] = [2]
+            "
+        )
+    );
+
+    context.circuit.check(context.values()).unwrap();
+}
+
+#[test]
 fn test_stats() {
     let mut context = TraceContext::default();
 
@@ -62,11 +90,21 @@ fn test_stats() {
 
     let zero = context.zero();
     eq(&mut context, x_sqr_minus_y, zero);
-    let stats = Stats { eq: 1, ..stats };
+    let stats = Stats { equals: 1, ..stats };
     assert_eq!(context.stats, stats);
 
     eval!(&mut context, (0) + (0));
     let stats = Stats { add: 1, ..stats };
+    assert_eq!(context.stats, stats);
+
+    div(&mut context, x, y);
+    let stats = Stats {
+        div: 1,
+        mul: stats.mul + 1,
+        guess: stats.guess + 1,
+        equals: stats.equals + 1,
+        ..stats
+    };
     assert_eq!(context.stats, stats);
 
     context.circuit.check(context.values()).unwrap();
