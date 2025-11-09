@@ -3,6 +3,8 @@ use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::{IValue, NoValue};
 use crate::circuits::ops::Guess;
 
+use crate::stark_verifier::oods::N_COMPOSITION_COLUMNS;
+
 /// Represents the structure of a proof.
 pub struct ProofConfig {
     pub n_proof_of_work_bits: usize,
@@ -13,21 +15,70 @@ pub struct ProofConfig {
     pub n_interaction_columns: usize,
 }
 
+/// The values of the interaction trace at the OODS point and the previous point.
+pub struct InteractionAtOods<T> {
+    /// For each column, the value at the OODS point and optionally the value at the previous point
+    /// (`oods_point - trace_generator`).
+    // TODO(lior): Make the second element optional.
+    pub value: Vec<(T, T)>,
+}
+impl<T: Copy> InteractionAtOods<T> {
+    /// Returns the number of columns.
+    pub fn n_columns(&self) -> usize {
+        self.value.len()
+    }
+
+    /// Returns the value at the OODS point.
+    pub fn at_oods(&self, idx: usize) -> T {
+        self.value[idx].0
+    }
+
+    /// Returns the value at the previous point (`oods_point - trace_generator`).
+    pub fn at_prev(&self, idx: usize) -> T {
+        self.value[idx].1
+    }
+
+    /// Returns a flattened list of the values at the OODS point and the previous point.
+    pub fn flattened(&self) -> Vec<T> {
+        self.value.iter().flat_map(|(a, b)| [*b, *a]).collect()
+    }
+}
+
+impl<Value: IValue> Guess<Value> for InteractionAtOods<Value> {
+    type Target = InteractionAtOods<Var>;
+
+    fn guess(&self, context: &mut Context<Value>) -> Self::Target {
+        InteractionAtOods { value: self.value.guess(context) }
+    }
+}
+
 pub struct Proof<T> {
     // Merkle roots.
     pub preprocessed_root: HashValue<T>,
     pub trace_root: HashValue<T>,
     pub interaction_root: HashValue<T>,
     pub composition_polynomial_root: HashValue<T>,
+
+    // Evaluations at the OODS point and the previous point.
+    pub preprocessed_columns_at_oods: Vec<T>,
+    pub trace_at_oods: Vec<T>,
+    pub interaction_at_oods: InteractionAtOods<T>,
+    pub composition_eval_at_oods: [T; N_COMPOSITION_COLUMNS],
     // TODO(lior): Add missing fields.
 }
 
-pub fn empty_proof(_config: &ProofConfig) -> Proof<NoValue> {
+pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
     Proof {
         preprocessed_root: HashValue(NoValue, NoValue),
         trace_root: HashValue(NoValue, NoValue),
         interaction_root: HashValue(NoValue, NoValue),
         composition_polynomial_root: HashValue(NoValue, NoValue),
+        preprocessed_columns_at_oods: vec![NoValue; config.n_preprocessed_columns],
+        trace_at_oods: vec![NoValue; config.n_trace_columns],
+        interaction_at_oods: InteractionAtOods {
+            value: vec![(NoValue, NoValue); config.n_interaction_columns],
+        },
+        composition_eval_at_oods: [NoValue; N_COMPOSITION_COLUMNS],
     }
 }
 
@@ -40,6 +91,10 @@ impl<Value: IValue> Guess<Value> for Proof<Value> {
             trace_root: self.trace_root.guess(context),
             interaction_root: self.interaction_root.guess(context),
             composition_polynomial_root: self.composition_polynomial_root.guess(context),
+            preprocessed_columns_at_oods: self.preprocessed_columns_at_oods.guess(context),
+            trace_at_oods: self.trace_at_oods.guess(context),
+            interaction_at_oods: self.interaction_at_oods.guess(context),
+            composition_eval_at_oods: self.composition_eval_at_oods.guess(context),
         }
     }
 }
