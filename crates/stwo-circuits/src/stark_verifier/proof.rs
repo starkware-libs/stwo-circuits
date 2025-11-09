@@ -8,7 +8,8 @@ use crate::stark_verifier::oods::N_COMPOSITION_COLUMNS;
 /// Represents the structure of a proof.
 pub struct ProofConfig {
     pub n_proof_of_work_bits: usize,
-    // TODO(lior): Move `log_evaluation_domain_size` to a `FriConfig` struct.
+    // TODO(lior): Move `log_trace_size` and `log_evaluation_domain_size` to a `FriConfig` struct.
+    pub log_trace_size: usize,
     pub log_evaluation_domain_size: usize,
 
     // AIR structure.
@@ -17,6 +18,11 @@ pub struct ProofConfig {
     pub n_interaction_columns: usize,
 }
 impl ProofConfig {
+    /// Returns the log2 of the size of the trace.
+    pub fn log_trace_size(&self) -> usize {
+        self.log_trace_size
+    }
+
     /// Returns the log2 of the size of the evaluation domain.
     pub fn log_evaluation_domain_size(&self) -> usize {
         self.log_evaluation_domain_size
