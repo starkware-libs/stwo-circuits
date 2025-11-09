@@ -12,6 +12,10 @@ use crate::circuits::stats::Stats;
 pub mod test;
 
 /// Represents a variable in a [Circuit].
+///
+/// A [Var] represents a `QM31` value.
+/// In some cases, it may be restricted to an `M31` or a boolean value by adding constraints to the
+/// circuit. For example, `x = x * x` will enforce that `x` is either `0` or `1`.
 #[derive(Clone, Copy)]
 pub struct Var {
     pub idx: usize,
@@ -28,6 +32,13 @@ pub fn same_var(a: Var, b: Var) -> bool {
 }
 
 /// Represents the information required to build a [Circuit].
+///
+/// Context can be used in two ways:
+/// 1. To build just the [Circuit] with no concrete values for the variables.
+/// 2. To build the [Circuit] with concrete `QM31` values for the variables.
+///
+/// In the first case the type `Value` is set to `NoValue`, and in the second case it is set to
+/// `QM31`.
 pub struct Context<Value: IValue> {
     pub circuit: Circuit,
     constants: IndexMap<QM31, Var>,
