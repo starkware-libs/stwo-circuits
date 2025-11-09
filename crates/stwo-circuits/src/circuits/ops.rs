@@ -1,6 +1,6 @@
 use crate::circuits::circuit::{Add, Eq, Mul, Sub};
 use crate::circuits::context::{Context, Var};
-use crate::circuits::ivalue::IValue;
+use crate::circuits::ivalue::{IValue, qm31_from_u32s};
 
 #[cfg(test)]
 #[path = "ops_test.rs"]
@@ -97,6 +97,19 @@ pub fn guess<Value: IValue>(context: &mut Context<Value>, value: Value) -> Var {
     // For guessed value, add a trivial constraint so that the new variable appears once as a yield.
     context.circuit.add.push(Add { in0: out.idx, in1: context.zero().idx, out: out.idx });
     out
+}
+
+/// Computes the map `(a, b, c, d) -> a + b * i + c * u + d * iu`. Note that the input values are
+/// not necessarily in the base field `M31`.
+pub fn from_partial_evals(context: &mut Context<impl IValue>, values: [Var; 4]) -> Var {
+    let i = context.constant(qm31_from_u32s(0, 1, 0, 0));
+    let u = context.constant(qm31_from_u32s(0, 0, 1, 0));
+    let iu = context.constant(qm31_from_u32s(0, 0, 0, 1));
+
+    eval!(
+        context,
+        (((values[0]) + ((values[1]) * (i))) + ((values[2]) * (u))) + ((values[3]) * (iu))
+    )
 }
 
 /// A trait for creating [Var]s from values in a recursive structure.
