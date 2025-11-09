@@ -40,6 +40,41 @@ fn test_mix_commitment_regression() {
 }
 
 #[test]
+fn test_mix_qm31s_regression() {
+    let mut context = TraceContext::default();
+
+    let init_digest = [
+        qm31_from_u32s(266526289, 1341429509, 1126614795, 1001621831),
+        qm31_from_u32s(1024638884, 1857778419, 1763024470, 1859929979),
+    ];
+
+    let mut channel = Channel::from_digest(&mut context, init_digest);
+
+    let felts = [
+        context.new_var(qm31_from_u32s(1, 0, 0, 0)),
+        context.new_var(qm31_from_u32s(485399786, 1255952693, 1939438763, 1561715227)),
+        context.new_var(qm31_from_u32s(1757357815, 8864493, 674769946, 1715431414)),
+        context.new_var(qm31_from_u32s(1148846901, 1519172202, 357767101, 2129853554)),
+        context.new_var(qm31_from_u32s(0, 0, 0, 0)),
+        context.new_var(qm31_from_u32s(0, 0, 0, 0)),
+        context.new_var(qm31_from_u32s(0, 0, 0, 0)),
+    ];
+    channel.mix_qm31s(&mut context, felts);
+
+    assert_eq!(
+        context.get(channel.digest.0),
+        qm31_from_u32s(1186703962, 1584594219, 633548839, 1510969779)
+    );
+    assert_eq!(
+        context.get(channel.digest.1),
+        qm31_from_u32s(1524867388, 1224019906, 1564199416, 388718964)
+    );
+    assert_eq!(channel.n_draws, 0);
+
+    context.circuit.check(context.values()).unwrap();
+}
+
+#[test]
 fn test_draw_qm31_regression() {
     let mut context = TraceContext::default();
 

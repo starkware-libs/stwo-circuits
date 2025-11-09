@@ -51,6 +51,17 @@ impl Channel {
         self.update_digest(blake(context, &[self.digest.0, self.digest.1, root.0, root.1], 16 * 4));
     }
 
+    /// Mixes the given list of `QM31` values into the channel.
+    pub fn mix_qm31s(
+        &mut self,
+        context: &mut Context<impl IValue>,
+        values: impl IntoIterator<Item = Var>,
+    ) {
+        let mut blake_input = vec![self.digest.0, self.digest.1];
+        blake_input.extend(values);
+        self.update_digest(blake(context, &blake_input, 16 * blake_input.len()));
+    }
+
     /// Draws one [QM31] random value from the channel.
     pub fn draw_qm31(&mut self, context: &mut Context<impl IValue>) -> Var {
         self.draw_two_qm31s(context)[0]
