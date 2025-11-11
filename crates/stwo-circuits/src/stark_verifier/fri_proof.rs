@@ -1,6 +1,6 @@
 use crate::circuits::blake::HashValue;
 use crate::circuits::context::{Context, Var};
-use crate::circuits::ivalue::IValue;
+use crate::circuits::ivalue::{IValue, NoValue};
 use crate::circuits::ops::Guess;
 
 /// Represents the structure of a FRI proof.
@@ -48,5 +48,13 @@ impl<Value: IValue> Guess<Value> for FriCommitProof<Value> {
             layer_commitments: self.layer_commitments.guess(context),
             last_layer_coefs: self.last_layer_coefs.guess(context),
         }
+    }
+}
+
+pub fn empty_fri_proof(config: &FriConfig) -> FriCommitProof<NoValue> {
+    let empty_hash = HashValue(NoValue, NoValue);
+    FriCommitProof {
+        layer_commitments: vec![empty_hash; config.log_trace_size],
+        last_layer_coefs: vec![NoValue; 1 << config.log_n_last_layer_coefs],
     }
 }

@@ -2,7 +2,7 @@ use crate::circuits::blake::HashValue;
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::{IValue, NoValue};
 use crate::circuits::ops::Guess;
-use crate::stark_verifier::fri_proof::FriConfig;
+use crate::stark_verifier::fri_proof::{FriCommitProof, FriConfig, empty_fri_proof};
 use crate::stark_verifier::oods::N_COMPOSITION_COLUMNS;
 
 /// Represents the structure of a proof.
@@ -77,6 +77,8 @@ pub struct Proof<T> {
     pub trace_at_oods: Vec<T>,
     pub interaction_at_oods: InteractionAtOods<T>,
     pub composition_eval_at_oods: [T; N_COMPOSITION_COLUMNS],
+
+    pub fri: FriCommitProof<T>,
     // TODO(lior): Add missing fields.
 }
 
@@ -92,6 +94,7 @@ pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
             value: vec![(NoValue, NoValue); config.n_interaction_columns],
         },
         composition_eval_at_oods: [NoValue; N_COMPOSITION_COLUMNS],
+        fri: empty_fri_proof(&config.fri),
     }
 }
 
@@ -108,6 +111,7 @@ impl<Value: IValue> Guess<Value> for Proof<Value> {
             trace_at_oods: self.trace_at_oods.guess(context),
             interaction_at_oods: self.interaction_at_oods.guess(context),
             composition_eval_at_oods: self.composition_eval_at_oods.guess(context),
+            fri: self.fri.guess(context),
         }
     }
 }
