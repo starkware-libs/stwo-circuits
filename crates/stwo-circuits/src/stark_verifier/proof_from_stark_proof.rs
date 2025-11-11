@@ -1,7 +1,9 @@
+use crate::stark_verifier::fri_proof::FriCommitProof;
 use crate::stark_verifier::proof::InteractionAtOods;
 use crate::stark_verifier::proof::Proof;
 use crate::stark_verifier::proof::ProofConfig;
 use itertools::Itertools;
+use itertools::chain;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::proof::ExtendedStarkProof;
 use stwo::core::vcs::blake2_merkle::Blake2sM31MerkleHasher;
@@ -12,6 +14,7 @@ pub fn proof_from_stark_proof(
 ) -> Proof<QM31> {
     let commitments = &proof.proof.commitments;
     let sampled_values = &proof.proof.sampled_values;
+    let fri_proof = &proof.proof.fri_proof;
     Proof {
         preprocessed_root: commitments[0].into(),
         trace_root: commitments[1].into(),
@@ -23,6 +26,14 @@ pub fn proof_from_stark_proof(
             value: sampled_values[2].iter().map(|x| (x[1], x[0])).collect_vec(),
         },
         composition_eval_at_oods: as_single_row(&sampled_values[3]).try_into().unwrap(),
+        fri: FriCommitProof {
+            roots: chain!(
+                [fri_proof.first_layer.commitment.into()],
+                fri_proof.inner_layers.iter().map(|layer| layer.commitment.into()),
+            )
+            .collect(),
+            last_layer_coefs: (*fri_proof.last_layer_poly).to_vec(),
+        },
     }
 }
 
