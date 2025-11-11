@@ -3,6 +3,7 @@ use crate::circuits::ivalue::NoValue;
 use crate::circuits::ops::Guess;
 use crate::examples::simple_air::{LOG_N_INSTANCES, create_proof};
 use crate::examples::simple_statement::SimpleStatement;
+use crate::stark_verifier::fri_proof::FriConfig;
 use crate::stark_verifier::proof::{ProofConfig, empty_proof};
 use crate::stark_verifier::proof_from_stark_proof::proof_from_stark_proof;
 use crate::stark_verifier::verify::verify;
@@ -11,11 +12,15 @@ use crate::stark_verifier::verify::verify;
 fn test_verify() {
     let config = ProofConfig {
         n_proof_of_work_bits: 10,
-        log_trace_size: LOG_N_INSTANCES.try_into().unwrap(),
-        log_evaluation_domain_size: (LOG_N_INSTANCES + 1).try_into().unwrap(),
         n_preprocessed_columns: 1,
         n_trace_columns: 4,
         n_interaction_columns: 4,
+        fri: FriConfig {
+            log_trace_size: LOG_N_INSTANCES.try_into().unwrap(),
+            log_blowup_factor: 1,
+            n_queries: 3,
+            log_n_last_layer_coefs: 0,
+        },
     };
 
     // Create a NoValue version.
