@@ -1,4 +1,4 @@
-use crate::circuits::circuit::{Add, Eq, Mul, Sub};
+use crate::circuits::circuit::{Add, Eq, Mul, PointwiseMul, Sub};
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::{IValue, qm31_from_u32s};
 
@@ -84,6 +84,13 @@ pub fn div(c: &mut Context<impl IValue>, a: Var, b: Var) -> Var {
     let out = guess(c, c.get(a) / c.get(b));
     let mul_res = mul(c, out, b);
     eq(c, mul_res, a);
+    out
+}
+
+pub fn pointwise_mul<Value: IValue>(c: &mut Context<Value>, a: Var, b: Var) -> Var {
+    c.stats.pointwise_mul += 1;
+    let out = c.new_var(Value::pointwise_mul(c.get(a), c.get(b)));
+    c.circuit.pointwise_mul.push(PointwiseMul { in0: a.idx, in1: b.idx, out: out.idx });
     out
 }
 

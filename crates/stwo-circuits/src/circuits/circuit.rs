@@ -2,6 +2,7 @@ use itertools::chain;
 use stwo::core::fields::qm31::QM31;
 
 use crate::circuits::blake::blake_qm31;
+use crate::circuits::ivalue::IValue;
 
 #[cfg(test)]
 #[path = "circuit_test.rs"]
@@ -75,6 +76,26 @@ impl std::fmt::Debug for Mul {
     }
 }
 
+/// Represents a pointwise multiplication gate in the circuit.
+/// See [IValue::pointwise_mul] for more details.
+#[derive(PartialEq, Eq)]
+pub struct PointwiseMul {
+    pub in0: usize,
+    pub in1: usize,
+    pub out: usize,
+}
+impl Gate for PointwiseMul {
+    fn check(&self, values: &[QM31]) -> Result<(), String> {
+        check_eq(QM31::pointwise_mul(values[self.in0], values[self.in1]), values[self.out])
+    }
+}
+
+impl std::fmt::Debug for PointwiseMul {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{}] = [{}] x [{}]", self.out, self.in0, self.in1)
+    }
+}
+
 /// Represents an equality gate in the circuit: `[in0] = [in1]`.
 #[derive(PartialEq, Eq)]
 pub struct Eq {
@@ -133,6 +154,7 @@ pub struct Circuit {
     pub add: Vec<Add>,
     pub sub: Vec<Sub>,
     pub mul: Vec<Mul>,
+    pub pointwise_mul: Vec<PointwiseMul>,
     pub eq: Vec<Eq>,
     pub blake: Vec<Blake>,
 }
@@ -140,11 +162,12 @@ pub struct Circuit {
 impl Circuit {
     /// Returns an iterator over all the gates in the circuit.
     pub fn all_gates(&self) -> impl Iterator<Item = &dyn Gate> {
-        let Circuit { add, sub, mul, eq, blake } = self;
+        let Circuit { add, sub, mul, pointwise_mul, eq, blake } = self;
         chain!(
             add.iter().map(|g| g as &dyn Gate),
             sub.iter().map(|g| g as &dyn Gate),
             mul.iter().map(|g| g as &dyn Gate),
+            pointwise_mul.iter().map(|g| g as &dyn Gate),
             eq.iter().map(|g| g as &dyn Gate),
             blake.iter().map(|g| g as &dyn Gate),
         )
