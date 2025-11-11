@@ -6,7 +6,9 @@ use crate::circuits::ops::from_partial_evals;
 use crate::eval;
 use crate::stark_verifier::circle::double_x;
 
-pub const N_COMPOSITION_COLUMNS: usize = 8;
+const COMPOSITION_SPLIT: usize = 2;
+const EXTENSION_DEGREE: usize = 4;
+pub const N_COMPOSITION_COLUMNS: usize = COMPOSITION_SPLIT * EXTENSION_DEGREE;
 
 #[cfg(test)]
 #[path = "oods_test.rs"]
