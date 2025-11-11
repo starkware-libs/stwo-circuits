@@ -1,3 +1,5 @@
+use itertools::chain;
+
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::eq;
@@ -58,6 +60,18 @@ pub fn verify(
         config.log_evaluation_domain_size(),
     );
     eq(context, composition_eval, expected_composition_eval);
+
+    // Verify the values in `proof.trace_at_oods` and `proof.composition_eval_at_oods`.
+    // Start by adding the values to the channel.
+    channel.mix_qm31s(
+        context,
+        chain!(
+            proof.preprocessed_columns_at_oods.iter().cloned(),
+            proof.trace_at_oods.iter().cloned(),
+            proof.interaction_at_oods.flattened(),
+            proof.composition_eval_at_oods,
+        ),
+    );
 
     // TODO(lior): Complete the verification.
 }
