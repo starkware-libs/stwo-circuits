@@ -1,7 +1,9 @@
+use indoc::formatdoc;
 use stwo::core::fields::qm31::QM31;
 
-use crate::circuits::context::TraceContext;
-use crate::circuits::ivalue::qm31_from_u32s;
+use crate::circuits::context::{Context, TraceContext};
+use crate::circuits::ivalue::{NoValue, qm31_from_u32s};
+use crate::circuits::ops::Guess;
 use crate::circuits::simd::Simd;
 use crate::circuits::test_utils::simd_from_u32s;
 
@@ -38,4 +40,98 @@ fn test_simd_basic_ops() {
     );
 
     context.circuit.check(context.values()).unwrap();
+}
+
+#[test]
+fn test_eq_circuit8() {
+    let mut context = Context::<NoValue>::default();
+    let a_simd = Simd::from_packed(vec![NoValue; 2].guess(&mut context), 8);
+    let b_simd = Simd::from_packed(vec![NoValue; 2].guess(&mut context), 8);
+    Simd::eq(&mut context, &a_simd, &b_simd);
+    assert_eq!(format!("{:?}", a_simd.data), "[[2], [3]]");
+    assert_eq!(format!("{:?}", b_simd.data), "[[4], [5]]");
+    assert_eq!(
+        format!("{:?}", context.circuit),
+        formatdoc!(
+            "
+            [0] = [0] + [0]
+            [1] = [1] + [0]
+            [2] = [2] + [0]
+            [3] = [3] + [0]
+            [4] = [4] + [0]
+            [5] = [5] + [0]
+            [2] = [4]
+            [3] = [5]
+            "
+        )
+    );
+}
+
+#[test]
+fn test_eq_circuit7() {
+    let mut context = Context::<NoValue>::default();
+    let a_simd = Simd::from_packed(vec![NoValue; 2].guess(&mut context), 7);
+    let b_simd = Simd::from_packed(vec![NoValue; 2].guess(&mut context), 7);
+    Simd::eq(&mut context, &a_simd, &b_simd);
+    assert_eq!(format!("{:?}", a_simd.data), "[[2], [3]]");
+    assert_eq!(format!("{:?}", b_simd.data), "[[4], [5]]");
+    assert_eq!(
+        format!("{:?}", context.constants()),
+        "{(0 + 0i) + (0 + 0i)u: [0], (1 + 0i) + (0 + 0i)u: [1], (1 + 1i) + (1 + 0i)u: [7]}"
+    );
+    assert_eq!(
+        format!("{:?}", context.circuit),
+        formatdoc!(
+            "
+            [0] = [0] + [0]
+            [1] = [1] + [0]
+            [2] = [2] + [0]
+            [3] = [3] + [0]
+            [4] = [4] + [0]
+            [5] = [5] + [0]
+            [7] = [7] + [0]
+            [6] = [3] - [5]
+            [8] = [6] x [7]
+            [2] = [4]
+            [8] = [0]
+            "
+        )
+    );
+}
+
+#[test]
+fn test_eq() {
+    // Go over possible lengths.
+    for len in 0..=8_usize {
+        let n_qm31s = len.div_ceil(4);
+        // Go over all possible coordinates in the padded array, including coordinates greater than
+        // the actual length.
+        for wrong_coord in 0..(4 * n_qm31s) {
+            let mut context = TraceContext::default();
+
+            let mut vals: Vec<u32> = (0..8).collect();
+            let a = vec![
+                qm31_from_u32s(vals[0], vals[1], vals[2], vals[3]),
+                qm31_from_u32s(vals[4], vals[5], vals[6], vals[7]),
+            ]
+            .guess(&mut context);
+
+            vals[wrong_coord] += 1;
+            let b = vec![
+                qm31_from_u32s(vals[0], vals[1], vals[2], vals[3]),
+                qm31_from_u32s(vals[4], vals[5], vals[6], vals[7]),
+            ]
+            .guess(&mut context);
+
+            Simd::eq(
+                &mut context,
+                &Simd::from_packed(a[..n_qm31s].to_vec(), len),
+                &Simd::from_packed(b[..n_qm31s].to_vec(), len),
+            );
+
+            // There should be an error if the wrong coordinate is within the range of the actual
+            // length.
+            assert_eq!(context.circuit.check(context.values()).is_err(), wrong_coord < len);
+        }
+    }
 }
