@@ -4,6 +4,7 @@ use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::eq;
 use crate::stark_verifier::channel::Channel;
+use crate::stark_verifier::fri::fri_commit;
 use crate::stark_verifier::oods::extract_expected_composition_eval;
 use crate::stark_verifier::proof::{Proof, ProofConfig};
 use crate::stark_verifier::statement::{OodsSamples, Statement};
@@ -72,6 +73,12 @@ pub fn verify(
             proof.composition_eval_at_oods,
         ),
     );
+
+    // Draw a random challenge for the linear combination of the OODS quotients.
+    let _oods_quotient_coef = channel.draw_qm31(context);
+
+    // Run the commit phase of FRI.
+    let _fri_alphas = fri_commit(context, &mut channel, &proof.fri);
 
     // TODO(lior): Complete the verification.
 }
