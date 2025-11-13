@@ -1,8 +1,9 @@
 use itertools::zip_eq;
 
 use crate::circuits::context::{Context, Var};
-use crate::circuits::ivalue::IValue;
-use crate::circuits::ops::{add, pointwise_mul, sub};
+use crate::circuits::ivalue::{IValue, qm31_from_u32s};
+use crate::circuits::ops::{add, eq, pointwise_mul, sub};
+use crate::eval;
 
 #[cfg(test)]
 #[path = "simd_test.rs"]
@@ -49,6 +50,31 @@ impl Simd {
         &self.data
     }
 
+    /// Adds gates to the circuit that assert that the two [Simd]s are equal.
+    pub fn eq(context: &mut Context<impl IValue>, a: &Simd, b: &Simd) {
+        assert_eq!(a.len, b.len);
+
+        let mut a_iter = a.data.iter();
+        let mut b_iter = b.data.iter();
+        let mut rem_elements = a.len;
+
+        while rem_elements >= 4 {
+            eq(context, *a_iter.next().unwrap(), *b_iter.next().unwrap());
+            rem_elements -= 4;
+        }
+
+        // Handle the last elements.
+        if rem_elements > 0 {
+            let diff = eval!(context, (*a_iter.next().unwrap()) - (*b_iter.next().unwrap()));
+            let mask = first_ones(context, rem_elements);
+            let masked_diff = pointwise_mul(context, diff, mask);
+            eq(context, masked_diff, context.zero());
+        }
+
+        assert!(a_iter.next().is_none());
+        assert!(b_iter.next().is_none());
+    }
+
     /// Computes the sum of two [Simd]s (pointwise).
     pub fn add(context: &mut Context<impl IValue>, a: &Simd, b: &Simd) -> Simd {
         assert_eq!(a.len, b.len);
@@ -74,5 +100,17 @@ impl Simd {
             data: zip_eq(&a.data, &b.data).map(|(x, y)| pointwise_mul(context, *x, *y)).collect(),
             len: a.len,
         }
+    }
+}
+
+/// Returns a (constant) [Var] with the first `n` coordinates set to 1, and the rest to 0.
+///
+/// `n` must be between 1 and 3.
+fn first_ones(context: &mut Context<impl IValue>, n: usize) -> Var {
+    match n {
+        1 => context.constant(qm31_from_u32s(1, 0, 0, 0)),
+        2 => context.constant(qm31_from_u32s(1, 1, 0, 0)),
+        3 => context.constant(qm31_from_u32s(1, 1, 1, 0)),
+        _ => panic!("Unsupported number of ones: {n}"),
     }
 }
