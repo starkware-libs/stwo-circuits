@@ -1,8 +1,9 @@
 use itertools::zip_eq;
 
 use crate::circuits::context::{Context, Var};
-use crate::circuits::ivalue::IValue;
-use crate::circuits::ops::{add, pointwise_mul, sub};
+use crate::circuits::ivalue::{IValue, qm31_from_u32s};
+use crate::circuits::ops::{add, eq, pointwise_mul, sub};
+use crate::eval;
 
 #[cfg(test)]
 #[path = "simd_test.rs"]
@@ -49,6 +50,26 @@ impl Simd {
         &self.data
     }
 
+    /// Adds gates to the circuit that assert that the two [Simd]s are equal.
+    pub fn eq(context: &mut Context<impl IValue>, a: &Simd, b: &Simd) {
+        assert_eq!(a.len, b.len);
+
+        let n_chunks = a.len / 4;
+        let n_rem_elements = a.len % 4;
+
+        for i in 0..n_chunks {
+            eq(context, a.data[i], b.data[i]);
+        }
+
+        // Handle the last elements.
+        if n_rem_elements > 0 {
+            let diff = eval!(context, (a.data[n_chunks]) - (b.data[n_chunks]));
+            let mask = first_ones(context, n_rem_elements);
+            let masked_diff = pointwise_mul(context, diff, mask);
+            eq(context, masked_diff, context.zero());
+        }
+    }
+
     /// Computes the sum of two [Simd]s (pointwise).
     pub fn add(context: &mut Context<impl IValue>, a: &Simd, b: &Simd) -> Simd {
         assert_eq!(a.len, b.len);
@@ -74,5 +95,17 @@ impl Simd {
             data: zip_eq(&a.data, &b.data).map(|(x, y)| pointwise_mul(context, *x, *y)).collect(),
             len: a.len,
         }
+    }
+}
+
+/// Returns a (constant) [Var] with the first `n` coordinates set to 1, and the rest to 0.
+///
+/// `n` must be between 1 and 3.
+fn first_ones(context: &mut Context<impl IValue>, n: usize) -> Var {
+    match n {
+        1 => context.constant(qm31_from_u32s(1, 0, 0, 0)),
+        2 => context.constant(qm31_from_u32s(1, 1, 0, 0)),
+        3 => context.constant(qm31_from_u32s(1, 1, 1, 0)),
+        _ => panic!("Unsupported number of ones: {n}"),
     }
 }
