@@ -7,6 +7,7 @@ pub struct Stats {
     /// The number of divisions. Note that each division also increments [Self::mul],
     /// [Self::guess] and [Self::equals] by 1.
     pub div: usize,
+    pub pointwise_mul: usize,
     pub guess: usize,
     pub blake_updates: usize,
 }

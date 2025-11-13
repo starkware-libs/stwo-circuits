@@ -23,6 +23,13 @@ pub trait IValue:
 {
     fn from_qm31(value: QM31) -> Self;
 
+    /// Computes pointwise multiplication of two [QM31] values.
+    ///
+    /// If `a = x0 + x1 * i + x2 * u + x3 * iu`, and `b = y0 + y1 * i + y2 * u + y3 * iu`,
+    /// then the pointwise multiplication is
+    /// `(x0 * y0) + (x1 * y1) * i + (x2 * y2) * u + (x3 * y3) * iu`.
+    fn pointwise_mul(a: Self, b: Self) -> Self;
+
     fn blake(input: &[Self], n_bytes: usize) -> HashValue<Self>;
 }
 
@@ -30,6 +37,10 @@ impl IValue for QM31 {
     /// Constructs an [IValue] from the given [QM31].
     fn from_qm31(value: QM31) -> Self {
         value
+    }
+
+    fn pointwise_mul(x: Self, y: Self) -> Self {
+        QM31(CM31(x.0.0 * y.0.0, x.0.1 * y.0.1), CM31(x.1.0 * y.1.0, x.1.1 * y.1.1))
     }
 
     fn blake(input: &[Self], n_bytes: usize) -> HashValue<Self> {
@@ -42,6 +53,10 @@ pub struct NoValue;
 
 impl IValue for NoValue {
     fn from_qm31(_: QM31) -> Self {
+        Self
+    }
+
+    fn pointwise_mul(_: Self, _: Self) -> Self {
         Self
     }
 

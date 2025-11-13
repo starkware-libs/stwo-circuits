@@ -2,7 +2,7 @@ use indoc::formatdoc;
 
 use crate::circuits::context::TraceContext;
 use crate::circuits::ivalue::qm31_from_u32s;
-use crate::circuits::ops::{div, eq, from_partial_evals, guess};
+use crate::circuits::ops::{div, eq, from_partial_evals, guess, pointwise_mul};
 use crate::circuits::stats::Stats;
 use crate::eval;
 
@@ -70,6 +70,16 @@ fn test_div() {
 }
 
 #[test]
+fn test_pointwise_mul() {
+    let mut context = TraceContext::default();
+    let x = guess(&mut context, qm31_from_u32s(1, 2, 3, 4));
+    let y = guess(&mut context, qm31_from_u32s(5, 6, 7, 8));
+    let res = pointwise_mul(&mut context, x, y);
+    assert_eq!(context.get(res), qm31_from_u32s(5, 12, 21, 32));
+    context.circuit.check(context.values()).unwrap();
+}
+
+#[test]
 fn test_from_partial_evals() {
     let mut context = TraceContext::default();
     let values = [
@@ -119,6 +129,10 @@ fn test_stats() {
         equals: stats.equals + 1,
         ..stats
     };
+    assert_eq!(context.stats, stats);
+
+    pointwise_mul(&mut context, x, y);
+    let stats = Stats { pointwise_mul: 1, ..stats };
     assert_eq!(context.stats, stats);
 
     context.circuit.check(context.values()).unwrap();
