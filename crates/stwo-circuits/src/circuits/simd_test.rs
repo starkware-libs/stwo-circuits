@@ -1,4 +1,7 @@
 use indoc::formatdoc;
+use num_traits::One;
+use stwo::core::fields::cm31::CM31;
+use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 
 use crate::circuits::context::{Context, TraceContext};
@@ -134,4 +137,26 @@ fn test_eq() {
             assert_eq!(context.circuit.check(context.values()).is_err(), wrong_coord < len);
         }
     }
+}
+
+#[test]
+fn test_guess_inv_or_zero() {
+    let mut context = TraceContext::default();
+
+    let a = simd_from_u32s(&mut context, vec![2, 0, 3]);
+    let a_inv = a.guess_inv_or_zero(&mut context);
+    assert_eq!(a_inv.len(), 3);
+
+    let one = M31::one();
+    assert_eq!(
+        packed_values(&context, &a_inv),
+        &[QM31(CM31(one / M31::from(2), 0.into()), CM31(one / M31::from(3), 0.into()))]
+    );
+
+    let mut values = context.values().clone();
+    context.circuit.check(&values).unwrap();
+
+    // As the value is not enforced, the circuit passes with a changed value as well.
+    values[a_inv.get_packed()[0].idx] += QM31::from(1);
+    context.circuit.check(&values).unwrap();
 }

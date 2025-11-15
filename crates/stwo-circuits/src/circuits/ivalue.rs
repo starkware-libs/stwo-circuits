@@ -1,7 +1,12 @@
-use stwo::core::fields::cm31::CM31;
+use num_traits::Zero;
 use stwo::core::fields::qm31::QM31;
+use stwo::core::fields::{cm31::CM31, m31::M31};
 
 use crate::circuits::blake::{HashValue, blake_qm31};
+
+#[cfg(test)]
+#[path = "ivalue_test.rs"]
+pub mod test;
 
 pub fn qm31_from_u32s(a: u32, b: u32, c: u32, d: u32) -> QM31 {
     QM31(CM31(a.into(), b.into()), CM31(c.into(), d.into()))
@@ -30,6 +35,9 @@ pub trait IValue:
     /// `(x0 * y0) + (x1 * y1) * i + (x2 * y2) * u + (x3 * y3) * iu`.
     fn pointwise_mul(a: Self, b: Self) -> Self;
 
+    /// For each of the four [M31] coordinates, returns `1/x` if `x != 0` and `0` if `x = 0`.
+    fn pointwise_inv_or_zero(&self) -> Self;
+
     fn blake(input: &[Self], n_bytes: usize) -> HashValue<Self>;
 }
 
@@ -41,6 +49,13 @@ impl IValue for QM31 {
 
     fn pointwise_mul(x: Self, y: Self) -> Self {
         QM31(CM31(x.0.0 * y.0.0, x.0.1 * y.0.1), CM31(x.1.0 * y.1.0, x.1.1 * y.1.1))
+    }
+
+    fn pointwise_inv_or_zero(&self) -> Self {
+        QM31(
+            CM31(inv_or_zero(self.0.0), inv_or_zero(self.0.1)),
+            CM31(inv_or_zero(self.1.0), inv_or_zero(self.1.1)),
+        )
     }
 
     fn blake(input: &[Self], n_bytes: usize) -> HashValue<Self> {
@@ -57,6 +72,10 @@ impl IValue for NoValue {
     }
 
     fn pointwise_mul(_: Self, _: Self) -> Self {
+        Self
+    }
+
+    fn pointwise_inv_or_zero(&self) -> Self {
         Self
     }
 
@@ -88,4 +107,9 @@ impl std::ops::Div for NoValue {
     fn div(self, _: NoValue) -> NoValue {
         Self
     }
+}
+
+/// Computes the inverse of a value. Returns zero if the value is zero.
+fn inv_or_zero(value: M31) -> M31 {
+    if value.is_zero() { M31::zero() } else { value.inverse() }
 }
