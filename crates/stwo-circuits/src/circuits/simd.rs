@@ -105,6 +105,26 @@ impl Simd {
             self.data.iter().map(|x| context.get(*x).pointwise_inv_or_zero()).collect_vec();
         Simd { data: values.guess(context), len: self.len }
     }
+
+    /// Verifies that the inputs are bits (0 or 1).
+    pub fn assert_bits(&self, context: &mut Context<impl IValue>) {
+        // TODO(lior): Consider doing it more efficiently, by adding a constraint of the form:
+        //   `input * input = input`.
+        let input_sqr = Simd::mul(context, self, self);
+        Simd::eq(context, self, &input_sqr);
+    }
+
+    /// Returns an *unconstrained* [Simd] initialized (hint) with the LSB of each `M31` in the
+    /// current [Simd].
+    ///
+    /// NOTE: The result is guaranteed to be either 0 or 1, but the caller MUST verify that it is
+    /// indeed the LSB of the input.
+    pub fn guess_lsb(&self, context: &mut Context<impl IValue>) -> Simd {
+        let values = self.data.iter().map(|x| context.get(*x).pointwise_lsb()).collect_vec();
+        let out = Simd { data: values.guess(context), len: self.len };
+        out.assert_bits(context);
+        out
+    }
 }
 
 /// Returns a (constant) [Var] with the first `n` coordinates set to 1, and the rest to 0.
