@@ -1,12 +1,13 @@
 use indoc::formatdoc;
 use num_traits::One;
+use rstest::rstest;
 use stwo::core::fields::cm31::CM31;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 
 use crate::circuits::context::{Context, TraceContext};
 use crate::circuits::ivalue::{NoValue, qm31_from_u32s};
-use crate::circuits::ops::Guess;
+use crate::circuits::ops::{Guess, guess};
 use crate::circuits::simd::Simd;
 use crate::circuits::test_utils::simd_from_u32s;
 
@@ -159,4 +160,38 @@ fn test_guess_inv_or_zero() {
     // As the value is not enforced, the circuit passes with a changed value as well.
     values[a_inv.get_packed()[0].idx] += QM31::from(1);
     context.circuit.check(&values).unwrap();
+}
+
+#[rstest]
+#[case::zeros([0, 0, 0, 0], true)]
+#[case::ones([1, 1, 1, 0], true)]
+#[case::mix([1, 0, 1, 0], true)]
+#[case::two([2, 0, 0, 0], false)]
+#[case::last_coord_ignored([0, 0, 0, 2], true)]
+fn test_assert_bits(#[case] vals: [u32; 4], #[case] success: bool) {
+    let mut context = TraceContext::default();
+
+    let a = Simd::from_packed(
+        vec![guess(&mut context, qm31_from_u32s(vals[0], vals[1], vals[2], vals[3]))],
+        3,
+    );
+    a.assert_bits(&mut context);
+
+    assert_eq!(context.circuit.check(context.values()).is_ok(), success);
+}
+
+#[test]
+fn test_guess_lsb() {
+    let mut context = TraceContext::default();
+
+    let a = simd_from_u32s(&mut context, vec![7, 1, 4, 6, 11, 8]);
+    let b = a.guess_lsb(&mut context);
+
+    assert_eq!(b.len(), 6);
+    assert_eq!(
+        packed_values(&context, &b),
+        [qm31_from_u32s(1, 1, 0, 0), qm31_from_u32s(1, 0, 0, 0)]
+    );
+
+    context.circuit.check(context.values()).unwrap();
 }

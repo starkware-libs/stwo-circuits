@@ -38,6 +38,9 @@ pub trait IValue:
     /// For each of the four [M31] coordinates, returns `1/x` if `x != 0` and `0` if `x = 0`.
     fn pointwise_inv_or_zero(&self) -> Self;
 
+    /// Returns a [QM31] value that consists of the LSB of each of the four [M31] coordinates.
+    fn pointwise_lsb(&self) -> Self;
+
     fn blake(input: &[Self], n_bytes: usize) -> HashValue<Self>;
 }
 
@@ -58,6 +61,10 @@ impl IValue for QM31 {
         )
     }
 
+    fn pointwise_lsb(&self) -> Self {
+        qm31_from_u32s(self.0.0.0 % 2, self.0.1.0 % 2, self.1.0.0 % 2, self.1.1.0 % 2)
+    }
+
     fn blake(input: &[Self], n_bytes: usize) -> HashValue<Self> {
         blake_qm31(input, n_bytes)
     }
@@ -76,6 +83,10 @@ impl IValue for NoValue {
     }
 
     fn pointwise_inv_or_zero(&self) -> Self {
+        Self
+    }
+
+    fn pointwise_lsb(&self) -> Self {
         Self
     }
 
