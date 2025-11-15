@@ -1,8 +1,8 @@
-use itertools::zip_eq;
+use itertools::{Itertools, zip_eq};
 
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::{IValue, qm31_from_u32s};
-use crate::circuits::ops::{add, eq, pointwise_mul, sub};
+use crate::circuits::ops::{Guess, add, eq, pointwise_mul, sub};
 use crate::eval;
 
 #[cfg(test)]
@@ -95,6 +95,15 @@ impl Simd {
             data: zip_eq(&a.data, &b.data).map(|(x, y)| pointwise_mul(context, *x, *y)).collect(),
             len: a.len,
         }
+    }
+
+    /// Returns an *unconstrained* [Simd] initialized (hint) with `1/x` if `x != 0`,
+    /// and `0` if`x = 0`.
+    /// NOTE: The caller MUST verify that the result is correct.
+    pub fn guess_inv_or_zero(&self, context: &mut Context<impl IValue>) -> Simd {
+        let values =
+            self.data.iter().map(|x| context.get(*x).pointwise_inv_or_zero()).collect_vec();
+        Simd { data: values.guess(context), len: self.len }
     }
 }
 
