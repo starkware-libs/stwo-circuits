@@ -1,4 +1,8 @@
 use itertools::{Itertools, zip_eq};
+use num_traits::{One, Zero};
+use stwo::core::fields::cm31::CM31;
+use stwo::core::fields::m31::M31;
+use stwo::core::fields::qm31::QM31;
 
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::{IValue, qm31_from_u32s};
@@ -48,6 +52,22 @@ impl Simd {
     /// Returns the data in packed form.
     pub fn get_packed(&self) -> &[Var] {
         &self.data
+    }
+
+    /// Returns a [Simd] consisting of `len` copies of the given constant [M31] value.
+    pub fn repeat(context: &mut Context<impl IValue>, value: M31, len: usize) -> Simd {
+        let v = context.constant(QM31(CM31(value, value), CM31(value, value)));
+        Simd { data: vec![v; len.div_ceil(4)], len }
+    }
+
+    /// Returns a [Simd] consisting of `len` copies of `0`.
+    pub fn zero(context: &mut Context<impl IValue>, len: usize) -> Simd {
+        Self::repeat(context, M31::zero(), len)
+    }
+
+    /// Returns a [Simd] consisting of `len` copies of `1`.
+    pub fn one(context: &mut Context<impl IValue>, len: usize) -> Simd {
+        Self::repeat(context, M31::one(), len)
     }
 
     /// Adds gates to the circuit that assert that the two [Simd]s are equal.
