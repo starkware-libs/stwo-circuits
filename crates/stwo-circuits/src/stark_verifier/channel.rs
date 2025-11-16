@@ -3,8 +3,10 @@ use stwo::core::circle::CirclePoint;
 use crate::circuits::blake::{HashValue, blake};
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::{IValue, qm31_from_u32s};
-use crate::circuits::ops::div;
+use crate::circuits::ops::{div, eq, pointwise_mul};
+use crate::circuits::simd::Simd;
 use crate::eval;
+use crate::stark_verifier::extract_bits::extract_bits;
 
 #[cfg(test)]
 #[path = "channel_test.rs"]
@@ -18,6 +20,8 @@ pub struct Channel {
 }
 
 impl Channel {
+    const POW_PREFIX: u32 = 0x12345678;
+
     /// Constructs a new channel, with a zero digest.
     pub fn new(context: &mut Context<impl IValue>) -> Self {
         let zero = context.zero();
@@ -88,5 +92,39 @@ impl Channel {
         let x = eval!(context, ((1) - (t2)) * (denom_inv));
         let y = eval!(context, ((2) * (t)) * (denom_inv));
         CirclePoint { x, y }
+    }
+
+    pub fn proof_of_work(&mut self, context: &mut Context<impl IValue>, n_bits: usize, nonce: Var) {
+        assert!(n_bits <= 30);
+
+        // Compute `H(POW_PREFIX, [0_u8; 12], digest, n_bits)`.
+        let input = [
+            context.constant(qm31_from_u32s(Self::POW_PREFIX, 0, 0, 0)),
+            self.digest.0,
+            self.digest.1,
+            context.constant(qm31_from_u32s(n_bits.try_into().unwrap(), 0, 0, 0)),
+        ];
+        let prefixed_digest = blake(context, &input, 52);
+
+        // Check that `nonce` consists of only the first two M31 elements.
+        let nonce_high_mask = context.constant(qm31_from_u32s(0, 0, 1, 1));
+        let masked_nonce = pointwise_mul(context, nonce, nonce_high_mask);
+        eq(context, masked_nonce, context.zero());
+
+        // Compute `H(prefixed_digest, nonce)`.
+        let input = [prefixed_digest.0, prefixed_digest.1, nonce];
+        let res = blake(context, &input, 40);
+
+        // Take the first word.
+        let first_word = pointwise_mul(context, res.0, context.one());
+
+        // Check that the n_bits least significant bits are zero.
+        let bits = extract_bits(context, &Simd::from_packed(vec![first_word], 1));
+        for bit in &bits[0..n_bits] {
+            eq(context, bit.get_packed()[0], context.zero());
+        }
+
+        // Mix nonce into the channel.
+        self.update_digest(blake(context, &[self.digest.0, self.digest.1, nonce], 40));
     }
 }
