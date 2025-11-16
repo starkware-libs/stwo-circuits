@@ -1,3 +1,5 @@
+use rstest::rstest;
+
 use crate::circuits::blake::HashValue;
 use crate::circuits::context::TraceContext;
 use crate::circuits::ivalue::qm31_from_u32s;
@@ -133,4 +135,37 @@ fn test_draw_point_regression() {
     assert_eq!(context.get(pt.y), qm31_from_u32s(674655034, 1516640953, 569857337, 1549701521));
 
     context.circuit.check(context.values()).unwrap();
+}
+
+#[rstest]
+#[case::success(10, 1524, true)]
+#[case::wrong_n_bits0(11, 1524, false)]
+#[case::wrong_n_bits1(9, 1524, false)]
+#[case::wrong_nonce0(10, 1523, false)]
+#[case::wrong_nonce1(10, 1525, false)]
+fn test_proof_of_work_regression(#[case] n_bits: usize, #[case] nonce: u32, #[case] success: bool) {
+    let mut context = TraceContext::default();
+
+    let init_digest = [
+        qm31_from_u32s(968886948, 725376924, 836084817, 484428276),
+        qm31_from_u32s(1805658819, 300032261, 172116750, 994058243),
+    ];
+
+    let mut channel = Channel::from_digest(&mut context, init_digest);
+
+    let nonce = context.new_var(qm31_from_u32s(nonce, 0, 0, 0));
+    channel.proof_of_work(&mut context, n_bits, nonce);
+
+    assert_eq!(context.circuit.check(context.values()).is_ok(), success);
+
+    if success {
+        assert_eq!(
+            context.get(channel.digest.0),
+            qm31_from_u32s(271333035, 1833401714, 819175623, 1270120203)
+        );
+        assert_eq!(
+            context.get(channel.digest.1),
+            qm31_from_u32s(1921341900, 364315769, 339695133, 365135865)
+        );
+    }
 }
