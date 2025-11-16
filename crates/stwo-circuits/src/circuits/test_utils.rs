@@ -1,3 +1,5 @@
+use stwo::core::fields::qm31::QM31;
+
 use crate::circuits::context::TraceContext;
 use crate::circuits::ivalue::qm31_from_u32s;
 use crate::circuits::simd::Simd;
@@ -22,4 +24,9 @@ pub fn simd_from_u32s(context: &mut TraceContext, mut values: Vec<u32>) -> Simd 
         .collect();
 
     Simd::from_packed(res, original_len)
+}
+
+/// Given a [Simd], returns the values of the packed `QM31`s.
+pub fn packed_values(context: &TraceContext, simd: &Simd) -> Vec<QM31> {
+    simd.get_packed().iter().map(|v| context.get(*v)).collect()
 }
