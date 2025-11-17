@@ -1,5 +1,6 @@
 use stwo::core::circle::CirclePoint;
 
+use crate::circuits::EXTENSION_DEGREE;
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::from_partial_evals;
@@ -7,7 +8,6 @@ use crate::eval;
 use crate::stark_verifier::circle::double_x;
 
 const COMPOSITION_SPLIT: usize = 2;
-const EXTENSION_DEGREE: usize = 4;
 pub const N_COMPOSITION_COLUMNS: usize = COMPOSITION_SPLIT * EXTENSION_DEGREE;
 
 #[cfg(test)]
