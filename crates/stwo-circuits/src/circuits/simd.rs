@@ -4,6 +4,7 @@ use stwo::core::fields::cm31::CM31;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 
+use crate::circuits::EXTENSION_DEGREE;
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::{IValue, qm31_from_u32s};
 use crate::circuits::ops::{Guess, add, eq, pointwise_mul, sub};
@@ -34,8 +35,8 @@ pub struct Simd {
 impl Simd {
     /// Constructs a new [Simd] from packed data.
     pub fn from_packed(data: Vec<Var>, len: usize) -> Self {
-        // Sanity check: the length of data must be `ceil(len / 4)`.
-        assert_eq!(data.len(), len.div_ceil(4));
+        // Sanity check: the length of data must be `ceil(len / EXTENSION_DEGREE)`.
+        assert_eq!(data.len(), len.div_ceil(EXTENSION_DEGREE));
         Self { data, len }
     }
 
@@ -57,7 +58,7 @@ impl Simd {
     /// Returns a [Simd] consisting of `len` copies of the given constant [M31] value.
     pub fn repeat(context: &mut Context<impl IValue>, value: M31, len: usize) -> Simd {
         let v = context.constant(QM31(CM31(value, value), CM31(value, value)));
-        Simd { data: vec![v; len.div_ceil(4)], len }
+        Simd { data: vec![v; len.div_ceil(EXTENSION_DEGREE)], len }
     }
 
     /// Returns a [Simd] consisting of `len` copies of `0`.
@@ -74,8 +75,8 @@ impl Simd {
     pub fn eq(context: &mut Context<impl IValue>, a: &Simd, b: &Simd) {
         assert_eq!(a.len, b.len);
 
-        let n_chunks = a.len / 4;
-        let n_rem_elements = a.len % 4;
+        let n_chunks = a.len / EXTENSION_DEGREE;
+        let n_rem_elements = a.len % EXTENSION_DEGREE;
 
         for i in 0..n_chunks {
             eq(context, a.data[i], b.data[i]);
