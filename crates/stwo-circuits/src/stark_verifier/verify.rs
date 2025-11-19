@@ -8,6 +8,7 @@ use crate::stark_verifier::fri::fri_commit;
 use crate::stark_verifier::oods::extract_expected_composition_eval;
 use crate::stark_verifier::proof::{Proof, ProofConfig};
 use crate::stark_verifier::select_queries::get_select_queries_input;
+use crate::stark_verifier::select_queries::select_queries;
 use crate::stark_verifier::statement::{OodsSamples, Statement};
 
 #[cfg(test)]
@@ -85,7 +86,9 @@ pub fn verify(
     channel.proof_of_work(context, config.n_proof_of_work_bits, proof.proof_of_work_nonce);
 
     // Select queries.
-    let _select_queries_input = get_select_queries_input(context, &mut channel, config.n_queries());
+    let select_queries_input = get_select_queries_input(context, &mut channel, config.n_queries());
+    let _queries =
+        select_queries(context, &select_queries_input, config.log_evaluation_domain_size());
 
     // TODO(lior): Complete the verification.
 }
