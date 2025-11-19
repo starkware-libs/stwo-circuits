@@ -233,3 +233,62 @@ fn test_select() {
 
     context.circuit.check(context.values()).unwrap();
 }
+
+#[test]
+fn test_unpack() {
+    let mut context = TraceContext::default();
+    let input = simd_from_u32s(&mut context, vec![12, 6, 5, 20, 1]);
+    let res = Simd::unpack(&mut context, &input);
+    assert_eq!(res.len(), 5);
+    assert_eq!(context.get(res[0]), qm31_from_u32s(12, 0, 0, 0));
+    assert_eq!(context.get(res[1]), qm31_from_u32s(6, 0, 0, 0));
+    assert_eq!(context.get(res[2]), qm31_from_u32s(5, 0, 0, 0));
+    assert_eq!(context.get(res[3]), qm31_from_u32s(20, 0, 0, 0));
+    assert_eq!(context.get(res[4]), qm31_from_u32s(1, 0, 0, 0));
+}
+
+#[test]
+fn test_unpack_circuit() {
+    let mut context = Context::<NoValue>::default();
+    let input = Simd::from_packed(vec![NoValue; 2].guess(&mut context), 6);
+    let res = Simd::unpack(&mut context, &input);
+    expect!["Simd { data: [[2], [3]], len: 6 }"].assert_eq(&format!("{input:?}"));
+    expect!["[[10], [12], [14], [16], [17], [19]]"].assert_eq(&format!("{res:?}"));
+    expect![[r#"
+        {
+            (0 + 0i) + (0 + 0i)u: [0],
+            (1 + 0i) + (0 + 0i)u: [1],
+            (0 + 1i) + (0 + 0i)u: [4],
+            (0 + 0i) + (1 + 0i)u: [5],
+            (0 + 0i) + (0 + 1i)u: [6],
+            (0 + 2147483646i) + (0 + 0i)u: [7],
+            (0 + 0i) + (1717986918 + 1288490188i)u: [8],
+            (0 + 0i) + (1288490188 + 429496729i)u: [9],
+        }
+    "#]]
+    .assert_debug_eq(&context.constants());
+    expect![[r#"
+        [0] = [0] + [0]
+        [1] = [1] + [0]
+        [2] = [2] + [0]
+        [3] = [3] + [0]
+        [4] = [4] + [0]
+        [5] = [5] + [0]
+        [6] = [6] + [0]
+        [7] = [7] + [0]
+        [8] = [8] + [0]
+        [9] = [9] + [0]
+        [12] = [11] * [7]
+        [14] = [13] * [8]
+        [16] = [15] * [9]
+        [19] = [18] * [7]
+        [10] = [2] x [1]
+        [11] = [2] x [4]
+        [13] = [2] x [5]
+        [15] = [2] x [6]
+        [17] = [3] x [1]
+        [18] = [3] x [4]
+
+    "#]]
+    .assert_debug_eq(&context.circuit);
+}
