@@ -14,3 +14,4 @@ stwo.workspace = true
 indoc.workspace = true
 rstest.workspace = true
 stwo-constraint-framework.workspace = true
+expect-test.workspace = true
