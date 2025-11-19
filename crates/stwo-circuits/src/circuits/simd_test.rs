@@ -1,4 +1,4 @@
-use indoc::formatdoc;
+use expect_test::expect;
 use num_traits::One;
 use rstest::rstest;
 use stwo::core::fields::cm31::CM31;
@@ -76,23 +76,20 @@ fn test_eq_circuit8() {
     let a_simd = Simd::from_packed(vec![NoValue; 2].guess(&mut context), 8);
     let b_simd = Simd::from_packed(vec![NoValue; 2].guess(&mut context), 8);
     Simd::eq(&mut context, &a_simd, &b_simd);
-    assert_eq!(format!("{:?}", a_simd.data), "[[2], [3]]");
-    assert_eq!(format!("{:?}", b_simd.data), "[[4], [5]]");
-    assert_eq!(
-        format!("{:?}", context.circuit),
-        formatdoc!(
-            "
-            [0] = [0] + [0]
-            [1] = [1] + [0]
-            [2] = [2] + [0]
-            [3] = [3] + [0]
-            [4] = [4] + [0]
-            [5] = [5] + [0]
-            [2] = [4]
-            [3] = [5]
-            "
-        )
-    );
+    expect!["[[2], [3]]"].assert_eq(&format!("{:?}", a_simd.data));
+    expect!["[[4], [5]]"].assert_eq(&format!("{:?}", b_simd.data));
+    expect![[r#"
+        [0] = [0] + [0]
+        [1] = [1] + [0]
+        [2] = [2] + [0]
+        [3] = [3] + [0]
+        [4] = [4] + [0]
+        [5] = [5] + [0]
+        [2] = [4]
+        [3] = [5]
+
+    "#]]
+    .assert_debug_eq(&context.circuit);
 }
 
 #[test]
@@ -101,30 +98,31 @@ fn test_eq_circuit7() {
     let a_simd = Simd::from_packed(vec![NoValue; 2].guess(&mut context), 7);
     let b_simd = Simd::from_packed(vec![NoValue; 2].guess(&mut context), 7);
     Simd::eq(&mut context, &a_simd, &b_simd);
-    assert_eq!(format!("{:?}", a_simd.data), "[[2], [3]]");
-    assert_eq!(format!("{:?}", b_simd.data), "[[4], [5]]");
-    assert_eq!(
-        format!("{:?}", context.constants()),
-        "{(0 + 0i) + (0 + 0i)u: [0], (1 + 0i) + (0 + 0i)u: [1], (1 + 1i) + (1 + 0i)u: [7]}"
-    );
-    assert_eq!(
-        format!("{:?}", context.circuit),
-        formatdoc!(
-            "
-            [0] = [0] + [0]
-            [1] = [1] + [0]
-            [2] = [2] + [0]
-            [3] = [3] + [0]
-            [4] = [4] + [0]
-            [5] = [5] + [0]
-            [7] = [7] + [0]
-            [6] = [3] - [5]
-            [8] = [6] x [7]
-            [2] = [4]
-            [8] = [0]
-            "
-        )
-    );
+    expect!["[[2], [3]]"].assert_eq(&format!("{:?}", a_simd.data));
+    expect!["[[4], [5]]"].assert_eq(&format!("{:?}", b_simd.data));
+    expect![[r#"
+        {
+            (0 + 0i) + (0 + 0i)u: [0],
+            (1 + 0i) + (0 + 0i)u: [1],
+            (1 + 1i) + (1 + 0i)u: [7],
+        }
+    "#]]
+    .assert_debug_eq(&context.constants());
+    expect![[r#"
+        [0] = [0] + [0]
+        [1] = [1] + [0]
+        [2] = [2] + [0]
+        [3] = [3] + [0]
+        [4] = [4] + [0]
+        [5] = [5] + [0]
+        [7] = [7] + [0]
+        [6] = [3] - [5]
+        [8] = [6] x [7]
+        [2] = [4]
+        [8] = [0]
+
+    "#]]
+    .assert_debug_eq(&context.circuit);
 }
 
 #[test]
