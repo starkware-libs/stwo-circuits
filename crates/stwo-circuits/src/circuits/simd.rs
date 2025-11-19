@@ -190,6 +190,32 @@ impl Simd {
             })
             .collect_vec()
     }
+
+    /// Packs a vector of [M31] values into [Simd].
+    ///
+    /// NOTE: the caller must check that all input values are in the base field [M31].
+    pub fn pack(context: &mut Context<impl IValue>, values: &[Var]) -> Simd {
+        let unit_vecs = [
+            context.constant(qm31_from_u32s(0, 1, 0, 0)),
+            context.constant(qm31_from_u32s(0, 0, 1, 0)),
+            context.constant(qm31_from_u32s(0, 0, 0, 1)),
+        ];
+
+        let n = values.len();
+        let data = (0..n.div_ceil(4))
+            .map(|i| {
+                let mut res = values[4 * i];
+                for j in 1..4 {
+                    if 4 * i + j == n {
+                        break;
+                    }
+                    res = eval!(context, (res) + ((unit_vecs[j - 1]) * (values[4 * i + j])));
+                }
+                res
+            })
+            .collect();
+        Simd::from_packed(data, values.len())
+    }
 }
 
 /// Returns a (constant) [Var] with the first `n` coordinates set to 1, and the rest to 0.
