@@ -1,3 +1,5 @@
+use stwo::core::circle::CirclePoint;
+
 use crate::circuits::circuit::{Add, Eq, Mul, PointwiseMul, Sub};
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::{IValue, qm31_from_u32s};
@@ -161,5 +163,13 @@ impl<Value: IValue, T: Guess<Value>, S: Guess<Value>> Guess<Value> for (T, S) {
 
     fn guess(&self, context: &mut Context<Value>) -> Self::Target {
         (self.0.guess(context), self.1.guess(context))
+    }
+}
+
+impl<Value: IValue, T: Guess<Value>> Guess<Value> for CirclePoint<T> {
+    type Target = CirclePoint<T::Target>;
+
+    fn guess(&self, context: &mut Context<Value>) -> Self::Target {
+        CirclePoint { x: self.x.guess(context), y: self.y.guess(context) }
     }
 }
