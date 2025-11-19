@@ -146,6 +146,22 @@ impl Simd {
         out.assert_bits(context);
         out
     }
+
+    /// Returns `if_zero` if `selector` is 0, and `if_one` if `selector` is 1.
+    /// Assumption: `selector` is either 0 or 1.
+    pub fn select(
+        context: &mut Context<impl IValue>,
+        selector: &Simd,
+        if_zero: &Simd,
+        if_one: &Simd,
+    ) -> Simd {
+        // Compute: `if_one - if_zero`.
+        let x = Simd::sub(context, if_one, if_zero);
+        // Compute: `selector * (if_one - if_zero)`.
+        let y = Simd::mul(context, selector, &x);
+        // Compute `if_zero + selector * (if_one - if_zero)`.
+        Simd::add(context, if_zero, &y)
+    }
 }
 
 /// Returns a (constant) [Var] with the first `n` coordinates set to 1, and the rest to 0.

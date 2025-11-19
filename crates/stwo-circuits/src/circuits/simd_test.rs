@@ -219,3 +219,19 @@ fn test_guess_lsb() {
 
     context.circuit.check(context.values()).unwrap();
 }
+
+#[test]
+fn test_select() {
+    let mut context = TraceContext::default();
+
+    let selector = simd_from_u32s(&mut context, vec![1, 0, 1]);
+    let if_zero = simd_from_u32s(&mut context, vec![1, 2, 3]);
+    let if_one = simd_from_u32s(&mut context, vec![4, 5, 6]);
+
+    let result = Simd::select(&mut context, &selector, &if_zero, &if_one);
+
+    assert_eq!(result.len(), 3);
+    assert_eq!(packed_values(&context, &result), &[qm31_from_u32s(4, 2, 6, 0)]);
+
+    context.circuit.check(context.values()).unwrap();
+}
