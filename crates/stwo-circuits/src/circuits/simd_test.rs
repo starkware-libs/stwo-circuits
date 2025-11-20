@@ -17,6 +17,35 @@ fn packed_values(context: &TraceContext, simd: &Simd) -> Vec<QM31> {
 }
 
 #[test]
+fn test_repeat() {
+    let mut context = TraceContext::default();
+    let a = Simd::repeat(&mut context, M31::from(2), 6);
+    let twos = qm31_from_u32s(2, 2, 2, 2);
+    assert_eq!(a.len(), 6);
+    assert_eq!(packed_values(&context, &a), &[twos, twos]);
+    context.circuit.check(context.values()).unwrap();
+}
+
+#[test]
+fn test_zero() {
+    let mut context = TraceContext::default();
+    let a = Simd::zero(&mut context, 6);
+    let zero = 0.into();
+    assert_eq!(a.len(), 6);
+    assert_eq!(packed_values(&context, &a), &[zero, zero]);
+    context.circuit.check(context.values()).unwrap();
+}
+
+#[test]
+fn test_one() {
+    let mut context = TraceContext::default();
+    let a = Simd::one(&mut context, 6);
+    let ones = qm31_from_u32s(1, 1, 1, 1);
+    assert_eq!(a.len(), 6);
+    assert_eq!(packed_values(&context, &a), &[ones, ones]);
+    context.circuit.check(context.values()).unwrap();
+}
+#[test]
 fn test_simd_basic_ops() {
     let mut context = TraceContext::default();
 
