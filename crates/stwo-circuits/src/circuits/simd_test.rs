@@ -9,12 +9,7 @@ use crate::circuits::context::{Context, TraceContext};
 use crate::circuits::ivalue::{NoValue, qm31_from_u32s};
 use crate::circuits::ops::{Guess, guess};
 use crate::circuits::simd::Simd;
-use crate::circuits::test_utils::simd_from_u32s;
-
-/// Given a [Simd], returns the values of the packed `QM31`s.
-fn packed_values(context: &TraceContext, simd: &Simd) -> Vec<QM31> {
-    simd.get_packed().iter().map(|v| context.get(*v)).collect()
-}
+use crate::circuits::test_utils::{packed_values, simd_from_u32s};
 
 #[test]
 fn test_repeat() {
