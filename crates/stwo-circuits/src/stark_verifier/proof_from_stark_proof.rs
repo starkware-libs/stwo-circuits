@@ -1,3 +1,4 @@
+use crate::circuits::ivalue::qm31_from_u32s;
 use crate::stark_verifier::fri_proof::FriCommitProof;
 use crate::stark_verifier::proof::InteractionAtOods;
 use crate::stark_verifier::proof::Proof;
@@ -15,6 +16,11 @@ pub fn proof_from_stark_proof(
     let commitments = &proof.proof.commitments;
     let sampled_values = &proof.proof.sampled_values;
     let fri_proof = &proof.proof.fri_proof;
+
+    let pow: u64 = proof.proof.proof_of_work;
+    let pow_high = (pow >> 32) as u32;
+    let pow_low = (pow & 0xFFFFFFFF) as u32;
+
     Proof {
         preprocessed_root: commitments[0].into(),
         trace_root: commitments[1].into(),
@@ -34,6 +40,7 @@ pub fn proof_from_stark_proof(
             .collect(),
             last_layer_coefs: (*fri_proof.last_layer_poly).to_vec(),
         },
+        proof_of_work_nonce: qm31_from_u32s(pow_low, pow_high, 0, 0),
     }
 }
 
