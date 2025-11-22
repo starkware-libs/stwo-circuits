@@ -4,9 +4,9 @@ use stwo::core::circle::CirclePoint;
 use crate::circuits::context::{Context, TraceContext};
 use crate::circuits::ivalue::{NoValue, qm31_from_u32s};
 use crate::circuits::ops::Guess;
-use crate::stark_verifier::oods::{
-    EvalDomainSamples, M31Wrapper, extract_expected_composition_eval,
-};
+use crate::stark_verifier::oods::{M31Wrapper, extract_expected_composition_eval};
+
+use super::empty_eval_domain_samples;
 
 #[test]
 fn test_m31_wrapper_guess_circuit() {
@@ -33,7 +33,7 @@ fn test_m31_wrapper_guess_circuit() {
 #[test]
 fn test_eval_domain_samples_guess_circuit() {
     let mut context = Context::<NoValue>::default();
-    let res = EvalDomainSamples { data: vec![vec![vec![NoValue.into(); 2]]] }.guess(&mut context);
+    let res = empty_eval_domain_samples(&[2], 1).guess(&mut context);
     expect!["EvalDomainSamples { data: [[[M31Wrapper([3]), M31Wrapper([5])]]] }"]
         .assert_eq(&format!("{res:?}"));
     expect![[r#"
