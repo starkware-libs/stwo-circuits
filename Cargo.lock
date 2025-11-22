@@ -830,6 +830,7 @@ version = "0.1.0"
 dependencies = [
  "blake2",
  "expect-test",
+ "hashbrown",
  "indexmap",
  "indoc",
  "itertools 0.12.1",
