@@ -34,7 +34,8 @@ fn test_m31_wrapper_guess_circuit() {
 fn test_eval_domain_samples_guess_circuit() {
     let mut context = Context::<NoValue>::default();
     let res = EvalDomainSamples::new(vec![vec![vec![NoValue.into(); 2]]]).guess(&mut context);
-    expect!["EvalDomainSamples { data: [[[M31Wrapper([3]), M31Wrapper([5])]]] }"].assert_eq(&format!("{res:?}"));
+    expect!["EvalDomainSamples { data: [[[M31Wrapper([3]), M31Wrapper([5])]]] }"]
+        .assert_eq(&format!("{res:?}"));
     expect![[r#"
         {
             (0 + 0i) + (0 + 0i)u: [0],
