@@ -24,7 +24,6 @@ pub mod test;
 pub struct M31Wrapper<T>(T);
 
 impl<T> M31Wrapper<T> {
-    #[expect(dead_code)]
     fn get(&self) -> &T {
         &self.0
     }
@@ -51,6 +50,41 @@ impl<Value: IValue> Guess<Value> for M31Wrapper<Value> {
         // in the base field `M31`.
         let masked_value = pointwise_mul(context, value, context.one());
         M31Wrapper(masked_value)
+    }
+}
+
+/// Represents the sampled values in the evaluation domain.
+#[derive(Debug)]
+pub struct EvalDomainSamples<T> {
+    /// `data[trace_idx][query_idx][column_idx]` is the `M31` value of the column `column_idx` in
+    /// trace `trace_idx` at the `query_idx` query.
+    data: Vec<Vec<Vec<M31Wrapper<T>>>>,
+}
+
+impl<T> EvalDomainSamples<T> {
+    /// Returns the sampled value for the given trace, query, and column.
+    pub fn at(&self, trace_idx: usize, query_idx: usize, column_idx: usize) -> &T {
+        self.data[trace_idx][query_idx][column_idx].get()
+    }
+}
+
+impl EvalDomainSamples<QM31> {
+    /// Constructs a new [EvalDomainSamples] from the given data.
+    pub fn from_m31s(data: Vec<Vec<Vec<M31>>>) -> Self {
+        Self {
+            data: data
+                .iter()
+                .map(|v| v.iter().map(|v| v.iter().map(|v| (*v).into()).collect()).collect())
+                .collect(),
+        }
+    }
+}
+
+impl<Value: IValue> Guess<Value> for EvalDomainSamples<Value> {
+    type Target = EvalDomainSamples<Var>;
+
+    fn guess(&self, context: &mut Context<Value>) -> Self::Target {
+        EvalDomainSamples { data: self.data.guess(context) }
     }
 }
 
