@@ -1,3 +1,4 @@
+use itertools::zip_eq;
 use stwo::core::circle::CirclePoint;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
@@ -65,6 +66,17 @@ impl<T> EvalDomainSamples<T> {
     /// Returns the sampled value for the given trace, query, and column.
     pub fn at(&self, trace_idx: usize, query_idx: usize, column_idx: usize) -> &T {
         self.data[trace_idx][query_idx][column_idx].get()
+    }
+
+    /// Validates that the size of the vectors in the struct are consistent with the
+    /// config parameters.
+    pub fn validate_structure(&self, n_columns_per_trace: &[usize], n_queries: usize) {
+        for (trace_data, n_columns) in zip_eq(&self.data, n_columns_per_trace) {
+            assert_eq!(trace_data.len(), n_queries);
+            for query_data in trace_data {
+                assert_eq!(query_data.len(), *n_columns);
+            }
+        }
     }
 }
 

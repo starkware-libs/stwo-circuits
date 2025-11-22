@@ -9,6 +9,8 @@ use crate::stark_verifier::oods::{
 
 /// Represents the structure of a proof.
 pub struct ProofConfig {
+    // TODO(lior): Add a check on the total security bits of the protocol given parameters
+    //   such as `n_proof_of_work_bits`, `fri.n_queries`, etc.
     pub n_proof_of_work_bits: usize,
 
     // AIR structure.
@@ -52,12 +54,15 @@ pub struct InteractionAtOods<T> {
     // TODO(lior): Make the second element optional.
     pub value: Vec<(T, T)>,
 }
-impl<T: Copy> InteractionAtOods<T> {
+
+impl<T> InteractionAtOods<T> {
     /// Returns the number of columns.
     pub fn n_columns(&self) -> usize {
         self.value.len()
     }
+}
 
+impl<T: Copy> InteractionAtOods<T> {
     /// Returns the value at the OODS point.
     pub fn at_oods(&self, idx: usize) -> T {
         self.value[idx].0
@@ -101,6 +106,26 @@ pub struct Proof<T> {
     pub proof_of_work_nonce: T,
     pub fri: FriCommitProof<T>,
     // TODO(lior): Add missing fields.
+}
+impl<T> Proof<T> {
+    /// Validates that the size of the members of the struct are consistent with the config.
+    pub fn validate_structure(&self, config: &ProofConfig) {
+        // Validate preprocessed_columns_at_oods.
+        assert_eq!(self.preprocessed_columns_at_oods.len(), config.n_preprocessed_columns);
+
+        // Validate trace_at_oods.
+        assert_eq!(self.trace_at_oods.len(), config.n_trace_columns);
+
+        // Validate interaction_at_oods.
+        assert_eq!(self.interaction_at_oods.n_columns(), config.n_interaction_columns);
+
+        // Validate eval_domain_samples.
+        self.eval_domain_samples
+            .validate_structure(&config.n_columns_per_trace(), config.n_queries());
+
+        // Validate FRI.
+        self.fri.validate_structure(&config.fri);
+    }
 }
 
 pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
