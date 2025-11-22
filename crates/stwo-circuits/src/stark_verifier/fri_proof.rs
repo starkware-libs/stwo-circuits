@@ -27,7 +27,7 @@ pub struct FriCommitProof<T> {
     pub last_layer_coefs: Vec<T>,
 }
 
-impl FriCommitProof<Var> {
+impl<T> FriCommitProof<T> {
     /// Validates that the size of the members of the struct are consistent with the config.
     pub fn validate_structure(&self, config: &FriConfig) {
         // Starting from the last layer, each layer increases the log2 of the polynomial degree by
