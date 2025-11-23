@@ -66,12 +66,12 @@ impl Channel {
         self.update_digest(blake(context, &blake_input, 16 * blake_input.len()));
     }
 
-    /// Draws one [QM31] random value from the channel.
+    /// Draws one `QM31` random value from the channel.
     pub fn draw_qm31(&mut self, context: &mut Context<impl IValue>) -> Var {
         self.draw_two_qm31s(context)[0]
     }
 
-    /// Draws two [QM31] random values from the channel.
+    /// Draws two `QM31` random values from the channel.
     pub fn draw_two_qm31s(&mut self, context: &mut Context<impl IValue>) -> [Var; 2] {
         let n_draws_var =
             context.constant(qm31_from_u32s(self.n_draws.try_into().unwrap(), 0, 0, 0));
@@ -82,7 +82,7 @@ impl Channel {
         [res.0, res.1]
     }
 
-    /// Draws a random point on the ([QM31]) circle from the channel.
+    /// Draws a random point on the (`QM31`) circle from the channel.
     pub fn draw_point(&mut self, context: &mut Context<impl IValue>) -> CirclePoint<Var> {
         let t = self.draw_qm31(context);
         let t2 = eval!(context, (t) * (t));
