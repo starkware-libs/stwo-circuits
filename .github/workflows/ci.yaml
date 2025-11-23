@@ -52,7 +52,7 @@ jobs:
         with:
           toolchain: ${{ env.NIGHTLY_VERSION }}
       - uses: Swatinem/rust-cache@v2
-      - run: cargo doc
+      - run: RUSTDOCFLAGS="-Dwarnings" cargo doc --document-private-items --no-deps --all-features
 
   run-tests:
     runs-on: ubuntu-latest
