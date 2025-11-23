@@ -1,3 +1,4 @@
+use crate::circuits::EXTENSION_DEGREE;
 use crate::circuits::context::Context;
 use crate::circuits::ivalue::IValue;
 use crate::circuits::simd::Simd;
@@ -15,10 +16,10 @@ pub fn get_query_selection_input_from_channel(
     n_queries: usize,
 ) -> Simd {
     let mut v = Vec::new();
-    for _ in 0..n_queries.div_ceil(8) {
+    for _ in 0..n_queries.div_ceil(EXTENSION_DEGREE * 2) {
         v.extend_from_slice(&channel.draw_two_qm31s(context));
     }
-    let n_qm31s = n_queries.div_ceil(4);
+    let n_qm31s = n_queries.div_ceil(EXTENSION_DEGREE);
 
     Simd::from_packed(v[0..n_qm31s].to_vec(), n_queries)
 }
