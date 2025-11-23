@@ -26,6 +26,11 @@ impl ProofConfig {
     pub fn log_evaluation_domain_size(&self) -> usize {
         self.fri.log_evaluation_domain_size()
     }
+
+    /// Returns the number of queries.
+    pub fn n_queries(&self) -> usize {
+        self.fri.n_queries
+    }
 }
 
 /// The values of the interaction trace at the OODS point and the previous point.
