@@ -4,6 +4,7 @@ use crate::circuits::ivalue::{IValue, NoValue};
 use crate::circuits::ops::Guess;
 use crate::stark_verifier::fri_proof::{FriCommitProof, FriConfig, empty_fri_proof};
 use crate::stark_verifier::oods::N_COMPOSITION_COLUMNS;
+use stwo::core::fields::qm31::QM31;
 
 /// Represents the structure of a proof.
 pub struct ProofConfig {
@@ -103,6 +104,29 @@ pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
         composition_eval_at_oods: [NoValue; N_COMPOSITION_COLUMNS],
         proof_of_work_nonce: NoValue,
         fri: empty_fri_proof(&config.fri),
+    }
+}
+
+pub fn dummy_qm31_proof(config: &ProofConfig) -> Proof<QM31> {
+    Proof {
+        preprocessed_root: HashValue(QM31::from(0), QM31::from(0)),
+        trace_root: HashValue(QM31::from(0), QM31::from(0)),
+        interaction_root: HashValue(QM31::from(0), QM31::from(0)),
+        composition_polynomial_root: HashValue(QM31::from(0), QM31::from(0)),
+        preprocessed_columns_at_oods: vec![QM31::from(0); config.n_preprocessed_columns],
+        trace_at_oods: vec![QM31::from(0); config.n_trace_columns],
+        interaction_at_oods: InteractionAtOods {
+            value: vec![(QM31::from(0), QM31::from(0)); config.n_interaction_columns],
+        },
+        composition_eval_at_oods: [QM31::from(0); N_COMPOSITION_COLUMNS],
+        proof_of_work_nonce: QM31::from(0),
+        fri: FriCommitProof {
+            layer_commitments: vec![
+                HashValue(QM31::from(0), QM31::from(0));
+                config.fri.log_trace_size
+            ],
+            last_layer_coefs: vec![QM31::from(0); 1 << config.fri.log_n_last_layer_coefs],
+        },
     }
 }
 
