@@ -3,6 +3,7 @@ use stwo::core::fields::qm31::QM31;
 use crate::circuits::context::Context;
 use crate::circuits::context::Var;
 use crate::circuits::ops::Guess;
+use crate::eval;
 use crate::stark_verifier::fri_proof::FriConfig;
 use crate::stark_verifier::proof::Proof;
 use crate::stark_verifier::proof::ProofConfig;
@@ -13,6 +14,18 @@ const N: usize = 1024;
 #[cfg(test)]
 #[path = "fibonacci_prover_test.rs"]
 pub mod test;
+
+pub fn build_fibonacci_circuit() -> Context<QM31> {
+    let mut context = Context::<QM31>::default();
+    let mut fibonacci_sequence =
+        vec![context.new_var(QM31::from(0)), context.new_var(QM31::from(1))];
+    for i in 2..N {
+        fibonacci_sequence
+            .push(eval!(&mut context, (fibonacci_sequence[i - 2]) + (fibonacci_sequence[i - 1])));
+    }
+
+    context
+}
 
 /// Proves a fibonacci circuit that computes the 1024th Fibonacci number.
 /// a_0 = 0, a_1 = 1, a_n = a_{n-1} + a_{n-2}.
