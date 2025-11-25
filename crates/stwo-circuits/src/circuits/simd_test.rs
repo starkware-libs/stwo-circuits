@@ -292,3 +292,87 @@ fn test_unpack_circuit() {
     "#]]
     .assert_debug_eq(&context.circuit);
 }
+
+#[test]
+fn test_pack() {
+    let mut context = TraceContext::default();
+    let input = [12, 6, 5, 20, 1, 4, 8, 10].map(|i| context.new_var(i.into()));
+
+    let res = Simd::pack(&mut context, &[]);
+    assert_eq!(res.len(), 0);
+
+    let res = Simd::pack(&mut context, &input[0..1]);
+    assert_eq!(res.len(), 1);
+    assert_eq!(packed_values(&context, &res), vec![qm31_from_u32s(12, 0, 0, 0)]);
+
+    let res = Simd::pack(&mut context, &input[0..2]);
+    assert_eq!(res.len(), 2);
+    assert_eq!(packed_values(&context, &res), vec![qm31_from_u32s(12, 6, 0, 0)]);
+
+    let res = Simd::pack(&mut context, &input[0..3]);
+    assert_eq!(res.len(), 3);
+    assert_eq!(packed_values(&context, &res), vec![qm31_from_u32s(12, 6, 5, 0)]);
+
+    let res = Simd::pack(&mut context, &input[0..4]);
+    assert_eq!(res.len(), 4);
+    assert_eq!(packed_values(&context, &res), vec![qm31_from_u32s(12, 6, 5, 20)]);
+
+    let res = Simd::pack(&mut context, &input[0..5]);
+    assert_eq!(res.len(), 5);
+    assert_eq!(
+        packed_values(&context, &res),
+        vec![qm31_from_u32s(12, 6, 5, 20), qm31_from_u32s(1, 0, 0, 0)]
+    );
+
+    let res = Simd::pack(&mut context, &input[0..8]);
+    assert_eq!(res.len(), 8);
+    assert_eq!(
+        packed_values(&context, &res),
+        vec![qm31_from_u32s(12, 6, 5, 20), qm31_from_u32s(1, 4, 8, 10)]
+    );
+
+    context.circuit.check(context.values()).unwrap();
+}
+
+#[test]
+fn test_pack_circuit() {
+    let mut context = Context::<NoValue>::default();
+    let input = vec![NoValue; 6].guess(&mut context);
+    let res = Simd::pack(&mut context, &input);
+
+    expect!["[[2], [3], [4], [5], [6], [7]]"].assert_eq(&format!("{input:?}"));
+    expect!["Simd { data: [[16], [18]], len: 6 }"].assert_eq(&format!("{res:?}"));
+    expect![[r#"
+        {
+            (0 + 0i) + (0 + 0i)u: [0],
+            (1 + 0i) + (0 + 0i)u: [1],
+            (0 + 1i) + (0 + 0i)u: [8],
+            (0 + 0i) + (1 + 0i)u: [9],
+            (0 + 0i) + (0 + 1i)u: [10],
+        }
+    "#]]
+    .assert_debug_eq(&context.constants());
+    expect![[r#"
+        [0] = [0] + [0]
+        [1] = [1] + [0]
+        [2] = [2] + [0]
+        [3] = [3] + [0]
+        [4] = [4] + [0]
+        [5] = [5] + [0]
+        [6] = [6] + [0]
+        [7] = [7] + [0]
+        [8] = [8] + [0]
+        [9] = [9] + [0]
+        [10] = [10] + [0]
+        [12] = [2] + [11]
+        [14] = [12] + [13]
+        [16] = [14] + [15]
+        [18] = [6] + [17]
+        [11] = [8] * [3]
+        [13] = [9] * [4]
+        [15] = [10] * [5]
+        [17] = [8] * [7]
+
+    "#]]
+    .assert_debug_eq(&context.circuit);
+}
