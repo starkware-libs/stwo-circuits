@@ -5,7 +5,7 @@ use stwo::core::vcs::blake2_hash::reduce_to_m31;
 use crate::circuits::blake::{blake, qm31_from_bytes};
 use crate::circuits::context::TraceContext;
 use crate::circuits::ivalue::qm31_from_u32s;
-use crate::circuits::ops::{Guess, eq};
+use crate::circuits::ops::{Guess, eq, guess};
 use crate::circuits::stats::Stats;
 
 #[rstest]
@@ -35,12 +35,18 @@ fn test_blake(#[case] wrong_output: bool) {
     }
 
     let output = blake(&mut context, &input, 66);
-    let out0 = context.new_var(qm31_from_bytes(expected_hash[0..16].try_into().unwrap()));
-    let out1 = context.new_var(qm31_from_bytes(expected_hash[16..32].try_into().unwrap()));
+    let out0 = guess(&mut context, qm31_from_bytes(expected_hash[0..16].try_into().unwrap()));
+    let out1 = guess(&mut context, qm31_from_bytes(expected_hash[16..32].try_into().unwrap()));
     eq(&mut context, output.0, out0);
     eq(&mut context, output.1, out1);
 
-    assert_eq!(context.stats, Stats { blake_updates: 2, guess: 7, equals: 2, ..Stats::default() });
+    assert_eq!(context.stats, Stats { blake_updates: 2, guess: 9, equals: 2, ..Stats::default() });
+
+    assert_eq!(
+        context.circuit.compute_multiplicities(context.n_vars()).0,
+        vec![13, 1, 2, 2, 2, 2, 2, 1, 1, 2, 2]
+    );
+    context.circuit.check_yields(context.n_vars());
 
     assert_eq!(context.circuit.check(context.values()).is_ok(), !wrong_output);
 }
