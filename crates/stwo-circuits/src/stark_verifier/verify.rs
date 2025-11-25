@@ -1,8 +1,9 @@
-use itertools::chain;
+use itertools::{Itertools, chain};
 
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::eq;
+use crate::circuits::simd::Simd;
 use crate::stark_verifier::channel::Channel;
 use crate::stark_verifier::fri::fri_commit;
 use crate::stark_verifier::oods::extract_expected_composition_eval;
@@ -89,8 +90,11 @@ pub fn verify(
     // Select queries.
     let query_selection_input =
         get_query_selection_input_from_channel(context, &mut channel, config.n_queries());
-    let _queries =
+    let queries =
         select_queries(context, &query_selection_input, config.log_evaluation_domain_size());
+
+    // Check decommitment of trace queries.
+    let _bits = queries.bits.iter().map(|simd| Simd::unpack(context, simd)).collect_vec();
 
     // TODO(lior): Complete the verification.
 }

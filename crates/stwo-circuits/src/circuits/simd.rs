@@ -1,5 +1,6 @@
 use itertools::{Itertools, zip_eq};
 use num_traits::{One, Zero};
+use stwo::core::fields::FieldExpOps;
 use stwo::core::fields::cm31::CM31;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
@@ -161,6 +162,33 @@ impl Simd {
         let y = Simd::mul(context, selector, &x);
         // Compute `if_zero + selector * (if_one - if_zero)`.
         Simd::add(context, if_zero, &y)
+    }
+
+    /// Unpacks a [Simd] into a vector of [Var]s, where each [Var] represents a single [M31] value.
+    pub fn unpack(context: &mut Context<impl IValue>, input: &Simd) -> Vec<Var> {
+        let unit_vecs = [
+            context.constant(qm31_from_u32s(1, 0, 0, 0)),
+            context.constant(qm31_from_u32s(0, 1, 0, 0)),
+            context.constant(qm31_from_u32s(0, 0, 1, 0)),
+            context.constant(qm31_from_u32s(0, 0, 0, 1)),
+        ];
+        let unit_vecs_inv = [
+            context.constant(qm31_from_u32s(0, 1, 0, 0).inverse()),
+            context.constant(qm31_from_u32s(0, 0, 1, 0).inverse()),
+            context.constant(qm31_from_u32s(0, 0, 0, 1).inverse()),
+        ];
+
+        (0..input.len)
+            .map(|i| {
+                let qm31_var = input.data[i / 4];
+                let coord = i % 4;
+                // To obtain the `coord`-th coordinate, `c`, start with pointwise multiplication
+                // by a unit vector. This results in `c * unit_vecs[coord]`.
+                let x = pointwise_mul(context, qm31_var, unit_vecs[coord]);
+                // Then, divide by `unit_vecs[coord]` to get `c`.
+                if coord == 0 { x } else { eval!(context, (x) * (unit_vecs_inv[coord - 1])) }
+            })
+            .collect_vec()
     }
 }
 
