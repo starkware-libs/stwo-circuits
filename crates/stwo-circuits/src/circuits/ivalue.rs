@@ -12,7 +12,7 @@ pub fn qm31_from_u32s(a: u32, b: u32, c: u32, d: u32) -> QM31 {
     QM31(CM31(a.into(), b.into()), CM31(c.into(), d.into()))
 }
 
-/// Represents a value that can be used in a [Circuit].
+/// Represents a value that can be used in a [`Circuit`](crate::circuits::circuit::Circuit).
 ///
 /// We use [QM31] for a circuit with concrete values and [NoValue] for a circuit with no
 /// concrete values.
