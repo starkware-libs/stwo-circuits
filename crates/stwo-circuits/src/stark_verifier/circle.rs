@@ -1,4 +1,5 @@
-use stwo::core::circle::CirclePoint;
+use stwo::core::circle::{CirclePoint, M31_CIRCLE_GEN};
+use stwo::core::fields::m31::M31;
 
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
@@ -39,4 +40,19 @@ pub fn add_points_simd(
     let x = Simd::sub(context, &x0x1, &y0y1);
     let y = Simd::add(context, &x0y1, &y0x1);
     CirclePoint { x, y }
+}
+
+/// Computes the generator point of the subgroup of size `2^log_domain_size`.
+pub fn generator_point(log_domain_size: usize) -> CirclePoint<M31> {
+    M31_CIRCLE_GEN.repeated_double((31 - log_domain_size) as u32)
+}
+
+/// Computes the generator point of the subgroup of size `2^log_domain_size`, repeated `size` times.
+pub fn generator_point_simd(
+    context: &mut Context<impl IValue>,
+    log_domain_size: usize,
+    size: usize,
+) -> CirclePoint<Simd> {
+    let pt = generator_point(log_domain_size);
+    CirclePoint { x: Simd::repeat(context, pt.x, size), y: Simd::repeat(context, pt.y, size) }
 }
