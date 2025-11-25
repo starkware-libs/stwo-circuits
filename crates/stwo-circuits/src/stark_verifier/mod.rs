@@ -3,6 +3,7 @@ pub mod circle;
 pub mod extract_bits;
 pub mod fri;
 pub mod fri_proof;
+pub mod merkle;
 pub mod oods;
 pub mod proof;
 pub mod proof_from_stark_proof;
