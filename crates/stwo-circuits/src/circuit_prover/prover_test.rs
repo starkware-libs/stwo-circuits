@@ -5,7 +5,8 @@ use expect_test::expect;
 use num_traits::{One, Zero};
 use stwo::core::fields::qm31::QM31;
 
-const N: usize = 1024;
+// TODO(Gali): Change to 1024 after padding components.
+const N: usize = 1022;
 
 pub fn build_fibonacci_context() -> Context<QM31> {
     let mut context = Context::<QM31>::default();
@@ -16,7 +17,7 @@ pub fn build_fibonacci_context() -> Context<QM31> {
     }
 
     expect![[r#"
-        (980146853 + 0i) + (0 + 0i)u
+        (1397909768 + 0i) + (0 + 0i)u
     "#]]
     .assert_debug_eq(&context.get(b));
 
@@ -25,7 +26,8 @@ pub fn build_fibonacci_context() -> Context<QM31> {
 
 #[test]
 fn test_prove_fibonacci() {
-    let fibonacci_context = build_fibonacci_context();
+    let mut fibonacci_context = build_fibonacci_context();
+    fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
     prove(fibonacci_context);
 }
