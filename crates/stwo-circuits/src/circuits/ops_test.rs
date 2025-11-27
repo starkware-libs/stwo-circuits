@@ -64,8 +64,8 @@ fn test_div() {
     .assert_debug_eq(&context.circuit);
 
     context.validate_circuit();
-    assert_eq!(context.circuit.compute_multiplicities(context.n_vars()).0, vec![6, 1, 2, 2, 2, 1]);
-    context.circuit.check_yields(context.n_vars());
+    assert_eq!(context.circuit.compute_multiplicities().0, vec![6, 1, 2, 2, 2, 1]);
+    context.circuit.check_yields();
 }
 
 #[test]

@@ -37,7 +37,6 @@ impl std::fmt::Debug for Var {
 pub struct Context<Value: IValue> {
     pub circuit: Circuit,
     constants: IndexMap<QM31, Var>,
-    n_vars: usize,
     values: Vec<Value>,
     pub stats: Stats,
 }
@@ -50,11 +49,6 @@ impl<Value: IValue> Context<Value> {
         &self.constants
     }
 
-    /// The number of variables allocated so far.
-    pub fn n_vars(&self) -> usize {
-        self.n_vars
-    }
-
     pub fn zero(&self) -> Var {
         Var { idx: 0 }
     }
@@ -65,8 +59,8 @@ impl<Value: IValue> Context<Value> {
 
     /// Creates a new variable.
     pub fn new_var(&mut self, value: Value) -> Var {
-        let idx = self.n_vars;
-        self.n_vars += 1;
+        let idx = self.circuit.n_vars;
+        self.circuit.n_vars += 1;
         self.values.push(value);
         Var { idx }
     }
@@ -92,7 +86,6 @@ impl<Value: IValue> Default for Context<Value> {
         let mut res = Self {
             circuit: Circuit::default(),
             constants: IndexMap::new(),
-            n_vars: 0,
             values: vec![],
             stats: Stats::default(),
         };

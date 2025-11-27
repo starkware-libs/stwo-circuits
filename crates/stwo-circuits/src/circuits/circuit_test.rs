@@ -2,14 +2,14 @@ use crate::circuits::circuit::{Add, Circuit, Eq, Mul, Sub};
 
 #[test]
 fn circuit_add() {
-    let mut c = Circuit::default();
+    let mut c = Circuit { n_vars: 3, ..Circuit::default() };
     c.add.push(Add { in0: 0, in1: 1, out: 2 });
     c.check(&[1.into(), 2.into(), 3.into()]).unwrap();
     assert_eq!(
         c.check(&[1.into(), 2.into(), 4.into()]).unwrap_err(),
         "(3 + 0i) + (0 + 0i)u != (4 + 0i) + (0 + 0i)u"
     );
-    assert_eq!(c.compute_multiplicities(3), (vec![1, 1, 0], vec![0, 0, 1]));
+    assert_eq!(c.compute_multiplicities(), (vec![1, 1, 0], vec![0, 0, 1]));
 }
 
 #[test]
@@ -36,12 +36,12 @@ fn circuit_mul() {
 
 #[test]
 fn circuit_eq() {
-    let mut c = Circuit::default();
+    let mut c = Circuit { n_vars: 3, ..Circuit::default() };
     c.eq.push(Eq { in0: 1, in1: 2 });
     c.check(&[1.into(), 2.into(), 2.into()]).unwrap();
     assert_eq!(
         c.check(&[1.into(), 1.into(), 2.into()]).unwrap_err(),
         "(1 + 0i) + (0 + 0i)u != (2 + 0i) + (0 + 0i)u"
     );
-    assert_eq!(c.compute_multiplicities(3), (vec![0, 1, 1], vec![0, 0, 0]));
+    assert_eq!(c.compute_multiplicities(), (vec![0, 1, 1], vec![0, 0, 0]));
 }
