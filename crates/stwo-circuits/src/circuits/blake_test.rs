@@ -43,10 +43,10 @@ fn test_blake(#[case] wrong_output: bool) {
     assert_eq!(context.stats, Stats { blake_updates: 2, guess: 9, equals: 2, ..Stats::default() });
 
     assert_eq!(
-        context.circuit.compute_multiplicities(context.n_vars()).0,
+        context.circuit.compute_multiplicities().0,
         vec![13, 1, 2, 2, 2, 2, 2, 1, 1, 2, 2]
     );
-    context.circuit.check_yields(context.n_vars());
+    context.circuit.check_yields();
 
     assert_eq!(context.is_circuit_valid(), !wrong_output);
 }

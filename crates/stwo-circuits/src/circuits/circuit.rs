@@ -205,6 +205,7 @@ impl std::fmt::Debug for Blake {
 /// Represents a circuit.
 #[derive(Default, PartialEq, Eq)]
 pub struct Circuit {
+    pub n_vars: usize,
     pub add: Vec<Add>,
     pub sub: Vec<Sub>,
     pub mul: Vec<Mul>,
@@ -216,7 +217,7 @@ pub struct Circuit {
 impl Circuit {
     /// Returns an iterator over all the gates in the circuit.
     pub fn all_gates(&self) -> impl Iterator<Item = &dyn Gate> {
-        let Circuit { add, sub, mul, pointwise_mul, eq, blake } = self;
+        let Circuit { n_vars: _, add, sub, mul, pointwise_mul, eq, blake } = self;
         chain!(
             add.iter().map(|g| g as &dyn Gate),
             sub.iter().map(|g| g as &dyn Gate),
@@ -237,9 +238,9 @@ impl Circuit {
 
     /// Returns the number of uses and number of yields for each variable (in the context of lookup
     /// terms).
-    pub fn compute_multiplicities(&self, n_vars: usize) -> (Vec<usize>, Vec<usize>) {
-        let mut n_uses = vec![0; n_vars];
-        let mut n_yields = vec![0; n_vars];
+    pub fn compute_multiplicities(&self) -> (Vec<usize>, Vec<usize>) {
+        let mut n_uses = vec![0; self.n_vars];
+        let mut n_yields = vec![0; self.n_vars];
 
         for gate in self.all_gates() {
             for use_var in gate.uses() {
@@ -254,8 +255,8 @@ impl Circuit {
     }
 
     /// Verifies that each variable appears exactly once as a yield.
-    pub fn check_yields(&self, n_vars: usize) {
-        for (idx, n_yields) in self.compute_multiplicities(n_vars).1.iter().enumerate() {
+    pub fn check_yields(&self) {
+        for (idx, n_yields) in self.compute_multiplicities().1.iter().enumerate() {
             assert!(*n_yields == 1, "Variable {idx} appears {n_yields} times as a yield");
         }
     }
