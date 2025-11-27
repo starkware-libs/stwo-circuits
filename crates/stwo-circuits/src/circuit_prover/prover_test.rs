@@ -1,11 +1,9 @@
-use crate::circuit_prover::prover::prove;
+use crate::circuit_prover::prover::{N, prove};
 use crate::circuits::{context::Context, ops::guess};
 use crate::eval;
 use expect_test::expect;
 use num_traits::{One, Zero};
 use stwo::core::fields::qm31::QM31;
-
-const N: usize = 1024;
 
 pub fn build_fibonacci_context() -> Context<QM31> {
     let mut context = Context::<QM31>::default();
