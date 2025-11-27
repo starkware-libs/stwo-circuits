@@ -48,5 +48,5 @@ fn test_blake(#[case] wrong_output: bool) {
     );
     context.circuit.check_yields(context.n_vars());
 
-    assert_eq!(context.circuit.check(context.values()).is_ok(), !wrong_output);
+    assert_eq!(context.is_circuit_valid(), !wrong_output);
 }

@@ -25,7 +25,7 @@ fn test_add_points() {
     assert_eq!(context.get(res.x), expected_res.x);
     assert_eq!(context.get(res.y), expected_res.y);
 
-    context.circuit.check(context.values()).unwrap();
+    context.validate_circuit();
 }
 
 #[test]
@@ -59,5 +59,5 @@ fn test_add_points_simd() {
         vec![QM31(CM31(pt0_plus_pt2.y, pt1_plus_pt3.y), CM31::zero())]
     );
 
-    context.circuit.check(context.values()).unwrap();
+    context.validate_circuit();
 }

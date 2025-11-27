@@ -20,7 +20,7 @@ fn test_extract_bits() {
         assert_eq!(packed_values(&context, bit), &[qm31_from_u32s(0, 0, 0, 1)]);
     }
 
-    context.circuit.check(context.values()).unwrap();
+    context.validate_circuit();
 }
 
 #[rstest]
@@ -35,5 +35,5 @@ fn test_validate_extract_bits(#[case] success: bool) {
 
     validate_extract_bits(&mut context, &input, &lsb);
 
-    assert_eq!(context.circuit.check(context.values()).is_ok(), success);
+    assert_eq!(context.is_circuit_valid(), success);
 }
