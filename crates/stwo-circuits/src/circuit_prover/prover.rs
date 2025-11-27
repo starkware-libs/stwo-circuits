@@ -1,3 +1,4 @@
+use crate::circuit_prover::claim_generator::CircuitClaimGenerator;
 use crate::circuit_prover::preprocessed::generate_preprocessed_trace;
 use crate::circuits::context::Context;
 use stwo::core::channel::Blake2sM31Channel;
@@ -44,6 +45,14 @@ pub fn prove(context: Context<QM31>) {
     let preprocessed_trace = generate_preprocessed_trace(&context.circuit);
     let mut tree_builder = commitment_scheme.tree_builder();
     tree_builder.extend_evals(preprocessed_trace);
+    tree_builder.commit(channel);
+
+    // Run circuit.
+    let claim_generator = CircuitClaimGenerator::new(context);
+    // Base trace.
+    let mut tree_builder = commitment_scheme.tree_builder();
+    let (claim, _interaction_generator) = claim_generator.write_trace(&mut tree_builder);
+    claim.mix_into(channel);
     tree_builder.commit(channel);
 
     // TODO(Gali): Implement.
