@@ -1,3 +1,4 @@
+pub mod circuit_prover;
 pub mod circuits;
 pub mod stark_verifier;
 
