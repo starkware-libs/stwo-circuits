@@ -20,5 +20,5 @@ fn hash_leaf_m31s_regression() {
     assert_eq!(context.get(hash.0), qm31_from_u32s(483650195, 1143215778, 1399105963, 121243225));
     assert_eq!(context.get(hash.1), qm31_from_u32s(1343116297, 264974384, 1201369425, 1524730384));
 
-    context.circuit.check(context.values()).unwrap();
+    context.validate_circuit();
 }

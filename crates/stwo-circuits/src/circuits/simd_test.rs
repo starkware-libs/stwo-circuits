@@ -18,7 +18,7 @@ fn test_repeat() {
     let twos = qm31_from_u32s(2, 2, 2, 2);
     assert_eq!(a.len(), 6);
     assert_eq!(packed_values(&context, &a), &[twos, twos]);
-    context.circuit.check(context.values()).unwrap();
+    context.validate_circuit();
 }
 
 #[test]
@@ -28,7 +28,7 @@ fn test_zero() {
     let zero = 0.into();
     assert_eq!(a.len(), 6);
     assert_eq!(packed_values(&context, &a), &[zero, zero]);
-    context.circuit.check(context.values()).unwrap();
+    context.validate_circuit();
 }
 
 #[test]
@@ -38,7 +38,7 @@ fn test_one() {
     let ones = qm31_from_u32s(1, 1, 1, 1);
     assert_eq!(a.len(), 6);
     assert_eq!(packed_values(&context, &a), &[ones, ones]);
-    context.circuit.check(context.values()).unwrap();
+    context.validate_circuit();
 }
 #[test]
 fn test_simd_basic_ops() {
@@ -67,7 +67,7 @@ fn test_simd_basic_ops() {
         &[qm31_from_u32s(7, 18, 33, 52), qm31_from_u32s(75, 102, 0, 0)]
     );
 
-    context.circuit.check(context.values()).unwrap();
+    context.validate_circuit();
 }
 
 #[test]
@@ -157,7 +157,7 @@ fn test_eq() {
 
             // There should be an error if the wrong coordinate is within the range of the actual
             // length.
-            assert_eq!(context.circuit.check(context.values()).is_err(), wrong_coord < len);
+            assert_eq!(context.is_circuit_valid(), wrong_coord >= len);
         }
     }
 }
@@ -199,7 +199,7 @@ fn test_assert_bits(#[case] vals: [u32; 4], #[case] success: bool) {
     );
     a.assert_bits(&mut context);
 
-    assert_eq!(context.circuit.check(context.values()).is_ok(), success);
+    assert_eq!(context.is_circuit_valid(), success);
 }
 
 #[test]
@@ -215,7 +215,7 @@ fn test_guess_lsb() {
         [qm31_from_u32s(1, 1, 0, 0), qm31_from_u32s(1, 0, 0, 0)]
     );
 
-    context.circuit.check(context.values()).unwrap();
+    context.validate_circuit();
 }
 
 #[test]
@@ -231,7 +231,7 @@ fn test_select() {
     assert_eq!(result.len(), 3);
     assert_eq!(packed_values(&context, &result), &[qm31_from_u32s(4, 2, 6, 0)]);
 
-    context.circuit.check(context.values()).unwrap();
+    context.validate_circuit();
 }
 
 #[test]
@@ -331,7 +331,7 @@ fn test_pack() {
         vec![qm31_from_u32s(12, 6, 5, 20), qm31_from_u32s(1, 4, 8, 10)]
     );
 
-    context.circuit.check(context.values()).unwrap();
+    context.validate_circuit();
 }
 
 #[test]

@@ -38,7 +38,7 @@ fn test_mix_commitment_regression() {
 
     assert_eq!(context.stats, Stats { blake_updates: 2, guess: 2, ..Stats::default() });
 
-    context.circuit.check(context.values()).unwrap();
+    context.validate_circuit();
 }
 
 #[test]
@@ -73,7 +73,7 @@ fn test_mix_qm31s_regression() {
     );
     assert_eq!(channel.n_draws, 0);
 
-    context.circuit.check(context.values()).unwrap();
+    context.validate_circuit();
 }
 
 #[test]
@@ -93,7 +93,7 @@ fn test_draw_qm31_regression() {
     let res2 = channel.draw_qm31(&mut context);
     assert_eq!(context.get(res2), qm31_from_u32s(1010544646, 1898030754, 53928552, 587440252));
 
-    context.circuit.check(context.values()).unwrap();
+    context.validate_circuit();
 }
 
 #[test]
@@ -115,7 +115,7 @@ fn test_draw_two_qm31s_regression() {
     assert_eq!(context.get(res2[0]), qm31_from_u32s(1010544646, 1898030754, 53928552, 587440252));
     assert_eq!(context.get(res2[1]), qm31_from_u32s(868459281, 1035649663, 299576823, 539722878));
 
-    context.circuit.check(context.values()).unwrap();
+    context.validate_circuit();
 }
 
 #[test]
@@ -134,7 +134,7 @@ fn test_draw_point_regression() {
     assert_eq!(context.get(pt.x), qm31_from_u32s(1343313724, 1951183646, 1685075959, 888698585));
     assert_eq!(context.get(pt.y), qm31_from_u32s(674655034, 1516640953, 569857337, 1549701521));
 
-    context.circuit.check(context.values()).unwrap();
+    context.validate_circuit();
 }
 
 #[rstest]
@@ -156,7 +156,7 @@ fn test_proof_of_work_regression(#[case] n_bits: usize, #[case] nonce: u32, #[ca
     let nonce = context.new_var(qm31_from_u32s(nonce, 0, 0, 0));
     channel.proof_of_work(&mut context, n_bits, nonce);
 
-    assert_eq!(context.circuit.check(context.values()).is_ok(), success);
+    assert_eq!(context.is_circuit_valid(), success);
 
     if success {
         assert_eq!(

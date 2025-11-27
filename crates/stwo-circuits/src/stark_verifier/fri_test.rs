@@ -63,5 +63,5 @@ fn test_fri_commit_regression() {
         qm31_from_u32s(1805658819, 300032261, 172116750, 994058243)
     );
 
-    context.circuit.check(context.values()).unwrap();
+    context.validate_circuit();
 }
