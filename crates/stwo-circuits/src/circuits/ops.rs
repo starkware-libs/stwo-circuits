@@ -81,19 +81,25 @@ pub fn mul(context: &mut Context<impl IValue>, a: Var, b: Var) -> Var {
 /// validate its correctness.
 ///
 /// The caller must ensure that `b` is not zero.
-pub fn div(c: &mut Context<impl IValue>, a: Var, b: Var) -> Var {
-    c.stats.div += 1;
-    let out = guess(c, c.get(a) / c.get(b));
-    let mul_res = mul(c, out, b);
-    eq(c, mul_res, a);
+pub fn div(context: &mut Context<impl IValue>, a: Var, b: Var) -> Var {
+    context.stats.div += 1;
+    let out = guess(context, context.get(a) / context.get(b));
+    let mul_res = mul(context, out, b);
+    eq(context, mul_res, a);
     out
 }
 
-pub fn pointwise_mul<Value: IValue>(c: &mut Context<Value>, a: Var, b: Var) -> Var {
-    c.stats.pointwise_mul += 1;
-    let out = c.new_var(Value::pointwise_mul(c.get(a), c.get(b)));
-    c.circuit.pointwise_mul.push(PointwiseMul { in0: a.idx, in1: b.idx, out: out.idx });
+pub fn pointwise_mul<Value: IValue>(context: &mut Context<Value>, a: Var, b: Var) -> Var {
+    context.stats.pointwise_mul += 1;
+    let out = context.new_var(Value::pointwise_mul(context.get(a), context.get(b)));
+    context.circuit.pointwise_mul.push(PointwiseMul { in0: a.idx, in1: b.idx, out: out.idx });
     out
+}
+
+/// Returns `if_zero` if `selector` is 0, and `if_one` if `selector` is 1.
+/// Assumption: `selector` is either 0 or 1.
+pub fn select(context: &mut Context<impl IValue>, selector: Var, if_zero: Var, if_one: Var) -> Var {
+    eval!(context, (if_zero) + ((selector) * ((if_one) - (if_zero))))
 }
 
 /// Returns a new unconstrained variable with the given value.
