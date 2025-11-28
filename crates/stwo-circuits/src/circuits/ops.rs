@@ -102,6 +102,13 @@ pub fn select(context: &mut Context<impl IValue>, selector: Var, if_zero: Var, i
     eval!(context, (if_zero) + ((selector) * ((if_one) - (if_zero))))
 }
 
+/// Computes the conjugate (with respect to `CM31`) of a `QM31` value:
+///   `a + b * i + c * u + d * iu -> a + b * i - c * u - d * iu`.
+pub fn conj(c: &mut Context<impl IValue>, a: Var) -> Var {
+    let coefs = c.constant(qm31_from_u32s(1, 1, 0, 0) - qm31_from_u32s(0, 0, 1, 1));
+    pointwise_mul(c, a, coefs)
+}
+
 /// Returns a new unconstrained variable with the given value.
 pub fn guess<Value: IValue>(context: &mut Context<Value>, value: Value) -> Var {
     context.stats.guess += 1;
