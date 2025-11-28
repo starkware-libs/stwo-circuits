@@ -130,6 +130,19 @@ impl<T> Proof<T> {
         // Validate FRI.
         self.fri.validate_structure(&config.fri);
     }
+
+    /// Returns the list of all 4 roots.
+    pub fn roots(&self) -> [HashValue<T>; N_TRACES]
+    where
+        T: Copy,
+    {
+        [
+            self.preprocessed_root,
+            self.trace_root,
+            self.interaction_root,
+            self.composition_polynomial_root,
+        ]
+    }
 }
 
 pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
