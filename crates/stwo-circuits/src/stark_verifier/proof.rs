@@ -3,7 +3,9 @@ use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::{IValue, NoValue};
 use crate::circuits::ops::Guess;
 use crate::stark_verifier::fri_proof::{FriCommitProof, FriConfig, empty_fri_proof};
-use crate::stark_verifier::oods::N_COMPOSITION_COLUMNS;
+use crate::stark_verifier::oods::{
+    EvalDomainSamples, N_COMPOSITION_COLUMNS, empty_eval_domain_samples,
+};
 
 /// Represents the structure of a proof.
 pub struct ProofConfig {
@@ -30,6 +32,16 @@ impl ProofConfig {
     /// Returns the number of queries.
     pub fn n_queries(&self) -> usize {
         self.fri.n_queries
+    }
+
+    /// Returns the number of columns for each of the 4 traces.
+    pub fn n_columns_per_trace(&self) -> [usize; 4] {
+        [
+            self.n_preprocessed_columns,
+            self.n_trace_columns,
+            self.n_interaction_columns,
+            N_COMPOSITION_COLUMNS,
+        ]
     }
 }
 
@@ -83,8 +95,10 @@ pub struct Proof<T> {
     pub interaction_at_oods: InteractionAtOods<T>,
     pub composition_eval_at_oods: [T; N_COMPOSITION_COLUMNS],
 
-    pub proof_of_work_nonce: T,
+    // Evaluations at the evaluation domain.
+    pub eval_domain_samples: EvalDomainSamples<T>,
 
+    pub proof_of_work_nonce: T,
     pub fri: FriCommitProof<T>,
     // TODO(lior): Add missing fields.
 }
@@ -101,6 +115,10 @@ pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
             value: vec![(NoValue, NoValue); config.n_interaction_columns],
         },
         composition_eval_at_oods: [NoValue; N_COMPOSITION_COLUMNS],
+        eval_domain_samples: empty_eval_domain_samples(
+            &config.n_columns_per_trace(),
+            config.n_queries(),
+        ),
         proof_of_work_nonce: NoValue,
         fri: empty_fri_proof(&config.fri),
     }
@@ -119,6 +137,7 @@ impl<Value: IValue> Guess<Value> for Proof<Value> {
             trace_at_oods: self.trace_at_oods.guess(context),
             interaction_at_oods: self.interaction_at_oods.guess(context),
             composition_eval_at_oods: self.composition_eval_at_oods.guess(context),
+            eval_domain_samples: self.eval_domain_samples.guess(context),
             proof_of_work_nonce: self.proof_of_work_nonce.guess(context),
             fri: self.fri.guess(context),
         }

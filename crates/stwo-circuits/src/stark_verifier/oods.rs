@@ -88,6 +88,18 @@ impl<Value: IValue> Guess<Value> for EvalDomainSamples<Value> {
     }
 }
 
+pub fn empty_eval_domain_samples(
+    n_columns_per_trace: &[usize],
+    n_queries: usize,
+) -> EvalDomainSamples<NoValue> {
+    EvalDomainSamples {
+        data: n_columns_per_trace
+            .iter()
+            .map(|n_columns| vec![vec![M31Wrapper(NoValue); *n_columns]; n_queries])
+            .collect(),
+    }
+}
+
 /// Computes the expected value of the composition polynomial at the OODS point, based on the
 /// broken composition polynomial commitment.
 pub fn extract_expected_composition_eval(
