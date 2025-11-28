@@ -23,6 +23,8 @@ pub fn verify(
     config: &ProofConfig,
     statement: &impl Statement,
 ) {
+    proof.validate_structure(config);
+
     let mut channel = Channel::new(context);
 
     // Mix the trace commitments into the channel.
