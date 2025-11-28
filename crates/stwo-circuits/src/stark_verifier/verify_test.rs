@@ -43,5 +43,6 @@ fn test_verify() {
     assert_eq!(context.circuit, novalue_circuit);
 
     novalue_circuit.check(context.values()).unwrap();
+    novalue_circuit.check_yields(context.n_vars());
     println!("Stats: {:?}", context.stats);
 }

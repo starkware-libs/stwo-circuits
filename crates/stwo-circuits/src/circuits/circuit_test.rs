@@ -9,6 +9,7 @@ fn circuit_add() {
         c.check(&[1.into(), 2.into(), 4.into()]).unwrap_err(),
         "(3 + 0i) + (0 + 0i)u != (4 + 0i) + (0 + 0i)u"
     );
+    assert_eq!(c.compute_multiplicities(3), (vec![1, 1, 0], vec![0, 0, 1]));
 }
 
 #[test]
@@ -42,4 +43,5 @@ fn circuit_eq() {
         c.check(&[1.into(), 1.into(), 2.into()]).unwrap_err(),
         "(1 + 0i) + (0 + 0i)u != (2 + 0i) + (0 + 0i)u"
     );
+    assert_eq!(c.compute_multiplicities(3), (vec![0, 1, 1], vec![0, 0, 0]));
 }

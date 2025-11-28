@@ -1,4 +1,4 @@
-use indoc::formatdoc;
+use expect_test::expect;
 
 use crate::circuits::context::TraceContext;
 use crate::circuits::ivalue::qm31_from_u32s;
@@ -51,22 +51,21 @@ fn test_div() {
     let res = div(&mut context, x, y);
     assert_eq!(context.get(res), 5.into());
 
-    assert_eq!(
-        format!("{:?}", context.circuit),
-        formatdoc!(
-            "
-            [0] = [0] + [0]
-            [1] = [1] + [0]
-            [2] = [2] + [0]
-            [3] = [3] + [0]
-            [4] = [4] + [0]
-            [5] = [4] * [3]
-            [5] = [2]
-            "
-        )
-    );
+    expect![[r#"
+        [0] = [0] + [0]
+        [1] = [1] + [0]
+        [2] = [2] + [0]
+        [3] = [3] + [0]
+        [4] = [4] + [0]
+        [5] = [4] * [3]
+        [5] = [2]
+
+    "#]]
+    .assert_debug_eq(&context.circuit);
 
     context.circuit.check(context.values()).unwrap();
+    assert_eq!(context.circuit.compute_multiplicities(context.n_vars()).0, vec![6, 1, 2, 2, 2, 1]);
+    context.circuit.check_yields(context.n_vars());
 }
 
 #[test]

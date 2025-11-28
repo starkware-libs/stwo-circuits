@@ -17,6 +17,12 @@ fn check_eq(a: QM31, b: QM31) -> Result<(), String> {
 
 pub trait Gate: std::fmt::Debug {
     fn check(&self, values: &[QM31]) -> Result<(), String>;
+
+    /// Returns the variables that are "used" by the gate (in the context of lookup terms).
+    fn uses(&self) -> Vec<usize>;
+
+    /// Returns the variables that are "yielded" by the gate (in the context of lookup terms).
+    fn yields(&self) -> Vec<usize>;
 }
 
 /// Represents an addition gate in the circuit: `[in0] + [in1] = [out]`.
@@ -29,6 +35,14 @@ pub struct Add {
 impl Gate for Add {
     fn check(&self, values: &[QM31]) -> Result<(), String> {
         check_eq(values[self.in0] + values[self.in1], values[self.out])
+    }
+
+    fn uses(&self) -> Vec<usize> {
+        vec![self.in0, self.in1]
+    }
+
+    fn yields(&self) -> Vec<usize> {
+        vec![self.out]
     }
 }
 
@@ -49,6 +63,14 @@ impl Gate for Sub {
     fn check(&self, values: &[QM31]) -> Result<(), String> {
         check_eq(values[self.in0] - values[self.in1], values[self.out])
     }
+
+    fn uses(&self) -> Vec<usize> {
+        vec![self.in0, self.in1]
+    }
+
+    fn yields(&self) -> Vec<usize> {
+        vec![self.out]
+    }
 }
 
 impl std::fmt::Debug for Sub {
@@ -67,6 +89,14 @@ pub struct Mul {
 impl Gate for Mul {
     fn check(&self, values: &[QM31]) -> Result<(), String> {
         check_eq(values[self.in0] * values[self.in1], values[self.out])
+    }
+
+    fn uses(&self) -> Vec<usize> {
+        vec![self.in0, self.in1]
+    }
+
+    fn yields(&self) -> Vec<usize> {
+        vec![self.out]
     }
 }
 
@@ -88,6 +118,14 @@ impl Gate for PointwiseMul {
     fn check(&self, values: &[QM31]) -> Result<(), String> {
         check_eq(QM31::pointwise_mul(values[self.in0], values[self.in1]), values[self.out])
     }
+
+    fn uses(&self) -> Vec<usize> {
+        vec![self.in0, self.in1]
+    }
+
+    fn yields(&self) -> Vec<usize> {
+        vec![self.out]
+    }
 }
 
 impl std::fmt::Debug for PointwiseMul {
@@ -105,6 +143,14 @@ pub struct Eq {
 impl Gate for Eq {
     fn check(&self, values: &[QM31]) -> Result<(), String> {
         check_eq(values[self.in0], values[self.in1])
+    }
+
+    fn uses(&self) -> Vec<usize> {
+        vec![self.in0, self.in1]
+    }
+
+    fn yields(&self) -> Vec<usize> {
+        vec![]
     }
 }
 
@@ -139,6 +185,14 @@ impl Gate for Blake {
         }
 
         Ok(())
+    }
+
+    fn uses(&self) -> Vec<usize> {
+        self.input.iter().flatten().copied().collect()
+    }
+
+    fn yields(&self) -> Vec<usize> {
+        vec![self.out0, self.out1]
     }
 }
 
@@ -179,6 +233,31 @@ impl Circuit {
             gate.check(values)?;
         }
         Ok(())
+    }
+
+    /// Returns the number of uses and number of yields for each variable (in the context of lookup
+    /// terms).
+    pub fn compute_multiplicities(&self, n_vars: usize) -> (Vec<usize>, Vec<usize>) {
+        let mut n_uses = vec![0; n_vars];
+        let mut n_yields = vec![0; n_vars];
+
+        for gate in self.all_gates() {
+            for use_var in gate.uses() {
+                n_uses[use_var] += 1;
+            }
+            for yield_var in gate.yields() {
+                n_yields[yield_var] += 1;
+            }
+        }
+
+        (n_uses, n_yields)
+    }
+
+    /// Verifies that each variable appears exactly once as a yield.
+    pub fn check_yields(&self, n_vars: usize) {
+        for (idx, n_yields) in self.compute_multiplicities(n_vars).1.iter().enumerate() {
+            assert!(*n_yields == 1, "Variable {idx} appears {n_yields} times as a yield");
+        }
     }
 }
 
