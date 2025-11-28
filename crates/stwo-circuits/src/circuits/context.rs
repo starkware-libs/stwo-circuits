@@ -107,6 +107,6 @@ impl TraceContext {
 
     /// Validates that the values satisfy the circuit.
     pub fn validate_circuit(&self) {
-        assert!(self.is_circuit_valid());
+        self.circuit.check(self.values()).unwrap();
     }
 }
