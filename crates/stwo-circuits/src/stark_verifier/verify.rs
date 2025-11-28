@@ -7,8 +7,9 @@ use crate::circuits::simd::Simd;
 use crate::stark_verifier::channel::Channel;
 use crate::stark_verifier::fri::fri_commit;
 use crate::stark_verifier::merkle::decommit_eval_domain_samples;
-use crate::stark_verifier::oods::collect_oods_responses;
-use crate::stark_verifier::oods::extract_expected_composition_eval;
+use crate::stark_verifier::oods::{
+    collect_oods_responses, compute_fri_input, extract_expected_composition_eval,
+};
 use crate::stark_verifier::proof::{Proof, ProofConfig};
 use crate::stark_verifier::select_queries::{
     get_query_selection_input_from_channel, select_queries,
@@ -108,7 +109,14 @@ pub fn verify(
     );
 
     // Compute FRI input.
-    let _oods_responses = collect_oods_responses(context, config, oods_point, proof);
+    let oods_responses = collect_oods_responses(context, config, oods_point, proof);
+    let _fri_input = compute_fri_input(
+        context,
+        &oods_responses,
+        &queries,
+        &proof.eval_domain_samples,
+        interaction_alpha,
+    );
 
     // TODO(lior): Complete the verification.
 }
