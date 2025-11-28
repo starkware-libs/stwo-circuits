@@ -1,4 +1,4 @@
-use num_traits::Zero;
+use num_traits::{One, Zero};
 use rstest::rstest;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
@@ -9,8 +9,10 @@ use crate::circuits::ivalue::qm31_from_u32s;
 use crate::circuits::ops::Guess;
 use crate::circuits::wrappers::M31Wrapper;
 use crate::stark_verifier::merkle::{
-    AuthPath, NODE_PREFIX, hash_leaf_m31s, hash_node, merkle_path,
+    AuthPath, AuthPaths, LEAF_PREFIX, NODE_PREFIX, decommit_eval_domain_samples, hash_leaf_m31s,
+    hash_node, merkle_path,
 };
+use crate::stark_verifier::oods::EvalDomainSamples;
 
 #[test]
 fn hash_leaf_m31s_regression() {
@@ -62,6 +64,20 @@ fn hash_node_qm31(left: HashValue<QM31>, right: HashValue<QM31>) -> HashValue<QM
     blake_qm31(&[node_prefix, zero, zero, zero, left.0, left.1, right.0, right.1], 128)
 }
 
+/// Similar to `hash_leaf_m31s` for an empty leaf.
+fn hash_empty_leaf() -> HashValue<QM31> {
+    let zero = QM31::zero();
+    let data: Vec<QM31> = vec![LEAF_PREFIX.into(), zero, zero, zero];
+    blake_qm31(&data, 64)
+}
+
+/// Similar to `hash_leaf_m31s`, but for one `M31` rather than `Var`s.
+fn hash_leaf(value: M31) -> HashValue<QM31> {
+    let zero = QM31::zero();
+    let data: Vec<QM31> = vec![LEAF_PREFIX.into(), zero, zero, zero, value.into()];
+    blake_qm31(&data, 68)
+}
+
 #[rstest]
 #[case::success(false, false)]
 #[case::wrong_bit(true, false)]
@@ -100,5 +116,58 @@ fn test_merkle_path(#[case] wrong_bit: bool, #[case] wrong_root: bool) {
 
     merkle_path(&mut context, leaf, &bits, root, &auth_path);
     let success = !wrong_bit && !wrong_root;
+    assert_eq!(context.is_circuit_valid(), success);
+}
+
+#[rstest]
+#[case::success(None, false)]
+#[case::wrong_bit(None, true)]
+#[case::wrong_root0(Some(0), false)]
+#[case::wrong_root1(Some(1), false)]
+#[case::wrong_root2(Some(2), false)]
+#[case::wrong_root3(Some(3), false)]
+fn test_decommit_eval_domain_samples(#[case] wrong_root: Option<usize>, #[case] wrong_bit: bool) {
+    let mut context = TraceContext::default();
+
+    let eval_domain_samples = EvalDomainSamples::from_m31s(vec![
+        vec![vec![M31::from(1)]],
+        vec![vec![]],
+        vec![vec![]],
+        vec![vec![]],
+    ]);
+    let auth_path_val0 = HashValue(qm31_from_u32s(1, 2, 3, 4), qm31_from_u32s(5, 6, 7, 8));
+    let auth_path_val1 = HashValue(qm31_from_u32s(9, 10, 11, 12), qm31_from_u32s(13, 14, 15, 16));
+    let auth_paths = AuthPaths {
+        data: vec![
+            vec![AuthPath(vec![auth_path_val0])],
+            vec![AuthPath(vec![auth_path_val1])],
+            vec![AuthPath(vec![auth_path_val1])],
+            vec![AuthPath(vec![auth_path_val1])],
+        ],
+    };
+    let bits: Vec<Vec<QM31>> = vec![vec![(if wrong_bit { 1 } else { 0 }).into()]];
+
+    let root0 = hash_node_qm31(hash_leaf(M31::from(1)), auth_path_val0);
+    let root1 = hash_node_qm31(hash_empty_leaf(), auth_path_val1);
+
+    let mut roots = [root0, root1, root1, root1];
+    if let Some(wrong_root) = wrong_root {
+        roots[wrong_root].1 += QM31::one();
+    }
+
+    let eval_domain_samples_vars = eval_domain_samples.guess(&mut context);
+    let auth_paths_vars = auth_paths.guess(&mut context);
+    let bits_vars = bits.guess(&mut context);
+    let roots_vars = roots.guess(&mut context);
+
+    decommit_eval_domain_samples(
+        &mut context,
+        &eval_domain_samples_vars,
+        &auth_paths_vars,
+        &bits_vars,
+        &roots_vars,
+    );
+
+    let success = wrong_root.is_none() && !wrong_bit;
     assert_eq!(context.is_circuit_valid(), success);
 }

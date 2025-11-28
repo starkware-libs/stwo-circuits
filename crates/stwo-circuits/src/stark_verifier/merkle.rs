@@ -1,4 +1,4 @@
-use itertools::zip_eq;
+use itertools::{Itertools, zip_eq};
 
 use crate::circuits::blake::{HashValue, blake};
 use crate::circuits::context::{Context, Var};
@@ -7,6 +7,7 @@ use crate::circuits::ops::{Guess, eq, select};
 use crate::circuits::simd::Simd;
 use crate::circuits::wrappers::M31Wrapper;
 use crate::eval;
+use crate::stark_verifier::oods::EvalDomainSamples;
 
 #[cfg(test)]
 #[path = "merkle_test.rs"]
@@ -33,6 +34,10 @@ pub struct AuthPaths<T> {
     pub data: Vec<Vec<AuthPath<T>>>,
 }
 impl<T> AuthPaths<T> {
+    pub fn n_trees(&self) -> usize {
+        self.data.len()
+    }
+
     pub fn at(&self, tree_idx: usize, query_idx: usize) -> &AuthPath<T> {
         &self.data[tree_idx][query_idx]
     }
@@ -108,4 +113,27 @@ pub fn merkle_path<Value: IValue>(
     }
     eq(context, leaf.0, root.0);
     eq(context, leaf.1, root.1);
+}
+
+/// Verifies that the queries in `eval_domain_samples` are consistent with the Merkle roots.
+///
+/// `bits[i][query_idx]` is the `i`-th bit of the bit representation of the query at index
+/// `query_idx`.
+pub fn decommit_eval_domain_samples<Value: IValue>(
+    context: &mut Context<Value>,
+    eval_domain_samples: &EvalDomainSamples<Var>,
+    auth_paths: &AuthPaths<Var>,
+    bits: &[Vec<Var>],
+    roots: &[HashValue<Var>; 4],
+) {
+    assert_eq!(eval_domain_samples.n_traces(), roots.len());
+    assert_eq!(auth_paths.n_trees(), roots.len());
+    for (trace_idx, root) in roots.iter().enumerate() {
+        for (query_idx, data) in eval_domain_samples.data_for_trace(trace_idx).iter().enumerate() {
+            let leaf = hash_leaf_m31s(context, data);
+            let auth_path = auth_paths.at(trace_idx, query_idx);
+            let bits_for_query = bits.iter().map(|b| b[query_idx]).collect_vec();
+            merkle_path(context, leaf, &bits_for_query, *root, auth_path);
+        }
+    }
 }
