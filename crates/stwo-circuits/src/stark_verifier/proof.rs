@@ -3,6 +3,7 @@ use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::{IValue, NoValue};
 use crate::circuits::ops::Guess;
 use crate::stark_verifier::fri_proof::{FriCommitProof, FriConfig, empty_fri_proof};
+use crate::stark_verifier::merkle::{AuthPath, AuthPaths};
 use crate::stark_verifier::oods::{
     EvalDomainSamples, N_COMPOSITION_COLUMNS, empty_eval_domain_samples,
 };
@@ -104,6 +105,7 @@ pub struct Proof<T> {
 
     // Evaluations at the evaluation domain.
     pub eval_domain_samples: EvalDomainSamples<T>,
+    pub eval_domain_auth_paths: AuthPaths<T>,
 
     pub proof_of_work_nonce: T,
     pub fri: FriCommitProof<T>,
@@ -131,6 +133,9 @@ impl<T> Proof<T> {
 }
 
 pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
+    let auth_path =
+        AuthPath(vec![HashValue(NoValue, NoValue); config.log_evaluation_domain_size()]);
+
     Proof {
         preprocessed_root: HashValue(NoValue, NoValue),
         trace_root: HashValue(NoValue, NoValue),
@@ -146,6 +151,9 @@ pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
             &config.n_columns_per_trace(),
             config.n_queries(),
         ),
+        eval_domain_auth_paths: AuthPaths {
+            data: vec![vec![auth_path; config.n_queries()]; N_TRACES],
+        },
         proof_of_work_nonce: NoValue,
         fri: empty_fri_proof(&config.fri),
     }
@@ -165,6 +173,7 @@ impl<Value: IValue> Guess<Value> for Proof<Value> {
             interaction_at_oods: self.interaction_at_oods.guess(context),
             composition_eval_at_oods: self.composition_eval_at_oods.guess(context),
             eval_domain_samples: self.eval_domain_samples.guess(context),
+            eval_domain_auth_paths: self.eval_domain_auth_paths.guess(context),
             proof_of_work_nonce: self.proof_of_work_nonce.guess(context),
             fri: self.fri.guess(context),
         }
