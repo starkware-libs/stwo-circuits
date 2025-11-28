@@ -6,6 +6,7 @@ use crate::circuits::ops::eq;
 use crate::circuits::simd::Simd;
 use crate::stark_verifier::channel::Channel;
 use crate::stark_verifier::fri::fri_commit;
+use crate::stark_verifier::merkle::decommit_eval_domain_samples;
 use crate::stark_verifier::oods::extract_expected_composition_eval;
 use crate::stark_verifier::proof::{Proof, ProofConfig};
 use crate::stark_verifier::select_queries::{
@@ -96,7 +97,14 @@ pub fn verify(
         select_queries(context, &query_selection_input, config.log_evaluation_domain_size());
 
     // Check decommitment of trace queries.
-    let _bits = queries.bits.iter().map(|simd| Simd::unpack(context, simd)).collect_vec();
+    let bits = queries.bits.iter().map(|simd| Simd::unpack(context, simd)).collect_vec();
+    decommit_eval_domain_samples(
+        context,
+        &proof.eval_domain_samples,
+        &proof.eval_domain_auth_paths,
+        &bits,
+        &proof.roots(),
+    );
 
     // TODO(lior): Complete the verification.
 }
