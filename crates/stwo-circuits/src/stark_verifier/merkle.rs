@@ -1,15 +1,17 @@
+use itertools::zip_eq;
+
 use crate::circuits::blake::{HashValue, blake};
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
-use crate::circuits::ops::Guess;
+use crate::circuits::ops::{Guess, cond_flip, eq};
 use crate::circuits::simd::Simd;
 
 #[cfg(test)]
 #[path = "merkle_test.rs"]
 pub mod test;
 
-const LEAF_HASH: u32 = 0x6661656c; // 'leaf'.
-const NODE_HASH: u32 = 0x65646f6e; // 'node'.
+const LEAF_PREFIX: u32 = 0x6661656c; // 'leaf'.
+const NODE_PREFIX: u32 = 0x65646f6e; // 'node'.
 
 /// Represents an authentication path in a Merkle tree.
 #[derive(Clone, Debug)]
@@ -50,21 +52,20 @@ impl<Value: IValue> Guess<Value> for AuthPaths<Value> {
 fn hash_leaf_m31s(context: &mut Context<impl IValue>, values: &[Var]) -> HashValue<Var> {
     let leaf_packed = Simd::pack(context, values);
     let mut data =
-        vec![context.constant(LEAF_HASH.into()), context.zero(), context.zero(), context.zero()];
+        vec![context.constant(LEAF_PREFIX.into()), context.zero(), context.zero(), context.zero()];
     data.extend_from_slice(leaf_packed.get_packed());
 
     blake(context, &data, 64 + values.len() * 4)
 }
 
 /// Computes the hash of an internal node in the Merkle tree.
-#[allow(dead_code)]
 fn hash_node(
     context: &mut Context<impl IValue>,
     left: HashValue<Var>,
     right: HashValue<Var>,
 ) -> HashValue<Var> {
     let data = [
-        context.constant(NODE_HASH.into()),
+        context.constant(NODE_PREFIX.into()),
         context.zero(),
         context.zero(),
         context.zero(),
@@ -75,4 +76,30 @@ fn hash_node(
     ];
 
     blake(context, &data, 128)
+}
+
+/// Validates that the leaf at the index given by `bits` has the value `leaf` in a Merkle tree
+/// with the given `root`.
+///
+/// `auth_path` is the authentication path such that `auth_path[0]` is the sibling of `leaf`.
+///
+/// This is done by computing the root from `leaf` and `auth_path` and comparing it to the given
+/// `root`.
+pub fn verify_merkle_path<Value: IValue>(
+    context: &mut Context<Value>,
+    mut leaf: HashValue<Var>,
+    bits: &[Var],
+    root: HashValue<Var>,
+    auth_path: &AuthPath<Var>,
+) {
+    for (bit, sibling) in zip_eq(bits, &auth_path.0) {
+        // Store leaf and sibling in the left and right children.
+        let (left0, right0) = cond_flip(context, *bit, leaf.0, sibling.0);
+        let (left1, right1) = cond_flip(context, *bit, leaf.1, sibling.1);
+
+        // Compute the next layer's node.
+        leaf = hash_node(context, HashValue(left0, left1), HashValue(right0, right1));
+    }
+    eq(context, leaf.0, root.0);
+    eq(context, leaf.1, root.1);
 }
