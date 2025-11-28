@@ -1,16 +1,19 @@
-use itertools::{chain, zip_eq};
+use indexmap::IndexMap;
+use itertools::{Itertools, chain, zip_eq};
 use stwo::core::circle::CirclePoint;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 
 use crate::circuits::EXTENSION_DEGREE;
 use crate::circuits::context::{Context, Var};
-use crate::circuits::ivalue::{IValue, NoValue};
-use crate::circuits::ops::{Guess, from_partial_evals};
+use crate::circuits::ivalue::{IValue, NoValue, qm31_from_u32s};
+use crate::circuits::ops::{Guess, conj, div, from_partial_evals};
+use crate::circuits::simd::Simd;
 use crate::circuits::wrappers::M31Wrapper;
 use crate::eval;
 use crate::stark_verifier::circle::{add_points, double_x, generator_point};
 use crate::stark_verifier::proof::{Proof, ProofConfig};
+use crate::stark_verifier::select_queries::Queries;
 
 const COMPOSITION_SPLIT: usize = 2;
 pub const N_COMPOSITION_COLUMNS: usize = COMPOSITION_SPLIT * EXTENSION_DEGREE;
@@ -179,4 +182,122 @@ pub fn collect_oods_responses(
         }),
     )
     .collect()
+}
+
+/// In order to validate the [OodsResponse]s, we use FRI to show that the following rational
+/// function is in fact a polynomial:
+/// ```plain
+///   (-2u) * sum_i (
+///       alpha^i * (c * column[column_idx](x, y) - a * y - b) / (d * x - e * y - f)
+///   )
+/// ```
+/// where:
+/// ```plain
+///    a = conj(value) - value
+///    c = conj(pt.y) - pt.y
+///    b = value * c - a * pt.y
+///
+///    d = pt.y - conj(pt.y)
+///    e = pt.x - conj(pt.x)
+///    f = d * pt.x - e * pt.y
+/// ```
+///
+/// Note that:
+/// (1) `d * x - e * y - f` vanishes on the points `pt` and `conj(pt)`.
+/// (2) `(a * y + b) / c` evaluates to `value` at `pt.y` and to `conj(value)` at `conj(pt.y)`.
+///
+/// The function computes the inputs to FRI, which are the evaluations of the above rational
+/// function at the given (evaluation domain) queries.
+pub fn compute_fri_input(
+    context: &mut Context<impl IValue>,
+    oods_responses: &[OodsResponse],
+    queries: &Queries,
+    trace_queries: &EvalDomainSamples<Var>,
+    alpha: Var,
+) -> Vec<Var> {
+    // TODO(lior): Make the function more efficient using similar techniques as in the Cairo version
+    //   of the stwo verifier.
+
+    // The coefficients d, e, f for each (pt.x, pt.y).
+    let mut def = IndexMap::<(usize, usize), (Var, Var, Var)>::new();
+
+    for r in oods_responses {
+        let key = (r.pt.x.idx, r.pt.y.idx);
+        if def.contains_key(&key) {
+            continue;
+        }
+
+        let pt_x_conj = conj(context, r.pt.x);
+        let pt_y_conj = conj(context, r.pt.y);
+        let d = eval!(context, (r.pt.y) - (pt_y_conj));
+        let e = eval!(context, (r.pt.x) - (pt_x_conj));
+        let f = eval!(context, ((d) * (r.pt.x)) - ((e) * (r.pt.y)));
+
+        def.insert(key, (d, e, f));
+    }
+
+    let query_point_x = Simd::unpack(context, &queries.points.x);
+    let query_point_y = Simd::unpack(context, &queries.points.y);
+
+    // Denominator inverse for each (pt.x, pt.y, query).
+    let mut denominator_inverse = IndexMap::<(usize, usize, usize), Var>::new();
+
+    for ((pt_x, pt_y), (d, e, f)) in def.iter() {
+        for (query_idx, (q_x, q_y)) in zip_eq(&query_point_x, &query_point_y).enumerate() {
+            // Compute `d * q_x - e * q_y - f`.
+            let denominator = eval!(context, ((*d) * (*q_x)) - (((*e) * (*q_y)) + (*f)));
+            let denominator_inv = div(context, context.one(), denominator);
+
+            denominator_inverse.insert((*pt_x, *pt_y, query_idx), denominator_inv);
+        }
+    }
+
+    // The coefficients `a, b, c` for each response.
+    let abc = oods_responses
+        .iter()
+        .map(|r| {
+            let pt_y_conj = conj(context, r.pt.y);
+            let r_value_conj = conj(context, r.value);
+            let a = eval!(context, (r_value_conj) - (r.value));
+            let c = eval!(context, (pt_y_conj) - (r.pt.y));
+            let b = eval!(context, ((r.value) * (c)) - ((a) * (r.pt.y)));
+
+            (a, b, c)
+        })
+        .collect_vec();
+
+    let minus_two_u = context.constant(-qm31_from_u32s(0, 0, 2, 0));
+
+    let mut fri_queries = Vec::new();
+    for (query_idx, (_q_x, q_y)) in zip_eq(&query_point_x, &query_point_y).enumerate() {
+        // Multiply all the quotient coefficients by `-2u` to compensate for the different
+        // denominator computation with respect to stwo.
+        let mut quotient_coef = minus_two_u;
+        let mut sum = context.zero();
+
+        for ((a, b, c), r) in zip_eq(abc.iter(), oods_responses.iter()) {
+            let query_value_at_column = *trace_queries.at(r.trace_idx, query_idx, r.column_idx);
+
+            // Compute c * column[column_idx](q_x, q_y) - a * q_y - b.
+            let numerator =
+                eval!(context, ((*c) * (query_value_at_column)) - ((*b) + ((*a) * (*q_y))));
+
+            // Fetch the inverse of the denominator from `denominator_inverse`.
+            let denominator_inv =
+                denominator_inverse.get(&(r.pt.x.idx, r.pt.y.idx, query_idx)).unwrap();
+
+            // Compute the quotient: numerator / denominator.
+            let quotient = eval!(context, (numerator) * (*denominator_inv));
+
+            // Add `quotient_coef * quotient` to `sum`.
+            sum = eval!(context, (sum) + ((quotient_coef) * (quotient)));
+
+            // Compute the next quotient coefficient (alpha^i).
+            quotient_coef = eval!(context, (quotient_coef) * (alpha));
+        }
+
+        fri_queries.push(sum);
+    }
+
+    fri_queries
 }
