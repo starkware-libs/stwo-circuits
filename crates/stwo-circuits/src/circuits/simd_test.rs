@@ -1,4 +1,5 @@
 use expect_test::expect;
+use itertools::Itertools;
 use num_traits::One;
 use rstest::rstest;
 use stwo::core::fields::cm31::CM31;
@@ -10,6 +11,7 @@ use crate::circuits::ivalue::{NoValue, qm31_from_u32s};
 use crate::circuits::ops::{Guess, guess};
 use crate::circuits::simd::Simd;
 use crate::circuits::test_utils::{packed_values, simd_from_u32s};
+use crate::circuits::wrappers::M31Wrapper;
 
 #[test]
 fn test_repeat() {
@@ -296,7 +298,8 @@ fn test_unpack_circuit() {
 #[test]
 fn test_pack() {
     let mut context = TraceContext::default();
-    let input = [12, 6, 5, 20, 1, 4, 8, 10].map(|i| context.new_var(i.into()));
+    let input =
+        [12, 6, 5, 20, 1, 4, 8, 10].map(|i| M31Wrapper::from(M31::from(i))).guess(&mut context);
 
     let res = Simd::pack(&mut context, &[]);
     assert_eq!(res.len(), 0);
@@ -337,10 +340,15 @@ fn test_pack() {
 #[test]
 fn test_pack_circuit() {
     let mut context = Context::<NoValue>::default();
-    let input = vec![NoValue; 6].guess(&mut context);
+    let input = vec![NoValue; 6]
+        .guess(&mut context)
+        .iter()
+        .map(|v| M31Wrapper::new_unsafe(*v))
+        .collect_vec();
     let res = Simd::pack(&mut context, &input);
 
-    expect!["[[2], [3], [4], [5], [6], [7]]"].assert_eq(&format!("{input:?}"));
+    expect!["[M31([2]), M31([3]), M31([4]), M31([5]), M31([6]), M31([7])]"]
+        .assert_eq(&format!("{input:?}"));
     expect!["Simd { data: [[16], [18]], len: 6 }"].assert_eq(&format!("{res:?}"));
     expect![[r#"
         {
