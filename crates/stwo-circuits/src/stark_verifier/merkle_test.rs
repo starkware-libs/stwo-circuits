@@ -1,11 +1,13 @@
 use num_traits::Zero;
 use rstest::rstest;
+use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 
 use crate::circuits::blake::{HashValue, blake_qm31};
 use crate::circuits::context::TraceContext;
 use crate::circuits::ivalue::qm31_from_u32s;
 use crate::circuits::ops::Guess;
+use crate::circuits::wrappers::M31Wrapper;
 use crate::stark_verifier::merkle::{
     AuthPath, NODE_PREFIX, hash_leaf_m31s, hash_node, verify_merkle_path,
 };
@@ -14,15 +16,16 @@ use crate::stark_verifier::merkle::{
 fn hash_leaf_m31s_regression() {
     let mut context = TraceContext::default();
 
-    let values = [QM31::from(1641251221)].guess(&mut context);
+    let values = [M31Wrapper::from(M31::from(1641251221)).guess(&mut context)];
 
     let hash = hash_leaf_m31s(&mut context, &values);
 
     assert_eq!(context.get(hash.0), qm31_from_u32s(268251613, 660344597, 1395766214, 1277826589));
     assert_eq!(context.get(hash.1), qm31_from_u32s(1447949022, 1496147392, 1638488896, 1977465263));
 
-    let values =
-        [1, 1641251221, 1176667027, 568581975].map(|v: u32| QM31::from(v)).guess(&mut context);
+    let values = [1, 1641251221, 1176667027, 568581975]
+        .map(|v: u32| M31Wrapper::from(M31::from(v)))
+        .guess(&mut context);
 
     let hash = hash_leaf_m31s(&mut context, &values);
 

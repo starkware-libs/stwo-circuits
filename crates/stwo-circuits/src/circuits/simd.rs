@@ -9,6 +9,7 @@ use crate::circuits::EXTENSION_DEGREE;
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::{IValue, qm31_from_u32s};
 use crate::circuits::ops::{Guess, add, eq, pointwise_mul, sub};
+use crate::circuits::wrappers::M31Wrapper;
 use crate::eval;
 
 #[cfg(test)]
@@ -192,9 +193,7 @@ impl Simd {
     }
 
     /// Packs a vector of [M31] values into [Simd].
-    ///
-    /// NOTE: the caller must check that all input values are in the base field [M31].
-    pub fn pack(context: &mut Context<impl IValue>, values: &[Var]) -> Simd {
+    pub fn pack(context: &mut Context<impl IValue>, values: &[M31Wrapper<Var>]) -> Simd {
         let unit_vecs = [
             context.constant(qm31_from_u32s(0, 1, 0, 0)),
             context.constant(qm31_from_u32s(0, 0, 1, 0)),
@@ -204,12 +203,12 @@ impl Simd {
         let n = values.len();
         let data = (0..n.div_ceil(4))
             .map(|i| {
-                let mut res = values[4 * i];
+                let mut res = *values[4 * i].get();
                 for j in 1..4 {
                     if 4 * i + j == n {
                         break;
                     }
-                    res = eval!(context, (res) + ((unit_vecs[j - 1]) * (values[4 * i + j])));
+                    res = eval!(context, (res) + ((unit_vecs[j - 1]) * (*values[4 * i + j].get())));
                 }
                 res
             })
