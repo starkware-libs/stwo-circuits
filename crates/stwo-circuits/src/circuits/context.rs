@@ -105,3 +105,15 @@ impl<Value: IValue> Default for Context<Value> {
 
 /// A context with real QM31 values.
 pub type TraceContext = Context<QM31>;
+
+impl TraceContext {
+    /// Returns `true` if the values satisfy the circuit.
+    pub fn is_circuit_valid(&self) -> bool {
+        self.circuit.check(self.values()).is_ok()
+    }
+
+    /// Validates that the values satisfy the circuit.
+    pub fn validate_circuit(&self) {
+        assert!(self.is_circuit_valid());
+    }
+}

@@ -19,7 +19,7 @@ fn test_basic_ops() {
 
     assert_eq!(context.values(), &vec![0.into(), 1.into(), x, y, x + y, x - y, (x + y) * (x - y)]);
 
-    context.circuit.check(context.values()).unwrap();
+    context.validate_circuit();
 }
 
 #[test]
@@ -63,7 +63,7 @@ fn test_div() {
     "#]]
     .assert_debug_eq(&context.circuit);
 
-    context.circuit.check(context.values()).unwrap();
+    context.validate_circuit();
     assert_eq!(context.circuit.compute_multiplicities(context.n_vars()).0, vec![6, 1, 2, 2, 2, 1]);
     context.circuit.check_yields(context.n_vars());
 }
@@ -75,7 +75,7 @@ fn test_pointwise_mul() {
     let y = guess(&mut context, qm31_from_u32s(5, 6, 7, 8));
     let res = pointwise_mul(&mut context, x, y);
     assert_eq!(context.get(res), qm31_from_u32s(5, 12, 21, 32));
-    context.circuit.check(context.values()).unwrap();
+    context.validate_circuit();
 }
 
 #[test]
@@ -89,7 +89,7 @@ fn test_from_partial_evals() {
     ];
     let res = from_partial_evals(&mut context, values);
     assert_eq!(context.get(res), qm31_from_u32s(1, 12, 103, 1004));
-    context.circuit.check(context.values()).unwrap();
+    context.validate_circuit();
 }
 
 #[test]
@@ -134,5 +134,5 @@ fn test_stats() {
     let stats = Stats { pointwise_mul: 1, ..stats };
     assert_eq!(context.stats, stats);
 
-    context.circuit.check(context.values()).unwrap();
+    context.validate_circuit();
 }

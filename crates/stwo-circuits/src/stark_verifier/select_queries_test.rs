@@ -47,7 +47,7 @@ fn test_select_queries() {
         -(generator_point(LOG_DOMAIN_SIZE + 1) + generator_point(LOG_DOMAIN_SIZE - 1).mul(0b0011))
     );
 
-    context.circuit.check(context.values()).unwrap();
+    context.validate_circuit();
 }
 
 #[test]
@@ -95,5 +95,5 @@ fn test_full_select_queries_regression() {
         ]
     );
 
-    context.circuit.check(context.values()).unwrap();
+    context.validate_circuit();
 }

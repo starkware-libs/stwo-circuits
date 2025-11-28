@@ -88,5 +88,5 @@ fn extract_expected_composition_eval_regression() {
         qm31_from_u32s(443798542, 633915785, 595028408, 165661052)
     );
 
-    context.circuit.check(context.values()).unwrap();
+    context.validate_circuit();
 }
