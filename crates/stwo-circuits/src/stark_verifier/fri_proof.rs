@@ -2,6 +2,7 @@ use crate::circuits::blake::HashValue;
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::{IValue, NoValue};
 use crate::circuits::ops::Guess;
+use crate::stark_verifier::merkle::AuthPaths;
 
 /// Represents the structure of a FRI proof.
 pub struct FriConfig {
@@ -49,6 +50,14 @@ impl<Value: IValue> Guess<Value> for FriCommitProof<Value> {
             last_layer_coefs: self.last_layer_coefs.guess(context),
         }
     }
+}
+
+/// Represents the information required to verify a FRI proof.
+pub struct FriProof<T> {
+    pub commit: FriCommitProof<T>,
+    pub auth_paths: AuthPaths<T>,
+    // For each layer, for each query, the sibling value.
+    pub fri_siblings: Vec<Vec<T>>,
 }
 
 pub fn empty_fri_proof(config: &FriConfig) -> FriCommitProof<NoValue> {
