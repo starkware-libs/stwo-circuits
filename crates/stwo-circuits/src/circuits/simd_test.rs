@@ -1,6 +1,6 @@
 use expect_test::expect;
 use itertools::Itertools;
-use num_traits::One;
+use num_traits::{One, Zero};
 use rstest::rstest;
 use stwo::core::fields::cm31::CM31;
 use stwo::core::fields::m31::M31;
@@ -184,6 +184,76 @@ fn test_guess_inv_or_zero() {
     // As the value is not enforced, the circuit passes with a changed value as well.
     values[a_inv.get_packed()[0].idx] += QM31::from(1);
     context.circuit.check(&values).unwrap();
+}
+
+#[rstest]
+#[case::success(None)]
+#[case::has_zero2(Some(2))]
+#[case::has_zero5(Some(5))]
+fn test_inv(#[case] zero_idx: Option<usize>) {
+    let mut context = TraceContext::default();
+
+    let mut input_vals = vec![2, 3, 4, 5, 6, 7];
+    let mut expected_invs = input_vals.iter().map(|v| M31::one() / M31::from(*v)).collect_vec();
+
+    if let Some(zero_idx) = zero_idx {
+        input_vals[zero_idx] = 0;
+        expected_invs[zero_idx] = M31::zero();
+    }
+
+    let a = simd_from_u32s(&mut context, input_vals);
+    let a_inv = a.inv(&mut context);
+    assert_eq!(a_inv.len(), 6);
+
+    assert_eq!(
+        packed_values(&context, &a_inv),
+        &[
+            QM31(
+                CM31(expected_invs[0], expected_invs[1]),
+                CM31(expected_invs[2], expected_invs[3])
+            ),
+            QM31(CM31(expected_invs[4], expected_invs[5]), CM31::zero()),
+        ]
+    );
+
+    assert_eq!(context.is_circuit_valid(), zero_idx.is_none());
+}
+
+#[test]
+fn test_inv_circuit() {
+    let mut context = Context::<NoValue>::default();
+    let input = Simd::from_packed(vec![NoValue; 2].guess(&mut context), 6);
+    let res = input.inv(&mut context);
+
+    expect!["Simd { data: [[2], [3]], len: 6 }"].assert_eq(&format!("{input:?}"));
+    expect!["Simd { data: [[4], [5]], len: 6 }"].assert_eq(&format!("{res:?}"));
+    expect![[r#"
+        {
+            (0 + 0i) + (0 + 0i)u: [0],
+            (1 + 0i) + (0 + 0i)u: [1],
+            (1 + 1i) + (1 + 1i)u: [8],
+            (1 + 1i) + (0 + 0i)u: [10],
+        }
+    "#]]
+    .assert_debug_eq(&context.constants());
+    expect![[r#"
+        [0] = [0] + [0]
+        [1] = [1] + [0]
+        [2] = [2] + [0]
+        [3] = [3] + [0]
+        [4] = [4] + [0]
+        [5] = [5] + [0]
+        [8] = [8] + [0]
+        [10] = [10] + [0]
+        [9] = [7] - [8]
+        [6] = [4] x [2]
+        [7] = [5] x [3]
+        [11] = [9] x [10]
+        [6] = [8]
+        [11] = [0]
+
+    "#]]
+    .assert_debug_eq(&context.circuit);
 }
 
 #[rstest]
