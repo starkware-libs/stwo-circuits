@@ -1,5 +1,5 @@
 use crate::circuit_prover::preprocessed::generate_preprocessed_trace;
-use crate::circuits::circuit::{Add, Circuit, Eq, Mul, PointwiseMul, Sub};
+use crate::circuits::circuit::{Add, Circuit, Eq, Mul, PointwiseMul, Sub, Var};
 use expect_test::expect;
 use itertools::Itertools;
 use stwo::prover::backend::simd::m31::N_LANES;
@@ -14,12 +14,16 @@ fn test_generate_empty_preprocessed_trace() {
 #[test]
 fn test_generate_preprocessed_trace() {
     let mut circuit = Circuit::default();
-    circuit.add.push(Add { in0: 0, in1: 1, out: 2 });
-    circuit.add.push(Add { in0: 3, in1: 4, out: 5 });
-    circuit.sub.push(Sub { in0: 6, in1: 7, out: 8 });
-    circuit.mul.push(Mul { in0: 9, in1: 10, out: 11 });
-    circuit.pointwise_mul.push(PointwiseMul { in0: 12, in1: 13, out: 14 });
-    circuit.eq.push(Eq { in0: 15, in1: 16 });
+    circuit.add.push(Add { in0: Var { idx: 0 }, in1: Var { idx: 1 }, out: Var { idx: 2 } });
+    circuit.add.push(Add { in0: Var { idx: 3 }, in1: Var { idx: 4 }, out: Var { idx: 5 } });
+    circuit.sub.push(Sub { in0: Var { idx: 6 }, in1: Var { idx: 7 }, out: Var { idx: 8 } });
+    circuit.mul.push(Mul { in0: Var { idx: 9 }, in1: Var { idx: 10 }, out: Var { idx: 11 } });
+    circuit.pointwise_mul.push(PointwiseMul {
+        in0: Var { idx: 12 },
+        in1: Var { idx: 13 },
+        out: Var { idx: 14 },
+    });
+    circuit.eq.push(Eq { in0: Var { idx: 15 }, in1: Var { idx: 16 } });
     // TODO(Gali): Add blake gates
 
     let preprocessed_trace = generate_preprocessed_trace(&circuit);

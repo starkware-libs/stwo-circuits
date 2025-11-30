@@ -1,7 +1,8 @@
 use stwo::core::circle::{CirclePoint, M31_CIRCLE_GEN};
 use stwo::core::fields::m31::M31;
 
-use crate::circuits::context::{Context, Var};
+use crate::circuits::circuit::Var;
+use crate::circuits::context::Context;
 use crate::circuits::ivalue::IValue;
 use crate::circuits::simd::Simd;
 use crate::eval;

@@ -1,7 +1,8 @@
 use stwo::core::circle::CirclePoint;
 
 use crate::circuits::blake::{HashValue, blake};
-use crate::circuits::context::{Context, Var};
+use crate::circuits::circuit::Var;
+use crate::circuits::context::Context;
 use crate::circuits::ivalue::{IValue, qm31_from_u32s};
 use crate::circuits::ops::{div, eq, pointwise_mul};
 use crate::circuits::simd::Simd;

@@ -2,7 +2,8 @@ use num_traits::One;
 use stwo::core::circle::CirclePoint;
 use stwo::core::fields::m31::M31;
 
-use crate::circuits::context::{Context, Var};
+use crate::circuits::circuit::Var;
+use crate::circuits::context::Context;
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::{div, from_partial_evals};
 use crate::eval;

@@ -30,7 +30,7 @@ macro_rules! process_gate {
     ($gates:expr, [$($field:ident),+]) => {{
         let ($($field),+) = $gates
             .iter()
-            .map(|gate| ($(BaseField::from(gate.$field)),+))
+            .map(|gate| ($(BaseField::from(gate.$field.idx)),+))
             .multiunzip();
 
         [$($field),+].into_iter().map(to_padded_col).map(col_to_evaluation).collect_vec()

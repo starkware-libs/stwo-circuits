@@ -4,7 +4,8 @@ use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 
 use crate::circuits::EXTENSION_DEGREE;
-use crate::circuits::context::{Context, Var};
+use crate::circuits::circuit::Var;
+use crate::circuits::context::Context;
 use crate::circuits::ivalue::{IValue, NoValue};
 use crate::circuits::ops::{Guess, from_partial_evals, pointwise_mul};
 use crate::eval;

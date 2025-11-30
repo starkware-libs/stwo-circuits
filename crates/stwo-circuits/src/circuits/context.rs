@@ -2,7 +2,7 @@ use indexmap::IndexMap;
 use num_traits::{One, Zero};
 use stwo::core::fields::qm31::QM31;
 
-use crate::circuits::circuit::Circuit;
+use crate::circuits::circuit::{Circuit, Var};
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::guess;
 use crate::circuits::stats::Stats;
@@ -10,21 +10,6 @@ use crate::circuits::stats::Stats;
 #[cfg(test)]
 #[path = "context_test.rs"]
 pub mod test;
-
-/// Represents a variable in a [Circuit].
-///
-/// A [Var] represents a `QM31` value.
-/// In some cases, it may be restricted to an `M31` or a boolean value by adding constraints to the
-/// circuit. For example, `x = x * x` will enforce that `x` is either `0` or `1`.
-#[derive(Clone, Copy)]
-pub struct Var {
-    pub idx: usize,
-}
-impl std::fmt::Debug for Var {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[{}]", self.idx)
-    }
-}
 
 /// Represents the information required to build a [Circuit].
 ///
