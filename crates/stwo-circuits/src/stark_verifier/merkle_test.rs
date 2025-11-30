@@ -10,7 +10,7 @@ use crate::circuits::ops::Guess;
 use crate::circuits::wrappers::M31Wrapper;
 use crate::stark_verifier::merkle::{
     AuthPath, AuthPaths, LEAF_PREFIX, NODE_PREFIX, decommit_eval_domain_samples, hash_leaf_m31s,
-    hash_node, verify_merkle_path,
+    hash_leaf_qm31, hash_node, verify_merkle_path,
 };
 use crate::stark_verifier::oods::EvalDomainSamples;
 
@@ -33,6 +33,20 @@ fn hash_leaf_m31s_regression() {
 
     assert_eq!(context.get(hash.0), qm31_from_u32s(483650195, 1143215778, 1399105963, 121243225));
     assert_eq!(context.get(hash.1), qm31_from_u32s(1343116297, 264974384, 1201369425, 1524730384));
+
+    context.validate_circuit();
+}
+
+#[test]
+fn hash_leaf_qm31_regression() {
+    let mut context = TraceContext::default();
+
+    let value = qm31_from_u32s(106879334, 2000582330, 760086299, 1036436096).guess(&mut context);
+
+    let hash = hash_leaf_qm31(&mut context, value);
+
+    assert_eq!(context.get(hash.0), qm31_from_u32s(213309292, 1259059296, 2015672417, 84940378));
+    assert_eq!(context.get(hash.1), qm31_from_u32s(1355777445, 165748642, 250675744, 1548784467));
 
     context.validate_circuit();
 }

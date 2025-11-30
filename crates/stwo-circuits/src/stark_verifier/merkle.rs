@@ -54,8 +54,6 @@ impl<Value: IValue> Guess<Value> for AuthPaths<Value> {
 }
 
 /// Computes the hash of a Merkle leaf. The input is a vector of `M31` values.
-// TODO(lior): Remove the `allow(dead_code)` below, once the function is used.
-#[allow(dead_code)]
 fn hash_leaf_m31s(
     context: &mut Context<impl IValue>,
     values: &[M31Wrapper<Var>],
@@ -66,6 +64,19 @@ fn hash_leaf_m31s(
     data.extend_from_slice(leaf_packed.get_packed());
 
     blake(context, &data, 64 + values.len() * 4)
+}
+
+/// Computes the hash of a Merkle leaf with a single `QM31` value.
+pub fn hash_leaf_qm31(context: &mut Context<impl IValue>, value: Var) -> HashValue<Var> {
+    let data = [
+        context.constant(LEAF_PREFIX.into()),
+        context.zero(),
+        context.zero(),
+        context.zero(),
+        value,
+    ];
+
+    blake(context, &data, 80)
 }
 
 /// Computes the hash of an internal node in the Merkle tree.
