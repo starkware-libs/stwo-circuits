@@ -1,6 +1,7 @@
 use stwo::core::circle::CirclePoint;
 
-use crate::circuits::context::{Context, Var};
+use crate::circuits::circuit::Var;
+use crate::circuits::context::Context;
 use crate::circuits::ivalue::IValue;
 use crate::stark_verifier::proof::InteractionAtOods;
 

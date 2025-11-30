@@ -1,5 +1,6 @@
 use crate::circuits::blake::HashValue;
-use crate::circuits::context::{Context, Var};
+use crate::circuits::circuit::Var;
+use crate::circuits::context::Context;
 use crate::circuits::ivalue::{IValue, NoValue};
 use crate::circuits::ops::Guess;
 use crate::stark_verifier::fri_proof::{FriCommitProof, FriConfig, empty_fri_proof};
