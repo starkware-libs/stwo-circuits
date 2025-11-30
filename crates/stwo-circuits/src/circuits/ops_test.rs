@@ -1,8 +1,9 @@
 use expect_test::expect;
+use rstest::rstest;
 
 use crate::circuits::context::TraceContext;
 use crate::circuits::ivalue::qm31_from_u32s;
-use crate::circuits::ops::{div, eq, from_partial_evals, guess, pointwise_mul};
+use crate::circuits::ops::{div, eq, from_partial_evals, guess, pointwise_mul, select};
 use crate::circuits::stats::Stats;
 use crate::eval;
 
@@ -75,6 +76,19 @@ fn test_pointwise_mul() {
     let y = guess(&mut context, qm31_from_u32s(5, 6, 7, 8));
     let res = pointwise_mul(&mut context, x, y);
     assert_eq!(context.get(res), qm31_from_u32s(5, 12, 21, 32));
+    context.validate_circuit();
+}
+
+#[rstest]
+#[case::zero(0, 10)]
+#[case::one(1, 20)]
+fn test_select(#[case] selector: u32, #[case] result: u32) {
+    let mut context = TraceContext::default();
+    let selector = guess(&mut context, selector.into());
+    let if_zero = guess(&mut context, 10.into());
+    let if_one = guess(&mut context, 20.into());
+    let res = select(&mut context, selector, if_zero, if_one);
+    assert_eq!(context.get(res), result.into());
     context.validate_circuit();
 }
 
