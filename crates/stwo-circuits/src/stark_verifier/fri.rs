@@ -1,4 +1,5 @@
-use crate::circuits::context::{Context, Var};
+use crate::circuits::circuit::Var;
+use crate::circuits::context::Context;
 use crate::circuits::ivalue::IValue;
 use crate::stark_verifier::channel::Channel;
 use crate::stark_verifier::fri_proof::FriCommitProof;

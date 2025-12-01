@@ -1,7 +1,8 @@
 use itertools::zip_eq;
 
 use crate::circuits::blake::{HashValue, blake};
-use crate::circuits::context::{Context, Var};
+use crate::circuits::circuit::Var;
+use crate::circuits::context::Context;
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::{Guess, cond_flip, eq};
 use crate::circuits::simd::Simd;

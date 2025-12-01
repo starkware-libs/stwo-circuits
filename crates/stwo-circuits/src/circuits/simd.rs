@@ -6,7 +6,8 @@ use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 
 use crate::circuits::EXTENSION_DEGREE;
-use crate::circuits::context::{Context, Var};
+use crate::circuits::circuit::Var;
+use crate::circuits::context::Context;
 use crate::circuits::ivalue::{IValue, qm31_from_u32s};
 use crate::circuits::ops::{Guess, add, eq, pointwise_mul, sub};
 use crate::circuits::wrappers::M31Wrapper;

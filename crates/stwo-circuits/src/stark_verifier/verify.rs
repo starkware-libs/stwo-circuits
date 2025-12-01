@@ -1,6 +1,7 @@
 use itertools::{Itertools, chain};
 
-use crate::circuits::context::{Context, Var};
+use crate::circuits::circuit::Var;
+use crate::circuits::context::Context;
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::eq;
 use crate::circuits::simd::Simd;

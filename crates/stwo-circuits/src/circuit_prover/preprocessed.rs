@@ -25,7 +25,7 @@ fn col_to_evaluation(
 macro_rules! process_gate {
     ($gates:expr, [$($field:ident),+]) => {{
         $(
-            let $field = $gates.iter().map(|gate| BaseField::from(gate.$field)).collect_vec();
+            let $field = $gates.iter().map(|gate| BaseField::from(gate.$field.idx)).collect_vec();
         )+
 
         vec![$($field),+].into_iter().map(|field| col_to_evaluation(to_col(field))).collect_vec()

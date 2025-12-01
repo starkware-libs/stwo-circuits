@@ -4,7 +4,8 @@ use stwo::core::vcs::blake2_hash::Blake2sHash;
 use stwo::core::{fields::qm31::QM31, vcs::blake2_hash::reduce_to_m31};
 
 use crate::circuits::circuit::Blake;
-use crate::circuits::context::{Context, Var};
+use crate::circuits::circuit::Var;
+use crate::circuits::context::Context;
 use crate::circuits::ivalue::{IValue, qm31_from_u32s};
 use crate::circuits::ops::Guess;
 
@@ -90,15 +91,15 @@ pub fn blake<Value: IValue>(
     let out = Value::blake(&input.iter().map(|v| context.get(*v)).collect::<Vec<_>>(), n_bytes);
 
     // Pad input with zeros and split into chunks of 4 [QM31] values.
-    let zero_idx = context.zero().idx;
+    let zero_var = context.zero();
     let chunks = input
         .iter()
         .chunks(4)
         .into_iter()
         .map(|chunk| {
-            let mut res = [zero_idx; 4];
+            let mut res = [zero_var; 4];
             for (i, v) in chunk.enumerate() {
-                res[i] = v.idx;
+                res[i] = *v;
             }
             res
         })
@@ -108,12 +109,7 @@ pub fn blake<Value: IValue>(
     let out_var0 = context.new_var(out.0);
     let out_var1 = context.new_var(out.1);
 
-    context.circuit.blake.push(Blake {
-        input: chunks,
-        n_bytes,
-        out0: out_var0.idx,
-        out1: out_var1.idx,
-    });
+    context.circuit.blake.push(Blake { input: chunks, n_bytes, out0: out_var0, out1: out_var1 });
 
     HashValue(out_var0, out_var1)
 }
