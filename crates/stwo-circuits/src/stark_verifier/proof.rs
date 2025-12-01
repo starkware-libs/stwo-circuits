@@ -132,7 +132,7 @@ impl<T> Proof<T> {
     }
 
     /// Returns the list of all 4 roots.
-    pub fn roots(&self) -> [HashValue<T>; N_TRACES]
+    pub fn merkle_roots(&self) -> [HashValue<T>; N_TRACES]
     where
         T: Copy,
     {
