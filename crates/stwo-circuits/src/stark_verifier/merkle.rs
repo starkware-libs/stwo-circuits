@@ -1,6 +1,7 @@
 use crate::circuits::blake::{HashValue, blake};
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
+use crate::circuits::ops::Guess;
 use crate::circuits::simd::Simd;
 
 #[cfg(test)]
@@ -9,6 +10,37 @@ pub mod test;
 
 const LEAF_HASH: u32 = 0x6661656c; // 'leaf'.
 const NODE_HASH: u32 = 0x65646f6e; // 'node'.
+
+/// Represents an authentication path in a Merkle tree.
+#[derive(Clone, Debug)]
+pub struct AuthPath<T>(pub Vec<HashValue<T>>);
+
+impl<Value: IValue> Guess<Value> for AuthPath<Value> {
+    type Target = AuthPath<Var>;
+
+    fn guess(&self, context: &mut Context<Value>) -> Self::Target {
+        AuthPath(self.0.guess(context))
+    }
+}
+
+/// Represents the collection of authentication paths for a set of trees.
+pub struct AuthPaths<T> {
+    // For each tree, for each query, the authentication path.
+    pub data: Vec<Vec<AuthPath<T>>>,
+}
+impl<T> AuthPaths<T> {
+    pub fn at(&self, tree_idx: usize, query_idx: usize) -> &AuthPath<T> {
+        &self.data[tree_idx][query_idx]
+    }
+}
+
+impl<Value: IValue> Guess<Value> for AuthPaths<Value> {
+    type Target = AuthPaths<Var>;
+
+    fn guess(&self, context: &mut Context<Value>) -> Self::Target {
+        AuthPaths { data: self.data.guess(context) }
+    }
+}
 
 /// Computes the hash of a Merkle leaf. The input is a vector of `M31` values.
 ///
