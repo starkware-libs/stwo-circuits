@@ -96,10 +96,13 @@ pub fn pointwise_mul<Value: IValue>(context: &mut Context<Value>, a: Var, b: Var
     out
 }
 
-/// Returns `if_zero` if `selector` is 0, and `if_one` if `selector` is 1.
+/// Returns `(a, b)` if `selector` is 0, and `(b, a)` if `selector` is 1.
 /// Assumption: `selector` is either 0 or 1.
-pub fn select(context: &mut Context<impl IValue>, selector: Var, if_zero: Var, if_one: Var) -> Var {
-    eval!(context, (if_zero) + ((selector) * ((if_one) - (if_zero))))
+pub fn cond_flip(context: &mut Context<impl IValue>, selector: Var, a: Var, b: Var) -> (Var, Var) {
+    let diff = eval!(context, (selector) * ((b) - (a)));
+    let res_a = eval!(context, (a) + (diff));
+    let res_b = eval!(context, (b) - (diff));
+    (res_a, res_b)
 }
 
 /// Returns a new unconstrained variable with the given value.
