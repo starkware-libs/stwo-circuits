@@ -7,6 +7,7 @@ use crate::circuits::simd::Simd;
 use crate::stark_verifier::channel::Channel;
 use crate::stark_verifier::fri::fri_commit;
 use crate::stark_verifier::merkle::decommit_eval_domain_samples;
+use crate::stark_verifier::oods::collect_oods_responses;
 use crate::stark_verifier::oods::extract_expected_composition_eval;
 use crate::stark_verifier::proof::{Proof, ProofConfig};
 use crate::stark_verifier::select_queries::{
@@ -103,8 +104,11 @@ pub fn verify(
         &proof.eval_domain_samples,
         &proof.eval_domain_auth_paths,
         &bits,
-        &proof.roots(),
+        &proof.merkle_roots(),
     );
+
+    // Compute FRI input.
+    let _oods_responses = collect_oods_responses(context, config, oods_point, proof);
 
     // TODO(lior): Complete the verification.
 }
