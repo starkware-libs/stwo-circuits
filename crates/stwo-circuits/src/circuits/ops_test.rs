@@ -1,9 +1,14 @@
 use expect_test::expect;
+use num_traits::Zero;
 use rstest::rstest;
+use stwo::core::fields::cm31::CM31;
+use stwo::core::fields::m31::P;
 
 use crate::circuits::context::TraceContext;
 use crate::circuits::ivalue::qm31_from_u32s;
-use crate::circuits::ops::{cond_flip, div, eq, from_partial_evals, guess, pointwise_mul};
+use crate::circuits::ops::{
+    Guess, cond_flip, conj, div, eq, from_partial_evals, guess, pointwise_mul,
+};
 use crate::circuits::stats::Stats;
 use crate::eval;
 
@@ -90,6 +95,40 @@ fn test_select(#[case] selector: u32, #[case] result: (u32, u32)) {
     let res = cond_flip(&mut context, selector, a, b);
     assert_eq!(context.get(res.0), result.0.into());
     assert_eq!(context.get(res.1), result.1.into());
+    context.validate_circuit();
+}
+
+#[test]
+fn test_conj() {
+    let mut context = TraceContext::default();
+    let a = qm31_from_u32s(1, 2, 3, 4).guess(&mut context);
+    let b = conj(&mut context, a);
+    assert_eq!(context.get(b), qm31_from_u32s(1, 2, P - 3, P - 4));
+
+    // Multiplying by the conjugate should result in a value in `CM31`.
+    let c = eval!(&mut context, (a) * (b));
+    assert_eq!(context.get(c).1, CM31::zero());
+
+    expect!["[4], [5]"].assert_eq(&format!("{b:?}, {c:?}"));
+    expect![[r#"
+        {
+            (0 + 0i) + (0 + 0i)u: [0],
+            (1 + 0i) + (0 + 0i)u: [1],
+            (1 + 1i) + (2147483646 + 2147483646i)u: [3],
+        }
+    "#]]
+    .assert_debug_eq(&context.constants());
+    expect![[r#"
+        [0] = [0] + [0]
+        [1] = [1] + [0]
+        [2] = [2] + [0]
+        [3] = [3] + [0]
+        [5] = [2] * [4]
+        [4] = [2] x [3]
+
+    "#]]
+    .assert_debug_eq(&context.circuit);
+
     context.validate_circuit();
 }
 
