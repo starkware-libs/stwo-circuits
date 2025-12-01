@@ -7,6 +7,7 @@ pub mod ivalue;
 pub mod ops;
 pub mod simd;
 pub mod stats;
+pub mod wrappers;
 
 #[cfg(test)]
 pub mod test_utils;

@@ -5,6 +5,7 @@ use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::{Guess, cond_flip, eq};
 use crate::circuits::simd::Simd;
+use crate::circuits::wrappers::M31Wrapper;
 
 #[cfg(test)]
 #[path = "merkle_test.rs"]
@@ -45,11 +46,12 @@ impl<Value: IValue> Guess<Value> for AuthPaths<Value> {
 }
 
 /// Computes the hash of a Merkle leaf. The input is a vector of `M31` values.
-///
-/// NOTE: The caller must check that all input values are in the base field `M31`.
 // TODO(lior): Remove the `allow(dead_code)` below, once the function is used.
 #[allow(dead_code)]
-fn hash_leaf_m31s(context: &mut Context<impl IValue>, values: &[Var]) -> HashValue<Var> {
+fn hash_leaf_m31s(
+    context: &mut Context<impl IValue>,
+    values: &[M31Wrapper<Var>],
+) -> HashValue<Var> {
     let leaf_packed = Simd::pack(context, values);
     let mut data =
         vec![context.constant(LEAF_PREFIX.into()), context.zero(), context.zero(), context.zero()];
