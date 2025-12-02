@@ -7,7 +7,7 @@ use crate::stark_verifier::fri_proof::FriCommitProof;
 #[path = "fri_test.rs"]
 pub mod test;
 
-// Commits to the FRI layers and returns the random alphas.
+/// Commits to the FRI layers and returns the random alphas.
 pub fn fri_commit(
     context: &mut Context<impl IValue>,
     channel: &mut Channel,
