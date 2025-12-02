@@ -7,7 +7,7 @@ use stwo::core::proof::ExtendedStarkProof;
 use stwo::core::vcs::blake2_merkle::Blake2sM31MerkleHasher;
 
 use crate::circuits::ivalue::qm31_from_u32s;
-use crate::stark_verifier::fri_proof::FriCommitProof;
+use crate::stark_verifier::fri_proof::{FriCommitProof, FriProof};
 use crate::stark_verifier::merkle::{AuthPath, AuthPaths};
 use crate::stark_verifier::oods::EvalDomainSamples;
 use crate::stark_verifier::proof::{InteractionAtOods, N_TRACES, Proof, ProofConfig};
@@ -38,13 +38,17 @@ pub fn proof_from_stark_proof(
         composition_eval_at_oods: as_single_row(&sampled_values[3]).try_into().unwrap(),
         eval_domain_samples: construct_eval_domain_samples(proof, config),
         eval_domain_auth_paths: construct_eval_domain_auth_paths(proof, config),
-        fri: FriCommitProof {
-            layer_commitments: chain!(
-                [fri_proof.first_layer.commitment.into()],
-                fri_proof.inner_layers.iter().map(|layer| layer.commitment.into()),
-            )
-            .collect(),
-            last_layer_coefs: (*fri_proof.last_layer_poly).to_vec(),
+        fri: FriProof {
+            commit: FriCommitProof {
+                layer_commitments: chain!(
+                    [fri_proof.first_layer.commitment.into()],
+                    fri_proof.inner_layers.iter().map(|layer| layer.commitment.into()),
+                )
+                .collect(),
+                last_layer_coefs: (*fri_proof.last_layer_poly).to_vec(),
+            },
+            auth_paths: construct_fri_auth_paths(proof, config),
+            fri_siblings: construct_fri_siblings(proof, config),
         },
         proof_of_work_nonce: qm31_from_u32s(pow_low, pow_high, 0, 0),
     }
@@ -124,4 +128,56 @@ fn construct_eval_domain_auth_paths(
         .collect();
 
     AuthPaths { data: res }
+}
+
+/// Constructs [AuthPaths] for the FRI trees with the values from the given proof
+/// ([ExtendedStarkProof]).
+fn construct_fri_auth_paths(
+    proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
+    config: &ProofConfig,
+) -> AuthPaths<QM31> {
+    let unsorted_query_locations = &proof.aux.unsorted_query_locations;
+    let layers = chain!([&proof.aux.fri.first_layer], &proof.aux.fri.inner_layers);
+    let res = layers
+        .enumerate()
+        .map(|(tree_idx, aux)| {
+            unsorted_query_locations
+                .iter()
+                .map(|query| {
+                    let mut pos = *query;
+                    pos >>= tree_idx;
+                    let mut auth_path: AuthPath<QM31> = AuthPath(vec![]);
+                    for j in 0..config.log_evaluation_domain_size() - tree_idx {
+                        let hash = aux.decommitment.all_node_values[j + 1][&(pos ^ 1)];
+                        auth_path.0.push(hash.into());
+                        pos >>= 1;
+                    }
+                    auth_path
+                })
+                .collect()
+        })
+        .collect();
+
+    AuthPaths { data: res }
+}
+
+/// Constructs the vector of siblings for the FRI trees with the values from the given proof
+/// ([ExtendedStarkProof]).
+///
+/// For each tree, for each query, the sibling of the relevant node in FRI.
+fn construct_fri_siblings(
+    proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
+    config: &ProofConfig,
+) -> Vec<Vec<QM31>> {
+    let mut res = vec![vec![]; config.log_trace_size()];
+    let layers = chain!([&proof.aux.fri.first_layer], &proof.aux.fri.inner_layers).collect_vec();
+    for query in &proof.aux.unsorted_query_locations {
+        let mut pos = *query;
+        for j in 0..config.log_trace_size() {
+            let sibling = layers[j].all_values[0][&(pos ^ 1)];
+            pos >>= 1;
+            res[j].push(sibling);
+        }
+    }
+    res
 }

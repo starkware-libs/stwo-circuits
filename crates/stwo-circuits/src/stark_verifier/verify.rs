@@ -87,7 +87,7 @@ pub fn verify(
     let oods_quotient_coef = channel.draw_qm31(context);
 
     // Run the commit phase of FRI.
-    let _fri_alphas = fri_commit(context, &mut channel, &proof.fri);
+    let _fri_alphas = fri_commit(context, &mut channel, &proof.fri.commit);
 
     // Proof of work before query selection.
     channel.proof_of_work(context, config.n_proof_of_work_bits, proof.proof_of_work_nonce);
