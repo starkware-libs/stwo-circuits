@@ -7,6 +7,8 @@ use crate::stark_verifier::oods::{
     EvalDomainSamples, N_COMPOSITION_COLUMNS, empty_eval_domain_samples,
 };
 
+pub const N_TRACES: usize = 4;
+
 /// Represents the structure of a proof.
 pub struct ProofConfig {
     // TODO(lior): Add a check on the total security bits of the protocol given parameters
@@ -36,8 +38,8 @@ impl ProofConfig {
         self.fri.n_queries
     }
 
-    /// Returns the number of columns for each of the 4 traces.
-    pub fn n_columns_per_trace(&self) -> [usize; 4] {
+    /// Returns the number of columns for each of the traces.
+    pub fn n_columns_per_trace(&self) -> [usize; N_TRACES] {
         [
             self.n_preprocessed_columns,
             self.n_trace_columns,

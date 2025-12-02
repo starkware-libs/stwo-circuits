@@ -27,9 +27,18 @@ pub struct EvalDomainSamples<T> {
 }
 
 impl<T> EvalDomainSamples<T> {
+    pub fn n_traces(&self) -> usize {
+        self.data.len()
+    }
+
     /// Returns the sampled value for the given trace, query, and column.
     pub fn at(&self, trace_idx: usize, query_idx: usize, column_idx: usize) -> &T {
         self.data[trace_idx][query_idx][column_idx].get()
+    }
+
+    /// Returns the data vector for the given trace.
+    pub fn data_for_trace(&self, trace_idx: usize) -> &[Vec<M31Wrapper<T>>] {
+        &self.data[trace_idx]
     }
 
     /// Validates that the size of the vectors in the struct are consistent with the
