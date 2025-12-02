@@ -114,15 +114,26 @@ pub fn verify_merkle_path<Value: IValue>(
     auth_path: &AuthPath<Var>,
 ) {
     for (bit, sibling) in zip_eq(bits, &auth_path.0) {
-        // Store leaf and sibling in the left and right children.
-        let (left0, right0) = cond_flip(context, *bit, leaf.0, sibling.0);
-        let (left1, right1) = cond_flip(context, *bit, leaf.1, sibling.1);
-
-        // Compute the next layer's node.
-        leaf = hash_node(context, HashValue(left0, left1), HashValue(right0, right1));
+        leaf = merkle_node(context, &leaf, sibling, *bit);
     }
     eq(context, leaf.0, root.0);
     eq(context, leaf.1, root.1);
+}
+
+/// Computes a node of a Merkle tree, given one child `node`, its sibling and the
+/// bit indicating which child is `node`.
+pub fn merkle_node<Value: IValue>(
+    context: &mut Context<Value>,
+    node: &HashValue<Var>,
+    sibling: &HashValue<Var>,
+    bit: Var,
+) -> HashValue<Var> {
+    // Store leaf and sibling in the left and right children.
+    let (left0, right0) = cond_flip(context, bit, node.0, sibling.0);
+    let (left1, right1) = cond_flip(context, bit, node.1, sibling.1);
+
+    // Compute the next layer's node.
+    hash_node(context, HashValue(left0, left1), HashValue(right0, right1))
 }
 
 /// Verifies that the queries in `eval_domain_samples` are consistent with the Merkle roots.

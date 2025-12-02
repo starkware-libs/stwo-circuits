@@ -5,7 +5,7 @@ use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::eq;
 use crate::circuits::simd::Simd;
 use crate::stark_verifier::channel::Channel;
-use crate::stark_verifier::fri::fri_commit;
+use crate::stark_verifier::fri::{fri_commit, fri_decommit};
 use crate::stark_verifier::merkle::decommit_eval_domain_samples;
 use crate::stark_verifier::oods::{
     collect_oods_responses, compute_fri_input, extract_expected_composition_eval,
@@ -87,7 +87,7 @@ pub fn verify(
     let oods_quotient_coef = channel.draw_qm31(context);
 
     // Run the commit phase of FRI.
-    let _fri_alphas = fri_commit(context, &mut channel, &proof.fri.commit);
+    let fri_alphas = fri_commit(context, &mut channel, &proof.fri.commit);
 
     // Proof of work before query selection.
     channel.proof_of_work(context, config.n_proof_of_work_bits, proof.proof_of_work_nonce);
@@ -110,7 +110,7 @@ pub fn verify(
 
     // Compute FRI input.
     let oods_responses = collect_oods_responses(context, config, oods_point, proof);
-    let _fri_input = compute_fri_input(
+    let fri_input = compute_fri_input(
         context,
         &oods_responses,
         &queries,
@@ -118,5 +118,5 @@ pub fn verify(
         oods_quotient_coef,
     );
 
-    // TODO(lior): Complete the verification.
+    fri_decommit(context, &proof.fri, &config.fri, &fri_input, &bits, &queries.points, &fri_alphas);
 }
