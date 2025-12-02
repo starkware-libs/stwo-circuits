@@ -149,7 +149,10 @@ fn construct_fri_auth_paths(
                     let mut auth_path: AuthPath<QM31> = AuthPath(vec![]);
                     for j in 0..config.log_evaluation_domain_size() - tree_idx {
                         let hash = aux.decommitment.all_node_values[j + 1][&(pos ^ 1)];
-                        auth_path.0.push(hash.into());
+                        if j > 0 {
+                            // Don't add the first hash because it's computed from the fri sibling.
+                            auth_path.0.push(hash.into());
+                        }
                         pos >>= 1;
                     }
                     auth_path

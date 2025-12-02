@@ -76,7 +76,9 @@ impl<T> FriProof<T> {
         for (tree_idx, tree_data) in auth_paths.data.iter().enumerate() {
             assert_eq!(tree_data.len(), config.n_queries);
             for query_data in tree_data {
-                assert_eq!(query_data.0.len(), log_evaluation_domain_size - tree_idx);
+                // Reduce size by 1 because we take the sibling of the leaf from `fri_siblings`
+                // rather than `auth_paths`.
+                assert_eq!(query_data.0.len(), log_evaluation_domain_size - tree_idx - 1);
             }
         }
 
@@ -105,7 +107,9 @@ pub fn empty_fri_proof(config: &FriConfig) -> FriProof<NoValue> {
         data: (0..config.log_trace_size)
             .map(|tree_idx| {
                 vec![
-                    AuthPath(vec![empty_hash; config.log_evaluation_domain_size() - tree_idx]);
+                    // Reduce size by 1 because we take the sibling of the leaf from `fri_siblings`
+                    // rather than `auth_paths`.
+                    AuthPath(vec![empty_hash; config.log_evaluation_domain_size() - tree_idx - 1]);
                     config.n_queries
                 ]
             })
