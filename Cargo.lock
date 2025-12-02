@@ -796,12 +796,12 @@ dependencies = [
 [[package]]
 name = "std-shims"
 version = "0.1.0"
-source = "git+https://github.com/starkware-libs/stwo?rev=f7179282#f7179282222b7e976c2b76396ecde63d8da2d330"
+source = "git+https://github.com/starkware-libs/stwo?rev=6ec8e7b1#6ec8e7b1c8df61bf8aa12c7c4d545479aba65242"
 
 [[package]]
 name = "stwo"
 version = "0.1.1"
-source = "git+https://github.com/starkware-libs/stwo?rev=f7179282#f7179282222b7e976c2b76396ecde63d8da2d330"
+source = "git+https://github.com/starkware-libs/stwo?rev=6ec8e7b1#6ec8e7b1c8df61bf8aa12c7c4d545479aba65242"
 dependencies = [
  "blake2",
  "blake3",
@@ -843,7 +843,7 @@ dependencies = [
 [[package]]
 name = "stwo-constraint-framework"
 version = "0.1.1"
-source = "git+https://github.com/starkware-libs/stwo?rev=f7179282#f7179282222b7e976c2b76396ecde63d8da2d330"
+source = "git+https://github.com/starkware-libs/stwo?rev=6ec8e7b1#6ec8e7b1c8df61bf8aa12c7c4d545479aba65242"
 dependencies = [
  "hashbrown",
  "itertools 0.12.1",

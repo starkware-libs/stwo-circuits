@@ -8,10 +8,9 @@ use stwo::core::vcs::blake2_merkle::Blake2sM31MerkleHasher;
 
 use crate::circuits::ivalue::qm31_from_u32s;
 use crate::stark_verifier::fri_proof::FriCommitProof;
+use crate::stark_verifier::merkle::{AuthPath, AuthPaths};
 use crate::stark_verifier::oods::EvalDomainSamples;
-use crate::stark_verifier::proof::InteractionAtOods;
-use crate::stark_verifier::proof::Proof;
-use crate::stark_verifier::proof::ProofConfig;
+use crate::stark_verifier::proof::{InteractionAtOods, N_TRACES, Proof, ProofConfig};
 
 /// Constructs [Proof] with the values from the given proof ([ExtendedStarkProof]).
 pub fn proof_from_stark_proof(
@@ -38,6 +37,7 @@ pub fn proof_from_stark_proof(
         },
         composition_eval_at_oods: as_single_row(&sampled_values[3]).try_into().unwrap(),
         eval_domain_samples: construct_eval_domain_samples(proof, config),
+        eval_domain_auth_paths: construct_eval_domain_auth_paths(proof, config),
         fri: FriCommitProof {
             layer_commitments: chain!(
                 [fri_proof.first_layer.commitment.into()],
@@ -70,7 +70,7 @@ fn construct_eval_domain_samples(
     let queried_values = &proof.proof.queried_values;
 
     let n_queries = config.n_queries();
-    let mut data: Vec<Vec<Vec<M31>>> = vec![vec![vec![]; n_queries]; 4];
+    let mut data: Vec<Vec<Vec<M31>>> = vec![vec![vec![]; n_queries]; N_TRACES];
 
     // Map from query position to its one or more indices in
     // `extra_proof_data.unsorted_query_locations`.
@@ -93,4 +93,35 @@ fn construct_eval_domain_samples(
     }
 
     EvalDomainSamples::from_m31s(data)
+}
+
+/// Constructs [AuthPaths] for the evaluation domain queries (the in-domain queries) with the values
+/// from the given proof ([ExtendedStarkProof]).
+fn construct_eval_domain_auth_paths(
+    proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
+    config: &ProofConfig,
+) -> AuthPaths<QM31> {
+    let unsorted_query_locations = &proof.aux.unsorted_query_locations;
+    let res = proof
+        .aux
+        .trace_decommitment
+        .iter()
+        .map(|merkle_decommitment_aux| {
+            unsorted_query_locations
+                .iter()
+                .map(|query_idx| {
+                    let mut auth_path: AuthPath<QM31> = AuthPath(vec![]);
+                    let mut pos = *query_idx;
+                    for j in 0..config.log_evaluation_domain_size() {
+                        let hash = merkle_decommitment_aux.all_node_values[j + 1][&(pos ^ 1)];
+                        auth_path.0.push(hash.into());
+                        pos >>= 1;
+                    }
+                    auth_path
+                })
+                .collect()
+        })
+        .collect();
+
+    AuthPaths { data: res }
 }
