@@ -2,7 +2,7 @@ use crate::circuits::blake::HashValue;
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::{IValue, NoValue};
 use crate::circuits::ops::Guess;
-use crate::stark_verifier::fri_proof::{FriCommitProof, FriConfig, empty_fri_proof};
+use crate::stark_verifier::fri_proof::{FriConfig, FriProof, empty_fri_proof};
 use crate::stark_verifier::merkle::{AuthPath, AuthPaths};
 use crate::stark_verifier::oods::{
     EvalDomainSamples, N_COMPOSITION_COLUMNS, empty_eval_domain_samples,
@@ -108,7 +108,7 @@ pub struct Proof<T> {
     pub eval_domain_auth_paths: AuthPaths<T>,
 
     pub proof_of_work_nonce: T,
-    pub fri: FriCommitProof<T>,
+    pub fri: FriProof<T>,
     // TODO(lior): Add missing fields.
 }
 impl<T> Proof<T> {

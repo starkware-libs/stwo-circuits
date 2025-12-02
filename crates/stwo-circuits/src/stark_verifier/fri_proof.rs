@@ -2,6 +2,7 @@ use crate::circuits::blake::HashValue;
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::{IValue, NoValue};
 use crate::circuits::ops::Guess;
+use crate::stark_verifier::merkle::{AuthPath, AuthPaths};
 
 /// Represents the structure of a FRI proof.
 pub struct FriConfig {
@@ -51,10 +52,70 @@ impl<Value: IValue> Guess<Value> for FriCommitProof<Value> {
     }
 }
 
-pub fn empty_fri_proof(config: &FriConfig) -> FriCommitProof<NoValue> {
+/// Represents the information required to verify a FRI proof.
+pub struct FriProof<T> {
+    /// Information regarding the FRI commitment phase.
+    pub commit: FriCommitProof<T>,
+    /// Authentication paths for all the FRI trees.
+    pub auth_paths: AuthPaths<T>,
+    /// For each layer, for each query, the sibling value.
+    pub fri_siblings: Vec<Vec<T>>,
+}
+
+impl<T> FriProof<T> {
+    /// Validates that the size of the members of the struct are consistent with the config.
+    pub fn validate_structure(&self, config: &FriConfig) {
+        let FriProof { commit, auth_paths, fri_siblings } = self;
+        let log_evaluation_domain_size = config.log_evaluation_domain_size();
+
+        commit.validate_structure(config);
+
+        assert_eq!(auth_paths.data.len(), config.log_trace_size);
+        for (tree_idx, tree_data) in auth_paths.data.iter().enumerate() {
+            assert_eq!(tree_data.len(), config.n_queries);
+            for query_data in tree_data {
+                assert_eq!(query_data.0.len(), log_evaluation_domain_size - tree_idx);
+            }
+        }
+
+        assert_eq!(fri_siblings.len(), config.log_trace_size);
+        for siblings in fri_siblings {
+            assert_eq!(siblings.len(), config.n_queries);
+        }
+    }
+}
+
+impl<Value: IValue> Guess<Value> for FriProof<Value> {
+    type Target = FriProof<Var>;
+
+    fn guess(&self, context: &mut Context<Value>) -> Self::Target {
+        Self::Target {
+            commit: self.commit.guess(context),
+            auth_paths: self.auth_paths.guess(context),
+            fri_siblings: self.fri_siblings.guess(context),
+        }
+    }
+}
+
+pub fn empty_fri_proof(config: &FriConfig) -> FriProof<NoValue> {
     let empty_hash = HashValue(NoValue, NoValue);
-    FriCommitProof {
-        layer_commitments: vec![empty_hash; config.log_trace_size],
-        last_layer_coefs: vec![NoValue; 1 << config.log_n_last_layer_coefs],
+    let auth_paths = AuthPaths {
+        data: (0..config.log_trace_size)
+            .map(|tree_idx| {
+                vec![
+                    AuthPath(vec![empty_hash; config.log_evaluation_domain_size() - tree_idx]);
+                    config.n_queries
+                ]
+            })
+            .collect(),
+    };
+
+    FriProof {
+        commit: FriCommitProof {
+            layer_commitments: vec![empty_hash; config.log_trace_size],
+            last_layer_coefs: vec![NoValue; 1 << config.log_n_last_layer_coefs],
+        },
+        auth_paths,
+        fri_siblings: vec![vec![NoValue; config.n_queries]; config.log_trace_size],
     }
 }
