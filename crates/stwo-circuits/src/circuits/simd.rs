@@ -137,6 +137,21 @@ impl Simd {
         Simd::eq(context, self, &input_sqr);
     }
 
+    /// Computes the inverse of each `M31` in the current [Simd].
+    ///
+    /// In particular, guarantees that all values are non-zero.
+    pub fn inv(&self, context: &mut Context<impl IValue>) -> Simd {
+        let res = self.guess_inv_or_zero(context);
+        let prod = Simd::mul(context, &res, self);
+        let one = Simd::one(context, self.len);
+
+        // Note that `Simd::eq` applies only to the first `self.len` values.
+        // The rest will remain unconstrained.
+        Simd::eq(context, &prod, &one);
+
+        res
+    }
+
     /// Returns an *unconstrained* [Simd] initialized (hint) with the LSB of each `M31` in the
     /// current [Simd].
     ///
