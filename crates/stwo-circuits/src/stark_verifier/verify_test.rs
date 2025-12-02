@@ -1,4 +1,6 @@
+use num_traits::One;
 use rstest::rstest;
+use stwo::core::fields::qm31::QM31;
 use stwo::core::vcs::blake2_hash::Blake2sHash;
 
 use crate::circuits::context::{Context, TraceContext};
@@ -16,11 +18,17 @@ enum ProofModifier {
     None,
     /// Modify an element of the authentication path for one of the traces.
     WrongTraceAuthPath,
+    /// Modify an element of the first layer Merkle authentication path (decommitment).
+    WrongFriAuthPath,
+    /// Modify the siblings in the last inner layer of FRI.
+    WrongFriSibling,
 }
 
 #[rstest]
 #[case::success(ProofModifier::None)]
 #[case::wrong_trace_auth_path(ProofModifier::WrongTraceAuthPath)]
+#[case::wrong_fri_auth_path(ProofModifier::WrongFriAuthPath)]
+#[case::wrong_fri_sibling(ProofModifier::WrongFriSibling)]
 fn test_verify(#[case] proof_modifier: ProofModifier) {
     let config = ProofConfig {
         n_proof_of_work_bits: 10,
@@ -50,9 +58,22 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
         ProofModifier::None => {}
         ProofModifier::WrongTraceAuthPath => {
             let first_query = proof.aux.unsorted_query_locations[0];
+            // `trace_decommitment[1]` refers to the main trace.
             let first_layer_values = &mut proof.aux.trace_decommitment[1].all_node_values[1];
             let value: &mut Blake2sHash = first_layer_values.get_mut(&(first_query ^ 1)).unwrap();
             value.0[0] ^= 1;
+        }
+        ProofModifier::WrongFriAuthPath => {
+            let first_query = proof.aux.unsorted_query_locations[0];
+            let first_layer_values = &mut proof.aux.fri.first_layer.decommitment.all_node_values[1];
+            let value: &mut Blake2sHash = first_layer_values.get_mut(&(first_query ^ 1)).unwrap();
+            value.0[0] ^= 1;
+        }
+        ProofModifier::WrongFriSibling => {
+            let values = &mut proof.aux.fri.inner_layers.last_mut().unwrap().all_values[0];
+            for (_, value) in values.iter_mut() {
+                *value += QM31::one();
+            }
         }
     }
     let mut context = TraceContext::default();
@@ -72,6 +93,18 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
             let err = result.unwrap_err();
             // The error should be when comparing the main trace root.
             let expected_value = context.get(proof_vars.trace_root.0);
+            assert!(err.contains(&expected_value.to_string()));
+        }
+        ProofModifier::WrongFriAuthPath => {
+            let err = result.unwrap_err();
+            // The error should be when comparing the first layer Merkle root.
+            let expected_value = context.get(proof_vars.fri.commit.layer_commitments[0].0);
+            assert!(err.contains(&expected_value.to_string()));
+        }
+        ProofModifier::WrongFriSibling => {
+            let err = result.unwrap_err();
+            // The error should be when comparing the last layer coefficient.
+            let expected_value = context.get(proof_vars.fri.commit.last_layer_coefs[0]);
             assert!(err.contains(&expected_value.to_string()));
         }
     }
