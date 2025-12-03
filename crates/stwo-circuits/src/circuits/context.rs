@@ -1,3 +1,4 @@
+use hashbrown::HashSet;
 use indexmap::IndexMap;
 use num_traits::{One, Zero};
 use stwo::core::fields::qm31::QM31;
@@ -39,6 +40,9 @@ pub struct Context<Value: IValue> {
     constants: IndexMap<QM31, Var>,
     values: Vec<Value>,
     pub stats: Stats,
+    /// Set of variables that were marked by the code as "unused".
+    /// Used in [Self::check_vars_used].
+    unused_vars: HashSet<usize>,
 }
 impl<Value: IValue> Context<Value> {
     pub fn values(&self) -> &Vec<Value> {
@@ -79,6 +83,32 @@ impl<Value: IValue> Context<Value> {
             var
         }
     }
+
+    /// Marks a variable as unused.
+    ///
+    /// See [Self::check_vars_used].
+    pub fn mark_as_unused(&mut self, var: Var) {
+        assert!(self.unused_vars.insert(var.idx));
+    }
+
+    /// Checks that all the variables that were defined are used in the circuit by some gate.
+    ///
+    /// This is a sanity check for the correction of the circuit.
+    ///
+    /// Variables that were marked as unused by the code are excluded.
+    pub fn check_vars_used(&self) {
+        let var_uses = self.circuit.compute_multiplicities().0;
+        for (idx, uses) in var_uses.iter().enumerate() {
+            let unused = *uses == 0;
+            let marked_as_unused = self.unused_vars.contains(&idx);
+            if unused && !marked_as_unused {
+                panic!("Variable {idx} is unused but not marked as unused");
+            }
+            if !unused && marked_as_unused {
+                panic!("Variable {idx} is used but marked as unused");
+            }
+        }
+    }
 }
 
 impl<Value: IValue> Default for Context<Value> {
@@ -88,6 +118,7 @@ impl<Value: IValue> Default for Context<Value> {
             constants: IndexMap::new(),
             values: vec![],
             stats: Stats::default(),
+            unused_vars: HashSet::new(),
         };
         // Register zero and one as the first constants.
         res.constant(QM31::zero());

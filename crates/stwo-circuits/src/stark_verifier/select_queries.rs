@@ -24,6 +24,9 @@ pub fn get_query_selection_input_from_channel(
         v.extend_from_slice(&channel.draw_two_qm31s(context));
     }
     let n_qm31s = n_queries.div_ceil(EXTENSION_DEGREE);
+    if n_qm31s % 2 == 1 {
+        context.mark_as_unused(v[n_qm31s]);
+    }
 
     Simd::from_packed(v[0..n_qm31s].to_vec(), n_queries)
 }
