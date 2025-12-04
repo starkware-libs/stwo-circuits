@@ -58,17 +58,13 @@ fn test_div() {
     assert_eq!(context.get(res), 5.into());
 
     expect![[r#"
-        [0] = [0] + [0]
-        [1] = [1] + [0]
-        [2] = [2] + [0]
-        [3] = [3] + [0]
-        [4] = [4] + [0]
         [5] = [4] * [3]
         [5] = [2]
 
     "#]]
     .assert_debug_eq(&context.circuit);
 
+    context.finalize_guessed_vars();
     context.validate_circuit();
     assert_eq!(context.circuit.compute_multiplicities().0, vec![6, 1, 2, 2, 2, 1]);
     context.circuit.check_yields();
@@ -119,10 +115,6 @@ fn test_conj() {
     "#]]
     .assert_debug_eq(&context.constants());
     expect![[r#"
-        [0] = [0] + [0]
-        [1] = [1] + [0]
-        [2] = [2] + [0]
-        [3] = [3] + [0]
         [5] = [2] * [4]
         [4] = [2] x [3]
 
