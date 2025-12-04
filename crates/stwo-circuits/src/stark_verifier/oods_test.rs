@@ -26,10 +26,6 @@ fn test_eval_domain_samples_guess_circuit() {
     "#]]
     .assert_debug_eq(&context.constants());
     expect![[r#"
-        [0] = [0] + [0]
-        [1] = [1] + [0]
-        [2] = [2] + [0]
-        [4] = [4] + [0]
         [3] = [2] x [1]
         [5] = [4] x [1]
 

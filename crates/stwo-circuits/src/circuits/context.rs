@@ -3,7 +3,7 @@ use indexmap::IndexMap;
 use num_traits::{One, Zero};
 use stwo::core::fields::qm31::QM31;
 
-use crate::circuits::circuit::Circuit;
+use crate::circuits::circuit::{Add, Circuit};
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::guess;
 use crate::circuits::stats::Stats;
@@ -43,6 +43,12 @@ pub struct Context<Value: IValue> {
     /// Set of variables that were marked by the code as "unused".
     /// Used in [Self::check_vars_used].
     unused_vars: HashSet<usize>,
+    /// Set of variables that are not the result of a gate, but instead are provided by the prover.
+    ///
+    /// `None` if the set of guessed variables has already been finalized.
+    ///
+    /// See [guess].
+    pub guessed_vars: Option<Vec<usize>>,
 }
 impl<Value: IValue> Context<Value> {
     pub fn values(&self) -> &Vec<Value> {
@@ -109,6 +115,21 @@ impl<Value: IValue> Context<Value> {
             }
         }
     }
+
+    /// Finalizes the set of guessed variables by adding a trivial constraint for each guessed
+    /// variable.
+    ///
+    /// Each gate in the circuit has lookups for its inputs (use lookups) and outputs (yield
+    /// lookups).
+    /// For the lookup constraints to hold and be sound, we need to make sure that each variable
+    /// appears exactly once as a yield lookup.
+    /// For guessed value, add a trivial constraint so that the new variable appears once as
+    /// a yield.
+    pub fn finalize_guessed_vars(&mut self) {
+        for idx in self.guessed_vars.take().unwrap().iter() {
+            self.circuit.add.push(Add { in0: *idx, in1: self.zero().idx, out: *idx });
+        }
+    }
 }
 
 impl<Value: IValue> Default for Context<Value> {
@@ -119,6 +140,7 @@ impl<Value: IValue> Default for Context<Value> {
             values: vec![],
             stats: Stats::default(),
             unused_vars: HashSet::new(),
+            guessed_vars: Some(vec![]),
         };
         // Register zero and one as the first constants.
         res.constant(QM31::zero());
