@@ -174,7 +174,13 @@ pub fn collect_oods_responses(
             pt: oods_point,
             value: proof.composition_eval_at_oods[column_idx],
         }),
-        (0..config.n_interaction_columns).map(|column_idx| OodsResponse {
+        (config
+            .cumulative_sum_columns
+            .iter()
+            .enumerate()
+            .filter(|(_, is_cumulative_sum_column)| **is_cumulative_sum_column)
+            .map(|(column_idx, _)| column_idx))
+        .map(|column_idx| OodsResponse {
             trace_idx: 2,
             column_idx,
             pt: oods_point_at_prev_row,
