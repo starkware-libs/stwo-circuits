@@ -116,11 +116,7 @@ pub fn conj(c: &mut Context<impl IValue>, a: Var) -> Var {
 pub fn guess<Value: IValue>(context: &mut Context<Value>, value: Value) -> Var {
     context.stats.guess += 1;
     let out = context.new_var(value);
-    // Each gate in the circuit has lookups for its inputs (use lookups) and outputs (yield
-    // lookups). For the lookup constraints to hold and be sound, we need to make sure that each
-    // variable appears exactly once as a yield lookup.
-    // For guessed value, add a trivial constraint so that the new variable appears once as a yield.
-    context.circuit.add.push(Add { in0: out.idx, in1: context.zero().idx, out: out.idx });
+    context.guessed_vars.as_mut().unwrap().push(out.idx);
     out
 }
 

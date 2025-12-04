@@ -13,6 +13,7 @@ fn test_constants() {
 
     assert_eq!(context.values(), &vec![0.into(), 1.into(), x, x + x]);
 
+    context.finalize_guessed_vars();
     assert_eq!(
         format!("{:?}", context.circuit),
         "[0] = [0] + [0]\n[1] = [1] + [0]\n[2] = [2] + [0]\n[3] = [3] + [0]\n"

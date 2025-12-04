@@ -49,6 +49,7 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
         let mut novalue_context = Context::<NoValue>::default();
         let proof_vars = empty_proof.guess(&mut novalue_context);
         verify(&mut novalue_context, &proof_vars, &config, &SimpleStatement {});
+        novalue_context.finalize_guessed_vars();
         novalue_context.circuit
     };
 
@@ -82,9 +83,6 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
     let proof_vars = proof.guess(&mut context);
     verify(&mut context, &proof_vars, &config, &SimpleStatement {});
 
-    // Make sure we got the same circuit.
-    assert_eq!(context.circuit, novalue_circuit);
-
     let result = novalue_circuit.check(context.values());
     match proof_modifier {
         ProofModifier::None => {
@@ -111,7 +109,13 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
         }
     }
 
-    novalue_circuit.check_yields();
     context.check_vars_used();
+
+    context.finalize_guessed_vars();
+
+    // Make sure we got the same circuit.
+    assert_eq!(context.circuit, novalue_circuit);
+
+    novalue_circuit.check_yields();
     println!("Stats: {:?}", context.stats);
 }
