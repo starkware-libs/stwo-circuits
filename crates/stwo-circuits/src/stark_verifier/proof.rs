@@ -20,6 +20,8 @@ pub struct ProofConfig {
     pub n_preprocessed_columns: usize,
     pub n_trace_columns: usize,
     pub n_interaction_columns: usize,
+    // Per column in the interaction trace, whether it has a sample point at the previous point.
+    pub interaction_needs_prev_indicator: Vec<bool>,
 
     pub fri: FriConfig,
 }

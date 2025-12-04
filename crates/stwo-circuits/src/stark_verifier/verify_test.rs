@@ -27,6 +27,7 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
         n_preprocessed_columns: 1,
         n_trace_columns: 4,
         n_interaction_columns: 4,
+        interaction_needs_prev_indicator: vec![true; 4],
         fri: FriConfig {
             log_trace_size: LOG_N_INSTANCES.try_into().unwrap(),
             log_blowup_factor: 1,
