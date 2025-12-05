@@ -275,7 +275,12 @@ pub fn compute_fri_input(
         let mut quotient_coef = minus_two_u;
         let mut sum = context.zero();
 
-        for ((a, b, c), r) in zip_eq(abc.iter(), oods_responses.iter()) {
+        for (i, ((a, b, c), r)) in zip_eq(abc.iter(), oods_responses.iter()).enumerate() {
+            if i > 0 {
+                // Compute the next quotient coefficient (alpha^i).
+                quotient_coef = eval!(context, (quotient_coef) * (alpha));
+            }
+
             let query_value_at_column = *trace_queries.at(r.trace_idx, query_idx, r.column_idx);
 
             // Compute c * column[column_idx](q_x, q_y) - a * q_y - b.
@@ -291,9 +296,6 @@ pub fn compute_fri_input(
 
             // Add `quotient_coef * quotient` to `sum`.
             sum = eval!(context, (sum) + ((quotient_coef) * (quotient)));
-
-            // Compute the next quotient coefficient (alpha^i).
-            quotient_coef = eval!(context, (quotient_coef) * (alpha));
         }
 
         fri_queries.push(sum);

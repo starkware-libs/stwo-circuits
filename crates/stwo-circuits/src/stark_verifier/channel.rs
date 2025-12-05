@@ -68,7 +68,9 @@ impl Channel {
 
     /// Draws one `QM31` random value from the channel.
     pub fn draw_qm31(&mut self, context: &mut Context<impl IValue>) -> Var {
-        self.draw_two_qm31s(context)[0]
+        let [first, second] = self.draw_two_qm31s(context);
+        context.mark_as_unused(second);
+        first
     }
 
     /// Draws two `QM31` random values from the channel.
@@ -113,10 +115,11 @@ impl Channel {
 
         // Compute `H(prefixed_digest, nonce)`.
         let input = [prefixed_digest.0, prefixed_digest.1, nonce];
-        let res = blake(context, &input, 40);
+        let HashValue(res0, res1) = blake(context, &input, 40);
+        context.mark_as_unused(res1);
 
         // Take the first word.
-        let first_word = pointwise_mul(context, res.0, context.one());
+        let first_word = pointwise_mul(context, res0, context.one());
 
         // Check that the n_bits least significant bits are zero.
         let bits = extract_bits(context, &Simd::from_packed(vec![first_word], 1));

@@ -112,5 +112,6 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
     }
 
     novalue_circuit.check_yields();
+    context.check_vars_used();
     println!("Stats: {:?}", context.stats);
 }
