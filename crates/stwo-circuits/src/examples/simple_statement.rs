@@ -61,9 +61,9 @@ fn single_logup_term(
 }
 
 pub struct SimpleStatement {}
-impl SimpleStatement {
-    /// Computes the expected logup sum.
-    fn expected_logup_sum(
+
+impl Statement for SimpleStatement {
+    fn public_logup_sum(
         &self,
         context: &mut Context<impl IValue>,
         interaction_elements: [Var; 2],
@@ -77,14 +77,16 @@ impl SimpleStatement {
             }
             let elements = [context.constant(a.into()), context.constant(b.into())];
             let denom = combine_term(context, &elements, interaction_elements);
+
             let inv = div(context, context.one(), denom);
-            sum = eval!(context, (sum) + (inv));
+
+            // Note that the sum is negated because we want to use the values that are yielded in
+            // the witness.
+            sum = eval!(context, (sum) - (inv));
         }
         sum
     }
-}
 
-impl Statement for SimpleStatement {
     fn evaluate(
         &self,
         context: &mut Context<impl IValue>,
@@ -93,9 +95,11 @@ impl Statement for SimpleStatement {
         log_domain_size: usize,
         composition_polynomial_coef: Var,
         interaction_elements: [Var; 2],
+        claimed_sums: &[Var],
     ) -> Var {
         let [const_val] = oods_samples.preprocessed_columns[..].try_into().unwrap();
         let [a, b, c, d] = oods_samples.trace[..].try_into().unwrap();
+        let [claimed_sum] = claimed_sums[..].try_into().unwrap();
 
         // Constraints.
         let constraint0_val = eval!(context, (c) - ((((a) * (a)) + ((b) * (b))) + (const_val)));
@@ -120,8 +124,8 @@ impl Statement for SimpleStatement {
                 oods_samples.interaction.at_oods(3),
             ],
         );
-        let claimed_sum = self.expected_logup_sum(context, interaction_elements);
         let n_instances = context.constant((1 << LOG_N_INSTANCES).into());
+
         let cumsum_shift = div(context, claimed_sum, n_instances);
         let diff = eval!(context, (cur_logup_sum) - (prev_logup_sum));
         let shifted_diff = eval!(context, (diff) + (cumsum_shift));

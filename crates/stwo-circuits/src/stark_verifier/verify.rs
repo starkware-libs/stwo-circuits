@@ -4,6 +4,7 @@ use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::eq;
 use crate::circuits::simd::Simd;
+use crate::eval;
 use crate::stark_verifier::channel::Channel;
 use crate::stark_verifier::fri::{fri_commit, fri_decommit};
 use crate::stark_verifier::merkle::decommit_eval_domain_samples;
@@ -19,6 +20,18 @@ use crate::stark_verifier::statement::{OodsSamples, Statement};
 #[cfg(test)]
 #[path = "verify_test.rs"]
 pub mod test;
+
+pub fn validate_logup_sum(
+    context: &mut Context<impl IValue>,
+    public_logup_sum: Var,
+    claimed_sums: &[Var],
+) {
+    let mut log_up_sum = public_logup_sum;
+    for claimed_sum in claimed_sums {
+        log_up_sum = eval!(context, (log_up_sum) + (*claimed_sum));
+    }
+    eq(context, log_up_sum, context.zero());
+}
 
 pub fn verify(
     context: &mut Context<impl IValue>,
@@ -38,6 +51,11 @@ pub fn verify(
 
     // Pick the interaction elements.
     let [interaction_z, interaction_alpha] = channel.draw_two_qm31s(context);
+
+    // TODO(ilya): Mix claimed sums into the channel.
+
+    let public_logup_sum = statement.public_logup_sum(context, [interaction_z, interaction_alpha]);
+    validate_logup_sum(context, public_logup_sum, &proof.claimed_sums);
 
     channel.mix_commitment(context, proof.interaction_root);
 
@@ -62,6 +80,7 @@ pub fn verify(
         config.log_trace_size(),
         composition_polynomial_coef,
         [interaction_z, interaction_alpha],
+        &proof.claimed_sums,
     );
     let expected_composition_eval = extract_expected_composition_eval(
         context,

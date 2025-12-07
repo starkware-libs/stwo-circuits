@@ -15,6 +15,8 @@ pub struct OodsSamples<'a> {
 pub trait Statement {
     /// Evaluates the composition polynomial at the OODS point (after dividing by the domain
     /// polynomial).
+    // TODO(ilya): Pack the arguments in a struct.
+    #[allow(clippy::too_many_arguments)]
     fn evaluate(
         &self,
         context: &mut Context<impl IValue>,
@@ -22,6 +24,14 @@ pub trait Statement {
         pt: CirclePoint<Var>,
         log_domain_size: usize,
         composition_polynomial_coef: Var,
+        interaction_elements: [Var; 2],
+        claimed_sums: &[Var],
+    ) -> Var;
+
+    /// Computes the logup sum that is determined by the statement rather than by the witness.
+    fn public_logup_sum(
+        &self,
+        context: &mut Context<impl IValue>,
         interaction_elements: [Var; 2],
     ) -> Var;
 }
