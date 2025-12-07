@@ -16,6 +16,7 @@ use crate::stark_verifier::proof::{InteractionAtOods, N_TRACES, Proof, ProofConf
 pub fn proof_from_stark_proof(
     proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
     config: &ProofConfig,
+    claimed_sums: Vec<QM31>,
 ) -> Proof<QM31> {
     let commitments = &proof.proof.commitments;
     let sampled_values = &proof.proof.sampled_values;
@@ -35,6 +36,7 @@ pub fn proof_from_stark_proof(
         interaction_at_oods: InteractionAtOods {
             value: sampled_values[2].iter().map(|x| (x[1], x[0])).collect_vec(),
         },
+        claimed_sums,
         composition_eval_at_oods: as_single_row(&sampled_values[3]).try_into().unwrap(),
         eval_domain_samples: construct_eval_domain_samples(proof, config),
         eval_domain_auth_paths: construct_eval_domain_auth_paths(proof, config),
