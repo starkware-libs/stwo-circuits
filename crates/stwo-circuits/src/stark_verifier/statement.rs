@@ -17,6 +17,7 @@ pub struct EvaluateArgs<'a> {
     pub log_domain_size: usize,
     pub composition_polynomial_coef: Var,
     pub interaction_elements: [Var; 2],
+    pub claimed_sums: &'a [Var],
 }
 
 /// Represents an AIR and its public inputs.
@@ -24,4 +25,11 @@ pub trait Statement {
     /// Evaluates the composition polynomial at the OODS point (after dividing by the domain
     /// polynomial).
     fn evaluate(&self, context: &mut Context<impl IValue>, args: EvaluateArgs<'_>) -> Var;
+
+    /// Computes the logup sum that is determined by the statement rather than by the witness.
+    fn public_logup_sum(
+        &self,
+        context: &mut Context<impl IValue>,
+        interaction_elements: [Var; 2],
+    ) -> Var;
 }
