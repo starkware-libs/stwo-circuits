@@ -50,7 +50,7 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
         let empty_proof = empty_proof(&config);
         let mut novalue_context = Context::<NoValue>::default();
         let proof_vars = empty_proof.guess(&mut novalue_context);
-        verify(&mut novalue_context, &proof_vars, &config, &SimpleStatement {});
+        verify(&mut novalue_context, &proof_vars, &config, &SimpleStatement::default());
         novalue_context.circuit
     };
 
@@ -83,7 +83,7 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
     let claimed_sums = vec![component.claimed_sum()];
     let proof = proof_from_stark_proof(&proof, &config, claimed_sums);
     let proof_vars = proof.guess(&mut context);
-    verify(&mut context, &proof_vars, &config, &SimpleStatement {});
+    verify(&mut context, &proof_vars, &config, &SimpleStatement::default());
 
     // Make sure we got the same circuit.
     assert_eq!(context.circuit, novalue_circuit);

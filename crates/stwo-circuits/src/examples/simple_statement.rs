@@ -6,6 +6,7 @@ use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::{div, from_partial_evals};
 use crate::eval;
 use crate::stark_verifier::circle::double_x;
+use crate::stark_verifier::component::Component;
 use crate::stark_verifier::statement::{EvaluateArgs, Statement};
 
 use super::simple_air::{FIB_SEQUENCE_LENGTH, LOG_N_INSTANCES};
@@ -59,31 +60,13 @@ fn single_logup_term(
     eval!(context, ((shifted_diff) * (denominator)) - (1))
 }
 
-pub struct SimpleStatement {}
-impl Statement for SimpleStatement {
-    fn public_logup_sum(
-        &self,
-        context: &mut Context<impl IValue>,
-        interaction_elements: [Var; 2],
-    ) -> Var {
-        let mut sum = context.zero();
-        for j in 0..(1 << LOG_N_INSTANCES) {
-            let mut a: M31 = M31::one();
-            let mut b: M31 = j.into();
-            for _ in 0..(FIB_SEQUENCE_LENGTH - 2) {
-                (a, b) = (b, a * a + b * b + M31::from(j));
-            }
-            let elements = [context.constant(a.into()), context.constant(b.into())];
-            let denom = combine_term(context, &elements, interaction_elements);
-            let inv = div(context, context.one(), denom);
-
-            // Note that the sum is negated because we want to use the values that are yielded in
-            // the witness.
-            sum = eval!(context, (sum) - (inv));
-        }
-        sum
-    }
-
+#[derive(Default)]
+pub struct SimpleStatement {
+    pub fib_component: SquaredFibonacciComponent,
+}
+#[derive(Default)]
+pub struct SquaredFibonacciComponent {}
+impl Component for SquaredFibonacciComponent {
     fn evaluate(&self, context: &mut Context<impl IValue>, args: EvaluateArgs<'_>) -> Var {
         let EvaluateArgs {
             oods_samples,
@@ -136,5 +119,35 @@ impl Statement for SimpleStatement {
         let constraint_val = eval!(context, (constraint_val) + (logup_constraint_val));
 
         eval!(context, (constraint_val) * (denom_inverse))
+    }
+}
+
+impl Statement for SimpleStatement {
+    fn public_logup_sum(
+        &self,
+        context: &mut Context<impl IValue>,
+        interaction_elements: [Var; 2],
+    ) -> Var {
+        let mut sum = context.zero();
+        for j in 0..(1 << LOG_N_INSTANCES) {
+            let mut a: M31 = M31::one();
+            let mut b: M31 = j.into();
+            for _ in 0..(FIB_SEQUENCE_LENGTH - 2) {
+                (a, b) = (b, a * a + b * b + M31::from(j));
+            }
+            let elements = [context.constant(a.into()), context.constant(b.into())];
+            let denom = combine_term(context, &elements, interaction_elements);
+
+            let inv = div(context, context.one(), denom);
+
+            // Note that the sum is negated because we want to use the values that are yielded in
+            // the witness.
+            sum = eval!(context, (sum) - (inv));
+        }
+        sum
+    }
+
+    fn evaluate(&self, context: &mut Context<impl IValue>, args: EvaluateArgs<'_>) -> Var {
+        self.fib_component.evaluate(context, args)
     }
 }
