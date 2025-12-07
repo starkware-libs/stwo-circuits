@@ -1,5 +1,4 @@
 use num_traits::One;
-use stwo::core::circle::CirclePoint;
 use stwo::core::fields::m31::M31;
 
 use crate::circuits::context::{Context, Var};
@@ -7,7 +6,7 @@ use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::{div, from_partial_evals};
 use crate::eval;
 use crate::stark_verifier::circle::double_x;
-use crate::stark_verifier::statement::{OodsSamples, Statement};
+use crate::stark_verifier::statement::{EvaluateArgs, Statement};
 
 use super::simple_air::{FIB_SEQUENCE_LENGTH, LOG_N_INSTANCES};
 
@@ -85,15 +84,14 @@ impl SimpleStatement {
 }
 
 impl Statement for SimpleStatement {
-    fn evaluate(
-        &self,
-        context: &mut Context<impl IValue>,
-        oods_samples: OodsSamples<'_>,
-        pt: CirclePoint<Var>,
-        log_domain_size: usize,
-        composition_polynomial_coef: Var,
-        interaction_elements: [Var; 2],
-    ) -> Var {
+    fn evaluate(&self, context: &mut Context<impl IValue>, args: EvaluateArgs<'_>) -> Var {
+        let EvaluateArgs {
+            oods_samples,
+            pt,
+            log_domain_size,
+            composition_polynomial_coef,
+            interaction_elements,
+        } = args;
         let [const_val] = oods_samples.preprocessed_columns[..].try_into().unwrap();
         let [a, b, c, d] = oods_samples.trace[..].try_into().unwrap();
 
