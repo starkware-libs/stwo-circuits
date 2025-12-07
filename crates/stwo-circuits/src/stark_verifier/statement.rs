@@ -24,4 +24,12 @@ pub trait Statement {
         composition_polynomial_coef: Var,
         interaction_elements: [Var; 2],
     ) -> Var;
+
+    fn claimed_sums(&self) -> Vec<Var>;
+
+    fn validate_logup_sum(
+        &self,
+        context: &mut Context<impl IValue>,
+        interaction_elements: [Var; 2],
+    );
 }

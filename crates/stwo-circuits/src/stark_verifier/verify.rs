@@ -39,6 +39,9 @@ pub fn verify(
     // Pick the interaction elements.
     let [interaction_z, interaction_alpha] = channel.draw_two_qm31s(context);
 
+    let _claimed_sums = statement.claimed_sums();
+    // TODO(ilya): Mix claimed sums into the channel.
+
     channel.mix_commitment(context, proof.interaction_root);
 
     // Draw a random QM31 coefficient for the composition polynomial.

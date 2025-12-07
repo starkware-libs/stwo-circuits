@@ -4,7 +4,7 @@ use stwo::core::fields::m31::M31;
 
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
-use crate::circuits::ops::{div, from_partial_evals};
+use crate::circuits::ops::{Guess, div, eq, from_partial_evals};
 use crate::eval;
 use crate::stark_verifier::circle::double_x;
 use crate::stark_verifier::statement::{OodsSamples, Statement};
@@ -60,8 +60,14 @@ fn single_logup_term(
     eval!(context, ((shifted_diff) * (denominator)) - (1))
 }
 
-pub struct SimpleStatement {}
+pub struct SimpleStatement {
+    pub claimed_logup_sum: Var,
+}
 impl SimpleStatement {
+    pub fn new<Value: IValue>(context: &mut Context<Value>, claimed_logup_sum: Value) -> Self {
+        Self { claimed_logup_sum: claimed_logup_sum.guess(context) }
+    }
+
     /// Computes the expected logup sum.
     fn expected_logup_sum(
         &self,
@@ -85,6 +91,19 @@ impl SimpleStatement {
 }
 
 impl Statement for SimpleStatement {
+    fn claimed_sums(&self) -> Vec<Var> {
+        vec![self.claimed_logup_sum]
+    }
+
+    fn validate_logup_sum(
+        &self,
+        context: &mut Context<impl IValue>,
+        interaction_elements: [Var; 2],
+    ) {
+        let expected_sum = self.expected_logup_sum(context, interaction_elements);
+        eq(context, self.claimed_logup_sum, expected_sum);
+    }
+
     fn evaluate(
         &self,
         context: &mut Context<impl IValue>,
@@ -120,9 +139,8 @@ impl Statement for SimpleStatement {
                 oods_samples.interaction.at_oods(3),
             ],
         );
-        let claimed_sum = self.expected_logup_sum(context, interaction_elements);
         let n_instances = context.constant((1 << LOG_N_INSTANCES).into());
-        let cumsum_shift = div(context, claimed_sum, n_instances);
+        let cumsum_shift = div(context, self.claimed_logup_sum, n_instances);
         let diff = eval!(context, (cur_logup_sum) - (prev_logup_sum));
         let shifted_diff = eval!(context, (diff) + (cumsum_shift));
         let logup_constraint_val =
