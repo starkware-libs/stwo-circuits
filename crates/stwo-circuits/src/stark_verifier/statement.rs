@@ -11,17 +11,17 @@ pub struct OodsSamples<'a> {
     pub interaction: &'a InteractionAtOods<Var>,
 }
 
+pub struct EvaluateArgs<'a> {
+    pub oods_samples: OodsSamples<'a>,
+    pub pt: CirclePoint<Var>,
+    pub log_domain_size: usize,
+    pub composition_polynomial_coef: Var,
+    pub interaction_elements: [Var; 2],
+}
+
 /// Represents an AIR and its public inputs.
 pub trait Statement {
     /// Evaluates the composition polynomial at the OODS point (after dividing by the domain
     /// polynomial).
-    fn evaluate(
-        &self,
-        context: &mut Context<impl IValue>,
-        oods_samples: OodsSamples<'_>,
-        pt: CirclePoint<Var>,
-        log_domain_size: usize,
-        composition_polynomial_coef: Var,
-        interaction_elements: [Var; 2],
-    ) -> Var;
+    fn evaluate(&self, context: &mut Context<impl IValue>, args: EvaluateArgs<'_>) -> Var;
 }

@@ -14,7 +14,7 @@ use crate::stark_verifier::proof::{Proof, ProofConfig};
 use crate::stark_verifier::select_queries::{
     get_query_selection_input_from_channel, select_queries,
 };
-use crate::stark_verifier::statement::{OodsSamples, Statement};
+use crate::stark_verifier::statement::{EvaluateArgs, OodsSamples, Statement};
 
 #[cfg(test)]
 #[path = "verify_test.rs"]
@@ -53,15 +53,17 @@ pub fn verify(
     // to `proof.composition_eval_at_oods`.
     let composition_eval = statement.evaluate(
         context,
-        OodsSamples {
-            preprocessed_columns: &proof.preprocessed_columns_at_oods,
-            trace: &proof.trace_at_oods,
-            interaction: &proof.interaction_at_oods,
+        EvaluateArgs {
+            oods_samples: OodsSamples {
+                preprocessed_columns: &proof.preprocessed_columns_at_oods,
+                trace: &proof.trace_at_oods,
+                interaction: &proof.interaction_at_oods,
+            },
+            pt: oods_point,
+            log_domain_size: config.log_trace_size(),
+            composition_polynomial_coef,
+            interaction_elements: [interaction_z, interaction_alpha],
         },
-        oods_point,
-        config.log_trace_size(),
-        composition_polynomial_coef,
-        [interaction_z, interaction_alpha],
     );
     let expected_composition_eval = extract_expected_composition_eval(
         context,
