@@ -1,3 +1,4 @@
+use crate::circuit_air::components::CircuitComponents;
 use crate::circuit_air::components::CircuitInteractionElements;
 use crate::circuit_air::components::lookup_sum;
 use crate::circuit_prover::witness::preprocessed::PreProcessedTrace;
@@ -80,6 +81,16 @@ pub fn prove(context: Context<QM31>) {
 
     interaction_claim.mix_into(channel);
     tree_builder.commit(channel);
+
+    // Component provers.
+    let component_builder = CircuitComponents::new(
+        &claim,
+        &interaction_elements,
+        &interaction_claim,
+        &preprocessed_trace.ids(),
+    );
+
+    let _components = component_builder.provers();
 
     // TODO(Gali): Implement.
 }
