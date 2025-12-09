@@ -1,5 +1,6 @@
 use crate::circuits::circuit::Circuit;
 use crate::circuits::circuit::{Eq, Gate};
+use itertools::Itertools;
 use std::collections::HashMap;
 use stwo::core::fields::m31::BaseField;
 use stwo::core::poly::circle::CanonicCoset;
@@ -157,7 +158,7 @@ impl<B: Backend> PreProcessedTrace<B> {
     }
 
     pub fn ids(&self) -> Vec<PreProcessedColumnId> {
-        self.column_indices.keys().cloned().collect()
+        self.column_indices.keys().cloned().sorted_by_key(|k| self.column_indices[k]).collect()
     }
 
     pub fn get_trace(&self) -> Vec<CircleEvaluation<B, BaseField, BitReversedOrder>> {
