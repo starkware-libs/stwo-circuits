@@ -1,4 +1,5 @@
 use crate::circuit_prover::witness::preprocessed::PreProcessedTrace;
+use crate::circuit_prover::witness::trace::write_trace;
 use crate::circuits::context::Context;
 use stwo::core::channel::Blake2sM31Channel;
 use stwo::core::fields::qm31::QM31;
@@ -49,6 +50,12 @@ pub fn prove(context: Context<QM31>) {
     // Preprocessed trace.
     let mut tree_builder = commitment_scheme.tree_builder();
     tree_builder.extend_evals(preprocessed_trace.get_trace::<SimdBackend>());
+    tree_builder.commit(channel);
+
+    // Base trace.
+    let mut tree_builder = commitment_scheme.tree_builder();
+    let claim = write_trace(context.values(), &preprocessed_trace, &mut tree_builder);
+    claim.mix_into(channel);
     tree_builder.commit(channel);
 
     // TODO(Gali): Implement.
