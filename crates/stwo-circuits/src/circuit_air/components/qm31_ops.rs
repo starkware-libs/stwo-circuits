@@ -15,6 +15,7 @@ pub struct Eval {
     pub gate_lookup_elements: relations::Gate,
 }
 
+#[derive(Copy, Clone)]
 pub struct Claim {
     pub log_size: u32,
 }
@@ -24,6 +25,7 @@ impl Claim {
     }
 }
 
+#[derive(Copy, Clone)]
 pub struct InteractionClaim {
     pub claimed_sum: SecureField,
 }
