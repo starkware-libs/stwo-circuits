@@ -10,16 +10,21 @@ use stwo::core::fields::qm31::QM31;
 use stwo::core::fields::qm31::SecureField;
 use stwo::core::pcs::PcsConfig;
 use stwo::core::poly::circle::CanonicCoset;
+use stwo::core::proof::ExtendedStarkProof;
 use stwo::core::vcs::blake2_merkle::Blake2sM31MerkleChannel;
+use stwo::core::vcs::blake2_merkle::Blake2sM31MerkleHasher;
 use stwo::prover::CommitmentSchemeProver;
 use stwo::prover::backend::simd::SimdBackend;
 use stwo::prover::poly::circle::PolyOps;
+use stwo::prover::{ProvingError, prove_ex};
 
 #[cfg(test)]
 #[path = "prover_test.rs"]
 pub mod test;
 
-pub fn prove(context: Context<QM31>) {
+pub fn prove_circuit(
+    context: Context<QM31>,
+) -> Result<ExtendedStarkProof<Blake2sM31MerkleHasher>, ProvingError> {
     let pcs_config = PcsConfig::default();
 
     // Generate preprocessed trace.
@@ -86,7 +91,9 @@ pub fn prove(context: Context<QM31>) {
         &preprocessed_trace.ids(),
     );
 
-    let _components = component_builder.provers();
+    let components = component_builder.provers();
 
-    // TODO(Gali): Implement.
+    // Prove stark.
+    prove_ex::<SimdBackend, _>(&components, channel, commitment_scheme)
+    // TODO(Gali): Convert to circuit proof.
 }
