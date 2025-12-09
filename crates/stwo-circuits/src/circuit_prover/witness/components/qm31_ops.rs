@@ -1,8 +1,11 @@
 use crate::circuit_air::components::qm31_ops::Claim;
+use crate::circuit_air::components::qm31_ops::InteractionClaim;
+use crate::circuit_air::relations;
 use crate::circuit_prover::witness::preprocessed::PreProcessedTrace;
 use crate::circuit_prover::witness::utils::pack_values;
 use itertools::Itertools;
 use itertools::multizip;
+use num_traits::One;
 use rayon::iter::IndexedParallelIterator;
 use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
@@ -13,8 +16,11 @@ use stwo::prover::TreeBuilder;
 use stwo::prover::backend::Col;
 use stwo::prover::backend::simd::SimdBackend;
 use stwo::prover::backend::simd::m31::{LOG_N_LANES, N_LANES, PackedM31};
+use stwo::prover::backend::simd::qm31::PackedQM31;
 use stwo_air_utils::trace::component_trace::ComponentTrace;
 use stwo_air_utils_derive::{IterMut, ParIterMut, Uninitialized};
+use stwo_constraint_framework::LogupTraceGenerator;
+use stwo_constraint_framework::Relation;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 const N_TRACE_COLUMNS: usize = 12;
@@ -49,7 +55,7 @@ pub fn write_trace(
     context_values: &[QM31],
     preprocessed_trace: &PreProcessedTrace,
     tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, Blake2sM31MerkleChannel>,
-) -> Claim {
+) -> (Claim, InteractionClaimGenerator) {
     let add_flag =
         preprocessed_trace.get_column(&PreProcessedColumnId { id: "qm31_ops_add_flag".to_owned() });
     let sub_flag =
@@ -91,10 +97,10 @@ pub fn write_trace(
     .map(|col| Col::<SimdBackend, M31>::from_iter(col.iter().map(|&x| M31::from(x))).data)
     .collect_vec();
 
-    let (trace, _lookup_data) = write_trace_simd(packed_inputs, preprocessed_columns);
+    let (trace, lookup_data) = write_trace_simd(packed_inputs, preprocessed_columns);
     tree_builder.extend_evals(trace.to_evals());
 
-    Claim { log_size }
+    (Claim { log_size }, InteractionClaimGenerator { log_size, lookup_data })
 }
 
 fn write_trace_simd(
@@ -173,4 +179,44 @@ struct LookupData {
     in_1: Vec<[PackedM31; 5]>,
     out: Vec<[PackedM31; 5]>,
     mults: Vec<PackedM31>,
+}
+
+pub struct InteractionClaimGenerator {
+    log_size: u32,
+    lookup_data: LookupData,
+}
+impl InteractionClaimGenerator {
+    pub fn write_interaction_trace(
+        self,
+        tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, Blake2sM31MerkleChannel>,
+        gate: &relations::Gate,
+    ) -> InteractionClaim {
+        let mut logup_gen = LogupTraceGenerator::new(self.log_size);
+
+        // Sum logup terms in pairs.
+        let mut col_gen = logup_gen.new_col();
+        (col_gen.par_iter_mut(), &self.lookup_data.in_0, &self.lookup_data.in_1)
+            .into_par_iter()
+            .for_each(|(writer, values0, values1)| {
+                let denom0: PackedQM31 = gate.combine(values0);
+                let denom1: PackedQM31 = gate.combine(values1);
+                writer.write_frac(denom0 + denom1, denom0 * denom1);
+            });
+        col_gen.finalize_col();
+
+        // Sum last logup term.
+        let mut col_gen = logup_gen.new_col();
+        (col_gen.par_iter_mut(), &self.lookup_data.out, self.lookup_data.mults)
+            .into_par_iter()
+            .for_each(|(writer, values, mults)| {
+                let denom = gate.combine(values);
+                writer.write_frac(-PackedQM31::one() * mults, denom);
+            });
+        col_gen.finalize_col();
+
+        let (trace, claimed_sum) = logup_gen.finalize_last();
+        tree_builder.extend_evals(trace);
+
+        InteractionClaim { claimed_sum }
+    }
 }
