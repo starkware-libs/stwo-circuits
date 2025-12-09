@@ -1,8 +1,23 @@
+use crate::circuit_air::relations;
+use num_traits::One;
 use stwo::core::channel::Channel;
+use stwo::core::fields::m31::BaseField;
 use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
+use stwo::core::fields::qm31::SecureField;
 use stwo::core::pcs::TreeVec;
+use stwo_constraint_framework::EvalAtRow;
+use stwo_constraint_framework::FrameworkComponent;
+use stwo_constraint_framework::FrameworkEval;
+use stwo_constraint_framework::RelationEntry;
+use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 pub const N_TRACE_COLUMNS: usize = 12;
+
+pub struct Eval {
+    pub claim: Claim,
+    pub gate_lookup_elements: relations::Gate,
+}
+
 pub struct Claim {
     pub log_size: u32,
 }
@@ -15,5 +30,153 @@ impl Claim {
 
     pub fn mix_into(&self, channel: &mut impl Channel) {
         channel.mix_u64(self.log_size as u64);
+    }
+}
+
+pub struct InteractionClaim {
+    pub claimed_sum: SecureField,
+}
+impl InteractionClaim {
+    pub fn mix_into(&self, channel: &mut impl Channel) {
+        channel.mix_felts(&[self.claimed_sum]);
+    }
+}
+
+pub type Component = FrameworkComponent<Eval>;
+
+impl FrameworkEval for Eval {
+    fn log_size(&self) -> u32 {
+        self.claim.log_size
+    }
+
+    fn max_constraint_log_degree_bound(&self) -> u32 {
+        self.log_size() + 1
+    }
+
+    #[allow(unused_parens)]
+    #[allow(clippy::double_parens)]
+    #[allow(non_snake_case)]
+    fn evaluate<E: EvalAtRow>(&self, mut eval: E) -> E {
+        let M31_1 = E::F::from(BaseField::from(1));
+        let add_flag = eval
+            .get_preprocessed_column(PreProcessedColumnId { id: "qm31_ops_add_flag".to_owned() });
+        let sub_flag = eval
+            .get_preprocessed_column(PreProcessedColumnId { id: "qm31_ops_sub_flag".to_owned() });
+        let mul_flag = eval
+            .get_preprocessed_column(PreProcessedColumnId { id: "qm31_ops_mul_flag".to_owned() });
+        let pointwise_mul_flag = eval.get_preprocessed_column(PreProcessedColumnId {
+            id: "qm31_ops_pointwise_mul_flag".to_owned(),
+        });
+        let in0_address = eval.get_preprocessed_column(PreProcessedColumnId {
+            id: "qm31_ops_in0_address".to_owned(),
+        });
+        let in1_address = eval.get_preprocessed_column(PreProcessedColumnId {
+            id: "qm31_ops_in1_address".to_owned(),
+        });
+        let out_address = eval.get_preprocessed_column(PreProcessedColumnId {
+            id: "qm31_ops_out_address".to_owned(),
+        });
+        let mults =
+            eval.get_preprocessed_column(PreProcessedColumnId { id: "qm31_ops_mults".to_owned() });
+
+        let in0_col0 = eval.next_trace_mask();
+        let in0_col1 = eval.next_trace_mask();
+        let in0_col2 = eval.next_trace_mask();
+        let in0_col3 = eval.next_trace_mask();
+        let in1_col4 = eval.next_trace_mask();
+        let in1_col5 = eval.next_trace_mask();
+        let in1_col6 = eval.next_trace_mask();
+        let in1_col7 = eval.next_trace_mask();
+        let out_col8 = eval.next_trace_mask();
+        let out_col9 = eval.next_trace_mask();
+        let out_col10 = eval.next_trace_mask();
+        let out_col11 = eval.next_trace_mask();
+
+        // add_flag + sub_flag + mul_flag + pointwise_mul_flag = 1.
+        eval.add_constraint(
+            ((add_flag.clone() + sub_flag.clone() + mul_flag.clone() + pointwise_mul_flag.clone())
+                - M31_1.clone()),
+        );
+
+        // add_flag is a bit.
+        eval.add_constraint((add_flag.clone() * (add_flag.clone() - M31_1.clone())));
+
+        // sub_flag is a bit.
+        eval.add_constraint((sub_flag.clone() * (sub_flag.clone() - M31_1.clone())));
+
+        // mul_flag is a bit.
+        eval.add_constraint((mul_flag.clone() * (mul_flag.clone() - M31_1.clone())));
+
+        // pointwise_mul_flag is a bit.
+        eval.add_constraint(
+            (pointwise_mul_flag.clone() * (pointwise_mul_flag.clone() - M31_1.clone())),
+        );
+
+        // out col 8.
+        eval.add_constraint(
+            ((add_flag.clone()) * (in0_col0.clone() + in1_col4.clone())
+                + (pointwise_mul_flag.clone()) * (in0_col0.clone() * in1_col4.clone()))
+                - out_col8.clone(),
+        );
+
+        // out col 9.
+        eval.add_constraint(
+            ((add_flag.clone()) * (in0_col1.clone() + in1_col5.clone())
+                + (pointwise_mul_flag.clone()) * (in0_col1.clone() * in1_col5.clone()))
+                - out_col9.clone(),
+        );
+
+        // out col 10.
+        eval.add_constraint(
+            ((add_flag.clone()) * (in0_col2.clone() + in1_col6.clone())
+                + (pointwise_mul_flag.clone()) * (in0_col2.clone() * in1_col6.clone()))
+                - out_col10.clone(),
+        );
+
+        // out col 11.
+        eval.add_constraint(
+            ((add_flag.clone()) * (in0_col3.clone() + in1_col7.clone())
+                + (pointwise_mul_flag.clone()) * (in0_col3.clone() * in1_col7.clone()))
+                - out_col11.clone(),
+        );
+
+        eval.add_to_relation(RelationEntry::new(
+            &self.gate_lookup_elements,
+            E::EF::one(),
+            &[
+                in0_address.clone(),
+                in0_col0.clone(),
+                in0_col1.clone(),
+                in0_col2.clone(),
+                in0_col3.clone(),
+            ],
+        ));
+
+        eval.add_to_relation(RelationEntry::new(
+            &self.gate_lookup_elements,
+            E::EF::one(),
+            &[
+                in1_address.clone(),
+                in1_col4.clone(),
+                in1_col5.clone(),
+                in1_col6.clone(),
+                in1_col7.clone(),
+            ],
+        ));
+
+        eval.add_to_relation(RelationEntry::new(
+            &self.gate_lookup_elements,
+            -E::EF::from(mults),
+            &[
+                out_address.clone(),
+                out_col8.clone(),
+                out_col9.clone(),
+                out_col10.clone(),
+                out_col11.clone(),
+            ],
+        ));
+
+        eval.finalize_logup_in_pairs();
+        eval
     }
 }
