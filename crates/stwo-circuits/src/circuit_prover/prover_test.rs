@@ -1,4 +1,4 @@
-use crate::circuit_prover::prover::prove;
+use crate::circuit_prover::prover::prove_circuit;
 use crate::circuits::{context::Context, ops::guess};
 use crate::eval;
 use expect_test::expect;
@@ -29,5 +29,8 @@ fn test_prove_fibonacci() {
     let mut fibonacci_context = build_fibonacci_context();
     fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
-    prove(fibonacci_context);
+
+    let proof = prove_circuit(fibonacci_context);
+
+    assert!(proof.is_ok());
 }
