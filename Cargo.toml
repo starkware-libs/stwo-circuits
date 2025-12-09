@@ -26,5 +26,8 @@ stwo-constraint-framework = { git = "https://github.com/starkware-libs/stwo", re
     "parallel",
     "prover",
 ] }
+stwo-air-utils-derive = { git = "https://github.com/starkware-libs/stwo", rev = "043bb696" }
+stwo-air-utils = { git = "https://github.com/starkware-libs/stwo", rev = "043bb696" }
 rstest = "0.26.1"
 expect-test = "1.5.1"
+rayon = "1.10.0"
