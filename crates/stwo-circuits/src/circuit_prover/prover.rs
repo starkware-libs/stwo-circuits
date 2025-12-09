@@ -1,8 +1,12 @@
+use crate::circuit_air::components::CircuitInteractionElements;
+use crate::circuit_air::components::lookup_sum;
 use crate::circuit_prover::witness::preprocessed::PreProcessedTrace;
 use crate::circuit_prover::witness::trace::write_trace;
 use crate::circuits::context::Context;
+use num_traits::Zero;
 use stwo::core::channel::Blake2sM31Channel;
 use stwo::core::fields::qm31::QM31;
+use stwo::core::fields::qm31::SecureField;
 use stwo::core::pcs::PcsConfig;
 use stwo::core::poly::circle::CanonicCoset;
 use stwo::core::vcs::blake2_merkle::Blake2sM31MerkleChannel;
@@ -54,8 +58,24 @@ pub fn prove(context: Context<QM31>) {
 
     // Base trace.
     let mut tree_builder = commitment_scheme.tree_builder();
-    let claim = write_trace(context.values(), &preprocessed_trace, &mut tree_builder);
+    let (claim, interaction_generator) =
+        write_trace(context.values(), &preprocessed_trace, &mut tree_builder);
     claim.mix_into(channel);
+    tree_builder.commit(channel);
+
+    // Draw interaction elements.
+    // TODO(Gali): Add proof of work.
+    let interaction_elements = CircuitInteractionElements::draw(channel);
+
+    // Interaction trace.
+    let mut tree_builder = commitment_scheme.tree_builder();
+    let interaction_claim =
+        interaction_generator.write_interaction_trace(&mut tree_builder, &interaction_elements);
+
+    // Validate lookup argument.
+    debug_assert_eq!(lookup_sum(&interaction_claim), SecureField::zero());
+
+    interaction_claim.mix_into(channel);
     tree_builder.commit(channel);
 
     // TODO(Gali): Implement.
