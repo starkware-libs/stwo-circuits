@@ -1,7 +1,7 @@
 use itertools::{Itertools, zip_eq};
 use num_traits::One;
 use stwo::core::ColumnVec;
-use stwo::core::channel::Blake2sM31Channel;
+use stwo::core::channel::{Blake2sM31Channel, Channel};
 use stwo::core::fields::FieldExpOps;
 use stwo::core::fields::m31::BaseField;
 use stwo::core::fields::qm31::SecureField;
@@ -168,6 +168,7 @@ pub fn create_proof() -> (SimpleComponent, ExtendedStarkProof<Blake2sM31MerkleHa
 
     // Interaction trace.
     let (interaction_trace, claimed_sum) = generate_interaction_trace(&trace, &lookup_elements.0);
+    prover_channel.mix_felts(&[claimed_sum]);
     let mut tree_builder = commitment_scheme.tree_builder();
     tree_builder.extend_evals(interaction_trace);
     tree_builder.commit(prover_channel);
