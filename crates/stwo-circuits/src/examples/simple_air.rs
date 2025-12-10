@@ -8,7 +8,7 @@ use stwo::core::fields::qm31::SecureField;
 use stwo::core::pcs::PcsConfig;
 use stwo::core::poly::circle::CanonicCoset;
 use stwo::core::proof::ExtendedStarkProof;
-use stwo::core::vcs::blake2_merkle::{Blake2sM31MerkleChannel, Blake2sM31MerkleHasher};
+use stwo::core::vcs_lifted::blake2_merkle::{Blake2sM31MerkleChannel, Blake2sM31MerkleHasher};
 use stwo::prover::backend::Col;
 use stwo::prover::backend::Column;
 use stwo::prover::backend::simd::SimdBackend;
@@ -145,6 +145,7 @@ pub fn create_proof() -> (SimpleComponent, ExtendedStarkProof<Blake2sM31MerkleHa
     let prover_channel = &mut Blake2sM31Channel::default();
     let mut commitment_scheme =
         CommitmentSchemeProver::<SimdBackend, Blake2sM31MerkleChannel>::new(config, &twiddles);
+    commitment_scheme.set_store_polynomials_coefficients();
 
     // Preprocessed trace
     let domain = CanonicCoset::new(LOG_N_INSTANCES).circle_domain();

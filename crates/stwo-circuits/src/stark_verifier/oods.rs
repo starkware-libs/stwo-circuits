@@ -162,28 +162,35 @@ pub fn collect_oods_responses(
             pt: oods_point,
             value: proof.trace_at_oods[column_idx],
         }),
-        (0..config.n_interaction_columns).map(|column_idx| OodsResponse {
-            trace_idx: 2,
-            column_idx,
-            pt: oods_point,
-            value: proof.interaction_at_oods[column_idx].at_oods,
-        }),
+        config.cumulative_sum_columns.iter().enumerate().flat_map(
+            |(column_idx, is_cumulative_sum_column)| {
+                let at_oods_response = OodsResponse {
+                    trace_idx: 2,
+                    column_idx,
+                    pt: oods_point,
+                    value: proof.interaction_at_oods[column_idx].at_oods,
+                };
+
+                if !*is_cumulative_sum_column {
+                    // Only the cumulative sum columns are sampled as `oods_point_at_prev_row`.
+                    return vec![at_oods_response];
+                }
+                vec![
+                    OodsResponse {
+                        trace_idx: 2,
+                        column_idx,
+                        pt: oods_point_at_prev_row,
+                        value: proof.interaction_at_oods[column_idx].at_prev,
+                    },
+                    at_oods_response,
+                ]
+            }
+        ),
         (0..N_COMPOSITION_COLUMNS).map(|column_idx| OodsResponse {
             trace_idx: 3,
             column_idx,
             pt: oods_point,
             value: proof.composition_eval_at_oods[column_idx],
-        }),
-        config
-            .cumulative_sum_columns
-            .iter()
-            .enumerate()
-             // Only the cumulative sum columns are sampled as `oods_point_at_prev_row`.
-            .filter(|(_, is_cumulative_sum_column)| **is_cumulative_sum_column).map(|(column_idx, _)| OodsResponse {
-            trace_idx: 2,
-            column_idx,
-            pt: oods_point_at_prev_row,
-            value: proof.interaction_at_oods[column_idx].at_prev,
         }),
     )
     .collect()

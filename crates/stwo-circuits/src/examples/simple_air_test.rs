@@ -1,7 +1,7 @@
 use stwo::core::air::Component;
 use stwo::core::channel::{Blake2sM31Channel, Channel};
 use stwo::core::pcs::{CommitmentSchemeVerifier, PcsConfig};
-use stwo::core::vcs::blake2_merkle::Blake2sM31MerkleChannel;
+use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::core::verifier::verify;
 
 use crate::examples::simple_air::create_proof;
