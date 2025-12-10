@@ -35,6 +35,7 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
         n_preprocessed_columns: 1,
         n_trace_columns: 4,
         n_interaction_columns: 4,
+        n_components: 1,
         fri: FriConfig {
             log_trace_size: LOG_N_INSTANCES.try_into().unwrap(),
             log_blowup_factor: 1,
@@ -53,7 +54,7 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
     };
 
     // Create a context with values from the proof.
-    let (_component, mut proof) = create_proof();
+    let (component, mut proof) = create_proof();
     match proof_modifier {
         ProofModifier::None => {}
         ProofModifier::WrongTraceAuthPath => {
@@ -78,7 +79,8 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
         }
     }
     let mut context = TraceContext::default();
-    let proof = proof_from_stark_proof(&proof, &config);
+    let claimed_sums = vec![component.claimed_sum()];
+    let proof = proof_from_stark_proof(&proof, &config, claimed_sums);
     let proof_vars = proof.guess(&mut context);
     verify(&mut context, &proof_vars, &config, &SimpleStatement {});
 

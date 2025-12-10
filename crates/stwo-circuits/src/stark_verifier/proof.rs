@@ -21,6 +21,9 @@ pub struct ProofConfig {
     pub n_trace_columns: usize,
     pub n_interaction_columns: usize,
 
+    // Number of components in the AIR.
+    pub n_components: usize,
+
     pub fri: FriConfig,
 }
 impl ProofConfig {
@@ -97,6 +100,9 @@ pub struct Proof<T> {
     pub interaction_root: HashValue<T>,
     pub composition_polynomial_root: HashValue<T>,
 
+    // Claimed sum for each component in the AIR.
+    pub claimed_sums: Vec<T>,
+
     // Evaluations at the OODS point and the previous point.
     pub preprocessed_columns_at_oods: Vec<T>,
     pub trace_at_oods: Vec<T>,
@@ -159,6 +165,7 @@ pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
         interaction_at_oods: InteractionAtOods {
             value: vec![(NoValue, NoValue); config.n_interaction_columns],
         },
+        claimed_sums: vec![NoValue; config.n_components],
         composition_eval_at_oods: [NoValue; N_COMPOSITION_COLUMNS],
         eval_domain_samples: empty_eval_domain_samples(
             &config.n_columns_per_trace(),
@@ -181,6 +188,7 @@ impl<Value: IValue> Guess<Value> for Proof<Value> {
             trace_root: self.trace_root.guess(context),
             interaction_root: self.interaction_root.guess(context),
             composition_polynomial_root: self.composition_polynomial_root.guess(context),
+            claimed_sums: self.claimed_sums.guess(context),
             preprocessed_columns_at_oods: self.preprocessed_columns_at_oods.guess(context),
             trace_at_oods: self.trace_at_oods.guess(context),
             interaction_at_oods: self.interaction_at_oods.guess(context),
