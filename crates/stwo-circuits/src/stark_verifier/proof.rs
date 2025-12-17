@@ -57,43 +57,24 @@ impl ProofConfig {
     }
 }
 
-/// The values of the interaction trace at the OODS point and the previous point.
+/// The values of an interaction column at the OODS point and the previous point.
+#[derive(Clone)]
 pub struct InteractionAtOods<T> {
-    /// For each column, the value at the OODS point and optionally the value at the previous point
+    /// The value at the OODS point and optionally the value at the previous point
     /// (`oods_point - trace_generator`).
     // TODO(lior): Make the second element optional.
-    pub value: Vec<(T, T)>,
-}
-
-impl<T> InteractionAtOods<T> {
-    /// Returns the number of columns.
-    pub fn n_columns(&self) -> usize {
-        self.value.len()
-    }
-}
-
-impl<T: Copy> InteractionAtOods<T> {
-    /// Returns the value at the OODS point.
-    pub fn at_oods(&self, idx: usize) -> T {
-        self.value[idx].0
-    }
-
-    /// Returns the value at the previous point (`oods_point - trace_generator`).
-    pub fn at_prev(&self, idx: usize) -> T {
-        self.value[idx].1
-    }
-
-    /// Returns a flattened list of the values at the OODS point and the previous point.
-    pub fn flattened(&self) -> Vec<T> {
-        self.value.iter().flat_map(|(a, b)| [*b, *a]).collect()
-    }
+    pub at_oods: T,
+    pub at_prev: T,
 }
 
 impl<Value: IValue> Guess<Value> for InteractionAtOods<Value> {
     type Target = InteractionAtOods<Var>;
 
     fn guess(&self, context: &mut Context<Value>) -> Self::Target {
-        InteractionAtOods { value: self.value.guess(context) }
+        InteractionAtOods {
+            at_oods: self.at_oods.guess(context),
+            at_prev: self.at_prev.guess(context),
+        }
     }
 }
 
@@ -110,7 +91,7 @@ pub struct Proof<T> {
     // Evaluations at the OODS point and the previous point.
     pub preprocessed_columns_at_oods: Vec<T>,
     pub trace_at_oods: Vec<T>,
-    pub interaction_at_oods: InteractionAtOods<T>,
+    pub interaction_at_oods: Vec<InteractionAtOods<T>>,
     pub composition_eval_at_oods: [T; N_COMPOSITION_COLUMNS],
 
     // Evaluations at the evaluation domain.
@@ -131,7 +112,7 @@ impl<T> Proof<T> {
         assert_eq!(self.trace_at_oods.len(), config.n_trace_columns);
 
         // Validate interaction_at_oods.
-        assert_eq!(self.interaction_at_oods.n_columns(), config.n_interaction_columns);
+        assert_eq!(self.interaction_at_oods.len(), config.n_interaction_columns);
 
         // Validate eval_domain_samples.
         self.eval_domain_samples
@@ -166,9 +147,10 @@ pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
         composition_polynomial_root: HashValue(NoValue, NoValue),
         preprocessed_columns_at_oods: vec![NoValue; config.n_preprocessed_columns],
         trace_at_oods: vec![NoValue; config.n_trace_columns],
-        interaction_at_oods: InteractionAtOods {
-            value: vec![(NoValue, NoValue); config.n_interaction_columns],
-        },
+        interaction_at_oods: vec![
+            InteractionAtOods { at_oods: NoValue, at_prev: NoValue };
+            config.n_interaction_columns
+        ],
         claimed_sums: vec![NoValue; config.n_components],
         composition_eval_at_oods: [NoValue; N_COMPOSITION_COLUMNS],
         eval_domain_samples: empty_eval_domain_samples(

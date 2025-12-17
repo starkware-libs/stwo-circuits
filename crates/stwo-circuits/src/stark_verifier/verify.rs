@@ -98,7 +98,10 @@ pub fn verify(
         chain!(
             proof.preprocessed_columns_at_oods.iter().cloned(),
             proof.trace_at_oods.iter().cloned(),
-            proof.interaction_at_oods.flattened(),
+            proof
+                .interaction_at_oods
+                .iter()
+                .flat_map(|interaction| [interaction.at_prev, interaction.at_oods]),
             proof.composition_eval_at_oods,
         ),
     );
