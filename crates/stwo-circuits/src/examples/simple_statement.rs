@@ -67,7 +67,7 @@ pub struct SimpleStatement {
 #[derive(Default)]
 pub struct SquaredFibonacciComponent {}
 impl Component for SquaredFibonacciComponent {
-    fn evaluate(&self, context: &mut Context<impl IValue>, args: EvaluateArgs<'_>) -> Var {
+    fn evaluate(&self, context: &mut Context<impl IValue>, args: &mut EvaluateArgs<'_>) -> Var {
         let EvaluateArgs {
             oods_samples,
             pt,
@@ -77,8 +77,11 @@ impl Component for SquaredFibonacciComponent {
             claimed_sums,
         } = args;
         let [const_val] = oods_samples.preprocessed_columns[..].try_into().unwrap();
-        let [a, b, c, d] = oods_samples.trace[..].try_into().unwrap();
+        let [a, b, c, d] = oods_samples.trace.split_off(..4).unwrap();
         let [claimed_sum] = claimed_sums[..].try_into().unwrap();
+
+
+        let claimed_sum = *claimed_sums.next().unwrap();
 
         // Constraints.
         let constraint0_val = eval!(context, (c) - ((((a) * (a)) + ((b) * (b))) + (const_val)));
@@ -108,14 +111,14 @@ impl Component for SquaredFibonacciComponent {
         let diff = eval!(context, (cur_logup_sum) - (prev_logup_sum));
         let shifted_diff = eval!(context, (diff) + (cumsum_shift));
         let logup_constraint_val =
-            single_logup_term(context, &[c, d], shifted_diff, interaction_elements);
+            single_logup_term(context, &[c, d], shifted_diff, *interaction_elements);
 
-        let denom_inverse = denom_inverse(context, pt.x, log_domain_size);
+        let denom_inverse = denom_inverse(context, pt.x, *log_domain_size);
 
         let constraint_val = constraint0_val;
-        let constraint_val = eval!(context, (constraint_val) * (composition_polynomial_coef));
+        let constraint_val = eval!(context, (constraint_val) * (*composition_polynomial_coef));
         let constraint_val = eval!(context, (constraint_val) + (constraint1_val));
-        let constraint_val = eval!(context, (constraint_val) * (composition_polynomial_coef));
+        let constraint_val = eval!(context, (constraint_val) * (*composition_polynomial_coef));
         let constraint_val = eval!(context, (constraint_val) + (logup_constraint_val));
 
         eval!(context, (constraint_val) * (denom_inverse))
@@ -147,7 +150,12 @@ impl Statement for SimpleStatement {
         sum
     }
 
-    fn evaluate(&self, context: &mut Context<impl IValue>, args: EvaluateArgs<'_>) -> Var {
-        self.fib_component.evaluate(context, args)
+    fn evaluate(&self, context: &mut Context<impl IValue>, mut args: EvaluateArgs<'_>) -> Var {
+        let result = self.fib_component.evaluate(context, &mut args);
+
+        assert!(args.oods_samples.trace.next().is_none());
+        assert!(args.oods_samples.interaction.next().is_none());
+        assert!(args.claimed_sums.next().is_none());
+        result
     }
 }
