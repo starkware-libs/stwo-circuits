@@ -33,9 +33,10 @@ pub fn proof_from_stark_proof(
         composition_polynomial_root: commitments[3].into(),
         preprocessed_columns_at_oods: as_single_row(&sampled_values[0]),
         trace_at_oods: as_single_row(&sampled_values[1]),
-        interaction_at_oods: InteractionAtOods {
-            value: sampled_values[2].iter().map(|x| (x[1], x[0])).collect_vec(),
-        },
+        interaction_at_oods: sampled_values[2]
+            .iter()
+            .map(|x| InteractionAtOods { at_oods: x[1], at_prev: x[0] })
+            .collect_vec(),
         claimed_sums,
         composition_eval_at_oods: as_single_row(&sampled_values[3]).try_into().unwrap(),
         eval_domain_samples: construct_eval_domain_samples(proof, config),
