@@ -166,7 +166,7 @@ pub fn collect_oods_responses(
             trace_idx: 2,
             column_idx,
             pt: oods_point,
-            value: proof.interaction_at_oods.at_oods(column_idx),
+            value: proof.interaction_at_oods[column_idx].at_oods,
         }),
         (0..N_COMPOSITION_COLUMNS).map(|column_idx| OodsResponse {
             trace_idx: 3,
@@ -183,7 +183,7 @@ pub fn collect_oods_responses(
             trace_idx: 2,
             column_idx,
             pt: oods_point_at_prev_row,
-            value: proof.interaction_at_oods.at_prev(column_idx),
+            value: proof.interaction_at_oods[column_idx].at_prev,
         }),
     )
     .collect()
