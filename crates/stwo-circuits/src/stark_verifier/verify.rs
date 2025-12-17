@@ -73,14 +73,14 @@ pub fn verify(
         EvaluateArgs {
             oods_samples: OodsSamples {
                 preprocessed_columns: &proof.preprocessed_columns_at_oods,
-                trace: &proof.trace_at_oods,
-                interaction: &proof.interaction_at_oods,
+                trace: proof.trace_at_oods.iter(),
+                interaction: proof.interaction_at_oods.iter(),
             },
             pt: oods_point,
             log_domain_size: config.log_trace_size(),
             composition_polynomial_coef,
             interaction_elements: [interaction_z, interaction_alpha],
-            claimed_sums: &proof.claimed_sums,
+            claimed_sums: proof.claimed_sums.iter(),
         },
     );
     let expected_composition_eval = extract_expected_composition_eval(

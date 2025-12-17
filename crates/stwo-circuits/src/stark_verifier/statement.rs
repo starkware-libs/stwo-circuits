@@ -7,8 +7,8 @@ use crate::stark_verifier::proof::InteractionAtOods;
 /// Values at the OODS point (and its previous point where applicable).
 pub struct OodsSamples<'a> {
     pub preprocessed_columns: &'a [Var],
-    pub trace: &'a [Var],
-    pub interaction: &'a [InteractionAtOods<Var>],
+    pub trace: std::slice::Iter<'a, Var>,
+    pub interaction: std::slice::Iter<'a, InteractionAtOods<Var>>,
 }
 
 pub struct EvaluateArgs<'a> {
@@ -17,7 +17,7 @@ pub struct EvaluateArgs<'a> {
     pub log_domain_size: usize,
     pub composition_polynomial_coef: Var,
     pub interaction_elements: [Var; 2],
-    pub claimed_sums: &'a [Var],
+    pub claimed_sums: std::slice::Iter<'a, Var>,
 }
 
 /// Represents an AIR and its public inputs.
