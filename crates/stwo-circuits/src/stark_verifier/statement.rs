@@ -17,7 +17,7 @@ pub struct EvaluateArgs<'a> {
     pub log_domain_size: usize,
     pub composition_polynomial_coef: Var,
     pub interaction_elements: [Var; 2],
-    pub claimed_sums: std::slice::Iter<'a, Var>,
+    pub claimed_sums: &'a [Var],
 }
 
 /// Represents an AIR and its public inputs.

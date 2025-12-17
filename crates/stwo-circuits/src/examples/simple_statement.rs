@@ -77,41 +77,45 @@ impl Component for SquaredFibonacciComponent {
             claimed_sums,
         } = args;
         let [const_val] = oods_samples.preprocessed_columns[..].try_into().unwrap();
-        let [a, b, c, d] = oods_samples.trace.split_off(..4).unwrap();
-        let [claimed_sum] = claimed_sums[..].try_into().unwrap();
-
-
-        let claimed_sum = *claimed_sums.next().unwrap();
+        let [a, b, c, d] = oods_samples.trace.split_off(..4).unwrap() else {
+            panic!("Expected 4 trace values");
+        };
+        let interaction = oods_samples.interaction.split_off(..4).unwrap();
+        let [claimed_sum] = claimed_sums.split_off(..1).unwrap() else {
+            panic!("Expected 1 claimed sum");
+        };
 
         // Constraints.
-        let constraint0_val = eval!(context, (c) - ((((a) * (a)) + ((b) * (b))) + (const_val)));
-        let constraint1_val = eval!(context, (d) - ((((b) * (b)) + ((c) * (c))) + (const_val)));
+        let constraint0_val =
+            eval!(context, (*c) - ((((*a) * (*a)) + ((*b) * (*b))) + (const_val)));
+        let constraint1_val =
+            eval!(context, (*d) - ((((*b) * (*b)) + ((*c) * (*c))) + (const_val)));
 
         // Logup constraint.
         let prev_logup_sum = from_partial_evals(
             context,
             [
-                oods_samples.interaction[0].at_prev,
-                oods_samples.interaction[1].at_prev,
-                oods_samples.interaction[2].at_prev,
-                oods_samples.interaction[3].at_prev,
+                interaction[0].at_prev,
+                interaction[1].at_prev,
+                interaction[2].at_prev,
+                interaction[3].at_prev,
             ],
         );
         let cur_logup_sum = from_partial_evals(
             context,
             [
-                oods_samples.interaction[0].at_oods,
-                oods_samples.interaction[1].at_oods,
-                oods_samples.interaction[2].at_oods,
-                oods_samples.interaction[3].at_oods,
+                interaction[0].at_oods,
+                interaction[1].at_oods,
+                interaction[2].at_oods,
+                interaction[3].at_oods,
             ],
         );
         let n_instances = context.constant((1 << LOG_N_INSTANCES).into());
-        let cumsum_shift = div(context, claimed_sum, n_instances);
+        let cumsum_shift = div(context, *claimed_sum, n_instances);
         let diff = eval!(context, (cur_logup_sum) - (prev_logup_sum));
         let shifted_diff = eval!(context, (diff) + (cumsum_shift));
         let logup_constraint_val =
-            single_logup_term(context, &[c, d], shifted_diff, *interaction_elements);
+            single_logup_term(context, &[*c, *d], shifted_diff, *interaction_elements);
 
         let denom_inverse = denom_inverse(context, pt.x, *log_domain_size);
 
@@ -153,9 +157,9 @@ impl Statement for SimpleStatement {
     fn evaluate(&self, context: &mut Context<impl IValue>, mut args: EvaluateArgs<'_>) -> Var {
         let result = self.fib_component.evaluate(context, &mut args);
 
-        assert!(args.oods_samples.trace.next().is_none());
-        assert!(args.oods_samples.interaction.next().is_none());
-        assert!(args.claimed_sums.next().is_none());
+        assert!(args.oods_samples.trace.is_empty());
+        assert!(args.oods_samples.interaction.is_empty());
+        assert!(args.claimed_sums.is_empty());
         result
     }
 }
