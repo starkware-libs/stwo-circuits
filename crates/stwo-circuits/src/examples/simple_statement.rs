@@ -1,15 +1,14 @@
 use num_traits::One;
 use stwo::core::fields::m31::M31;
 
+use super::simple_air::{FIB_SEQUENCE_LENGTH, LOG_N_INSTANCES};
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::{div, from_partial_evals};
 use crate::eval;
 use crate::stark_verifier::circle::double_x;
-use crate::stark_verifier::component::Component;
+use crate::stark_verifier::component::{Component, PointEvaluationAccumulator};
 use crate::stark_verifier::statement::{EvaluateArgs, Statement};
-
-use super::simple_air::{FIB_SEQUENCE_LENGTH, LOG_N_INSTANCES};
 
 /// Computes the polynomial that vanishes on the canonical coset of size `2^log_trace_size`.
 ///
@@ -67,21 +66,17 @@ pub struct SimpleStatement {
 #[derive(Default)]
 pub struct SquaredFibonacciComponent {}
 impl Component for SquaredFibonacciComponent {
-    fn evaluate(&self, context: &mut Context<impl IValue>, args: &mut EvaluateArgs<'_>) -> Var {
-        let EvaluateArgs {
-            oods_samples,
-            pt,
-            log_domain_size,
-            composition_polynomial_coef,
-            interaction_elements,
-            claimed_sums,
-        } = args;
-        let [const_val] = oods_samples.preprocessed_columns[..].try_into().unwrap();
-        let [a, b, c, d] = oods_samples.trace.split_off(..4).unwrap() else {
+    fn evaluate(
+        &self,
+        context: &mut Context<impl IValue>,
+        acc: &mut PointEvaluationAccumulator<'_>,
+    ) {
+        let [const_val] = acc.oods_samples.preprocessed_columns[..].try_into().unwrap();
+        let [a, b, c, d] = acc.oods_samples.trace.split_off(..4).unwrap() else {
             panic!("Expected 4 trace values");
         };
-        let interaction = oods_samples.interaction.split_off(..4).unwrap();
-        let [claimed_sum] = claimed_sums.split_off(..1).unwrap() else {
+        let interaction = acc.oods_samples.interaction.split_off(..4).unwrap();
+        let [claimed_sum] = acc.claimed_sums.split_off(..1).unwrap() else {
             panic!("Expected 1 claimed sum");
         };
 
@@ -115,17 +110,11 @@ impl Component for SquaredFibonacciComponent {
         let diff = eval!(context, (cur_logup_sum) - (prev_logup_sum));
         let shifted_diff = eval!(context, (diff) + (cumsum_shift));
         let logup_constraint_val =
-            single_logup_term(context, &[*c, *d], shifted_diff, *interaction_elements);
+            single_logup_term(context, &[*c, *d], shifted_diff, acc.interaction_elements);
 
-        let denom_inverse = denom_inverse(context, pt.x, *log_domain_size);
-
-        let constraint_val = constraint0_val;
-        let constraint_val = eval!(context, (constraint_val) * (*composition_polynomial_coef));
-        let constraint_val = eval!(context, (constraint_val) + (constraint1_val));
-        let constraint_val = eval!(context, (constraint_val) * (*composition_polynomial_coef));
-        let constraint_val = eval!(context, (constraint_val) + (logup_constraint_val));
-
-        eval!(context, (constraint_val) * (denom_inverse))
+        acc.accumulate(context, constraint0_val);
+        acc.accumulate(context, constraint1_val);
+        acc.accumulate(context, logup_constraint_val);
     }
 }
 
@@ -154,12 +143,29 @@ impl Statement for SimpleStatement {
         sum
     }
 
-    fn evaluate(&self, context: &mut Context<impl IValue>, mut args: EvaluateArgs<'_>) -> Var {
-        let result = self.fib_component.evaluate(context, &mut args);
+    fn evaluate(&self, context: &mut Context<impl IValue>, args: EvaluateArgs<'_>) -> Var {
+        let EvaluateArgs {
+            oods_samples,
+            pt,
+            log_domain_size,
+            composition_polynomial_coef,
+            interaction_elements,
+            claimed_sums,
+        } = args;
 
-        assert!(args.oods_samples.trace.is_empty());
-        assert!(args.oods_samples.interaction.is_empty());
-        assert!(args.claimed_sums.is_empty());
-        result
+        let mut evaluation_accumulator = PointEvaluationAccumulator {
+            oods_samples,
+            composition_polynomial_coef,
+            interaction_elements,
+            claimed_sums,
+            random_coeff: composition_polynomial_coef,
+            accumulation: context.zero(),
+        };
+
+        self.fib_component.evaluate(context, &mut evaluation_accumulator);
+        let final_evaluation = evaluation_accumulator.finalize();
+
+        let denom_inverse = denom_inverse(context, pt.x, log_domain_size);
+        eval!(context, (final_evaluation) * (denom_inverse))
     }
 }
