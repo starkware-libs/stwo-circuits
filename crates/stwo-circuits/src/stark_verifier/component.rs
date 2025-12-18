@@ -46,4 +46,11 @@ pub trait Component {
         context: &mut Context<impl IValue>,
         acc: &mut CompositionConstraintAccumulator<'_>,
     );
+
+    fn public_logup_sum(
+        &self,
+        context: &mut Context<impl IValue>,
+        prev_sum: Var,
+        interaction_elements: [Var; 2],
+    ) -> Var;
 }
