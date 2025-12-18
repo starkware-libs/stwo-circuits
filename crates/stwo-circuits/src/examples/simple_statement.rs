@@ -9,7 +9,7 @@ use crate::stark_verifier::circle::double_x;
 use crate::stark_verifier::component::Component;
 use crate::stark_verifier::statement::{EvaluateArgs, Statement};
 
-use super::simple_air::{FIB_SEQUENCE_LENGTH, LOG_N_INSTANCES};
+use super::simple_air::FIB_SEQUENCE_LENGTH;
 
 /// Computes the polynomial that vanishes on the canonical coset of size `2^log_trace_size`.
 ///
@@ -60,22 +60,44 @@ fn single_logup_term(
     eval!(context, ((shifted_diff) * (denominator)) - (1))
 }
 
-#[derive(Default)]
 pub struct SimpleStatement {
-    pub fib_component: SquaredFibonacciComponent,
+    pub small_fib_component: SquaredFibonacciComponent,
+    pub large_fib_component: SquaredFibonacciComponent,
 }
-#[derive(Default)]
-pub struct SquaredFibonacciComponent {}
+
+impl Default for SimpleStatement {
+    fn default() -> Self {
+        Self {
+            small_fib_component: SquaredFibonacciComponent { log_instances: 4 },
+            large_fib_component: SquaredFibonacciComponent { log_instances: 5 },
+        }
+    }
+}
+
+pub struct SquaredFibonacciComponent {
+    pub log_instances: u32,
+}
 impl Component for SquaredFibonacciComponent {
-    fn evaluate(&self, context: &mut Context<impl IValue>, prev_sum: Var, args: &mut EvaluateArgs<'_>) -> Var {
+    fn evaluate(
+        &self,
+        context: &mut Context<impl IValue>,
+        prev_sum: Var,
+        args: &mut EvaluateArgs<'_>,
+    ) -> Var {
         let EvaluateArgs {
             oods_samples,
             pt: _,
-            log_domain_size: _,            composition_polynomial_coef,
+            log_domain_size: _,
+            composition_polynomial_coef,
             interaction_elements,
             claimed_sums,
         } = args;
-        let [const_val, _] = oods_samples.preprocessed_columns[..].try_into().unwrap();
+        let [const_val_1, const_val_2] = oods_samples.preprocessed_columns[..].try_into().unwrap();
+        let const_val = if self.log_instances == 4 {
+            const_val_1
+        } else {
+            const_val_2
+        };
         let [a, b, c, d] = oods_samples.trace.split_off(..4).unwrap() else {
             panic!("Expected 4 trace values");
         };
@@ -109,14 +131,12 @@ impl Component for SquaredFibonacciComponent {
                 interaction[3].at_oods,
             ],
         );
-        let n_instances = context.constant((1 << LOG_N_INSTANCES).into());
+        let n_instances = context.constant((1 << self.log_instances).into());
         let cumsum_shift = div(context, *claimed_sum, n_instances);
         let diff = eval!(context, (cur_logup_sum) - (prev_logup_sum));
         let shifted_diff = eval!(context, (diff) + (cumsum_shift));
         let logup_constraint_val =
             single_logup_term(context, &[*c, *d], shifted_diff, *interaction_elements);
-
-     
 
         let constraint_val = prev_sum;
         let constraint_val = eval!(context, (constraint_val) * (*composition_polynomial_coef));
@@ -127,7 +147,6 @@ impl Component for SquaredFibonacciComponent {
         eval!(context, (constraint_val) + (logup_constraint_val))
     }
 
-
     fn public_logup_sum(
         &self,
         context: &mut Context<impl IValue>,
@@ -135,7 +154,7 @@ impl Component for SquaredFibonacciComponent {
         interaction_elements: [Var; 2],
     ) -> Var {
         let mut sum = prev_sum;
-        for j in 0..(1 << LOG_N_INSTANCES) {
+        for j in 0..(1 << self.log_instances) {
             let mut a: M31 = M31::one();
             let mut b: M31 = j.into();
             for _ in 0..(FIB_SEQUENCE_LENGTH - 2) {
@@ -161,25 +180,29 @@ impl Statement for SimpleStatement {
         interaction_elements: [Var; 2],
     ) -> Var {
         let prev_sum = context.zero();
-        let prev_sum = self.fib_component.public_logup_sum(context, prev_sum, interaction_elements);
-        self.fib_component.public_logup_sum(context, prev_sum, interaction_elements)       
+        let prev_sum =
+            self.small_fib_component.public_logup_sum(context, prev_sum, interaction_elements);
+        self.large_fib_component.public_logup_sum(context, prev_sum, interaction_elements)
     }
 
     fn evaluate(&self, context: &mut Context<impl IValue>, mut args: EvaluateArgs<'_>) -> Var {
         let constraint_val = context.zero();
+
      
-        let constraint_val = self.fib_component.evaluate(context, constraint_val, &mut args);
 
+        let constraint_val = self.small_fib_component.evaluate(context, constraint_val, &mut args);
     
-        let constraint_val = self.fib_component.evaluate(context, constraint_val, &mut args);
 
-    
+        let constraint_val = self.large_fib_component.evaluate(context, constraint_val, &mut args);
+
+
 
         assert!(args.oods_samples.trace.is_empty());
         assert!(args.oods_samples.interaction.is_empty());
         assert!(args.claimed_sums.is_empty());
-     
+
         let denom_inverse = denom_inverse(context, args.pt.x, args.log_domain_size);
+
         eval!(context, (constraint_val) * (denom_inverse))
     }
 }

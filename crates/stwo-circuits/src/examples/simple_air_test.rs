@@ -15,15 +15,20 @@ fn verify_simple_proof() {
     let verifier_channel = &mut Blake2sM31Channel::default();
     let commitment_scheme = &mut CommitmentSchemeVerifier::<Blake2sM31MerkleChannel>::new(config);
 
-    // Retrieve the expected column sizes in each commitment interaction, from the AIR.
-    let sizes = components[0].trace_log_degree_bounds();
+    // Retrieve the expected column sizes in each commitment interaction, from the AIR components.
 
-    let c_sizes = TreeVec::concat_cols([sizes.clone(),sizes.clone()].into_iter());
-
+    let c_sizes =
+        TreeVec::concat_cols(components.iter().map(|c| c.trace_log_degree_bounds()).into_iter());
 
     commitment_scheme.commit(proof.proof.commitments[0], &c_sizes[0], verifier_channel);
     commitment_scheme.commit(proof.proof.commitments[1], &c_sizes[1], verifier_channel);
     verifier_channel.mix_felts(&claimed_sums);
     commitment_scheme.commit(proof.proof.commitments[2], &c_sizes[2], verifier_channel);
-    verify(&components.iter().map(|c| c.as_ref()).collect::<Vec<&dyn Component>>(), verifier_channel, commitment_scheme, proof.proof).unwrap();
+    verify(
+        &components.iter().map(|c| c.as_ref()).collect::<Vec<&dyn Component>>(),
+        verifier_channel,
+        commitment_scheme,
+        proof.proof,
+    )
+    .unwrap();
 }
