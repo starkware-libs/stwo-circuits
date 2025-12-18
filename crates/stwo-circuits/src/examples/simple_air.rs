@@ -1,10 +1,11 @@
 use itertools::{Itertools, zip_eq};
 use num_traits::One;
 use stwo::core::ColumnVec;
+use stwo::core::air::Component;
 use stwo::core::channel::{Blake2sM31Channel, Channel};
 use stwo::core::fields::FieldExpOps;
 use stwo::core::fields::m31::BaseField;
-use stwo::core::fields::qm31::SecureField;
+use stwo::core::fields::qm31::{QM31, SecureField};
 use stwo::core::pcs::PcsConfig;
 use stwo::core::poly::circle::CanonicCoset;
 use stwo::core::proof::ExtendedStarkProof;
@@ -142,8 +143,14 @@ fn generate_seq_column(
     CircleEvaluation::new(CanonicCoset::new(log_size).circle_domain(), col)
 }
 
+// The public input for the simple AIR verifier.
+pub struct PublicInput {
+    pub claimed_sums: Vec<QM31>,
+}
+
 /// Creates a proof for the simple AIR. See documentation in [Eval].
-pub fn create_proof() -> (SimpleComponent, ExtendedStarkProof<Blake2sM31MerkleHasher>) {
+pub fn create_proof()
+-> (Vec<Box<dyn Component>>, PublicInput, ExtendedStarkProof<Blake2sM31MerkleHasher>) {
     let config = PcsConfig::default();
     // Precompute twiddles.
     let twiddles = SimdBackend::precompute_twiddles(
@@ -199,5 +206,7 @@ pub fn create_proof() -> (SimpleComponent, ExtendedStarkProof<Blake2sM31MerkleHa
     )
     .unwrap();
 
-    (component, proof)
+    let components: Vec<Box<dyn Component>> = vec![Box::new(component)];
+
+    (components, PublicInput { claimed_sums: vec![claimed_sum] }, proof)
 }
