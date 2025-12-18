@@ -70,13 +70,12 @@ impl Component for SquaredFibonacciComponent {
     fn evaluate(&self, context: &mut Context<impl IValue>, prev_sum: Var, args: &mut EvaluateArgs<'_>) -> Var {
         let EvaluateArgs {
             oods_samples,
-            pt,
-            log_domain_size,
-            composition_polynomial_coef,
+            pt: _,
+            log_domain_size: _,            composition_polynomial_coef,
             interaction_elements,
             claimed_sums,
         } = args;
-        let [const_val] = oods_samples.preprocessed_columns[..].try_into().unwrap();
+        let [const_val, _] = oods_samples.preprocessed_columns[..].try_into().unwrap();
         let [a, b, c, d] = oods_samples.trace.split_off(..4).unwrap() else {
             panic!("Expected 4 trace values");
         };

@@ -26,6 +26,8 @@ pub fn proof_from_stark_proof(
     let pow_high = (pow >> 32) as u32;
     let pow_low = (pow & 0xFFFFFFFF) as u32;
 
+    eprintln!("sampled_values: {:?}", sampled_values[0]);
+
     Proof {
         preprocessed_root: commitments[0].into(),
         trace_root: commitments[1].into(),

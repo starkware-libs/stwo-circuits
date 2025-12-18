@@ -32,7 +32,7 @@ enum ProofModifier {
 fn test_verify(#[case] proof_modifier: ProofModifier) {
     let config = ProofConfig {
         n_proof_of_work_bits: 10,
-        n_preprocessed_columns: 1,
+        n_preprocessed_columns: 2,
         n_trace_columns: 8,
         n_interaction_columns: 8,
         n_components: 2,

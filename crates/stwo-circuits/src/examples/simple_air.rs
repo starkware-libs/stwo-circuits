@@ -53,6 +53,7 @@ pub struct FibInput {
 #[derive(Clone)]
 pub struct Eval {
     pub lookup_elements: SimpleRelation,
+    pub preprocessed_column_id: PreProcessedColumnId,
 }
 impl FrameworkEval for Eval {
     fn log_size(&self) -> u32 {
@@ -63,7 +64,7 @@ impl FrameworkEval for Eval {
     }
     fn evaluate<E: EvalAtRow>(&self, mut eval: E) -> E {
         let row_const =
-            eval.get_preprocessed_column(PreProcessedColumnId { id: "row_const".into() });
+            eval.get_preprocessed_column(self.preprocessed_column_id.clone());
         let mut a = eval.next_trace_mask();
         let mut b = eval.next_trace_mask();
         for _ in 2..FIB_SEQUENCE_LENGTH {
@@ -153,7 +154,10 @@ pub fn create_proof() -> (Vec<Box<dyn Component>>, Vec<QM31>, ExtendedStarkProof
     let preprocessed_column: BaseColumn =
         (0..2_u32.pow(LOG_N_INSTANCES)).map(|i| i.into()).collect();
     let preprocessed_column_eval = CircleEvaluation::new(domain, preprocessed_column);
-    tree_builder.extend_evals([preprocessed_column_eval]);
+    let preprocessed_column: BaseColumn =
+        (0..2_u32.pow(LOG_N_INSTANCES)).map(|i| i.into()).collect();
+    let preprocessed_column_eval_2 = CircleEvaluation::new(domain, preprocessed_column);
+    tree_builder.extend_evals([preprocessed_column_eval, preprocessed_column_eval_2]);
     tree_builder.commit(prover_channel);
 
     // Trace.
@@ -177,21 +181,22 @@ pub fn create_proof() -> (Vec<Box<dyn Component>>, Vec<QM31>, ExtendedStarkProof
     tree_builder.extend_evals([interaction_trace.clone(), interaction_trace.clone()].concat());
     tree_builder.commit(prover_channel);
 
+    let preprocessed_column_id_1 = PreProcessedColumnId { id: "row_const".into() };
+    let preprocessed_column_id_2 = PreProcessedColumnId { id: "row_const2".into() };
+
     let mut trace_alloc =
-            TraceLocationAllocator::new_with_preprocessed_columns(&[PreProcessedColumnId {
-                id: "row_const".into(),
-            }]);
+        TraceLocationAllocator::new_with_preprocessed_columns(&[preprocessed_column_id_1.clone(), preprocessed_column_id_2.clone()]);
 
     // Prove constraints.
     let component_1 = SimpleComponent::new(
         &mut trace_alloc,
-        Eval { lookup_elements: lookup_elements.clone() },
+        Eval { lookup_elements: lookup_elements.clone() , preprocessed_column_id: preprocessed_column_id_1 },
         claimed_sum,
     );
 
     let component_2 = SimpleComponent::new(
         &mut trace_alloc,
-        Eval { lookup_elements },
+        Eval { lookup_elements, preprocessed_column_id: preprocessed_column_id_2 },
         claimed_sum,
     );
 

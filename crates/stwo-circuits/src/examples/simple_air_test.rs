@@ -21,7 +21,7 @@ fn verify_simple_proof() {
     let c_sizes = TreeVec::concat_cols([sizes.clone(),sizes.clone()].into_iter());
 
 
-    commitment_scheme.commit(proof.proof.commitments[0], &sizes[0], verifier_channel);
+    commitment_scheme.commit(proof.proof.commitments[0], &c_sizes[0], verifier_channel);
     commitment_scheme.commit(proof.proof.commitments[1], &c_sizes[1], verifier_channel);
     verifier_channel.mix_felts(&claimed_sums);
     commitment_scheme.commit(proof.proof.commitments[2], &c_sizes[2], verifier_channel);
