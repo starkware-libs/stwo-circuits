@@ -142,6 +142,7 @@ pub fn merkle_node<Value: IValue>(
 /// `query_idx`.
 pub fn decommit_eval_domain_samples<Value: IValue>(
     context: &mut Context<Value>,
+    n_queries: usize,
     eval_domain_samples: &EvalDomainSamples<Var>,
     auth_paths: &AuthPaths<Var>,
     bits: &[Vec<Var>],
@@ -150,8 +151,11 @@ pub fn decommit_eval_domain_samples<Value: IValue>(
     assert_eq!(eval_domain_samples.n_traces(), roots.len());
     assert_eq!(auth_paths.n_trees(), roots.len());
     for (trace_idx, root) in roots.iter().enumerate() {
-        for (query_idx, data) in eval_domain_samples.data_for_trace(trace_idx).iter().enumerate() {
-            let leaf = hash_leaf_m31s(context, data);
+        let data = eval_domain_samples.data_for_trace(trace_idx);
+        for query_idx in 0..n_queries {
+            let query_values =
+                data.iter().map(|column_data| column_data[query_idx].clone()).collect_vec();
+            let leaf = hash_leaf_m31s(context, &query_values);
             let auth_path = auth_paths.at(trace_idx, query_idx);
             let bits_for_query = bits.iter().map(|b| b[query_idx]).collect_vec();
             verify_merkle_path(context, leaf, &bits_for_query, *root, auth_path);

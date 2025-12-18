@@ -25,7 +25,7 @@ pub mod test;
 /// Represents the sampled values in the evaluation domain.
 #[derive(Debug)]
 pub struct EvalDomainSamples<T> {
-    /// `data[trace_idx][query_idx][column_idx]` is the `M31` value of the column `column_idx` in
+    /// `data[trace_idx][column_idx][query_idx]` is the `M31` value of the column `column_idx` in
     /// trace `trace_idx` at the `query_idx` query.
     data: Vec<Vec<Vec<M31Wrapper<T>>>>,
 }
@@ -36,8 +36,8 @@ impl<T> EvalDomainSamples<T> {
     }
 
     /// Returns the sampled value for the given trace, query, and column.
-    pub fn at(&self, trace_idx: usize, query_idx: usize, column_idx: usize) -> &T {
-        self.data[trace_idx][query_idx][column_idx].get()
+    pub fn at(&self, trace_idx: usize, column_idx: usize, query_idx: usize) -> &T {
+        self.data[trace_idx][column_idx][query_idx].get()
     }
 
     /// Returns the data vector for the given trace.
@@ -49,9 +49,9 @@ impl<T> EvalDomainSamples<T> {
     /// config parameters.
     pub fn validate_structure(&self, n_columns_per_trace: &[usize], n_queries: usize) {
         for (trace_data, n_columns) in zip_eq(&self.data, n_columns_per_trace) {
-            assert_eq!(trace_data.len(), n_queries);
+            assert_eq!(trace_data.len(), *n_columns);
             for query_data in trace_data {
-                assert_eq!(query_data.len(), *n_columns);
+                assert_eq!(query_data.len(), n_queries);
             }
         }
     }
@@ -84,7 +84,7 @@ pub fn empty_eval_domain_samples(
     EvalDomainSamples {
         data: n_columns_per_trace
             .iter()
-            .map(|n_columns| vec![vec![M31Wrapper::from(NoValue); *n_columns]; n_queries])
+            .map(|n_columns| vec![vec![M31Wrapper::from(NoValue); n_queries]; *n_columns])
             .collect(),
     }
 }
@@ -293,7 +293,7 @@ pub fn compute_fri_input(
                 quotient_coef = eval!(context, (quotient_coef) * (alpha));
             }
 
-            let query_value_at_column = *trace_queries.at(r.trace_idx, query_idx, r.column_idx);
+            let query_value_at_column = *trace_queries.at(r.trace_idx, r.column_idx, query_idx);
 
             // Compute c * column[column_idx](q_x, q_y) - a * q_y - b.
             let numerator =

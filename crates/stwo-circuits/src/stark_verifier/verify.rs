@@ -125,6 +125,7 @@ pub fn verify(
     let bits = queries.bits.iter().map(|simd| Simd::unpack(context, simd)).collect_vec();
     decommit_eval_domain_samples(
         context,
+        config.n_queries(),
         &proof.eval_domain_samples,
         &proof.eval_domain_auth_paths,
         &bits,

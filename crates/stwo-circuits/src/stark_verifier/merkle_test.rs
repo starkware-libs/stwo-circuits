@@ -147,11 +147,13 @@ fn test_merkle_path(#[case] wrong_bit: bool, #[case] wrong_root: bool) {
 fn test_decommit_eval_domain_samples(#[case] wrong_root: Option<usize>, #[case] wrong_bit: bool) {
     let mut context = TraceContext::default();
 
+
+    // 1 trace with a single column + 3 traces with no columns.
     let eval_domain_samples = EvalDomainSamples::from_m31s(vec![
         vec![vec![M31::from(1)]],
-        vec![vec![]],
-        vec![vec![]],
-        vec![vec![]],
+        vec![],
+        vec![],
+        vec![],
     ]);
     let auth_path_val0 = HashValue(qm31_from_u32s(1, 2, 3, 4), qm31_from_u32s(5, 6, 7, 8));
     let auth_path_val1 = HashValue(qm31_from_u32s(9, 10, 11, 12), qm31_from_u32s(13, 14, 15, 16));
@@ -180,6 +182,7 @@ fn test_decommit_eval_domain_samples(#[case] wrong_root: Option<usize>, #[case] 
 
     decommit_eval_domain_samples(
         &mut context,
+        1,
         &eval_domain_samples_vars,
         &auth_paths_vars,
         &bits_vars,
