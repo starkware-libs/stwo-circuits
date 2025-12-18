@@ -52,17 +52,18 @@ pub struct FibInput {
 #[derive(Clone)]
 pub struct Eval {
     pub lookup_elements: SimpleRelation,
+    pub preprocessed_column_id: PreProcessedColumnId,
+    pub log_n_instances: u32,
 }
 impl FrameworkEval for Eval {
     fn log_size(&self) -> u32 {
-        LOG_N_INSTANCES
+        self.log_n_instances
     }
     fn max_constraint_log_degree_bound(&self) -> u32 {
-        LOG_N_INSTANCES + 1
+        self.log_n_instances + 1
     }
     fn evaluate<E: EvalAtRow>(&self, mut eval: E) -> E {
-        let row_const =
-            eval.get_preprocessed_column(PreProcessedColumnId { id: "row_const".into() });
+        let row_const = eval.get_preprocessed_column(self.preprocessed_column_id.clone());
         let mut a = eval.next_trace_mask();
         let mut b = eval.next_trace_mask();
         for _ in 2..FIB_SEQUENCE_LENGTH {
@@ -80,8 +81,10 @@ impl FrameworkEval for Eval {
 }
 
 /// Generates a trace for the test.
-fn generate_trace() -> ColumnVec<CircleEvaluation<SimdBackend, BaseField, BitReversedOrder>> {
-    let inputs = (0..(1 << (LOG_N_INSTANCES - LOG_N_LANES)))
+fn generate_trace(
+    log_n_instances: u32,
+) -> ColumnVec<CircleEvaluation<SimdBackend, BaseField, BitReversedOrder>> {
+    let inputs = (0..(1 << (log_n_instances - LOG_N_LANES)))
         .map(|i| FibInput {
             a: PackedBaseField::one(),
             b: PackedBaseField::from_array(std::array::from_fn(|j| {
@@ -91,9 +94,9 @@ fn generate_trace() -> ColumnVec<CircleEvaluation<SimdBackend, BaseField, BitRev
         .collect_vec();
 
     let mut trace = (0..FIB_SEQUENCE_LENGTH)
-        .map(|_| Col::<SimdBackend, BaseField>::zeros(1 << LOG_N_INSTANCES))
+        .map(|_| Col::<SimdBackend, BaseField>::zeros(1 << log_n_instances))
         .collect_vec();
-    let row_const: BaseColumn = (0..(1 << LOG_N_INSTANCES)).map(|i| i.into()).collect();
+    let row_const: BaseColumn = (0..(1 << log_n_instances)).map(|i| i.into()).collect();
     for (vec_index, (input, row_const)) in zip_eq(inputs, row_const.data).enumerate() {
         let mut a = input.a;
         let mut b = input.b;
@@ -104,7 +107,7 @@ fn generate_trace() -> ColumnVec<CircleEvaluation<SimdBackend, BaseField, BitRev
             col.data[vec_index] = b;
         });
     }
-    let domain = CanonicCoset::new(LOG_N_INSTANCES).circle_domain();
+    let domain = CanonicCoset::new(log_n_instances).circle_domain();
     trace
         .into_iter()
         .map(|eval| CircleEvaluation::<SimdBackend, _, BitReversedOrder>::new(domain, eval))
@@ -116,10 +119,11 @@ pub fn generate_interaction_trace(
     trace: &ColumnVec<CircleEvaluation<SimdBackend, BaseField, BitReversedOrder>>,
     lookup_elements: &LookupElements<2>,
 ) -> (ColumnVec<CircleEvaluation<SimdBackend, BaseField, BitReversedOrder>>, SecureField) {
-    let mut logup_gen = LogupTraceGenerator::new(LOG_N_INSTANCES);
+    let log_instances = trace[0].values.length.ilog2();
+    let mut logup_gen = LogupTraceGenerator::new(log_instances);
 
     let mut col_gen = logup_gen.new_col();
-    for vec_row in 0..(1 << (LOG_N_INSTANCES - LOG_N_LANES)) {
+    for vec_row in 0..(1 << (log_instances - LOG_N_LANES)) {
         let denom: PackedSecureField = lookup_elements.combine(&[
             trace[FIB_SEQUENCE_LENGTH - 2].values.data[vec_row],
             trace[FIB_SEQUENCE_LENGTH - 1].values.data[vec_row],
@@ -129,6 +133,13 @@ pub fn generate_interaction_trace(
     col_gen.finalize_col();
 
     logup_gen.finalize_last()
+}
+
+fn generate_seq_column(
+    log_size: u32,
+) -> CircleEvaluation<SimdBackend, BaseField, BitReversedOrder> {
+    let col = Col::<SimdBackend, BaseField>::from_iter((0..(1 << log_size)).map(BaseField::from));
+    CircleEvaluation::new(CanonicCoset::new(log_size).circle_domain(), col)
 }
 
 /// Creates a proof for the simple AIR. See documentation in [Eval].
@@ -148,16 +159,13 @@ pub fn create_proof() -> (SimpleComponent, ExtendedStarkProof<Blake2sM31MerkleHa
     commitment_scheme.set_store_polynomials_coefficients();
 
     // Preprocessed trace
-    let domain = CanonicCoset::new(LOG_N_INSTANCES).circle_domain();
+
     let mut tree_builder = commitment_scheme.tree_builder();
-    let preprocessed_column: BaseColumn =
-        (0..2_u32.pow(LOG_N_INSTANCES)).map(|i| i.into()).collect();
-    let preprocessed_column_eval = CircleEvaluation::new(domain, preprocessed_column);
-    tree_builder.extend_evals([preprocessed_column_eval]);
+    tree_builder.extend_evals([generate_seq_column(LOG_N_INSTANCES)]);
     tree_builder.commit(prover_channel);
 
     // Trace.
-    let trace = generate_trace();
+    let trace = generate_trace(LOG_N_INSTANCES);
     let mut tree_builder = commitment_scheme.tree_builder();
     tree_builder.extend_evals(trace.clone());
     tree_builder.commit(prover_channel);
@@ -177,7 +185,11 @@ pub fn create_proof() -> (SimpleComponent, ExtendedStarkProof<Blake2sM31MerkleHa
     // Prove constraints.
     let component = SimpleComponent::new(
         &mut TraceLocationAllocator::default(),
-        Eval { lookup_elements },
+        Eval {
+            lookup_elements,
+            preprocessed_column_id: PreProcessedColumnId { id: "row_const".into() },
+            log_n_instances: LOG_N_INSTANCES,
+        },
         claimed_sum,
     );
 

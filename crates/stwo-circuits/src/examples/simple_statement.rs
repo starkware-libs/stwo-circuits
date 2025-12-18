@@ -59,19 +59,32 @@ fn single_logup_term(
     eval!(context, ((shifted_diff) * (denominator)) - (1))
 }
 
-#[derive(Default)]
 pub struct SimpleStatement {
     pub fib_component: SquaredFibonacciComponent,
 }
-#[derive(Default)]
-pub struct SquaredFibonacciComponent {}
+
+impl Default for SimpleStatement {
+    fn default() -> Self {
+        Self {
+            fib_component: SquaredFibonacciComponent {
+                log_n_instances: LOG_N_INSTANCES,
+                preprocessed_column_idx: 0,
+            },
+        }
+    }
+}
+
+pub struct SquaredFibonacciComponent {
+    pub log_n_instances: u32,
+    pub preprocessed_column_idx: usize,
+}
 impl Component for SquaredFibonacciComponent {
     fn evaluate(
         &self,
         context: &mut Context<impl IValue>,
         acc: &mut CompositionConstraintAccumulator<'_>,
     ) {
-        let [const_val] = acc.oods_samples.preprocessed_columns[..].try_into().unwrap();
+        let const_val = acc.oods_samples.preprocessed_columns[self.preprocessed_column_idx];
         let Some([a, b, c, d]) = acc.oods_samples.trace.split_off(..4) else {
             panic!("Expected 4 trace values");
         };
@@ -109,7 +122,7 @@ impl Component for SquaredFibonacciComponent {
                 interaction3.at_oods,
             ],
         );
-        let n_instances = context.constant((1 << LOG_N_INSTANCES).into());
+        let n_instances = context.constant((1 << self.log_n_instances).into());
         let cumsum_shift = div(context, *claimed_sum, n_instances);
         let diff = eval!(context, (cur_logup_sum) - (prev_logup_sum));
         let shifted_diff = eval!(context, (diff) + (cumsum_shift));
@@ -131,7 +144,7 @@ impl SquaredFibonacciComponent {
         interaction_elements: [Var; 2],
     ) -> Var {
         let mut sum = prev_sum;
-        for j in 0..(1 << LOG_N_INSTANCES) {
+        for j in 0..(1 << self.log_n_instances) {
             let mut a: M31 = M31::one();
             let mut b: M31 = j.into();
             for _ in 0..(FIB_SEQUENCE_LENGTH - 2) {
