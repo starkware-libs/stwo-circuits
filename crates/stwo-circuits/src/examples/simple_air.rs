@@ -1,10 +1,11 @@
 use itertools::{Itertools, zip_eq};
 use num_traits::One;
 use stwo::core::ColumnVec;
+use stwo::core::air::Component;
 use stwo::core::channel::{Blake2sM31Channel, Channel};
 use stwo::core::fields::FieldExpOps;
 use stwo::core::fields::m31::BaseField;
-use stwo::core::fields::qm31::SecureField;
+use stwo::core::fields::qm31::{QM31, SecureField};
 use stwo::core::pcs::PcsConfig;
 use stwo::core::poly::circle::CanonicCoset;
 use stwo::core::proof::ExtendedStarkProof;
@@ -132,7 +133,7 @@ pub fn generate_interaction_trace(
 }
 
 /// Creates a proof for the simple AIR. See documentation in [Eval].
-pub fn create_proof() -> (SimpleComponent, ExtendedStarkProof<Blake2sM31MerkleHasher>) {
+pub fn create_proof() -> (Vec<Box<dyn Component>>, Vec<QM31>, ExtendedStarkProof<Blake2sM31MerkleHasher>) {
     let config = PcsConfig::default();
     // Precompute twiddles.
     let twiddles = SimdBackend::precompute_twiddles(
@@ -156,9 +157,12 @@ pub fn create_proof() -> (SimpleComponent, ExtendedStarkProof<Blake2sM31MerkleHa
     tree_builder.commit(prover_channel);
 
     // Trace.
-    let trace = generate_trace();
+    let trace_1 = generate_trace();
+
+
     let mut tree_builder = commitment_scheme.tree_builder();
-    tree_builder.extend_evals(trace.clone());
+    let trace = [trace_1.clone(), trace_1.clone()].concat();
+    tree_builder.extend_evals(trace);
     tree_builder.commit(prover_channel);
 
     // TODO(lior): Add proof of work before drawing the lookup elements.
@@ -167,25 +171,38 @@ pub fn create_proof() -> (SimpleComponent, ExtendedStarkProof<Blake2sM31MerkleHa
     let lookup_elements = SimpleRelation::draw(prover_channel);
 
     // Interaction trace.
-    let (interaction_trace, claimed_sum) = generate_interaction_trace(&trace, &lookup_elements.0);
-    prover_channel.mix_felts(&[claimed_sum]);
+    let (interaction_trace, claimed_sum) = generate_interaction_trace(&trace_1, &lookup_elements.0);
+    prover_channel.mix_felts(&[claimed_sum, claimed_sum]);
     let mut tree_builder = commitment_scheme.tree_builder();
-    tree_builder.extend_evals(interaction_trace);
+    tree_builder.extend_evals([interaction_trace.clone(), interaction_trace.clone()].concat());
     tree_builder.commit(prover_channel);
 
+    let mut trace_alloc =
+            TraceLocationAllocator::new_with_preprocessed_columns(&[PreProcessedColumnId {
+                id: "row_const".into(),
+            }]);
+
     // Prove constraints.
-    let component = SimpleComponent::new(
-        &mut TraceLocationAllocator::default(),
+    let component_1 = SimpleComponent::new(
+        &mut trace_alloc,
+        Eval { lookup_elements: lookup_elements.clone() },
+        claimed_sum,
+    );
+
+    let component_2 = SimpleComponent::new(
+        &mut trace_alloc,
         Eval { lookup_elements },
         claimed_sum,
     );
 
     let proof = prove_ex::<SimdBackend, Blake2sM31MerkleChannel>(
-        &[&component],
+        &[&component_1,&component_2], 
         prover_channel,
         commitment_scheme,
     )
     .unwrap();
 
-    (component, proof)
+    let components: Vec<Box<dyn Component>> = vec![Box::new(component_1),Box::new(component_2)];
+
+    (components, vec![claimed_sum, claimed_sum], proof)
 }

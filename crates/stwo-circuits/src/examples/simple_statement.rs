@@ -67,7 +67,7 @@ pub struct SimpleStatement {
 #[derive(Default)]
 pub struct SquaredFibonacciComponent {}
 impl Component for SquaredFibonacciComponent {
-    fn evaluate(&self, context: &mut Context<impl IValue>, args: &mut EvaluateArgs<'_>) -> Var {
+    fn evaluate(&self, context: &mut Context<impl IValue>, prev_sum: Var, args: &mut EvaluateArgs<'_>) -> Var {
         let EvaluateArgs {
             oods_samples,
             pt,
@@ -119,7 +119,9 @@ impl Component for SquaredFibonacciComponent {
 
         let denom_inverse = denom_inverse(context, pt.x, *log_domain_size);
 
-        let constraint_val = constraint0_val;
+        let constraint_val = prev_sum;
+        let constraint_val = eval!(context, (constraint_val) * (*composition_polynomial_coef));
+        let constraint_val = eval!(context, (constraint_val) + (constraint0_val));
         let constraint_val = eval!(context, (constraint_val) * (*composition_polynomial_coef));
         let constraint_val = eval!(context, (constraint_val) + (constraint1_val));
         let constraint_val = eval!(context, (constraint_val) * (*composition_polynomial_coef));
@@ -155,11 +157,13 @@ impl Statement for SimpleStatement {
     }
 
     fn evaluate(&self, context: &mut Context<impl IValue>, mut args: EvaluateArgs<'_>) -> Var {
-        let result = self.fib_component.evaluate(context, &mut args);
+        let prev_sum = context.zero();
+        let result1 = self.fib_component.evaluate(context, prev_sum, &mut args);
+        let result2 = self.fib_component.evaluate(context, result1, &mut args);
 
         assert!(args.oods_samples.trace.is_empty());
         assert!(args.oods_samples.interaction.is_empty());
         assert!(args.claimed_sums.is_empty());
-        result
+        result2
     }
 }
