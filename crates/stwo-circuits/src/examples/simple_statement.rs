@@ -117,7 +117,7 @@ impl Component for SquaredFibonacciComponent {
         let logup_constraint_val =
             single_logup_term(context, &[*c, *d], shifted_diff, *interaction_elements);
 
-        let denom_inverse = denom_inverse(context, pt.x, *log_domain_size);
+     
 
         let constraint_val = prev_sum;
         let constraint_val = eval!(context, (constraint_val) * (*composition_polynomial_coef));
@@ -125,19 +125,17 @@ impl Component for SquaredFibonacciComponent {
         let constraint_val = eval!(context, (constraint_val) * (*composition_polynomial_coef));
         let constraint_val = eval!(context, (constraint_val) + (constraint1_val));
         let constraint_val = eval!(context, (constraint_val) * (*composition_polynomial_coef));
-        let constraint_val = eval!(context, (constraint_val) + (logup_constraint_val));
-
-        eval!(context, (constraint_val) * (denom_inverse))
+        eval!(context, (constraint_val) + (logup_constraint_val))
     }
-}
 
-impl Statement for SimpleStatement {
+
     fn public_logup_sum(
         &self,
         context: &mut Context<impl IValue>,
+        prev_sum: Var,
         interaction_elements: [Var; 2],
     ) -> Var {
-        let mut sum = context.zero();
+        let mut sum = prev_sum;
         for j in 0..(1 << LOG_N_INSTANCES) {
             let mut a: M31 = M31::one();
             let mut b: M31 = j.into();
@@ -155,15 +153,34 @@ impl Statement for SimpleStatement {
         }
         sum
     }
+}
+
+impl Statement for SimpleStatement {
+    fn public_logup_sum(
+        &self,
+        context: &mut Context<impl IValue>,
+        interaction_elements: [Var; 2],
+    ) -> Var {
+        let prev_sum = context.zero();
+        let prev_sum = self.fib_component.public_logup_sum(context, prev_sum, interaction_elements);
+        self.fib_component.public_logup_sum(context, prev_sum, interaction_elements)       
+    }
 
     fn evaluate(&self, context: &mut Context<impl IValue>, mut args: EvaluateArgs<'_>) -> Var {
-        let prev_sum = context.zero();
-        let result1 = self.fib_component.evaluate(context, prev_sum, &mut args);
-        let result2 = self.fib_component.evaluate(context, result1, &mut args);
+        let constraint_val = context.zero();
+     
+        let constraint_val = self.fib_component.evaluate(context, constraint_val, &mut args);
+
+    
+        let constraint_val = self.fib_component.evaluate(context, constraint_val, &mut args);
+
+    
 
         assert!(args.oods_samples.trace.is_empty());
         assert!(args.oods_samples.interaction.is_empty());
         assert!(args.claimed_sums.is_empty());
-        result2
+     
+        let denom_inverse = denom_inverse(context, args.pt.x, args.log_domain_size);
+        eval!(context, (constraint_val) * (denom_inverse))
     }
 }

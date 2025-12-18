@@ -7,4 +7,11 @@ pub trait Component {
     /// Evaluates the composition polynomial at the OODS point (after dividing by the domain
     /// polynomial).
     fn evaluate(&self, context: &mut Context<impl IValue>, prev_sum: Var, args: &mut EvaluateArgs<'_>) -> Var;
+
+    fn public_logup_sum(
+        &self,
+        context: &mut Context<impl IValue>,
+        prev_sum: Var,
+        interaction_elements: [Var; 2],
+    ) -> Var;
 }

@@ -66,6 +66,8 @@ pub fn verify(
     // Draw a random point for the OODS.
     let oods_point = channel.draw_point(context);
 
+    println!("oods_point: {:?}", context.get(oods_point.x));
+
     // Compute the composition evaluation at the OODS point from `proof.*_at_oods` and compare
     // to `proof.composition_eval_at_oods`.
     let composition_eval = statement.evaluate(
@@ -83,12 +85,14 @@ pub fn verify(
             claimed_sums: &proof.claimed_sums,
         },
     );
+    println!("composition_eval: {:?}", context.get(composition_eval));
     let expected_composition_eval = extract_expected_composition_eval(
         context,
         &proof.composition_eval_at_oods,
         oods_point,
         config.log_evaluation_domain_size(),
     );
+    println!("expected_composition_eval: {:?}", context.get(expected_composition_eval));
     eq(context, composition_eval, expected_composition_eval);
 
     // Verify the values in `proof.trace_at_oods` and `proof.composition_eval_at_oods`.
