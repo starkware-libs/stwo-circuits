@@ -1,11 +1,12 @@
 use num_traits::One;
 use stwo::core::fields::m31::M31;
 
-use super::simple_air::{FIB_SEQUENCE_LENGTH, LOG_N_INSTANCES};
+use super::simple_air::FIB_SEQUENCE_LENGTH;
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::{div, from_partial_evals};
 use crate::eval;
+use crate::examples::simple_air::{LOG_SIZE_LONG, LOG_SIZE_SHORT};
 use crate::stark_verifier::circle::double_x;
 use crate::stark_verifier::component::{Component, CompositionConstraintAccumulator};
 use crate::stark_verifier::statement::{EvaluateArgs, Statement};
@@ -60,15 +61,20 @@ fn single_logup_term(
 }
 
 pub struct SimpleStatement {
-    pub fib_component: SquaredFibonacciComponent,
+    pub short_fib_component: SquaredFibonacciComponent,
+    pub long_fib_component: SquaredFibonacciComponent,
 }
 
 impl Default for SimpleStatement {
     fn default() -> Self {
         Self {
-            fib_component: SquaredFibonacciComponent {
-                log_n_instances: LOG_N_INSTANCES,
+            short_fib_component: SquaredFibonacciComponent {
+                log_n_instances: LOG_SIZE_SHORT,
                 preprocessed_column_idx: 0,
+            },
+            long_fib_component: SquaredFibonacciComponent {
+                log_n_instances: LOG_SIZE_LONG,
+                preprocessed_column_idx: 1,
             },
         }
     }
@@ -170,7 +176,9 @@ impl Statement for SimpleStatement {
         interaction_elements: [Var; 2],
     ) -> Var {
         let prev_sum = context.zero();
-        self.fib_component.public_logup_sum(context, prev_sum, interaction_elements)
+        let prev_sum =
+            self.short_fib_component.public_logup_sum(context, prev_sum, interaction_elements);
+        self.long_fib_component.public_logup_sum(context, prev_sum, interaction_elements)
     }
 
     fn evaluate(&self, context: &mut Context<impl IValue>, args: EvaluateArgs<'_>) -> Var {
@@ -191,7 +199,8 @@ impl Statement for SimpleStatement {
             accumulation: context.zero(),
         };
 
-        self.fib_component.evaluate(context, &mut evaluation_accumulator);
+        self.short_fib_component.evaluate(context, &mut evaluation_accumulator);
+        self.long_fib_component.evaluate(context, &mut evaluation_accumulator);
         let final_evaluation = evaluation_accumulator.finalize();
 
         let denom_inverse = denom_inverse(context, pt.x, log_domain_size);
