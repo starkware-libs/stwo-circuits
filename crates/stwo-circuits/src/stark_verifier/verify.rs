@@ -59,7 +59,7 @@ pub fn verify(
     channel.mix_commitment(context, proof.interaction_root);
 
     // Draw a random QM31 coefficient for the composition polynomial.
-    let composition_polynomial_coef = channel.draw_qm31(context);
+    let composition_polynomial_coeff = channel.draw_qm31(context);
 
     channel.mix_commitment(context, proof.composition_polynomial_root);
 
@@ -78,7 +78,7 @@ pub fn verify(
             },
             pt: oods_point,
             log_domain_size: config.log_trace_size(),
-            composition_polynomial_coef,
+            composition_polynomial_coeff,
             interaction_elements: [interaction_z, interaction_alpha],
             claimed_sums: &proof.claimed_sums,
         },
