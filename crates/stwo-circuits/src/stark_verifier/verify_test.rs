@@ -55,7 +55,7 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
     };
 
     // Create a context with values from the proof.
-    let (component, mut proof) = create_proof();
+    let (_components, claimed_sums, mut proof) = create_proof();
     match proof_modifier {
         ProofModifier::None => {}
         ProofModifier::WrongTraceAuthPath => {
@@ -80,7 +80,6 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
         }
     }
     let mut context = TraceContext::default();
-    let claimed_sums = vec![component.claimed_sum()];
     let proof = proof_from_stark_proof(&proof, &config, claimed_sums);
     let proof_vars = proof.guess(&mut context);
     verify(&mut context, &proof_vars, &config, &SimpleStatement::default());
