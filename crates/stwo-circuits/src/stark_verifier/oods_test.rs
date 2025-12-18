@@ -17,7 +17,8 @@ use crate::stark_verifier::select_queries::select_queries;
 fn test_eval_domain_samples_guess_circuit() {
     let mut context = Context::<NoValue>::default();
     let res = empty_eval_domain_samples(&[2], 1).guess(&mut context);
-    expect!["EvalDomainSamples { data: [[[M31([3]), M31([5])]]] }"].assert_eq(&format!("{res:?}"));
+    expect!["EvalDomainSamples { data: [[[M31([3])], [M31([5])]]] }"]
+        .assert_eq(&format!("{res:?}"));
     expect![[r#"
         {
             (0 + 0i) + (0 + 0i)u: [0],
@@ -105,10 +106,11 @@ fn test_compute_fri_input_regression() {
     let queries = select_queries(&mut context, &input, log_domain_size);
 
     let trace_queries_vars: Vec<Vec<M31>> = vec![
-        vec![1.into(), 863170483.into(), 1430398088.into()],
-        vec![1.into(), 58834968.into(), 1532221375.into()],
-        vec![1.into(), 1606816039.into(), 264974634.into()],
+        vec![1.into(), 1.into(), 1.into()],
+        vec![863170483.into(), 58834968.into(), 1606816039.into()],
+        vec![1430398088.into(), 1532221375.into(), 264974634.into()],
     ];
+
     let trace_queries = EvalDomainSamples {
         data: vec![
             trace_queries_vars
