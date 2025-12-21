@@ -17,7 +17,10 @@ fn verify_simple_proof() {
     let commitment_scheme = &mut CommitmentSchemeVerifier::<Blake2sM31MerkleChannel>::new(config);
 
     // Retrieve the expected column sizes in each commitment interaction, from the AIR.
-    let sizes = TreeVec::concat_cols(components.iter().map(|c| c.trace_log_degree_bounds()));
+    let mut sizes = TreeVec::concat_cols(components.iter().map(|c| c.trace_log_degree_bounds()));
+
+    // Sort the preprocessed column sizes.
+    sizes[0].sort();
 
     verifier_channel.mix_felts(&pack_component_log_sizes(component_log_sizes));
     commitment_scheme.commit(proof.proof.commitments[0], &sizes[0], verifier_channel);
