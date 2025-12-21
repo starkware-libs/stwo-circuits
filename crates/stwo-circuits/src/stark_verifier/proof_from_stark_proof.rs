@@ -16,6 +16,7 @@ use crate::stark_verifier::proof::{InteractionAtOods, N_TRACES, Proof, ProofConf
 pub fn proof_from_stark_proof(
     proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
     config: &ProofConfig,
+    component_log_sizes: Vec<u32>,
     claimed_sums: Vec<QM31>,
 ) -> Proof<QM31> {
     let commitments = &proof.proof.commitments;
@@ -25,6 +26,19 @@ pub fn proof_from_stark_proof(
     let pow: u64 = proof.proof.proof_of_work;
     let pow_high = (pow >> 32) as u32;
     let pow_low = (pow & 0xFFFFFFFF) as u32;
+
+    let packed_component_log_sizes = component_log_sizes
+        .into_iter()
+        .chunks(4)
+        .into_iter()
+        .map(|mut logs_sizes| {
+            let arr =
+                std::array::from_fn(|_| M31::from_u32_unchecked(logs_sizes.next().unwrap_or(0)));
+            QM31::from_m31_array(arr)
+        })
+        .collect_vec();
+
+    //panic!("packed_component_log_sizes: {:?}", packed_component_log_sizes);
 
     Proof {
         preprocessed_root: commitments[0].into(),
@@ -37,6 +51,7 @@ pub fn proof_from_stark_proof(
             .iter()
             .map(|x| InteractionAtOods { at_oods: x[1], at_prev: x[0] })
             .collect_vec(),
+        component_log_sizes: packed_component_log_sizes,
         claimed_sums,
         composition_eval_at_oods: as_single_row(&sampled_values[3]).try_into().unwrap(),
         eval_domain_samples: construct_eval_domain_samples(proof, config),
