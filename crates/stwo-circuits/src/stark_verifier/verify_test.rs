@@ -30,7 +30,7 @@ enum ProofModifier {
 #[case::wrong_fri_auth_path(ProofModifier::WrongFriAuthPath)]
 #[case::wrong_fri_sibling(ProofModifier::WrongFriSibling)]
 fn test_verify(#[case] proof_modifier: ProofModifier) {
-    use crate::examples::simple_air::{LOG_SIZE_LONG, PublicInput};
+    use crate::examples::simple_air::{LOG_SIZE_LONG, LOG_SIZE_SHORT, PublicInput};
 
     let config = ProofConfig {
         n_proof_of_work_bits: 10,
@@ -83,7 +83,8 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
         }
     }
     let mut context = TraceContext::default();
-    let proof = proof_from_stark_proof(&proof, &config, claimed_sums);
+    let component_log_sizes = vec![LOG_SIZE_SHORT, LOG_SIZE_LONG];
+    let proof = proof_from_stark_proof(&proof, &config, component_log_sizes, claimed_sums);
     let proof_vars = proof.guess(&mut context);
     verify(&mut context, &proof_vars, &config, &SimpleStatement::default());
 
