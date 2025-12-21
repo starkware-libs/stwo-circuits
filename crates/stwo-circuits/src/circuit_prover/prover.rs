@@ -2,6 +2,7 @@ use crate::circuit_air::components::CircuitComponents;
 use crate::circuit_air::components::CircuitInteractionElements;
 use crate::circuit_air::components::lookup_sum;
 use crate::circuit_prover::witness::preprocessed::PreProcessedTrace;
+use crate::circuit_prover::witness::trace::write_interaction_trace;
 use crate::circuit_prover::witness::trace::write_trace;
 use crate::circuits::context::Context;
 use num_traits::Zero;
@@ -75,8 +76,12 @@ pub fn prove_circuit(
 
     // Interaction trace.
     let mut tree_builder = commitment_scheme.tree_builder();
-    let interaction_claim =
-        interaction_generator.write_interaction_trace(&mut tree_builder, &interaction_elements);
+    let interaction_claim = write_interaction_trace(
+        &claim,
+        interaction_generator,
+        &mut tree_builder,
+        &interaction_elements,
+    );
 
     // Validate lookup argument.
     debug_assert_eq!(
