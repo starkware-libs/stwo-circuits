@@ -6,8 +6,12 @@ use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::{Guess, cond_flip, eq};
 use crate::circuits::simd::Simd;
 use crate::circuits::wrappers::M31Wrapper;
+
 use crate::stark_verifier::oods::EvalDomainSamples;
 use crate::stark_verifier::proof::N_TRACES;
+use crate::stark_verifier::sort_queries::{
+    generate_column_indices, generate_sort_keys, sort_query_values,
+};
 
 #[cfg(test)]
 #[path = "merkle_test.rs"]
@@ -143,6 +147,7 @@ pub fn merkle_node<Value: IValue>(
 pub fn decommit_eval_domain_samples<Value: IValue>(
     context: &mut Context<Value>,
     n_queries: usize,
+    column_log_sizes_by_trace: &[Vec<Var>; 2],
     eval_domain_samples: &EvalDomainSamples<Var>,
     auth_paths: &AuthPaths<Var>,
     bits: &[Vec<Var>],
@@ -150,12 +155,36 @@ pub fn decommit_eval_domain_samples<Value: IValue>(
 ) {
     assert_eq!(eval_domain_samples.n_traces(), roots.len());
     assert_eq!(auth_paths.n_trees(), roots.len());
+
+    let n_columns =
+        column_log_sizes_by_trace.iter().map(|log_sizes| log_sizes.len()).max().unwrap_or(0);
+    let column_indices = generate_column_indices(context, n_columns);
+
     for (trace_idx, root) in roots.iter().enumerate() {
         let data = eval_domain_samples.data_for_trace(trace_idx);
+
+        let opt_sort_keys = match trace_idx {
+            // Only the trace and interaction columns require sorting.
+            1 | 2 => Some(generate_sort_keys(
+                context,
+                &column_indices,
+                &column_log_sizes_by_trace[trace_idx - 1],
+            )),
+            _ => None,
+        };
+        let mut opt_sorted_keys = None;
+
         for query_idx in 0..n_queries {
             let query_values =
                 data.iter().map(|column_data| column_data[query_idx].clone()).collect_vec();
-            let leaf = hash_leaf_m31s(context, &query_values);
+
+            let sorted = if let Some(sort_keys) = &opt_sort_keys {
+                sort_query_values(context, &query_values, sort_keys, &mut opt_sorted_keys)
+            } else {
+                query_values
+            };
+
+            let leaf = hash_leaf_m31s(context, &sorted);
             let auth_path = auth_paths.at(trace_idx, query_idx);
             let bits_for_query = bits.iter().map(|b| b[query_idx]).collect_vec();
             verify_merkle_path(context, leaf, &bits_for_query, *root, auth_path);

@@ -33,4 +33,7 @@ pub trait Statement {
         context: &mut Context<impl IValue>,
         interaction_elements: [Var; 2],
     ) -> Var;
+
+    // Returns the log sizes of the trace and interaction columns.
+    fn column_log_sizes(&self, component_log_sizes: Vec<Var>) -> [Vec<Var>; 2];
 }
