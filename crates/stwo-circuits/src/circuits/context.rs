@@ -3,7 +3,7 @@ use indexmap::IndexMap;
 use num_traits::{One, Zero};
 use stwo::core::fields::qm31::QM31;
 
-use crate::circuits::circuit::{Add, Circuit};
+use crate::circuits::circuit::{Add, Circuit, Permutation};
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::guess;
 use crate::circuits::stats::Stats;
@@ -78,6 +78,13 @@ impl<Value: IValue> Context<Value> {
     /// Returns the value of a variable.
     pub fn get(&self, var: Var) -> Value {
         self.values[var.idx]
+    }
+
+    pub fn permute(&mut self, inputs: &[Var], outputs: &[Var]) {
+        self.circuit.permutation.push(Permutation {
+            inputs: inputs.iter().map(|var| var.idx).collect(),
+            outputs: outputs.iter().map(|var| var.idx).collect(),
+        });
     }
 
     pub fn constant(&mut self, value: QM31) -> Var {

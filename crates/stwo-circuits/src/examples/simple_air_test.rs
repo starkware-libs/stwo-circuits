@@ -19,8 +19,12 @@ fn verify_simple_proof() {
     // Retrieve the expected column sizes in each commitment interaction, from the AIR.
     let sizes = TreeVec::concat_cols(components.iter().map(|c| c.trace_log_degree_bounds()));
 
-    verifier_channel.mix_felts(&[QM31::from_u32_unchecked(LOG_SIZE_SHORT, LOG_SIZE_LONG, 0, 0)]);
-    commitment_scheme.commit(proof.proof.commitments[0], &sizes[0], verifier_channel);
+    verifier_channel.mix_felts(&[QM31::from_u32_unchecked(LOG_SIZE_LONG, LOG_SIZE_SHORT, 0, 0)]);
+    commitment_scheme.commit(
+        proof.proof.commitments[0],
+        &[LOG_SIZE_SHORT, LOG_SIZE_LONG],
+        verifier_channel,
+    );
     commitment_scheme.commit(proof.proof.commitments[1], &sizes[1], verifier_channel);
     verifier_channel.mix_felts(&claimed_sums);
     commitment_scheme.commit(proof.proof.commitments[2], &sizes[2], verifier_channel);

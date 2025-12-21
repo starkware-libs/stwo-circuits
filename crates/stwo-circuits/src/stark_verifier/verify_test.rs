@@ -83,7 +83,7 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
         }
     }
     let mut context = TraceContext::default();
-    let component_log_sizes = vec![LOG_SIZE_SHORT, LOG_SIZE_LONG];
+    let component_log_sizes = vec![LOG_SIZE_LONG, LOG_SIZE_SHORT];
     let proof = proof_from_stark_proof(&proof, &config, component_log_sizes, claimed_sums);
     let proof_vars = proof.guess(&mut context);
     verify(&mut context, &proof_vars, &config, &SimpleStatement::default());
