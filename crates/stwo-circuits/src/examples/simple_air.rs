@@ -179,8 +179,8 @@ pub fn create_proof()
     tree_builder.commit(prover_channel);
 
     // Trace.
-    let trace_1 = generate_trace(LOG_SIZE_SHORT);
-    let trace_2 = generate_trace(LOG_SIZE_LONG);
+    let trace_1 = generate_trace(LOG_SIZE_LONG);
+    let trace_2 = generate_trace(LOG_SIZE_SHORT);
     let mut tree_builder = commitment_scheme.tree_builder();
     tree_builder.extend_evals([trace_1.clone(), trace_2.clone()].concat());
     tree_builder.commit(prover_channel);
@@ -200,15 +200,20 @@ pub fn create_proof()
     tree_builder.extend_evals([interaction_trace_1, interaction_trace_2].concat());
     tree_builder.commit(prover_channel);
 
-    let mut trace_location_allocator = TraceLocationAllocator::default();
+    let short_preprocessed_column = PreProcessedColumnId { id: "row_const_short".into() };
+    let long_preprocessed_column = PreProcessedColumnId { id: "row_const_long".into() };
 
+    let mut trace_location_allocator = TraceLocationAllocator::new_with_preprocessed_columns(&[
+        short_preprocessed_column.clone(),
+        long_preprocessed_column.clone(),
+    ]);
     // Prove constraints.
     let component_1 = SimpleComponent::new(
         &mut trace_location_allocator,
         Eval {
             lookup_elements: lookup_elements.clone(),
-            preprocessed_column_id: PreProcessedColumnId { id: "row_const_1".into() },
-            log_n_instances: LOG_SIZE_SHORT,
+            preprocessed_column_id: long_preprocessed_column,
+            log_n_instances: LOG_SIZE_LONG,
         },
         claimed_sum_1,
     );
@@ -217,8 +222,8 @@ pub fn create_proof()
         &mut trace_location_allocator,
         Eval {
             lookup_elements,
-            preprocessed_column_id: PreProcessedColumnId { id: "row_const_2".into() },
-            log_n_instances: LOG_SIZE_LONG,
+            preprocessed_column_id: short_preprocessed_column,
+            log_n_instances: LOG_SIZE_SHORT,
         },
         claimed_sum_2,
     );

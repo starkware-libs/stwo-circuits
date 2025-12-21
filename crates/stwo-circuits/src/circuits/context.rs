@@ -1,9 +1,10 @@
 use hashbrown::HashSet;
 use indexmap::IndexMap;
+use itertools::Itertools;
 use num_traits::{One, Zero};
 use stwo::core::fields::qm31::QM31;
 
-use crate::circuits::circuit::{Add, Circuit};
+use crate::circuits::circuit::{Add, Circuit, Permutation};
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::guess;
 use crate::circuits::stats::Stats;
@@ -78,6 +79,24 @@ impl<Value: IValue> Context<Value> {
     /// Returns the value of a variable.
     pub fn get(&self, var: Var) -> Value {
         self.values[var.idx]
+    }
+
+
+    /// Permutes the input values using the given function and returns the new variables.
+    pub fn permute(
+        &mut self,
+        inputs: &[Var],
+        permute_fn: impl FnOnce(&[Value]) -> Vec<Value>,
+    ) -> Vec<Var> {
+        let outputs: Vec<Var> = permute_fn(&inputs.iter().map(|var| self.get(*var)).collect_vec())
+            .iter()
+            .map(|value| self.new_var(*value))
+            .collect();
+        self.circuit.permutation.push(Permutation {
+            inputs: inputs.iter().map(|var| var.idx).collect(),
+            outputs: outputs.iter().map(|var| var.idx).collect(),
+        });
+        outputs
     }
 
     pub fn constant(&mut self, value: QM31) -> Var {
