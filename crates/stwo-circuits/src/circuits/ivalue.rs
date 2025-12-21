@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use num_traits::Zero;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::fields::{cm31::CM31, m31::M31};
@@ -42,6 +43,9 @@ pub trait IValue:
     fn pointwise_lsb(&self) -> Self;
 
     fn blake(input: &[Self], n_bytes: usize) -> HashValue<Self>;
+
+    /// Sorts the input by the u coordinate.
+    fn sort_by_u_cord(input: &[Self]) -> Vec<Self>;
 }
 
 impl IValue for QM31 {
@@ -68,9 +72,13 @@ impl IValue for QM31 {
     fn blake(input: &[Self], n_bytes: usize) -> HashValue<Self> {
         blake_qm31(input, n_bytes)
     }
+
+    fn sort_by_u_cord(input: &[Self]) -> Vec<Self> {
+        input.iter().cloned().sorted_by_key(|val| val.1.1).collect_vec()
+    }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Ord, PartialOrd)]
 pub struct NoValue;
 
 impl IValue for NoValue {
@@ -92,6 +100,10 @@ impl IValue for NoValue {
 
     fn blake(_: &[Self], _: usize) -> HashValue<Self> {
         HashValue(Self, Self)
+    }
+
+    fn sort_by_u_cord(input: &[Self]) -> Vec<Self> {
+        input.to_vec()
     }
 }
 

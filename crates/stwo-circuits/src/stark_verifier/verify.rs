@@ -18,7 +18,7 @@ use crate::stark_verifier::select_queries::{
 };
 use crate::stark_verifier::statement::{EvaluateArgs, OodsSamples, Statement};
 
-const LOG_SIZE_BITS: usize = 5;
+pub const LOG_SIZE_BITS: usize = 5;
 
 #[cfg(test)]
 #[path = "verify_test.rs"]
@@ -53,6 +53,8 @@ pub fn verify(
     let _component_log_size_bits = extract_bits::<LOG_SIZE_BITS>(context, &component_log_sizes);
 
     channel.mix_qm31s(context, proof.component_log_sizes.iter().cloned());
+
+    let column_log_sizes = statement.column_log_sizes(Simd::unpack(context, &component_log_sizes));
 
     // Mix the trace commitments into the channel.
     channel.mix_commitment(context, proof.preprocessed_root);
@@ -134,9 +136,11 @@ pub fn verify(
 
     // Check decommitment of trace queries.
     let bits = queries.bits.iter().map(|simd| Simd::unpack(context, simd)).collect_vec();
+
     decommit_eval_domain_samples(
         context,
         config.n_queries(),
+        &column_log_sizes,
         &proof.eval_domain_samples,
         &proof.eval_domain_auth_paths,
         &bits,
