@@ -1,6 +1,7 @@
+use itertools::Itertools;
 use stwo::core::circle::CirclePoint;
 
-use crate::circuits::circuit::{Add, Eq, Mul, PointwiseMul, Sub};
+use crate::circuits::circuit::{Add, Eq, Mul, Permutation, PointwiseMul, Sub};
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::{IValue, qm31_from_u32s};
 
@@ -94,6 +95,23 @@ pub fn pointwise_mul<Value: IValue>(context: &mut Context<Value>, a: Var, b: Var
     let out = context.new_var(Value::pointwise_mul(context.get(a), context.get(b)));
     context.circuit.pointwise_mul.push(PointwiseMul { in0: a.idx, in1: b.idx, out: out.idx });
     out
+}
+
+/// Permutes the input values using the given function and returns the new variables.
+pub fn permute<Value: IValue>(
+    context: &mut Context<Value>,
+    inputs: &[Var],
+    permute_fn: impl FnOnce(&[Value]) -> Vec<Value>,
+) -> Vec<Var> {
+    let outputs: Vec<Var> = permute_fn(&inputs.iter().map(|var| context.get(*var)).collect_vec())
+        .iter()
+        .map(|value| context.new_var(*value))
+        .collect();
+    context.circuit.permutation.push(Permutation {
+        inputs: inputs.iter().map(|var| var.idx).collect(),
+        outputs: outputs.iter().map(|var| var.idx).collect(),
+    });
+    outputs
 }
 
 /// Returns `(a, b)` if `selector` is 0, and `(b, a)` if `selector` is 1.
