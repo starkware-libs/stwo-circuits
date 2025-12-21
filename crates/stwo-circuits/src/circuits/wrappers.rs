@@ -24,7 +24,6 @@ impl<T> M31Wrapper<T> {
         &self.0
     }
 
-    #[cfg(test)]
     pub fn new_unsafe(var: T) -> Self {
         Self(var)
     }

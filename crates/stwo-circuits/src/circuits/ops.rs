@@ -1,6 +1,7 @@
+use itertools::Itertools;
 use stwo::core::circle::CirclePoint;
 
-use crate::circuits::circuit::{Add, Eq, Mul, PointwiseMul, Sub};
+use crate::circuits::circuit::{Add, Eq, Mul, Permutation, PointwiseMul, Sub};
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::{IValue, qm31_from_u32s};
 
@@ -184,4 +185,21 @@ impl<Value: IValue, T: Guess<Value>> Guess<Value> for CirclePoint<T> {
     fn guess(&self, context: &mut Context<Value>) -> Self::Target {
         CirclePoint { x: self.x.guess(context), y: self.y.guess(context) }
     }
+}
+
+/// Permutes the input values using the given function and returns the new variables.
+pub fn permute<Value: IValue>(
+    context: &mut Context<Value>,
+    inputs: &[Var],
+    permute_fn: impl FnOnce(&[Value]) -> Vec<Value>,
+) -> Vec<Var> {
+    let outputs: Vec<Var> = permute_fn(&inputs.iter().map(|var| context.get(*var)).collect_vec())
+        .iter()
+        .map(|value| context.new_var(*value))
+        .collect();
+    context.circuit.permutation.push(Permutation {
+        inputs: inputs.iter().map(|var| var.idx).collect(),
+        outputs: outputs.iter().map(|var| var.idx).collect(),
+    });
+    outputs
 }
