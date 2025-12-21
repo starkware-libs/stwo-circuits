@@ -240,6 +240,29 @@ impl Simd {
             .collect();
         Simd::from_packed(data, values.len())
     }
+
+    pub fn pow2<const N_BITS: usize>(
+        context: &mut Context<impl IValue>,
+        bits: &[Simd; N_BITS],
+    ) -> Simd {
+        let len = bits[0].len();
+
+        let mut res = Simd::one(context, len);
+
+        // Note that `bit_val` is a Var, not a Simd as we want to update it with a single pointwise
+        // multiplication.
+        let one = context.one();
+        let mut bit_val = M31Wrapper::new_unsafe(eval!(context, (one) + (one)));
+        for (bit_idx, bit) in bits.iter().enumerate() {
+            // repeat the bit_val to make it the same length as res,
+            let res_if_bit_is_one = Simd::scalar_mul(context, &res, &bit_val);
+            res = Simd::select(context, bit, &res, &res_if_bit_is_one);
+            if bit_idx < N_BITS - 1 {
+                bit_val = M31Wrapper::mul(context, bit_val.clone(), bit_val.clone());
+            }
+        }
+        res
+    }
 }
 
 /// Returns a (constant) [Var] with the first `n` coordinates set to 1, and the rest to 0.
