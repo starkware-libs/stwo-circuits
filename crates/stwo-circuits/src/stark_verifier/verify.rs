@@ -42,6 +42,7 @@ pub fn verify(
     proof.validate_structure(config);
 
     let mut channel = Channel::new(context);
+    channel.mix_qm31s(context, proof.component_log_sizes.iter().cloned());
 
     // Mix the trace commitments into the channel.
     channel.mix_commitment(context, proof.preprocessed_root);

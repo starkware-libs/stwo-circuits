@@ -1,10 +1,11 @@
 use stwo::core::air::Component;
 use stwo::core::channel::{Blake2sM31Channel, Channel};
+use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::{CommitmentSchemeVerifier, PcsConfig, TreeVec};
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::core::verifier::verify;
 
-use crate::examples::simple_air::{PublicInput, create_proof};
+use crate::examples::simple_air::{LOG_SIZE_LONG, LOG_SIZE_SHORT, PublicInput, create_proof};
 
 #[test]
 fn verify_simple_proof() {
@@ -18,6 +19,7 @@ fn verify_simple_proof() {
     // Retrieve the expected column sizes in each commitment interaction, from the AIR.
     let sizes = TreeVec::concat_cols(components.iter().map(|c| c.trace_log_degree_bounds()));
 
+    verifier_channel.mix_felts(&[QM31::from_u32_unchecked(LOG_SIZE_SHORT, LOG_SIZE_LONG, 0, 0)]);
     commitment_scheme.commit(proof.proof.commitments[0], &sizes[0], verifier_channel);
     commitment_scheme.commit(proof.proof.commitments[1], &sizes[1], verifier_channel);
     verifier_channel.mix_felts(&claimed_sums);
