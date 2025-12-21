@@ -35,7 +35,7 @@ pub fn extract_bits<const N_BITS: usize>(
         validate_extract_bits(context, input, &bits[0]);
     }
 
-    bits.try_into().unwrap()
+    bits.try_into().unwrap() // N_BITS < 31
 }
 
 /// Forbids the case `0b1111...1111`, as this number should be represented as `0`.
