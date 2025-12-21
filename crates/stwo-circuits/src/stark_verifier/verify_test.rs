@@ -7,6 +7,7 @@ use crate::circuits::context::{Context, TraceContext};
 use crate::circuits::ivalue::NoValue;
 use crate::circuits::ops::Guess;
 use crate::examples::simple_air::create_proof;
+use crate::examples::simple_air::{LOG_SIZE_LONG, LOG_SIZE_SHORT, PublicInput};
 use crate::examples::simple_statement::SimpleStatement;
 use crate::stark_verifier::fri_proof::FriConfig;
 use crate::stark_verifier::proof::{ProofConfig, empty_proof};
@@ -30,8 +31,6 @@ enum ProofModifier {
 #[case::wrong_fri_auth_path(ProofModifier::WrongFriAuthPath)]
 #[case::wrong_fri_sibling(ProofModifier::WrongFriSibling)]
 fn test_verify(#[case] proof_modifier: ProofModifier) {
-    use crate::examples::simple_air::{LOG_SIZE_LONG, PublicInput};
-
     let config = ProofConfig {
         n_proof_of_work_bits: 10,
         n_preprocessed_columns: 2,
@@ -83,7 +82,8 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
         }
     }
     let mut context = TraceContext::default();
-    let proof = proof_from_stark_proof(&proof, &config, claimed_sums);
+    let component_log_sizes = vec![LOG_SIZE_SHORT, LOG_SIZE_LONG];
+    let proof = proof_from_stark_proof(&proof, &config, component_log_sizes, claimed_sums);
     let proof_vars = proof.guess(&mut context);
     verify(&mut context, &proof_vars, &config, &SimpleStatement::default());
 

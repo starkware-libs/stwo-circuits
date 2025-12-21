@@ -81,6 +81,7 @@ impl Default for SimpleStatement {
 }
 
 pub struct SquaredFibonacciComponent {
+    // TODO(ilya): Take this from the proof instead of the component.
     pub log_n_instances: u32,
     pub preprocessed_column_idx: usize,
 }

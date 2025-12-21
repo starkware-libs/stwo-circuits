@@ -164,9 +164,12 @@ pub fn create_proof()
 
     // Setup protocol.
     let prover_channel = &mut Blake2sM31Channel::default();
+
     let mut commitment_scheme =
         CommitmentSchemeProver::<SimdBackend, Blake2sM31MerkleChannel>::new(config, &twiddles);
     commitment_scheme.set_store_polynomials_coefficients();
+
+    prover_channel.mix_felts(&[QM31::from_u32_unchecked(LOG_SIZE_SHORT, LOG_SIZE_LONG, 0, 0)]);
 
     // Preprocessed trace
     let mut tree_builder = commitment_scheme.tree_builder();
