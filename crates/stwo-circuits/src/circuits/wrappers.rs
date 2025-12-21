@@ -7,6 +7,7 @@ use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ivalue::NoValue;
 use crate::circuits::ops::{Guess, pointwise_mul};
+use crate::eval;
 
 #[cfg(test)]
 #[path = "wrappers_test.rs"]
@@ -24,7 +25,6 @@ impl<T> M31Wrapper<T> {
         &self.0
     }
 
-    #[cfg(test)]
     pub fn new_unsafe(var: T) -> Self {
         Self(var)
     }
@@ -33,6 +33,13 @@ impl<T> M31Wrapper<T> {
 impl From<M31> for M31Wrapper<QM31> {
     fn from(value: M31) -> Self {
         M31Wrapper(value.into())
+    }
+}
+
+impl M31Wrapper<Var> {
+    /// Adds a multiplication gate to the circuit, and returns the output variable.
+    pub fn mul(context: &mut Context<impl IValue>, a: Self, b: Self) -> Self {
+        Self(eval!(context, (*a.get()) * (*b.get())))
     }
 }
 
