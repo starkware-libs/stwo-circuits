@@ -47,7 +47,7 @@ pub fn select_queries(
     input: &Simd,
     log_domain_size: usize,
 ) -> Queries {
-    let bits = extract_bits(context, input)[0..log_domain_size].to_vec();
+    let bits = extract_bits::<31>(context, input)[0..log_domain_size].to_vec();
 
     // Construct the circle point for each query.
     // Start with the generator of the subgroup of size `2 * domain_size` which is added to all
