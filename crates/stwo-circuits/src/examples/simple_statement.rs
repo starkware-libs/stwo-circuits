@@ -61,20 +61,20 @@ fn single_logup_term(
 }
 
 pub struct SimpleStatement {
-    pub short_fib_component: SquaredFibonacciComponent,
     pub long_fib_component: SquaredFibonacciComponent,
+    pub short_fib_component: SquaredFibonacciComponent,
 }
 
 impl Default for SimpleStatement {
     fn default() -> Self {
         Self {
-            short_fib_component: SquaredFibonacciComponent {
-                log_n_instances: LOG_SIZE_SHORT,
-                preprocessed_column_idx: 0,
-            },
             long_fib_component: SquaredFibonacciComponent {
                 log_n_instances: LOG_SIZE_LONG,
                 preprocessed_column_idx: 1,
+            },
+            short_fib_component: SquaredFibonacciComponent {
+                log_n_instances: LOG_SIZE_SHORT,
+                preprocessed_column_idx: 0,
             },
         }
     }
@@ -177,8 +177,8 @@ impl Statement for SimpleStatement {
     ) -> Var {
         let prev_sum = context.zero();
         let prev_sum =
-            self.short_fib_component.public_logup_sum(context, prev_sum, interaction_elements);
-        self.long_fib_component.public_logup_sum(context, prev_sum, interaction_elements)
+            self.long_fib_component.public_logup_sum(context, prev_sum, interaction_elements);
+        self.short_fib_component.public_logup_sum(context, prev_sum, interaction_elements)
     }
 
     fn evaluate(&self, context: &mut Context<impl IValue>, args: EvaluateArgs<'_>) -> Var {
@@ -199,11 +199,24 @@ impl Statement for SimpleStatement {
             accumulation: context.zero(),
         };
 
-        self.short_fib_component.evaluate(context, &mut evaluation_accumulator);
         self.long_fib_component.evaluate(context, &mut evaluation_accumulator);
+        self.short_fib_component.evaluate(context, &mut evaluation_accumulator);
         let final_evaluation = evaluation_accumulator.finalize();
 
         let denom_inverse = denom_inverse(context, pt.x, log_domain_size);
         eval!(context, (final_evaluation) * (denom_inverse))
+    }
+
+    fn column_log_sizes(&self, component_log_sizes: Vec<Var>) -> [Vec<Var>; 2] {
+        let [size_0, size_1] = component_log_sizes[..] else {
+            panic!("Expected 2 component log sizes");
+        };
+
+        let trace_column_log_sizes =
+            vec![size_0, size_0, size_0, size_0, size_1, size_1, size_1, size_1];
+        let interaction_column_log_sizes =
+            vec![size_0, size_0, size_0, size_0, size_1, size_1, size_1, size_1];
+
+        [trace_column_log_sizes, interaction_column_log_sizes]
     }
 }
