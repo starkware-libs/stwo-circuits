@@ -1,3 +1,5 @@
+use std::array;
+
 use hashbrown::HashMap;
 use itertools::Itertools;
 use itertools::chain;
@@ -16,6 +18,7 @@ use crate::stark_verifier::proof::{InteractionAtOods, N_TRACES, Proof, ProofConf
 pub fn proof_from_stark_proof(
     proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
     config: &ProofConfig,
+    component_log_sizes: Vec<u32>,
     claimed_sums: Vec<QM31>,
 ) -> Proof<QM31> {
     let commitments = &proof.proof.commitments;
@@ -37,6 +40,7 @@ pub fn proof_from_stark_proof(
             .iter()
             .map(|x| InteractionAtOods { at_oods: x[1], at_prev: x[0] })
             .collect_vec(),
+        component_log_sizes: pack_component_log_sizes(component_log_sizes),
         claimed_sums,
         composition_eval_at_oods: as_single_row(&sampled_values[3]).try_into().unwrap(),
         eval_domain_samples: construct_eval_domain_samples(proof, config),
@@ -186,4 +190,19 @@ fn construct_fri_siblings(
         }
     }
     res
+}
+
+/// Packs the component log sizes into QM31s.
+/// Each QM31 holds up to 4 log sizes and the last one is padded with zeros.
+pub fn pack_component_log_sizes(component_log_sizes: Vec<u32>) -> Vec<QM31> {
+    component_log_sizes
+        .iter()
+        .chunks(4)
+        .into_iter()
+        .map(|mut chunk| {
+            QM31::from_m31_array(array::from_fn(|_| {
+                M31::from_u32_unchecked(*chunk.next().unwrap_or(&0))
+            }))
+        })
+        .collect_vec()
 }
