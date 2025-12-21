@@ -12,18 +12,18 @@ use stwo_constraint_framework::TraceLocationAllocator;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 pub struct CircuitClaim {
-    pub qm31_ops: qm31_ops::Claim,
+    pub qm31_ops_log_size: u32,
     // ...
 }
 impl CircuitClaim {
     pub fn mix_into(&self, channel: &mut impl Channel) {
-        self.qm31_ops.mix_into(channel);
+        channel.mix_u64(self.qm31_ops_log_size as u64);
     }
 
     /// Returns the log sizes of the components.
     /// Does not include the preprocessed trace log sizes.
     pub fn log_sizes(&self) -> TreeVec<Vec<u32>> {
-        let log_sizes_list = vec![self.qm31_ops.log_sizes()];
+        let log_sizes_list = vec![qm31_ops::log_sizes(self.qm31_ops_log_size)];
 
         TreeVec::concat_cols(log_sizes_list.into_iter())
     }
@@ -39,12 +39,12 @@ impl CircuitInteractionElements {
 }
 
 pub struct CircuitInteractionClaim {
-    pub qm31_ops: qm31_ops::InteractionClaim,
+    pub qm31_ops_claimed_sum: SecureField,
     // ...
 }
 impl CircuitInteractionClaim {
     pub fn mix_into(&self, channel: &mut impl Channel) {
-        self.qm31_ops.mix_into(channel);
+        channel.mix_felts(&[self.qm31_ops_claimed_sum]);
     }
 }
 
@@ -55,7 +55,7 @@ pub fn lookup_sum(
 ) -> SecureField {
     let mut sum = SecureField::zero();
 
-    sum += interaction_claim.qm31_ops.claimed_sum;
+    sum += interaction_claim.qm31_ops_claimed_sum;
 
     sum
 }
@@ -78,10 +78,10 @@ impl CircuitComponents {
         let qm31_ops_component = qm31_ops::Component::new(
             tree_span_provider,
             qm31_ops::Eval {
-                claim: circuit_claim.qm31_ops,
+                log_size: circuit_claim.qm31_ops_log_size,
                 gate_lookup_elements: interaction_elements.gate.clone(),
             },
-            interaction_claim.qm31_ops.claimed_sum,
+            interaction_claim.qm31_ops_claimed_sum,
         );
 
         Self { qm31_ops: qm31_ops_component }

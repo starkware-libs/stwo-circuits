@@ -1,5 +1,3 @@
-use crate::circuit_air::components::qm31_ops::Claim;
-use crate::circuit_air::components::qm31_ops::InteractionClaim;
 use crate::circuit_air::relations;
 use crate::circuit_prover::witness::preprocessed::PreProcessedTrace;
 use crate::circuit_prover::witness::utils::TreeBuilder;
@@ -12,6 +10,7 @@ use rayon::iter::IntoParallelIterator;
 use rayon::iter::ParallelIterator;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
+use stwo::core::fields::qm31::SecureField;
 use stwo::prover::backend::Col;
 use stwo::prover::backend::simd::SimdBackend;
 use stwo::prover::backend::simd::m31::{LOG_N_LANES, N_LANES, PackedM31};
@@ -54,7 +53,7 @@ pub fn write_trace(
     context_values: &[QM31],
     preprocessed_trace: &PreProcessedTrace,
     tree_builder: &mut impl TreeBuilder<SimdBackend>,
-) -> (Claim, InteractionClaimGenerator) {
+) -> (u32, LookupData) {
     let add_flag =
         preprocessed_trace.get_column(&PreProcessedColumnId { id: "qm31_ops_add_flag".to_owned() });
     let sub_flag =
@@ -99,7 +98,7 @@ pub fn write_trace(
     let (trace, lookup_data) = write_trace_simd(packed_inputs, preprocessed_columns);
     tree_builder.extend_evals(trace.to_evals());
 
-    (Claim { log_size }, InteractionClaimGenerator { log_size, lookup_data })
+    (log_size, lookup_data)
 }
 
 fn write_trace_simd(
@@ -173,49 +172,44 @@ fn write_trace_simd(
 }
 
 #[derive(Uninitialized, IterMut, ParIterMut)]
-struct LookupData {
+pub struct LookupData {
     in_0: Vec<[PackedM31; 5]>,
     in_1: Vec<[PackedM31; 5]>,
     out: Vec<[PackedM31; 5]>,
     mults: Vec<PackedM31>,
 }
 
-pub struct InteractionClaimGenerator {
+pub fn write_interaction_trace(
     log_size: u32,
     lookup_data: LookupData,
-}
-impl InteractionClaimGenerator {
-    pub fn write_interaction_trace(
-        self,
-        tree_builder: &mut impl TreeBuilder<SimdBackend>,
-        gate: &relations::Gate,
-    ) -> InteractionClaim {
-        let mut logup_gen = LogupTraceGenerator::new(self.log_size);
+    tree_builder: &mut impl TreeBuilder<SimdBackend>,
+    gate: &relations::Gate,
+) -> SecureField {
+    let mut logup_gen = LogupTraceGenerator::new(log_size);
 
-        // Sum logup terms in pairs.
-        let mut col_gen = logup_gen.new_col();
-        (col_gen.par_iter_mut(), &self.lookup_data.in_0, &self.lookup_data.in_1)
-            .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
-                let denom0: PackedQM31 = gate.combine(values0);
-                let denom1: PackedQM31 = gate.combine(values1);
-                writer.write_frac(denom0 + denom1, denom0 * denom1);
-            });
-        col_gen.finalize_col();
+    // Sum logup terms in pairs.
+    let mut col_gen = logup_gen.new_col();
+    (col_gen.par_iter_mut(), &lookup_data.in_0, &lookup_data.in_1).into_par_iter().for_each(
+        |(writer, values0, values1)| {
+            let denom0: PackedQM31 = gate.combine(values0);
+            let denom1: PackedQM31 = gate.combine(values1);
+            writer.write_frac(denom0 + denom1, denom0 * denom1);
+        },
+    );
+    col_gen.finalize_col();
 
-        // Sum last logup term.
-        let mut col_gen = logup_gen.new_col();
-        (col_gen.par_iter_mut(), &self.lookup_data.out, self.lookup_data.mults)
-            .into_par_iter()
-            .for_each(|(writer, values, mults)| {
-                let denom = gate.combine(values);
-                writer.write_frac(-PackedQM31::one() * mults, denom);
-            });
-        col_gen.finalize_col();
+    // Sum last logup term.
+    let mut col_gen = logup_gen.new_col();
+    (col_gen.par_iter_mut(), &lookup_data.out, lookup_data.mults).into_par_iter().for_each(
+        |(writer, values, mults)| {
+            let denom = gate.combine(values);
+            writer.write_frac(-PackedQM31::one() * mults, denom);
+        },
+    );
+    col_gen.finalize_col();
 
-        let (trace, claimed_sum) = logup_gen.finalize_last();
-        tree_builder.extend_evals(trace);
+    let (trace, claimed_sum) = logup_gen.finalize_last();
+    tree_builder.extend_evals(trace);
 
-        InteractionClaim { claimed_sum }
-    }
+    claimed_sum
 }
