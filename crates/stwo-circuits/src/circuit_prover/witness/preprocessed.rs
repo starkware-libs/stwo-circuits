@@ -104,8 +104,8 @@ fn add_eq_to_preprocessed_trace(circuit: &Circuit, pp_trace: &mut PreProcessedTr
     if !eq_columns[0].is_empty() {
         let n_columns = pp_trace.columns.len();
         pp_trace.column_indices.extend([
-            (PreProcessedColumnId { id: "eq_lhs".to_owned() }, n_columns),
-            (PreProcessedColumnId { id: "eq_rhs".to_owned() }, n_columns + 1),
+            (PreProcessedColumnId { id: "eq_in0_address".to_owned() }, n_columns),
+            (PreProcessedColumnId { id: "eq_in1_address".to_owned() }, n_columns + 1),
         ]);
         pp_trace.columns.extend(eq_columns);
     }
