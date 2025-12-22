@@ -1,10 +1,10 @@
 pub mod eq;
 pub mod qm31_ops;
-use std::marker::PhantomData;
 
 use crate::circuit_air::relations;
 use itertools::chain;
 use num_traits::Zero;
+use std::marker::PhantomData;
 use stwo::core::air::Component;
 use stwo::core::channel::Channel;
 use stwo::core::fields::qm31::SecureField;
@@ -16,16 +16,19 @@ use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 pub struct CircuitClaim {
     pub qm31_ops_log_size: u32,
+    pub eq_log_size: u32,
 }
 impl CircuitClaim {
     pub fn mix_into(&self, channel: &mut impl Channel) {
         channel.mix_u64(self.qm31_ops_log_size as u64);
+        channel.mix_u64(self.eq_log_size as u64);
     }
 
     /// Returns the log sizes of the components.
     /// Does not include the preprocessed trace log sizes.
     pub fn log_sizes(&self) -> TreeVec<Vec<u32>> {
-        let log_sizes_list = vec![qm31_ops::log_sizes(self.qm31_ops_log_size)];
+        let log_sizes_list =
+            vec![qm31_ops::log_sizes(self.qm31_ops_log_size), eq::log_sizes(self.eq_log_size)];
 
         TreeVec::concat_cols(log_sizes_list.into_iter())
     }
@@ -42,27 +45,31 @@ impl CircuitInteractionElements {
 
 pub struct CircuitInteractionClaim {
     pub qm31_ops_claimed_sum: SecureField,
+    pub eq_claimed_sum: SecureField,
 }
 impl CircuitInteractionClaim {
     pub fn mix_into(&self, channel: &mut impl Channel) {
         channel.mix_felts(&[self.qm31_ops_claimed_sum]);
+        channel.mix_felts(&[self.eq_claimed_sum]);
     }
 }
 
 pub fn lookup_sum(interaction_claim: &CircuitInteractionClaim) -> SecureField {
     let mut sum = SecureField::zero();
     sum += interaction_claim.qm31_ops_claimed_sum;
+    sum += interaction_claim.eq_claimed_sum;
     sum
 }
 
 pub struct CircuitComponents<B: Backend> {
     pub qm31_ops: qm31_ops::Component,
+    pub eq: eq::Component,
     _backend: PhantomData<B>,
 }
 impl<B: Backend> CircuitComponents<B>
 where
-    stwo_constraint_framework::FrameworkComponent<crate::circuit_air::components::qm31_ops::Eval>:
-        stwo::prover::ComponentProver<B>,
+    stwo_constraint_framework::FrameworkComponent<qm31_ops::Eval>: stwo::prover::ComponentProver<B>,
+    stwo_constraint_framework::FrameworkComponent<eq::Eval>: stwo::prover::ComponentProver<B>,
 {
     pub fn new(
         circuit_claim: &CircuitClaim,
@@ -82,12 +89,20 @@ where
             },
             interaction_claim.qm31_ops_claimed_sum,
         );
-
-        Self { qm31_ops: qm31_ops_component, _backend: PhantomData }
+        let eq_component = eq::Component::new(
+            tree_span_provider,
+            eq::Eval {
+                log_size: circuit_claim.eq_log_size,
+                gate_lookup_elements: interaction_elements.gate.clone(),
+            },
+            interaction_claim.eq_claimed_sum,
+        );
+        Self { qm31_ops: qm31_ops_component, eq: eq_component, _backend: PhantomData }
     }
 
     pub fn provers(&self) -> Vec<&dyn ComponentProver<B>> {
-        chain!([&self.qm31_ops as &dyn ComponentProver<B>,]).collect()
+        chain!([&self.qm31_ops as &dyn ComponentProver<B>, &self.eq as &dyn ComponentProver<B>,])
+            .collect()
     }
 
     pub fn components(&self) -> Vec<&dyn Component> {
