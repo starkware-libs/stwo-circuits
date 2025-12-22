@@ -120,6 +120,13 @@ impl Simd {
         }
     }
 
+    /// Pointwise multiplies each SIMD lane of `a` by the variable `b`.
+    ///
+    /// Typically, `b` is of the form `v + v*i + v*u + v*i*u`, for some `v` in M31.
+    pub fn pointwise_mul(context: &mut Context<impl IValue>, a: &Simd, b: &Var) -> Simd {
+        Simd { data: a.data.iter().map(|x| pointwise_mul(context, *x, *b)).collect(), len: a.len }
+    }
+
     /// Returns an *unconstrained* [Simd] initialized (hint) with `1/x` if `x != 0`,
     /// and `0` if`x = 0`.
     /// NOTE: The caller MUST verify that the result is correct.
