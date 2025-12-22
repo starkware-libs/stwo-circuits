@@ -412,3 +412,39 @@ fn test_pack_circuit() {
     "#]]
     .assert_debug_eq(&context.circuit);
 }
+
+#[test]
+fn test_scalar_mul_circuit() {
+    let mut context = TraceContext::default();
+    let input_vals = vec![12, 6, 5, 3, 4];
+    let expected_res = input_vals.iter().map(|v| 2 * v).collect_vec();
+    let twos = M31Wrapper::from(M31::from(2)).guess(&mut context);
+
+    let input = simd_from_u32s(&mut context, input_vals);
+
+    let res = Simd::scalar_mul(&mut context, &input, &twos);
+
+    assert_eq!(res.len(), 5);
+    assert_eq!(
+        packed_values(&context, &res),
+        &[
+            qm31_from_u32s(expected_res[0], expected_res[1], expected_res[2], expected_res[3]),
+            qm31_from_u32s(expected_res[4], 0, 0, 0)
+        ]
+    );
+
+    expect![[r#"
+        {
+            (0 + 0i) + (0 + 0i)u: [0],
+            (1 + 0i) + (0 + 0i)u: [1],
+        }
+    "#]]
+    .assert_debug_eq(&context.constants());
+    expect![[r#"
+        [6] = [4] * [3]
+        [7] = [5] * [3]
+        [3] = [2] x [1]
+
+    "#]]
+    .assert_debug_eq(&context.circuit);
+}
