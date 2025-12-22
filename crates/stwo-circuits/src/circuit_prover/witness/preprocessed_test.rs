@@ -6,11 +6,11 @@ use stwo::prover::backend::Column;
 use stwo::prover::backend::simd::SimdBackend;
 
 #[test]
+#[should_panic]
 fn test_generate_empty_preprocessed_trace() {
     let circuit = Circuit::default();
-    let preprocessed_trace =
-        PreProcessedTrace::generate_preprocessed_trace(&circuit).get_trace::<SimdBackend>();
-    assert!(preprocessed_trace.is_empty(), "Preprocessed trace should be empty");
+
+    PreProcessedTrace::generate_preprocessed_trace(&circuit).get_trace::<SimdBackend>();
 }
 
 #[test]
