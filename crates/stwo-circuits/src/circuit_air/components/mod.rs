@@ -1,4 +1,5 @@
 pub mod eq;
+pub mod prelude;
 pub mod qm31_ops;
 
 use crate::circuit_air::relations;

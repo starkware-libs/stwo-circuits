@@ -1,12 +1,4 @@
-use crate::circuit_air::relations;
-use num_traits::One;
-use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
-use stwo::core::pcs::TreeVec;
-use stwo_constraint_framework::EvalAtRow;
-use stwo_constraint_framework::FrameworkComponent;
-use stwo_constraint_framework::FrameworkEval;
-use stwo_constraint_framework::RelationEntry;
-use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
+use crate::circuit_air::components::prelude::*;
 
 pub const N_TRACE_COLUMNS: usize = 12;
 
