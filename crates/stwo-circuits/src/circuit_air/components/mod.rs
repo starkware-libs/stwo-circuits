@@ -1,5 +1,6 @@
 pub mod eq;
 pub mod qm31_ops;
+
 use crate::circuit_air::relations;
 use itertools::chain;
 use num_traits::Zero;
@@ -14,17 +15,20 @@ use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 pub struct CircuitClaim {
     pub qm31_ops_log_size: u32,
+    pub eq_log_size: u32,
     // ...
 }
 impl CircuitClaim {
     pub fn mix_into(&self, channel: &mut impl Channel) {
         channel.mix_u64(self.qm31_ops_log_size as u64);
+        channel.mix_u64(self.eq_log_size as u64);
     }
 
     /// Returns the log sizes of the components.
     /// Does not include the preprocessed trace log sizes.
     pub fn log_sizes(&self) -> TreeVec<Vec<u32>> {
-        let log_sizes_list = vec![qm31_ops::log_sizes(self.qm31_ops_log_size)];
+        let log_sizes_list =
+            vec![qm31_ops::log_sizes(self.qm31_ops_log_size), eq::log_sizes(self.eq_log_size)];
 
         TreeVec::concat_cols(log_sizes_list.into_iter())
     }
@@ -41,11 +45,13 @@ impl CircuitInteractionElements {
 
 pub struct CircuitInteractionClaim {
     pub qm31_ops_claimed_sum: SecureField,
+    pub eq_claimed_sum: SecureField,
     // ...
 }
 impl CircuitInteractionClaim {
     pub fn mix_into(&self, channel: &mut impl Channel) {
         channel.mix_felts(&[self.qm31_ops_claimed_sum]);
+        channel.mix_felts(&[self.eq_claimed_sum]);
     }
 }
 
@@ -57,12 +63,14 @@ pub fn lookup_sum(
     let mut sum = SecureField::zero();
 
     sum += interaction_claim.qm31_ops_claimed_sum;
+    sum += interaction_claim.eq_claimed_sum;
 
     sum
 }
 
 pub struct CircuitComponents {
     pub qm31_ops: qm31_ops::Component,
+    pub eq: eq::Component,
     // ...
 }
 impl CircuitComponents {
@@ -84,12 +92,23 @@ impl CircuitComponents {
             },
             interaction_claim.qm31_ops_claimed_sum,
         );
-
-        Self { qm31_ops: qm31_ops_component }
+        let eq_component = eq::Component::new(
+            tree_span_provider,
+            eq::Eval {
+                log_size: circuit_claim.eq_log_size,
+                gate_lookup_elements: interaction_elements.gate.clone(),
+            },
+            interaction_claim.eq_claimed_sum,
+        );
+        Self { qm31_ops: qm31_ops_component, eq: eq_component }
     }
 
     pub fn provers(&self) -> Vec<&dyn ComponentProver<SimdBackend>> {
-        chain!([&self.qm31_ops as &dyn ComponentProver<SimdBackend>,]).collect()
+        chain!([
+            &self.qm31_ops as &dyn ComponentProver<SimdBackend>,
+            &self.eq as &dyn ComponentProver<SimdBackend>,
+        ])
+        .collect()
     }
 
     pub fn components(&self) -> Vec<&dyn Component> {
@@ -101,6 +120,7 @@ impl std::fmt::Display for CircuitComponents {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "CircuitComponents")?;
         writeln!(f, "Qm31Ops: {}", self.qm31_ops)?;
+        writeln!(f, "Eq: {}", self.eq)?;
         Ok(())
     }
 }

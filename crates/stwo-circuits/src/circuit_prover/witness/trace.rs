@@ -1,6 +1,7 @@
 use crate::circuit_air::components::CircuitClaim;
 use crate::circuit_air::components::CircuitInteractionClaim;
 use crate::circuit_air::components::CircuitInteractionElements;
+use crate::circuit_prover::witness::components::eq;
 use crate::circuit_prover::witness::components::qm31_ops;
 use crate::circuit_prover::witness::preprocessed::PreProcessedTrace;
 use stwo::core::fields::qm31::QM31;
@@ -15,12 +16,18 @@ pub fn write_trace(
 ) -> (CircuitClaim, CircuitInteractionClaimGenerator) {
     let (qm31_ops_log_size, qm31_ops_lookup_data) =
         qm31_ops::write_trace(context_values, preprocessed_trace, tree_builder);
+    let (eq_log_size, eq_lookup_data) =
+        eq::write_trace(context_values, preprocessed_trace, tree_builder);
 
-    (CircuitClaim { qm31_ops_log_size }, CircuitInteractionClaimGenerator { qm31_ops_lookup_data })
+    (
+        CircuitClaim { qm31_ops_log_size, eq_log_size },
+        CircuitInteractionClaimGenerator { qm31_ops_lookup_data, eq_lookup_data },
+    )
 }
 
 pub struct CircuitInteractionClaimGenerator {
     pub qm31_ops_lookup_data: qm31_ops::LookupData,
+    pub eq_lookup_data: eq::LookupData,
     // ...
 }
 
@@ -36,5 +43,11 @@ pub fn write_interaction_trace(
         tree_builder,
         &interaction_elements.gate,
     );
-    CircuitInteractionClaim { qm31_ops_claimed_sum }
+    let eq_claimed_sum = eq::write_interaction_trace(
+        circuit_claim.eq_log_size,
+        circuit_interaction_claim_generator.eq_lookup_data,
+        tree_builder,
+        &interaction_elements.gate,
+    );
+    CircuitInteractionClaim { qm31_ops_claimed_sum, eq_claimed_sum }
 }
