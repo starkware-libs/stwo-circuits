@@ -37,6 +37,15 @@ fn pad_qm31_ops(context: &mut Context<QM31>) {
     }
 }
 
+fn pad_eq(context: &mut Context<QM31>) {
+    let eq_n_rows = context.circuit.eq.len();
+    let eq_padding = std::cmp::max(eq_n_rows.next_power_of_two(), N_LANES) - eq_n_rows;
+    let zero = context.zero();
+    for _ in 0..eq_padding {
+        crate::circuits::ops::eq(context, zero, zero);
+    }
+}
+
 /// Finalizes the context by appending gates to the context for:
 /// - Hashing the constants.
 /// - Hashing the outputs.
@@ -50,6 +59,7 @@ fn finalize_context(context: Context<QM31>) -> Context<QM31> {
 
     // Padding the components to a power of two.
     pad_qm31_ops(&mut context);
+    pad_eq(&mut context);
     // TODO(Gali): Pad blake gates.
 
     context

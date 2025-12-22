@@ -13,6 +13,7 @@ use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 pub enum ComponentList {
     Qm31Ops,
+    Eq,
 }
 pub const N_COMPONENTS: usize = std::mem::variant_count::<ComponentList>();
 
@@ -55,6 +56,7 @@ pub fn lookup_sum(interaction_claim: &CircuitInteractionClaim) -> SecureField {
 
 pub struct CircuitComponents {
     pub qm31_ops: qm31_ops::Component,
+    pub eq: eq::Component,
 }
 impl CircuitComponents {
     pub fn new(
@@ -75,12 +77,23 @@ impl CircuitComponents {
             },
             interaction_claim.claimed_sums[ComponentList::Qm31Ops as usize],
         );
-
-        Self { qm31_ops: qm31_ops_component }
+        let eq_component = eq::Component::new(
+            tree_span_provider,
+            eq::Eval {
+                log_size: circuit_claim.log_sizes[ComponentList::Eq as usize],
+                gate_lookup_elements: interaction_elements.gate.clone(),
+            },
+            interaction_claim.claimed_sums[ComponentList::Eq as usize],
+        );
+        Self { qm31_ops: qm31_ops_component, eq: eq_component }
     }
 
     pub fn provers(&self) -> Vec<&dyn ComponentProver<SimdBackend>> {
-        chain!([&self.qm31_ops as &dyn ComponentProver<SimdBackend>,]).collect()
+        chain!([
+            &self.qm31_ops as &dyn ComponentProver<SimdBackend>,
+            &self.eq as &dyn ComponentProver<SimdBackend>,
+        ])
+        .collect()
     }
 
     pub fn components(&self) -> Vec<&dyn Component> {
