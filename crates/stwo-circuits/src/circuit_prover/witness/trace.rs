@@ -1,6 +1,6 @@
-use crate::circuit_air::components::CircuitClaim;
-use crate::circuit_air::components::CircuitInteractionClaim;
-use crate::circuit_air::components::CircuitInteractionElements;
+use crate::circuit_air::CircuitClaim;
+use crate::circuit_air::CircuitInteractionClaim;
+use crate::circuit_air::CircuitInteractionElements;
 use crate::circuit_air::components::ComponentList;
 use crate::circuit_prover::witness::components::eq;
 use crate::circuit_prover::witness::components::qm31_ops;
