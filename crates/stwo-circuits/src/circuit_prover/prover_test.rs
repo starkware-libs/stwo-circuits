@@ -1,12 +1,11 @@
-use crate::circuit_prover::prover::prove_circuit;
+use crate::circuit_prover::prover::{finalize_context, prove_circuit};
 use crate::circuits::{context::Context, ops::guess};
 use crate::eval;
 use expect_test::expect;
 use num_traits::{One, Zero};
 use stwo::core::fields::qm31::QM31;
 
-// TODO(Gali): Change to 1024 after padding components.
-const N: usize = 1022;
+const N: usize = 1030;
 
 pub fn build_fibonacci_context() -> Context<QM31> {
     let mut context = Context::<QM31>::default();
@@ -17,7 +16,7 @@ pub fn build_fibonacci_context() -> Context<QM31> {
     }
 
     expect![[r#"
-        (1397909768 + 0i) + (0 + 0i)u
+        (809871181 + 0i) + (0 + 0i)u
     "#]]
     .assert_debug_eq(&context.get(b));
 
@@ -32,4 +31,13 @@ fn test_prove_fibonacci() {
     let proof = prove_circuit(fibonacci_context);
 
     assert!(proof.is_ok());
+}
+
+#[test]
+fn test_finalize_context() {
+    let context = build_fibonacci_context();
+    let finalized_context = finalize_context(context);
+
+    assert!(finalized_context.circuit.add.len().is_power_of_two());
+    finalized_context.validate_circuit();
 }
