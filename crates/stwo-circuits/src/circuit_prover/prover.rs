@@ -5,6 +5,7 @@ use crate::circuit_prover::witness::preprocessed::PreProcessedTrace;
 use crate::circuit_prover::witness::trace::write_interaction_trace;
 use crate::circuit_prover::witness::trace::write_trace;
 use crate::circuits::context::Context;
+use crate::eval;
 use num_traits::Zero;
 use stwo::core::channel::Blake2sM31Channel;
 use stwo::core::fields::qm31::QM31;
@@ -16,10 +17,43 @@ use stwo::core::vcs::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::core::vcs::blake2_merkle::Blake2sM31MerkleHasher;
 use stwo::prover::CommitmentSchemeProver;
 use stwo::prover::backend::simd::SimdBackend;
+use stwo::prover::backend::simd::m31::N_LANES;
 use stwo::prover::poly::circle::PolyOps;
 use stwo::prover::{ProvingError, prove_ex};
 
 const COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND: u32 = 1;
+
+fn pad_qm31_ops(context: &mut Context<QM31>) {
+    let qm31_ops_n_rows = context.circuit.add.len()
+        + context.circuit.sub.len()
+        + context.circuit.mul.len()
+        + context.circuit.pointwise_mul.len();
+
+    let qm31_padding =
+        std::cmp::max(qm31_ops_n_rows.next_power_of_two(), N_LANES) - qm31_ops_n_rows;
+    let zero = context.zero();
+    for _ in 0..qm31_padding {
+        eval!(context, (zero) + (zero));
+    }
+}
+
+/// Finalizes the context by appending gates to the context for:
+/// - Hashing the constants.
+/// - Hashing the outputs.
+/// - Padding the components to a power of two.
+fn finalize_context(context: Context<QM31>) -> Context<QM31> {
+    let mut context = context;
+
+    // TODO(Gali): Hash the constants.
+
+    // TODO(Gali): Hash the outputs (all variables that have no uses).
+
+    // Padding the components to a power of two.
+    pad_qm31_ops(&mut context);
+    // TODO(Gali): Pad blake gates.
+
+    context
+}
 
 #[cfg(test)]
 #[path = "prover_test.rs"]
@@ -28,6 +62,7 @@ pub mod test;
 pub fn prove_circuit(
     context: Context<QM31>,
 ) -> Result<ExtendedStarkProof<Blake2sM31MerkleHasher>, ProvingError> {
+    let context = finalize_context(context);
     let pcs_config = PcsConfig::default();
 
     // Generate preprocessed trace.
