@@ -1,6 +1,7 @@
 use crate::circuit_air::components::CircuitComponents;
 use crate::circuit_air::components::CircuitInteractionElements;
 use crate::circuit_air::components::lookup_sum;
+use crate::circuit_prover::finalize::finalize_context;
 use crate::circuit_prover::witness::preprocessed::PreProcessedTrace;
 use crate::circuit_prover::witness::trace::write_interaction_trace;
 use crate::circuit_prover::witness::trace::write_trace;
@@ -26,8 +27,9 @@ const COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND: u32 = 1;
 pub mod test;
 
 pub fn prove_circuit(
-    context: Context<QM31>,
+    context: &mut Context<QM31>,
 ) -> Result<ExtendedStarkProof<Blake2sM31MerkleHasher>, ProvingError> {
+    finalize_context(context);
     let pcs_config = PcsConfig::default();
 
     // Generate preprocessed trace.
