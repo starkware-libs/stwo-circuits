@@ -18,9 +18,6 @@ fn test_m31_wrapper_guess_circuit() {
     "#]]
     .assert_debug_eq(&context.constants());
     expect![[r#"
-        [0] = [0] + [0]
-        [1] = [1] + [0]
-        [2] = [2] + [0]
         [3] = [2] x [1]
 
     "#]]

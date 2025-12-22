@@ -183,15 +183,15 @@ impl Simd {
     /// Unpacks a [Simd] into a vector of [Var]s, where each [Var] represents a single [M31] value.
     pub fn unpack(context: &mut Context<impl IValue>, input: &Simd) -> Vec<Var> {
         let unit_vecs = [
-            context.constant(qm31_from_u32s(1, 0, 0, 0)),
-            context.constant(qm31_from_u32s(0, 1, 0, 0)),
-            context.constant(qm31_from_u32s(0, 0, 1, 0)),
-            context.constant(qm31_from_u32s(0, 0, 0, 1)),
+            qm31_from_u32s(1, 0, 0, 0),
+            qm31_from_u32s(0, 1, 0, 0),
+            qm31_from_u32s(0, 0, 1, 0),
+            qm31_from_u32s(0, 0, 0, 1),
         ];
         let unit_vecs_inv = [
-            context.constant(qm31_from_u32s(0, 1, 0, 0).inverse()),
-            context.constant(qm31_from_u32s(0, 0, 1, 0).inverse()),
-            context.constant(qm31_from_u32s(0, 0, 0, 1).inverse()),
+            qm31_from_u32s(0, 1, 0, 0).inverse(),
+            qm31_from_u32s(0, 0, 1, 0).inverse(),
+            qm31_from_u32s(0, 0, 0, 1).inverse(),
         ];
 
         (0..input.len)
@@ -200,9 +200,14 @@ impl Simd {
                 let coord = i % 4;
                 // To obtain the `coord`-th coordinate, `c`, start with pointwise multiplication
                 // by a unit vector. This results in `c * unit_vecs[coord]`.
-                let x = pointwise_mul(context, qm31_var, unit_vecs[coord]);
+                let unit_vec = context.constant(unit_vecs[coord]);
+                let x = pointwise_mul(context, qm31_var, unit_vec);
                 // Then, divide by `unit_vecs[coord]` to get `c`.
-                if coord == 0 { x } else { eval!(context, (x) * (unit_vecs_inv[coord - 1])) }
+                if coord == 0 {
+                    x
+                } else {
+                    eval!(context, (x) * (context.constant(unit_vecs_inv[coord - 1])))
+                }
             })
             .collect_vec()
     }
