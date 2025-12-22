@@ -154,3 +154,18 @@ impl PreProcessedTrace {
             .unwrap_or_else(|| panic!("Missing preprocessed column {id:?}"))]
     }
 }
+
+/// The components in the proof that are not empty.
+pub struct ActiveComponents {
+    pub qm31_ops: bool,
+}
+impl ActiveComponents {
+    /// The components that their preprocessed columns are present in the preprocessed trace.
+    pub fn from_preprocessed_trace(preprocessed_trace: &PreProcessedTrace) -> Self {
+        Self {
+            qm31_ops: preprocessed_trace
+                .column_indices
+                .contains_key(&PreProcessedColumnId { id: "qm31_ops_add_flag".to_owned() }),
+        }
+    }
+}
