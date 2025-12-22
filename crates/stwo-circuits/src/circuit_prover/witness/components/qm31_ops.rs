@@ -1,27 +1,5 @@
-use crate::circuit_air::relations;
-use crate::circuit_prover::witness::preprocessed::PreProcessedTrace;
-use crate::circuit_prover::witness::utils::TreeBuilder;
-use crate::circuit_prover::witness::utils::pack_values;
-use itertools::Itertools;
-use itertools::multizip;
-use num_traits::One;
-use rayon::iter::IndexedParallelIterator;
-use rayon::iter::IntoParallelIterator;
-use rayon::iter::ParallelIterator;
-use stwo::core::fields::m31::M31;
-use stwo::core::fields::qm31::QM31;
-use stwo::core::fields::qm31::SecureField;
-use stwo::prover::backend::Col;
-use stwo::prover::backend::simd::SimdBackend;
-use stwo::prover::backend::simd::m31::{LOG_N_LANES, N_LANES, PackedM31};
-use stwo::prover::backend::simd::qm31::PackedQM31;
-use stwo_air_utils::trace::component_trace::ComponentTrace;
-use stwo_air_utils_derive::{IterMut, ParIterMut, Uninitialized};
-use stwo_constraint_framework::LogupTraceGenerator;
-use stwo_constraint_framework::Relation;
-use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
-
-const N_TRACE_COLUMNS: usize = 12;
+use crate::circuit_air::components::qm31_ops::N_TRACE_COLUMNS;
+use crate::circuit_prover::witness::components::prelude::*;
 
 pub type InputType = [[M31; 4]; 3];
 pub type PackedInputType = [[PackedM31; 4]; 3];
