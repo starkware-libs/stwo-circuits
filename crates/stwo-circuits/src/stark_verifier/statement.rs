@@ -15,7 +15,7 @@ pub struct EvaluateArgs<'a> {
     pub oods_samples: OodsSamples<'a>,
     pub pt: CirclePoint<Var>,
     pub log_domain_size: usize,
-    pub composition_polynomial_coef: Var,
+    pub composition_polynomial_coeff: Var,
     pub interaction_elements: [Var; 2],
     pub claimed_sums: &'a [Var],
 }
