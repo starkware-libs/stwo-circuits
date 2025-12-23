@@ -88,19 +88,19 @@ impl Component for SquaredFibonacciComponent {
         let prev_logup_sum = from_partial_evals(
             context,
             [
-                oods_samples.interaction.at_prev(0),
-                oods_samples.interaction.at_prev(1),
-                oods_samples.interaction.at_prev(2),
-                oods_samples.interaction.at_prev(3),
+                oods_samples.interaction[0].at_prev,
+                oods_samples.interaction[1].at_prev,
+                oods_samples.interaction[2].at_prev,
+                oods_samples.interaction[3].at_prev,
             ],
         );
         let cur_logup_sum = from_partial_evals(
             context,
             [
-                oods_samples.interaction.at_oods(0),
-                oods_samples.interaction.at_oods(1),
-                oods_samples.interaction.at_oods(2),
-                oods_samples.interaction.at_oods(3),
+                oods_samples.interaction[0].at_oods,
+                oods_samples.interaction[1].at_oods,
+                oods_samples.interaction[2].at_oods,
+                oods_samples.interaction[3].at_oods,
             ],
         );
         let n_instances = context.constant((1 << LOG_N_INSTANCES).into());

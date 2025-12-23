@@ -8,7 +8,7 @@ use crate::stark_verifier::proof::InteractionAtOods;
 pub struct OodsSamples<'a> {
     pub preprocessed_columns: &'a [Var],
     pub trace: &'a [Var],
-    pub interaction: &'a InteractionAtOods<Var>,
+    pub interaction: &'a [InteractionAtOods<Var>],
 }
 
 pub struct EvaluateArgs<'a> {
