@@ -17,7 +17,14 @@ itertools = { version = "0.12", default-features = false, features = [
     "use_alloc",
 ] }
 num-traits = { version = "0.2.19", default-features = false }
-stwo = { git = "https://github.com/starkware-libs/stwo", rev = "6ec8e7b1", features = ["prover"], default-features = false }
-stwo-constraint-framework = { git = "https://github.com/starkware-libs/stwo", rev = "6ec8e7b1", features = ["prover"] }
+# TODO(ilya): Use an offical branch.
+stwo = { git = "https://github.com/starkware-libs/stwo", rev = "043bb696", features = [
+    "parallel",
+    "prover",
+], default-features = false }
+stwo-constraint-framework = { git = "https://github.com/starkware-libs/stwo", rev = "043bb696", features = [
+    "parallel",
+    "prover",
+] }
 rstest = "0.26.1"
 expect-test = "1.5.1"

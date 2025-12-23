@@ -4,7 +4,7 @@ use itertools::chain;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::proof::ExtendedStarkProof;
-use stwo::core::vcs::blake2_merkle::Blake2sM31MerkleHasher;
+use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 
 use crate::circuits::ivalue::qm31_from_u32s;
 use crate::stark_verifier::fri_proof::{FriCommitProof, FriProof};
@@ -120,7 +120,7 @@ fn construct_eval_domain_auth_paths(
                     let mut auth_path: AuthPath<QM31> = AuthPath(vec![]);
                     let mut pos = *query_idx;
                     for j in 0..config.log_evaluation_domain_size() {
-                        let hash = merkle_decommitment_aux.all_node_values[j + 1][&(pos ^ 1)];
+                        let hash = merkle_decommitment_aux.all_node_values[j][&(pos ^ 1)];
                         auth_path.0.push(hash.into());
                         pos >>= 1;
                     }
@@ -151,7 +151,7 @@ fn construct_fri_auth_paths(
                     pos >>= tree_idx;
                     let mut auth_path: AuthPath<QM31> = AuthPath(vec![]);
                     for j in 0..config.log_evaluation_domain_size() - tree_idx {
-                        let hash = aux.decommitment.all_node_values[j + 1][&(pos ^ 1)];
+                        let hash = aux.decommitment.all_node_values[j][&(pos ^ 1)];
                         if j > 0 {
                             // Don't add the first hash because it's computed from the fri sibling.
                             auth_path.0.push(hash.into());

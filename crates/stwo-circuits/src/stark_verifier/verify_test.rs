@@ -62,13 +62,13 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
         ProofModifier::WrongTraceAuthPath => {
             let first_query = proof.aux.unsorted_query_locations[0];
             // `trace_decommitment[1]` refers to the main trace.
-            let first_layer_values = &mut proof.aux.trace_decommitment[1].all_node_values[1];
+            let first_layer_values = &mut proof.aux.trace_decommitment[1].all_node_values[0];
             let value: &mut Blake2sHash = first_layer_values.get_mut(&(first_query ^ 1)).unwrap();
             value.0[0] ^= 1;
         }
         ProofModifier::WrongFriAuthPath => {
             let first_query = proof.aux.unsorted_query_locations[0];
-            let first_layer_values = &mut proof.aux.fri.first_layer.decommitment.all_node_values[2];
+            let first_layer_values = &mut proof.aux.fri.first_layer.decommitment.all_node_values[1];
             let value: &mut Blake2sHash =
                 first_layer_values.get_mut(&((first_query >> 1) ^ 1)).unwrap();
             value.0[0] ^= 1;
