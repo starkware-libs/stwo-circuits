@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use itertools::chain;
 use stwo::core::fields::qm31::QM31;
 
@@ -202,6 +204,50 @@ impl std::fmt::Debug for Blake {
     }
 }
 
+/// Represents a permutation gate in the circuit.
+/// The gate enforces that the input values as a multi-set are equal to the output values
+/// as a multi-set.
+#[derive(PartialEq, Eq)]
+pub struct Permutation {
+    pub inputs: Vec<usize>,
+    pub outputs: Vec<usize>,
+}
+impl Gate for Permutation {
+    fn check(&self, values: &[QM31]) -> Result<(), String> {
+        let mut multi_set = HashMap::new();
+
+        for input in &self.inputs {
+            *multi_set.entry(values[*input]).or_insert(0) += 1;
+        }
+
+        for output in &self.outputs {
+            *multi_set.entry(values[*output]).or_insert(0) -= 1;
+        }
+
+        for count in multi_set.values() {
+            if *count != 0 {
+                return Err("Permutation is not valid".to_string());
+            }
+        }
+
+        Ok(())
+    }
+
+    fn uses(&self) -> Vec<usize> {
+        self.inputs.to_vec()
+    }
+
+    fn yields(&self) -> Vec<usize> {
+        self.outputs.to_vec()
+    }
+}
+
+impl std::fmt::Debug for Permutation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({:?}) = ({:?})", self.outputs, self.inputs)
+    }
+}
+
 /// Represents a circuit.
 #[derive(Default, PartialEq, Eq)]
 pub struct Circuit {
@@ -212,12 +258,13 @@ pub struct Circuit {
     pub pointwise_mul: Vec<PointwiseMul>,
     pub eq: Vec<Eq>,
     pub blake: Vec<Blake>,
+    pub permutation: Vec<Permutation>,
 }
 
 impl Circuit {
     /// Returns an iterator over all the gates in the circuit.
     pub fn all_gates(&self) -> impl Iterator<Item = &dyn Gate> {
-        let Circuit { n_vars: _, add, sub, mul, pointwise_mul, eq, blake } = self;
+        let Circuit { n_vars: _, add, sub, mul, pointwise_mul, eq, blake, permutation } = self;
         chain!(
             add.iter().map(|g| g as &dyn Gate),
             sub.iter().map(|g| g as &dyn Gate),
@@ -225,6 +272,7 @@ impl Circuit {
             pointwise_mul.iter().map(|g| g as &dyn Gate),
             eq.iter().map(|g| g as &dyn Gate),
             blake.iter().map(|g| g as &dyn Gate),
+            permutation.iter().map(|g| g as &dyn Gate),
         )
     }
 

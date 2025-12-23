@@ -73,7 +73,8 @@ fn add_qm31_ops_to_preprocessed_trace(
     multiplicities: Vec<usize>,
     pp_trace: &mut PreProcessedTrace,
 ) {
-    let Circuit { n_vars: _, add, sub, mul, pointwise_mul, eq: _, blake: _ } = circuit;
+    let Circuit { n_vars: _, add, sub, mul, pointwise_mul, eq: _, blake: _, permutation: _ } =
+        circuit;
     let mut qm31_ops_columns: [_; N_QM31_OPS_PP_COLUMNS] = std::array::from_fn(|_| vec![]);
     fill_binary_op_columns(add, OpCode::Add, &multiplicities, &mut qm31_ops_columns);
     fill_binary_op_columns(sub, OpCode::Sub, &multiplicities, &mut qm31_ops_columns);
@@ -103,7 +104,16 @@ fn add_qm31_ops_to_preprocessed_trace(
 /// is empty, no columns are added. Preprocessed columns are in the following format:
 /// | in0_address | in1_address |
 fn add_eq_to_preprocessed_trace(circuit: &Circuit, pp_trace: &mut PreProcessedTrace) {
-    let Circuit { n_vars: _, add: _, sub: _, mul: _, pointwise_mul: _, eq, blake: _ } = circuit;
+    let Circuit {
+        n_vars: _,
+        add: _,
+        sub: _,
+        mul: _,
+        pointwise_mul: _,
+        eq,
+        blake: _,
+        permutation: _,
+    } = circuit;
     let mut eq_columns: [_; N_EQ_PP_COLUMNS] = std::array::from_fn(|_| vec![]);
     fill_eq_columns(eq, &mut eq_columns);
 
