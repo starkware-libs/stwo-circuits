@@ -1,4 +1,4 @@
-use crate::circuits::circuit::{Add, Circuit, Eq, Mul, Sub};
+use crate::circuits::circuit::{Add, Circuit, Eq, Mul, Permutation, Sub};
 
 #[test]
 fn circuit_add() {
@@ -44,4 +44,15 @@ fn circuit_eq() {
         "(1 + 0i) + (0 + 0i)u != (2 + 0i) + (0 + 0i)u"
     );
     assert_eq!(c.compute_multiplicities(), (vec![0, 1, 1], vec![0, 0, 0]));
+}
+
+#[test]
+fn circuit_permutation() {
+    let mut c = Circuit { n_vars: 6, ..Circuit::default() };
+    c.permutation.push(Permutation { inputs: vec![0, 1, 2], outputs: vec![3, 4, 5] });
+    c.check(&[1.into(), 2.into(), 2.into(), 2.into(), 1.into(), 2.into()]).unwrap();
+    assert_eq!(
+        c.check(&[1.into(), 2.into(), 2.into(), 2.into(), 2.into(), 2.into()]).unwrap_err(),
+        "Permutation is not valid"
+    );
 }
