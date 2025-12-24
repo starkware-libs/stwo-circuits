@@ -122,13 +122,14 @@ impl Component for SquaredFibonacciComponent {
     }
 }
 
-impl Statement for SimpleStatement {
+impl SquaredFibonacciComponent {
     fn public_logup_sum(
         &self,
         context: &mut Context<impl IValue>,
+        prev_sum: Var,
         interaction_elements: [Var; 2],
     ) -> Var {
-        let mut sum = context.zero();
+        let mut sum = prev_sum;
         for j in 0..(1 << LOG_N_INSTANCES) {
             let mut a: M31 = M31::one();
             let mut b: M31 = j.into();
@@ -145,6 +146,17 @@ impl Statement for SimpleStatement {
             sum = eval!(context, (sum) - (inv));
         }
         sum
+    }
+}
+
+impl Statement for SimpleStatement {
+    fn public_logup_sum(
+        &self,
+        context: &mut Context<impl IValue>,
+        interaction_elements: [Var; 2],
+    ) -> Var {
+        let prev_sum = context.zero();
+        self.fib_component.public_logup_sum(context, prev_sum, interaction_elements)
     }
 
     fn evaluate(&self, context: &mut Context<impl IValue>, args: EvaluateArgs<'_>) -> Var {
