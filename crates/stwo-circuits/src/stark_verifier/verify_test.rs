@@ -6,7 +6,7 @@ use stwo::core::vcs::blake2_hash::Blake2sHash;
 use crate::circuits::context::{Context, TraceContext};
 use crate::circuits::ivalue::NoValue;
 use crate::circuits::ops::Guess;
-use crate::examples::simple_air::{LOG_N_INSTANCES, create_proof};
+use crate::examples::simple_air::create_proof;
 use crate::examples::simple_statement::SimpleStatement;
 use crate::stark_verifier::fri_proof::FriConfig;
 use crate::stark_verifier::proof::{ProofConfig, empty_proof};
@@ -30,17 +30,17 @@ enum ProofModifier {
 #[case::wrong_fri_auth_path(ProofModifier::WrongFriAuthPath)]
 #[case::wrong_fri_sibling(ProofModifier::WrongFriSibling)]
 fn test_verify(#[case] proof_modifier: ProofModifier) {
-    use crate::examples::simple_air::PublicInput;
+    use crate::examples::simple_air::{LOG_SIZE_LONG, PublicInput};
 
     let config = ProofConfig {
         n_proof_of_work_bits: 10,
-        n_preprocessed_columns: 1,
-        n_trace_columns: 4,
-        n_interaction_columns: 4,
-        n_components: 1,
-        cumulative_sum_columns: vec![true; 4],
+        n_preprocessed_columns: 2,
+        n_trace_columns: 8,
+        n_interaction_columns: 8,
+        n_components: 2,
+        cumulative_sum_columns: vec![true; 8],
         fri: FriConfig {
-            log_trace_size: LOG_N_INSTANCES.try_into().unwrap(),
+            log_trace_size: LOG_SIZE_LONG.try_into().unwrap(),
             log_blowup_factor: 1,
             n_queries: 3,
             log_n_last_layer_coefs: 0,
