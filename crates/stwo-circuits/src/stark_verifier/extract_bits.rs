@@ -10,12 +10,15 @@ pub mod test;
 
 /// For each `M31` value in the given [Simd], returns the value as a 31-bit integer in the range
 /// `[0, 2^31 - 1)`.
-pub fn extract_bits(context: &mut Context<impl IValue>, input: &Simd) -> [Simd; 31] {
+pub fn extract_bits<const N_BITS: usize>(
+    context: &mut Context<impl IValue>,
+    input: &Simd,
+) -> [Simd; N_BITS] {
     let inv_two = Simd::repeat(context, M31::from(2).inverse(), input.len());
 
     let mut value = input.clone();
     let mut bits = Vec::new();
-    for _ in 0..30 {
+    for _ in 0..(N_BITS - 1) {
         let lsb = value.guess_lsb(context);
         bits.push(lsb.clone());
         value = Simd::sub(context, &value, &lsb);
@@ -26,8 +29,11 @@ pub fn extract_bits(context: &mut Context<impl IValue>, input: &Simd) -> [Simd; 
     value.assert_bits(context);
     bits.push(value.clone());
 
-    // Check that `0` is represented as `0b0000...0000`, rather than `0b1111...1111`.
-    validate_extract_bits(context, input, &bits[0]);
+    if N_BITS >= 31 {
+        assert_eq!(N_BITS, 31);
+        // Check that `0` is represented as `0b0000...0000`, rather than `0b1111...1111`.
+        validate_extract_bits(context, input, &bits[0]);
+    }
 
     bits.try_into().unwrap()
 }

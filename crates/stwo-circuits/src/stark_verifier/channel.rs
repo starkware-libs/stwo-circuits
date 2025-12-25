@@ -122,7 +122,7 @@ impl Channel {
         let first_word = pointwise_mul(context, res0, context.one());
 
         // Check that the n_bits least significant bits are zero.
-        let bits = extract_bits(context, &Simd::from_packed(vec![first_word], 1));
+        let bits = extract_bits::<31>(context, &Simd::from_packed(vec![first_word], 1));
         for bit in &bits[0..n_bits] {
             eq(context, bit.get_packed()[0], context.zero());
         }
