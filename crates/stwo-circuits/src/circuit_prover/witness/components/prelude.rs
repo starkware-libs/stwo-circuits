@@ -8,6 +8,8 @@ pub use itertools::multizip;
 pub use num_traits::One;
 pub use rayon::iter::IndexedParallelIterator;
 pub use rayon::iter::IntoParallelIterator;
+pub use rayon::iter::IntoParallelRefIterator;
+pub use rayon::iter::IntoParallelRefMutIterator;
 pub use rayon::iter::ParallelIterator;
 pub use stwo::core::fields::m31::M31;
 pub use stwo::core::fields::qm31::QM31;
