@@ -1,8 +1,6 @@
 use crate::circuit_air::relations;
 use num_traits::One;
-use stwo::core::channel::Channel;
 use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
-use stwo::core::fields::qm31::SecureField;
 use stwo::core::pcs::TreeVec;
 use stwo_constraint_framework::EvalAtRow;
 use stwo_constraint_framework::FrameworkComponent;
@@ -13,41 +11,21 @@ use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 pub const N_TRACE_COLUMNS: usize = 12;
 
 pub struct Eval {
-    pub claim: Claim,
+    pub log_size: u32,
     pub gate_lookup_elements: relations::Gate,
 }
 
-#[derive(Copy, Clone)]
-pub struct Claim {
-    pub log_size: u32,
-}
-impl Claim {
-    pub fn log_sizes(&self) -> TreeVec<Vec<u32>> {
-        let trace_log_sizes = vec![self.log_size; N_TRACE_COLUMNS];
-        let interaction_log_sizes = vec![self.log_size; SECURE_EXTENSION_DEGREE];
-        TreeVec::new(vec![vec![], trace_log_sizes, interaction_log_sizes])
-    }
-
-    pub fn mix_into(&self, channel: &mut impl Channel) {
-        channel.mix_u64(self.log_size as u64);
-    }
-}
-
-#[derive(Copy, Clone)]
-pub struct InteractionClaim {
-    pub claimed_sum: SecureField,
-}
-impl InteractionClaim {
-    pub fn mix_into(&self, channel: &mut impl Channel) {
-        channel.mix_felts(&[self.claimed_sum]);
-    }
+pub fn log_sizes(log_size: u32) -> TreeVec<Vec<u32>> {
+    let trace_log_sizes = vec![log_size; N_TRACE_COLUMNS];
+    let interaction_log_sizes = vec![log_size; SECURE_EXTENSION_DEGREE];
+    TreeVec::new(vec![vec![], trace_log_sizes, interaction_log_sizes])
 }
 
 pub type Component = FrameworkComponent<Eval>;
 
 impl FrameworkEval for Eval {
     fn log_size(&self) -> u32 {
-        self.claim.log_size
+        self.log_size
     }
 
     fn max_constraint_log_degree_bound(&self) -> u32 {

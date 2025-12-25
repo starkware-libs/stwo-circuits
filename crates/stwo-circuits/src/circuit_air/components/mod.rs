@@ -13,18 +13,29 @@ use stwo::prover::backend::Backend;
 use stwo_constraint_framework::TraceLocationAllocator;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
+pub enum ComponentList {
+    Qm31Ops,
+}
+pub const N_COMPONENTS: usize = std::mem::variant_count::<ComponentList>();
+
+pub type ComponentLogSize = u32;
+pub type ClaimedSum = SecureField;
+
 pub struct CircuitClaim {
-    pub qm31_ops: qm31_ops::Claim,
+    pub log_sizes: [ComponentLogSize; N_COMPONENTS],
 }
 impl CircuitClaim {
     pub fn mix_into(&self, channel: &mut impl Channel) {
-        self.qm31_ops.mix_into(channel);
+        for log_size in self.log_sizes {
+            channel.mix_u64(log_size as u64);
+        }
     }
 
     /// Returns the log sizes of the components.
     /// Does not include the preprocessed trace log sizes.
     pub fn log_sizes(&self) -> TreeVec<Vec<u32>> {
-        let log_sizes_list = vec![self.qm31_ops.log_sizes()];
+        let log_sizes_list =
+            vec![qm31_ops::log_sizes(self.log_sizes[ComponentList::Qm31Ops as usize])];
 
         TreeVec::concat_cols(log_sizes_list.into_iter())
     }
@@ -40,17 +51,21 @@ impl CircuitInteractionElements {
 }
 
 pub struct CircuitInteractionClaim {
-    pub qm31_ops: qm31_ops::InteractionClaim,
+    pub claimed_sums: [ClaimedSum; N_COMPONENTS],
 }
 impl CircuitInteractionClaim {
     pub fn mix_into(&self, channel: &mut impl Channel) {
-        self.qm31_ops.mix_into(channel);
+        for claimed_sum in self.claimed_sums {
+            channel.mix_felts(&[claimed_sum]);
+        }
     }
 }
 
 pub fn lookup_sum(interaction_claim: &CircuitInteractionClaim) -> SecureField {
     let mut sum = SecureField::zero();
-    sum += interaction_claim.qm31_ops.claimed_sum;
+    for claimed_sum in interaction_claim.claimed_sums {
+        sum += claimed_sum;
+    }
     sum
 }
 
@@ -76,10 +91,10 @@ where
         let qm31_ops_component = qm31_ops::Component::new(
             tree_span_provider,
             qm31_ops::Eval {
-                claim: circuit_claim.qm31_ops,
+                log_size: circuit_claim.log_sizes[ComponentList::Qm31Ops as usize],
                 gate_lookup_elements: interaction_elements.gate.clone(),
             },
-            interaction_claim.qm31_ops.claimed_sum,
+            interaction_claim.claimed_sums[ComponentList::Qm31Ops as usize],
         );
 
         Self { qm31_ops: qm31_ops_component, _backend: PhantomData }

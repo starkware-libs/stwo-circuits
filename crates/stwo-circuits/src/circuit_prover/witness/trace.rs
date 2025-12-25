@@ -1,6 +1,7 @@
 use crate::circuit_air::components::CircuitClaim;
 use crate::circuit_air::components::CircuitInteractionClaim;
 use crate::circuit_air::components::CircuitInteractionElements;
+use crate::circuit_air::components::ComponentList;
 use crate::circuit_prover::witness::components::qm31_ops;
 use crate::circuit_prover::witness::preprocessed::PreProcessedTrace;
 use stwo::core::fields::qm31::QM31;
@@ -13,26 +14,30 @@ pub fn write_trace(
     preprocessed_trace: &PreProcessedTrace,
     tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, Blake2sM31MerkleChannel>,
 ) -> (CircuitClaim, CircuitInteractionClaimGenerator) {
-    let (qm31_ops_claim, qm31_ops_interaction_claim_generator) =
+    let (qm31_ops_log_size, qm31_ops_lookup_data) =
         qm31_ops::write_trace(context_values, preprocessed_trace, tree_builder);
 
     (
-        CircuitClaim { qm31_ops: qm31_ops_claim },
-        CircuitInteractionClaimGenerator { qm31_ops: qm31_ops_interaction_claim_generator },
+        CircuitClaim { log_sizes: [qm31_ops_log_size] },
+        CircuitInteractionClaimGenerator { qm31_ops_lookup_data },
     )
 }
 
 pub struct CircuitInteractionClaimGenerator {
-    pub qm31_ops: qm31_ops::InteractionClaimGenerator,
+    pub qm31_ops_lookup_data: qm31_ops::LookupData,
 }
-impl CircuitInteractionClaimGenerator {
-    pub fn write_interaction_trace(
-        self,
-        tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, Blake2sM31MerkleChannel>,
-        interaction_elements: &CircuitInteractionElements,
-    ) -> CircuitInteractionClaim {
-        let qm31_ops_interaction_claim =
-            self.qm31_ops.write_interaction_trace(tree_builder, &interaction_elements.gate);
-        CircuitInteractionClaim { qm31_ops: qm31_ops_interaction_claim }
-    }
+
+pub fn write_interaction_trace(
+    circuit_claim: &CircuitClaim,
+    circuit_interaction_claim_generator: CircuitInteractionClaimGenerator,
+    tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, Blake2sM31MerkleChannel>,
+    interaction_elements: &CircuitInteractionElements,
+) -> CircuitInteractionClaim {
+    let qm31_ops_claimed_sum = qm31_ops::write_interaction_trace(
+        circuit_claim.log_sizes[ComponentList::Qm31Ops as usize],
+        circuit_interaction_claim_generator.qm31_ops_lookup_data,
+        tree_builder,
+        &interaction_elements.gate,
+    );
+    CircuitInteractionClaim { claimed_sums: [qm31_ops_claimed_sum] }
 }
