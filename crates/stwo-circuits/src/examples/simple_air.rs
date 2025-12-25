@@ -30,9 +30,12 @@ use stwo_constraint_framework::{
 #[path = "simple_air_test.rs"]
 pub mod simple_air_test;
 
+pub const LOG_SIZE_SHORT: u32 = 4;
+pub const LOG_SIZE_LONG: u32 = 5;
+const _: () = assert!(LOG_SIZE_LONG > LOG_SIZE_SHORT);
+const _: () = assert!(LOG_SIZE_SHORT >= LOG_N_LANES);
+
 pub const FIB_SEQUENCE_LENGTH: usize = 4;
-pub const LOG_N_INSTANCES: u32 = 4;
-const _: () = assert!(LOG_N_INSTANCES >= LOG_N_LANES);
 
 relation!(SimpleRelation, 2);
 
@@ -154,7 +157,7 @@ pub fn create_proof()
     let config = PcsConfig::default();
     // Precompute twiddles.
     let twiddles = SimdBackend::precompute_twiddles(
-        CanonicCoset::new(LOG_N_INSTANCES + 1 + config.fri_config.log_blowup_factor)
+        CanonicCoset::new(LOG_SIZE_LONG + 1 + config.fri_config.log_blowup_factor)
             .circle_domain()
             .half_coset,
     );
@@ -167,13 +170,15 @@ pub fn create_proof()
 
     // Preprocessed trace
     let mut tree_builder = commitment_scheme.tree_builder();
-    tree_builder.extend_evals([generate_seq_column(LOG_N_INSTANCES)]);
+    tree_builder
+        .extend_evals([generate_seq_column(LOG_SIZE_SHORT), generate_seq_column(LOG_SIZE_LONG)]);
     tree_builder.commit(prover_channel);
 
     // Trace.
-    let trace = generate_trace(LOG_N_INSTANCES);
+    let trace_1 = generate_trace(LOG_SIZE_SHORT);
+    let trace_2 = generate_trace(LOG_SIZE_LONG);
     let mut tree_builder = commitment_scheme.tree_builder();
-    tree_builder.extend_evals(trace.clone());
+    tree_builder.extend_evals([trace_1.clone(), trace_2.clone()].concat());
     tree_builder.commit(prover_channel);
 
     // TODO(lior): Add proof of work before drawing the lookup elements.
@@ -182,31 +187,45 @@ pub fn create_proof()
     let lookup_elements = SimpleRelation::draw(prover_channel);
 
     // Interaction trace.
-    let (interaction_trace, claimed_sum) = generate_interaction_trace(&trace, &lookup_elements.0);
-    prover_channel.mix_felts(&[claimed_sum]);
+    let (interaction_trace_1, claimed_sum_1) =
+        generate_interaction_trace(&trace_1, &lookup_elements.0);
+    let (interaction_trace_2, claimed_sum_2) =
+        generate_interaction_trace(&trace_2, &lookup_elements.0);
+    prover_channel.mix_felts(&[claimed_sum_1, claimed_sum_2]);
     let mut tree_builder = commitment_scheme.tree_builder();
-    tree_builder.extend_evals(interaction_trace);
+    tree_builder.extend_evals([interaction_trace_1, interaction_trace_2].concat());
     tree_builder.commit(prover_channel);
 
+    let mut trace_location_allocator = TraceLocationAllocator::default();
+
     // Prove constraints.
-    let component = SimpleComponent::new(
-        &mut TraceLocationAllocator::default(),
+    let component_1 = SimpleComponent::new(
+        &mut trace_location_allocator,
         Eval {
-            lookup_elements,
-            preprocessed_column_id: PreProcessedColumnId { id: "row_const".into() },
-            log_n_instances: LOG_N_INSTANCES,
+            lookup_elements: lookup_elements.clone(),
+            preprocessed_column_id: PreProcessedColumnId { id: "row_const_1".into() },
+            log_n_instances: LOG_SIZE_SHORT,
         },
-        claimed_sum,
+        claimed_sum_1,
     );
 
+    let component_2 = SimpleComponent::new(
+        &mut trace_location_allocator,
+        Eval {
+            lookup_elements,
+            preprocessed_column_id: PreProcessedColumnId { id: "row_const_2".into() },
+            log_n_instances: LOG_SIZE_LONG,
+        },
+        claimed_sum_2,
+    );
     let proof = prove_ex::<SimdBackend, Blake2sM31MerkleChannel>(
-        &[&component],
+        &[&component_1, &component_2],
         prover_channel,
         commitment_scheme,
     )
     .unwrap();
 
-    let components: Vec<Box<dyn Component>> = vec![Box::new(component)];
+    let components: Vec<Box<dyn Component>> = vec![Box::new(component_1), Box::new(component_2)];
 
-    (components, PublicInput { claimed_sums: vec![claimed_sum] }, proof)
+    (components, PublicInput { claimed_sums: vec![claimed_sum_1, claimed_sum_2] }, proof)
 }
