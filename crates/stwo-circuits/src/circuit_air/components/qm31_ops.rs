@@ -1,7 +1,5 @@
 use crate::circuit_air::relations;
 use num_traits::One;
-use stwo::core::channel::Channel;
-use stwo::core::fields::qm31::SecureField;
 use stwo_constraint_framework::EvalAtRow;
 use stwo_constraint_framework::FrameworkComponent;
 use stwo_constraint_framework::FrameworkEval;
@@ -11,35 +9,15 @@ use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 pub const N_TRACE_COLUMNS: usize = 12;
 
 pub struct Eval {
-    pub claim: Claim,
-    pub gate_lookup_elements: relations::Gate,
-}
-
-#[derive(Copy, Clone)]
-pub struct Claim {
     pub log_size: u32,
-}
-impl Claim {
-    pub fn mix_into(&self, channel: &mut impl Channel) {
-        channel.mix_u64(self.log_size as u64);
-    }
-}
-
-#[derive(Copy, Clone)]
-pub struct InteractionClaim {
-    pub claimed_sum: SecureField,
-}
-impl InteractionClaim {
-    pub fn mix_into(&self, channel: &mut impl Channel) {
-        channel.mix_felts(&[self.claimed_sum]);
-    }
+    pub gate_lookup_elements: relations::Gate,
 }
 
 pub type Component = FrameworkComponent<Eval>;
 
 impl FrameworkEval for Eval {
     fn log_size(&self) -> u32 {
-        self.claim.log_size
+        self.log_size
     }
 
     fn max_constraint_log_degree_bound(&self) -> u32 {
