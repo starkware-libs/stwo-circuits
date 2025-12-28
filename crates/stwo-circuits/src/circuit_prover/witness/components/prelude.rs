@@ -1,5 +1,5 @@
-pub use crate::circuit_air::components::ClaimedSum;
-pub use crate::circuit_air::components::ComponentLogSize;
+pub use crate::circuit_air::ClaimedSum;
+pub use crate::circuit_air::ComponentLogSize;
 pub use crate::circuit_air::relations;
 pub use crate::circuit_prover::witness::preprocessed::PreProcessedTrace;
 pub use crate::circuit_prover::witness::utils::pack_values;

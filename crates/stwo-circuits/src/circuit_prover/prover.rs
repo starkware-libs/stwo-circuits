@@ -1,6 +1,5 @@
 use crate::circuit_air::components::CircuitComponents;
-use crate::circuit_air::components::CircuitInteractionElements;
-use crate::circuit_air::components::lookup_sum;
+use crate::circuit_air::{CircuitInteractionElements, lookup_sum};
 use crate::circuit_prover::finalize::finalize_context;
 use crate::circuit_prover::witness::preprocessed::PreProcessedTrace;
 use crate::circuit_prover::witness::trace::write_interaction_trace;
