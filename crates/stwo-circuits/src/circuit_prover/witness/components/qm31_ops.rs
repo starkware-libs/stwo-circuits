@@ -6,24 +6,31 @@ pub type PackedInputType = [[PackedM31; 4]; 3];
 
 /// Retrieves the component's inputs from the context values, using the addresses provided in the
 /// preprocessed trace.
+#[allow(clippy::uninit_vec)]
 pub fn extract_component_inputs(
     in0_address: &[usize],
     in1_address: &[usize],
     out_address: &[usize],
     context_values: &[QM31],
 ) -> Vec<InputType> {
-    let mut inputs = vec![];
+    let n_rows = in0_address.len();
+    assert_eq!(n_rows, in1_address.len());
+    assert_eq!(n_rows, out_address.len());
 
-    // TODO(Gali): Parallelize.
-    multizip((in0_address, in1_address, out_address)).for_each(
-        |(in0_address, in1_address, out_address)| {
-            inputs.push([
+    let mut inputs = Vec::with_capacity(n_rows);
+    unsafe {
+        inputs.set_len(n_rows);
+    }
+
+    (inputs.par_iter_mut(), in0_address.par_iter(), in1_address.par_iter(), out_address.par_iter())
+        .into_par_iter()
+        .for_each(|(input, in0_address, in1_address, out_address)| {
+            *input = [
                 context_values[*in0_address].to_m31_array(),
                 context_values[*in1_address].to_m31_array(),
                 context_values[*out_address].to_m31_array(),
-            ]);
-        },
-    );
+            ];
+        });
 
     inputs
 }
