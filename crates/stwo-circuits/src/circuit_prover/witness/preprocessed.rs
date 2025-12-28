@@ -84,20 +84,19 @@ fn add_qm31_ops_to_preprocessed_trace(
         &multiplicities,
         &mut qm31_ops_columns,
     );
-    if !qm31_ops_columns[0].is_empty() {
-        let n_columns = pp_trace.columns.len();
-        pp_trace.column_indices.extend([
-            (PreProcessedColumnId { id: "qm31_ops_add_flag".to_owned() }, n_columns),
-            (PreProcessedColumnId { id: "qm31_ops_sub_flag".to_owned() }, n_columns + 1),
-            (PreProcessedColumnId { id: "qm31_ops_mul_flag".to_owned() }, n_columns + 2),
-            (PreProcessedColumnId { id: "qm31_ops_pointwise_mul_flag".to_owned() }, n_columns + 3),
-            (PreProcessedColumnId { id: "qm31_ops_in0_address".to_owned() }, n_columns + 4),
-            (PreProcessedColumnId { id: "qm31_ops_in1_address".to_owned() }, n_columns + 5),
-            (PreProcessedColumnId { id: "qm31_ops_out_address".to_owned() }, n_columns + 6),
-            (PreProcessedColumnId { id: "qm31_ops_mults".to_owned() }, n_columns + 7),
-        ]);
-        pp_trace.columns.extend(qm31_ops_columns);
-    }
+
+    let n_columns = pp_trace.columns.len();
+    pp_trace.column_indices.extend([
+        (PreProcessedColumnId { id: "qm31_ops_add_flag".to_owned() }, n_columns),
+        (PreProcessedColumnId { id: "qm31_ops_sub_flag".to_owned() }, n_columns + 1),
+        (PreProcessedColumnId { id: "qm31_ops_mul_flag".to_owned() }, n_columns + 2),
+        (PreProcessedColumnId { id: "qm31_ops_pointwise_mul_flag".to_owned() }, n_columns + 3),
+        (PreProcessedColumnId { id: "qm31_ops_in0_address".to_owned() }, n_columns + 4),
+        (PreProcessedColumnId { id: "qm31_ops_in1_address".to_owned() }, n_columns + 5),
+        (PreProcessedColumnId { id: "qm31_ops_out_address".to_owned() }, n_columns + 6),
+        (PreProcessedColumnId { id: "qm31_ops_mults".to_owned() }, n_columns + 7),
+    ]);
+    pp_trace.columns.extend(qm31_ops_columns);
 }
 
 /// Adds the preprocessed columns of eq component to the preprocessed trace. If the component
@@ -107,14 +106,13 @@ fn add_eq_to_preprocessed_trace(circuit: &Circuit, pp_trace: &mut PreProcessedTr
     let Circuit { n_vars: _, add: _, sub: _, mul: _, pointwise_mul: _, eq, blake: _ } = circuit;
     let mut eq_columns: [_; N_EQ_PP_COLUMNS] = std::array::from_fn(|_| vec![]);
     fill_eq_columns(eq, &mut eq_columns);
-    if !eq_columns[0].is_empty() {
-        let n_columns = pp_trace.columns.len();
-        pp_trace.column_indices.extend([
-            (PreProcessedColumnId { id: "eq_in0_address".to_owned() }, n_columns),
-            (PreProcessedColumnId { id: "eq_in1_address".to_owned() }, n_columns + 1),
-        ]);
-        pp_trace.columns.extend(eq_columns);
-    }
+
+    let n_columns = pp_trace.columns.len();
+    pp_trace.column_indices.extend([
+        (PreProcessedColumnId { id: "eq_in0_address".to_owned() }, n_columns),
+        (PreProcessedColumnId { id: "eq_in1_address".to_owned() }, n_columns + 1),
+    ]);
+    pp_trace.columns.extend(eq_columns);
 }
 
 /// A collection of preprocessed columns, whose values are publicly acknowledged, and independent of
