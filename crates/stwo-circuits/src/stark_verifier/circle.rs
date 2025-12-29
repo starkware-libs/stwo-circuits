@@ -24,6 +24,16 @@ pub fn double_x_simd(context: &mut Context<impl IValue>, value: &Simd) -> Simd {
     Simd::sub(context, &value_sqr_times2, &one)
 }
 
+/// Computes `p + p`.
+pub fn double_point_simd(
+    context: &mut Context<impl IValue>,
+    p: &CirclePoint<Simd>,
+) -> CirclePoint<Simd> {
+    let xy = Simd::mul(context, &p.x, &p.y);
+    let new_y = Simd::add(context, &xy, &xy);
+    CirclePoint { x: double_x_simd(context, &p.x), y: new_y }
+}
+
 /// Computes `point0 + point1` on the circle.
 pub fn add_points(
     context: &mut Context<impl IValue>,
