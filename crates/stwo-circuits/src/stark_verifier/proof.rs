@@ -1,3 +1,8 @@
+use std::collections::HashSet;
+
+use stwo::core::air::Component;
+use stwo::core::pcs::{PcsConfig, TreeVec};
+
 use crate::circuits::blake::HashValue;
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::{IValue, NoValue};
@@ -31,6 +36,42 @@ pub struct ProofConfig {
     pub fri: FriConfig,
 }
 impl ProofConfig {
+    pub fn new(components: &[Box<dyn Component>], pcs_config: &PcsConfig) -> Self {
+        let preprocessed_indices: HashSet<usize> =
+            HashSet::from_iter(components.iter().flat_map(|c| c.preprocessed_column_indices()));
+
+        let [_preprocessed_columns_with_duplicates, trace_columns, interaction_columns] =
+            &TreeVec::concat_cols(components.iter().map(|c| c.trace_log_degree_bounds())).0[..]
+        else {
+            panic!("Expected 3 traces");
+        };
+
+        let log_trace_size = trace_columns.iter().max().unwrap();
+
+        // TODO(ilya): Get `cumulative_sum_columns` from the components.
+
+        let PcsConfig {
+            pow_bits,
+            fri_config:
+                stwo::core::fri::FriConfig { log_blowup_factor, n_queries, log_last_layer_degree_bound },
+        } = pcs_config;
+
+        Self {
+            n_proof_of_work_bits: *pow_bits as usize,
+            n_preprocessed_columns: preprocessed_indices.len(),
+            n_trace_columns: trace_columns.len(),
+            n_interaction_columns: interaction_columns.len(),
+            n_components: components.len(),
+            cumulative_sum_columns: vec![true; 8],
+            fri: FriConfig {
+                log_trace_size: *log_trace_size as usize,
+                log_blowup_factor: *log_blowup_factor as usize,
+                n_queries: *n_queries,
+                log_n_last_layer_coefs: *log_last_layer_degree_bound as usize,
+            },
+        }
+    }
+
     /// Returns the log2 of the size of the trace.
     pub fn log_trace_size(&self) -> usize {
         self.fri.log_trace_size
