@@ -1,12 +1,14 @@
 use stwo::core::circle::{CirclePoint, M31_CIRCLE_GEN};
 use stwo::core::fields::m31::M31;
 
-use circuits::context::{Context, Var};
-use circuits::eval;
-use circuits::ivalue::IValue;
-use circuits::ops::div;
-use circuits::simd::Simd;
-use circuits::wrappers::M31Wrapper;
+use circuits::{
+    context::{Context, Var},
+    eval,
+    ivalue::IValue,
+    ops::div,
+    simd::Simd,
+    wrappers::M31Wrapper,
+};
 
 #[cfg(test)]
 #[path = "circle_test.rs"]
@@ -37,6 +39,16 @@ pub fn double_point(
         x: M31Wrapper::new_unsafe(double_x(context, *p.x.get())),
         y: M31Wrapper::new_unsafe(new_y),
     }
+}
+
+/// Same as [double_point], but for [Simd].
+pub fn double_point_simd(
+    context: &mut Context<impl IValue>,
+    p: &CirclePoint<Simd>,
+) -> CirclePoint<Simd> {
+    let xy = Simd::mul(context, &p.x, &p.y);
+    let new_y = Simd::add(context, &xy, &xy);
+    CirclePoint { x: double_x_simd(context, &p.x), y: new_y }
 }
 
 /// Computes `point0 + point1` on the circle.

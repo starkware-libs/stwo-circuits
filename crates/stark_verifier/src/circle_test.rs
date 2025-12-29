@@ -1,10 +1,14 @@
+use circuits::simd::Simd;
+use itertools::Itertools;
 use num_traits::Zero;
 use stwo::core::circle::CirclePoint;
 use stwo::core::fields::cm31::CM31;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 
-use crate::circle::{add_points, add_points_simd, double_point, double_x, double_x_simd};
+use crate::circle::{
+    add_points, add_points_simd, double_point, double_point_simd, double_x, double_x_simd,
+};
 use circuits::context::TraceContext;
 use circuits::ops::Guess;
 use circuits::test_utils::{packed_values, simd_from_u32s};
@@ -101,4 +105,34 @@ fn test_double_points() {
 
     assert_eq!(context.get(*res.x.get()).0.0, double_pt0.x);
     assert_eq!(context.get(*res.y.get()).0.0, double_pt0.y);
+}
+
+#[test]
+fn test_double_points_simd() {
+    let pt0 = CirclePoint::<M31> { x: 102767539.into(), y: 739428083.into() };
+    let pt1 = CirclePoint::<M31> { x: 1562688784.into(), y: 946400219.into() };
+
+    let mut context = TraceContext::default();
+
+    let points = CirclePoint {
+        x: simd_from_u32s(&mut context, vec![pt0.x.0, pt1.x.0]),
+        y: simd_from_u32s(&mut context, vec![pt0.y.0, pt1.y.0]),
+    };
+
+    let res = double_point_simd(&mut context, &points);
+
+    let unpacked_x = Simd::unpack(&mut context, &res.x);
+    let unpacked_y = Simd::unpack(&mut context, &res.y);
+
+    let double_pt0 = pt0 + pt0;
+    let double_pt1 = pt1 + pt1;
+
+    assert_eq!(
+        unpacked_x.iter().map(|x| context.get(*x).0.0).collect_vec(),
+        vec![double_pt0.x, double_pt1.x]
+    );
+    assert_eq!(
+        unpacked_y.iter().map(|y| context.get(*y).0.0).collect_vec(),
+        vec![double_pt0.y, double_pt1.y]
+    );
 }
