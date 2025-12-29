@@ -10,7 +10,8 @@ use crate::stark_verifier::proof_from_stark_proof::pack_component_log_sizes;
 #[test]
 fn verify_simple_proof() {
     let config = PcsConfig::default();
-    let (components, PublicInput { claimed_sums, component_log_sizes }, proof) = create_proof();
+    let (components, PublicInput { claimed_sums, component_log_sizes }, _config, proof) =
+        create_proof();
 
     // Verify.
     let verifier_channel = &mut Blake2sM31Channel::default();

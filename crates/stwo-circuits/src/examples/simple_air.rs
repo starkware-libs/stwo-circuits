@@ -178,7 +178,7 @@ pub struct PublicInput {
 
 /// Creates a proof for the simple AIR. See documentation in [Eval].
 pub fn create_proof()
--> (Vec<Box<dyn Component>>, PublicInput, ExtendedStarkProof<Blake2sM31MerkleHasher>) {
+-> (Vec<Box<dyn Component>>, PublicInput, PcsConfig, ExtendedStarkProof<Blake2sM31MerkleHasher>) {
     let config = PcsConfig::default();
     // Precompute twiddles.
     let twiddles = SimdBackend::precompute_twiddles(
@@ -267,6 +267,7 @@ pub fn create_proof()
             claimed_sums: vec![claimed_sum_1, claimed_sum_2],
             component_log_sizes: vec![LOG_SIZE_LONG, LOG_SIZE_SHORT],
         },
+        config,
         proof,
     )
 }
