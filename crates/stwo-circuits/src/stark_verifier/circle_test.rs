@@ -7,7 +7,10 @@ use stwo::core::fields::qm31::QM31;
 use crate::circuits::context::TraceContext;
 use crate::circuits::ops::Guess;
 use crate::circuits::test_utils::{packed_values, simd_from_u32s};
-use crate::stark_verifier::circle::{add_points, add_points_simd, double_x, double_x_simd};
+use crate::circuits::wrappers::M31Wrapper;
+use crate::stark_verifier::circle::{
+    add_points, add_points_simd, double_point, double_x, double_x_simd,
+};
 
 #[test]
 fn test_double_x() {
@@ -84,4 +87,20 @@ fn test_add_points_simd() {
     );
 
     context.validate_circuit();
+}
+
+#[test]
+fn test_double_points() {
+    let pt0 = CirclePoint::<M31> { x: 102767539.into(), y: 739428083.into() };
+
+    let mut context = TraceContext::default();
+
+    let pt0_var =
+        CirclePoint { x: M31Wrapper::from(pt0.x), y: M31Wrapper::from(pt0.y) }.guess(&mut context);
+
+    let res = double_point(&mut context, &pt0_var);
+    let double_pt0 = pt0 + pt0;
+
+    assert_eq!(context.get(*res.x.get()).0.0, double_pt0.x);
+    assert_eq!(context.get(*res.y.get()).0.0, double_pt0.y);
 }

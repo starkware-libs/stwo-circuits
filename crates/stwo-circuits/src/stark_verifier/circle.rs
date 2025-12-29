@@ -5,6 +5,7 @@ use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::div;
 use crate::circuits::simd::Simd;
+use crate::circuits::wrappers::M31Wrapper;
 use crate::eval;
 
 #[cfg(test)]
@@ -23,6 +24,19 @@ pub fn double_x_simd(context: &mut Context<impl IValue>, value: &Simd) -> Simd {
     let value_sqr_times2 = Simd::add(context, &value_sqr, &value_sqr);
     let one = Simd::one(context, value.len());
     Simd::sub(context, &value_sqr_times2, &one)
+}
+
+/// Computes `p + p`.
+pub fn double_point(
+    context: &mut Context<impl IValue>,
+    p: &CirclePoint<M31Wrapper<Var>>,
+) -> CirclePoint<M31Wrapper<Var>> {
+    let xy = eval!(context, (*p.x.get()) * (*p.y.get()));
+    let new_y = eval!(context, (xy) + (xy));
+    CirclePoint {
+        x: M31Wrapper::new_unsafe(double_x(context, *p.x.get())),
+        y: M31Wrapper::new_unsafe(new_y),
+    }
 }
 
 /// Computes `point0 + point1` on the circle.
