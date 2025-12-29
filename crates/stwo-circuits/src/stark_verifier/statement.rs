@@ -37,4 +37,11 @@ pub trait Statement {
 
     // Returns the log sizes of the trace and interaction columns.
     fn column_log_sizes(&self, component_log_sizes: Vec<Var>) -> [Vec<Var>; 2];
+
+    /// Given the periodicity sample points for each component, returns the sample points for each
+    /// column in the interaction trace.
+    fn column_periodicity_sample_points(
+        &self,
+        sample_points_per_component: &[CirclePoint<Var>],
+    ) -> Vec<CirclePoint<Var>>;
 }

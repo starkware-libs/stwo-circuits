@@ -154,7 +154,14 @@ pub fn verify(
     );
 
     // Compute FRI input.
-    let oods_responses = collect_oods_responses(context, config, oods_point, proof);
+    let oods_responses = collect_oods_responses(
+        context,
+        config,
+        oods_point,
+        component_sizes,
+        |sample_points| statement.column_periodicity_sample_points(sample_points),
+        proof,
+    );
     let fri_input = compute_fri_input(
         context,
         &oods_responses,
