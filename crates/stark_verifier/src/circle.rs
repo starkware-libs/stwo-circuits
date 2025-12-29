@@ -37,6 +37,17 @@ pub fn double_point(
         x: M31Wrapper::new_unsafe(double_x(context, *p.x.get())),
         y: M31Wrapper::new_unsafe(new_y),
     }
+
+}
+
+/// Same as [double_point], but for [Simd].
+pub fn double_point_simd(
+    context: &mut Context<impl IValue>,
+    p: &CirclePoint<Simd>,
+) -> CirclePoint<Simd> {
+    let xy = Simd::mul(context, &p.x, &p.y);
+    let new_y = Simd::add(context, &xy, &xy);
+    CirclePoint { x: double_x_simd(context, &p.x), y: new_y }
 }
 
 /// Computes `point0 + point1` on the circle.
