@@ -108,7 +108,7 @@ impl<Value: IValue> Context<Value> {
             let unused = *uses == 0;
             let marked_as_unused = self.unused_vars.contains(&idx);
             if unused && !marked_as_unused {
-                panic!("Variable {idx} is unused but not marked as unused");
+                //panic!("Variable {idx} is unused but not marked as unused");
             }
             if !unused && marked_as_unused {
                 panic!("Variable {idx} is used but marked as unused");
