@@ -18,6 +18,7 @@ pub struct EvaluateArgs<'a> {
     pub composition_polynomial_coeff: Var,
     pub interaction_elements: [Var; 2],
     pub claimed_sums: &'a [Var],
+    pub component_sizes: &'a [Var],
 }
 
 /// Represents an AIR and its public inputs.
