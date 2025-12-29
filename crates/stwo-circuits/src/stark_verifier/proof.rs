@@ -85,6 +85,9 @@ pub struct Proof<T> {
     pub interaction_root: HashValue<T>,
     pub composition_polynomial_root: HashValue<T>,
 
+    // The log sizes of the components in the AIR.
+    pub component_log_sizes: Vec<T>,
+
     // Claimed sum for each component in the AIR.
     pub claimed_sums: Vec<T>,
 
@@ -151,6 +154,7 @@ pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
             InteractionAtOods { at_oods: NoValue, at_prev: NoValue };
             config.n_interaction_columns
         ],
+        component_log_sizes: vec![NoValue; config.n_components.div_ceil(4)],
         claimed_sums: vec![NoValue; config.n_components],
         composition_eval_at_oods: [NoValue; N_COMPOSITION_COLUMNS],
         eval_domain_samples: empty_eval_domain_samples(
@@ -174,6 +178,7 @@ impl<Value: IValue> Guess<Value> for Proof<Value> {
             trace_root: self.trace_root.guess(context),
             interaction_root: self.interaction_root.guess(context),
             composition_polynomial_root: self.composition_polynomial_root.guess(context),
+            component_log_sizes: self.component_log_sizes.guess(context),
             claimed_sums: self.claimed_sums.guess(context),
             preprocessed_columns_at_oods: self.preprocessed_columns_at_oods.guess(context),
             trace_at_oods: self.trace_at_oods.guess(context),

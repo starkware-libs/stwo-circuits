@@ -6,6 +6,7 @@ use crate::circuits::ops::eq;
 use crate::circuits::simd::Simd;
 use crate::eval;
 use crate::stark_verifier::channel::Channel;
+use crate::stark_verifier::extract_bits::extract_bits;
 use crate::stark_verifier::fri::{fri_commit, fri_decommit};
 use crate::stark_verifier::merkle::decommit_eval_domain_samples;
 use crate::stark_verifier::oods::{
@@ -16,6 +17,8 @@ use crate::stark_verifier::select_queries::{
     get_query_selection_input_from_channel, select_queries,
 };
 use crate::stark_verifier::statement::{EvaluateArgs, OodsSamples, Statement};
+
+const LOG_SIZE_BITS: usize = 5;
 
 #[cfg(test)]
 #[path = "verify_test.rs"]
@@ -42,6 +45,14 @@ pub fn verify(
     proof.validate_structure(config);
 
     let mut channel = Channel::new(context);
+
+    let component_log_sizes =
+        Simd::from_packed(proof.component_log_sizes.clone(), config.n_components);
+
+    // Range check the component log sizes.
+    let _component_log_size_bits = extract_bits::<LOG_SIZE_BITS>(context, &component_log_sizes);
+
+    channel.mix_qm31s(context, proof.component_log_sizes.iter().cloned());
 
     // Mix the trace commitments into the channel.
     channel.mix_commitment(context, proof.preprocessed_root);

@@ -149,6 +149,7 @@ fn generate_seq_column(
 // The public input for the simple AIR verifier.
 pub struct PublicInput {
     pub claimed_sums: Vec<QM31>,
+    pub component_log_sizes: Vec<u32>,
 }
 
 /// Creates a proof for the simple AIR. See documentation in [Eval].
@@ -164,9 +165,12 @@ pub fn create_proof()
 
     // Setup protocol.
     let prover_channel = &mut Blake2sM31Channel::default();
+
     let mut commitment_scheme =
         CommitmentSchemeProver::<SimdBackend, Blake2sM31MerkleChannel>::new(config, &twiddles);
     commitment_scheme.set_store_polynomials_coefficients();
+
+    prover_channel.mix_felts(&[QM31::from_u32_unchecked(LOG_SIZE_SHORT, LOG_SIZE_LONG, 0, 0)]);
 
     // Preprocessed trace
     let mut tree_builder = commitment_scheme.tree_builder();
@@ -227,5 +231,12 @@ pub fn create_proof()
 
     let components: Vec<Box<dyn Component>> = vec![Box::new(component_1), Box::new(component_2)];
 
-    (components, PublicInput { claimed_sums: vec![claimed_sum_1, claimed_sum_2] }, proof)
+    (
+        components,
+        PublicInput {
+            claimed_sums: vec![claimed_sum_1, claimed_sum_2],
+            component_log_sizes: vec![LOG_SIZE_SHORT, LOG_SIZE_LONG],
+        },
+        proof,
+    )
 }
