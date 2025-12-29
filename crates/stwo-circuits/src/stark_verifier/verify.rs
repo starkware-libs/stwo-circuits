@@ -50,7 +50,7 @@ pub fn verify(
         Simd::from_packed(proof.component_log_sizes.clone(), config.n_components);
 
     // Range check the component log sizes.
-    let _component_log_size_bits = extract_bits::<LOG_SIZE_BITS>(context, &component_log_sizes);
+    let component_log_size_bits = extract_bits::<LOG_SIZE_BITS>(context, &component_log_sizes);
 
     channel.mix_qm31s(context, proof.component_log_sizes.iter().cloned());
 
@@ -81,6 +81,9 @@ pub fn verify(
 
     // Compute the composition evaluation at the OODS point from `proof.*_at_oods` and compare
     // to `proof.composition_eval_at_oods`.
+
+    let component_sizes_simd = Simd::pow2(context, &component_log_size_bits);
+    let component_sizes = Simd::unpack(context, &component_sizes_simd);
     let composition_eval = statement.evaluate(
         context,
         EvaluateArgs {
@@ -94,6 +97,7 @@ pub fn verify(
             composition_polynomial_coeff,
             interaction_elements: [interaction_z, interaction_alpha],
             claimed_sums: &proof.claimed_sums,
+            component_sizes: &component_sizes,
         },
     );
     let expected_composition_eval = extract_expected_composition_eval(
