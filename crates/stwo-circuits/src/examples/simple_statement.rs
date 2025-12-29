@@ -1,4 +1,5 @@
 use num_traits::One;
+use stwo::core::circle::CirclePoint;
 use stwo::core::fields::m31::M31;
 
 use super::simple_air::FIB_SEQUENCE_LENGTH;
@@ -222,5 +223,16 @@ impl Statement for SimpleStatement {
             vec![size_0, size_0, size_0, size_0, size_1, size_1, size_1, size_1];
 
         [trace_column_log_sizes, interaction_column_log_sizes]
+    }
+
+    fn column_periodicity_sample_points(
+        &self,
+        component_periodicity_generators: &[CirclePoint<Var>],
+    ) -> Vec<CirclePoint<Var>> {
+        let [gen_0, gen_1] = component_periodicity_generators[..] else {
+            panic!("Expected 2 periodicity generators");
+        };
+
+        vec![gen_0, gen_0, gen_0, gen_0, gen_1, gen_1, gen_1, gen_1]
     }
 }
