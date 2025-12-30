@@ -1,11 +1,12 @@
 use crate::circuit_air::components::CircuitComponents;
-use crate::circuit_air::{CircuitInteractionElements, lookup_sum};
+use crate::circuit_air::{CircuitInteractionElements, PublicInput, lookup_sum};
 use crate::circuit_prover::finalize::finalize_context;
 use crate::circuit_prover::witness::preprocessed::PreProcessedTrace;
 use crate::circuit_prover::witness::trace::write_interaction_trace;
 use crate::circuit_prover::witness::trace::write_trace;
 use crate::circuits::context::Context;
 use num_traits::Zero;
+use stwo::core::air::Component;
 use stwo::core::channel::Blake2sM31Channel;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::fields::qm31::SecureField;
@@ -20,6 +21,7 @@ use stwo::prover::poly::circle::PolyOps;
 use stwo::prover::{ProvingError, prove_ex};
 
 const COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND: u32 = 1;
+type Components = Vec<Box<dyn Component>>;
 
 #[cfg(test)]
 #[path = "prover_test.rs"]
@@ -27,7 +29,7 @@ pub mod test;
 
 pub fn prove_circuit(
     context: &mut Context<QM31>,
-) -> Result<ExtendedStarkProof<Blake2sM31MerkleHasher>, ProvingError> {
+) -> (Components, PublicInput, Result<ExtendedStarkProof<Blake2sM31MerkleHasher>, ProvingError>) {
     finalize_context(context);
     let pcs_config = PcsConfig::default();
 
@@ -101,6 +103,8 @@ pub fn prove_circuit(
     let components = component_builder.provers();
 
     // Prove stark.
-    prove_ex::<SimdBackend, _>(&components, channel, commitment_scheme)
+    let proof = prove_ex::<SimdBackend, _>(&components, channel, commitment_scheme);
+
+    (component_builder.components(), PublicInput { claim, interaction_claim }, proof)
     // TODO(Gali): Convert to CircuitProof.
 }

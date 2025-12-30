@@ -8,6 +8,11 @@ use stwo::core::fields::qm31::SecureField;
 pub type ComponentLogSize = u32;
 pub type ClaimedSum = SecureField;
 
+pub struct PublicInput {
+    pub claim: CircuitClaim,
+    pub interaction_claim: CircuitInteractionClaim,
+}
+
 pub struct CircuitClaim {
     pub log_sizes: [ComponentLogSize; N_COMPONENTS],
 }
