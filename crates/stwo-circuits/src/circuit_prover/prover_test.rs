@@ -1,7 +1,15 @@
 use crate::circuit_air::PublicInput;
+use crate::circuit_air::components::{ComponentList, eq, qm31_ops};
+use crate::circuit_air::statement::CircuitStatement;
 use crate::circuit_prover::prover::{finalize_context, prove_circuit};
+use crate::circuit_prover::witness::preprocessed::N_PP_COLUMNS;
+use crate::circuits::context::TraceContext;
+use crate::circuits::ops::Guess;
 use crate::circuits::{context::Context, ops::guess};
 use crate::eval;
+use crate::stark_verifier::fri_proof::FriConfig;
+use crate::stark_verifier::proof::ProofConfig;
+use crate::stark_verifier::proof_from_stark_proof::proof_from_stark_proof;
 use expect_test::expect;
 use num_traits::{One, Zero};
 use stwo::core::air::Component;
@@ -63,6 +71,55 @@ fn test_prove_and_stark_verify_fibonacci_context() {
         proof.proof,
     )
     .unwrap();
+}
+
+#[test]
+fn test_prove_and_circuit_verify_fibonacci_context() {
+    let mut fibonacci_context = build_fibonacci_context();
+    fibonacci_context.finalize_guessed_vars();
+    fibonacci_context.validate_circuit();
+
+    let (components, PublicInput { claim, interaction_claim }, proof) = prove_circuit(&mut fibonacci_context);
+    assert!(proof.is_ok());
+    let proof = proof.unwrap();
+
+    // Verify.
+    let config = ProofConfig {
+        n_proof_of_work_bits: proof.proof.config.pow_bits as usize,
+        n_preprocessed_columns: N_PP_COLUMNS,
+        n_trace_columns: proof.proof.queried_values[1].len(),
+        n_interaction_columns: proof.proof.queried_values[2].len(),
+        n_components: components.len(),
+        cumulative_sum_columns: vec![true; proof.proof.queried_values[2].len()],
+        fri: FriConfig {
+            log_trace_size: *claim.log_sizes.iter().max().unwrap() as usize,
+            log_blowup_factor: proof.proof.config.fri_config.log_blowup_factor as usize,
+            n_queries: proof.proof.config.fri_config.n_queries,
+            log_n_last_layer_coefs: proof.proof.config.fri_config.log_last_layer_degree_bound
+                as usize,
+        },
+    };
+
+    let mut context = TraceContext::default();
+    let proof = proof_from_stark_proof(
+        &proof,
+        &config,
+        claim.log_sizes.to_vec(),
+        interaction_claim.claimed_sums.to_vec(),
+    );
+    let proof_vars = proof.guess(&mut context);
+    crate::stark_verifier::verify::verify(
+        &mut context,
+        &proof_vars,
+        &config,
+        &CircuitStatement{ qm31_ops_statement: qm31_ops::Statement {
+            log_size: claim.log_sizes[ComponentList::Qm31Ops as usize],
+            preprocessed_column_indices: [0, 1, 2, 3, 4, 5, 6, 7],
+        }, eq_statement: eq::Statement {
+            log_size: claim.log_sizes[ComponentList::Eq as usize],
+            preprocessed_column_indices: [8, 9],
+        } },
+    );
 }
 
 #[test]

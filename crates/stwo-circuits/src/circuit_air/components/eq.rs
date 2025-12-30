@@ -1,16 +1,13 @@
 use crate::circuit_air::components::prelude::*;
 
+pub const N_PREPROCESSED_COLUMNS: usize = 2;
 pub const N_TRACE_COLUMNS: usize = 8;
+pub const N_INTERACTION_COLUMNS: usize = 1;
 
 pub struct Eval {
     pub log_size: u32,
     pub gate_lookup_elements: relations::Gate,
-}
-
-pub fn log_sizes(log_size: u32) -> TreeVec<Vec<u32>> {
-    let trace_log_sizes = vec![log_size; N_TRACE_COLUMNS];
-    let interaction_log_sizes = vec![log_size; SECURE_EXTENSION_DEGREE];
-    TreeVec::new(vec![vec![], trace_log_sizes, interaction_log_sizes])
+    pub preprocessed_column_indices: [usize; N_PREPROCESSED_COLUMNS],
 }
 
 pub type Component = FrameworkComponent<Eval>;
@@ -77,5 +74,91 @@ impl FrameworkEval for Eval {
 
         eval.finalize_logup_in_pairs();
         eval
+    }
+}
+
+pub struct Statement {
+    pub preprocessed_column_indices: [usize; N_PREPROCESSED_COLUMNS],
+    pub log_size: u32,
+}
+impl crate::stark_verifier::statement::Statement for Statement {
+    fn evaluate(
+        &self,
+        context: &mut Context<impl IValue>,
+        acc: &mut CompositionConstraintAccumulator<'_>,
+    ) {
+        let in0_address =
+            acc.oods_samples.preprocessed_columns[self.preprocessed_column_indices[0]];
+        let in1_address =
+            acc.oods_samples.preprocessed_columns[self.preprocessed_column_indices[1]];
+
+        let Some(&[in0_col0, in0_col1, in0_col2, in0_col3, in1_col4, in1_col5, in1_col6, in1_col7]) =
+            acc.oods_samples.trace.split_off(..N_TRACE_COLUMNS)
+        else {
+            panic!("Expected {} trace values", N_TRACE_COLUMNS);
+        };
+        let Some(
+            [interaction_0_limb0, interaction_0_limb1, interaction_0_limb2, interaction_0_limb3],
+        ) = acc
+            .oods_samples
+            .interaction
+            .split_off(..N_INTERACTION_COLUMNS * SECURE_EXTENSION_DEGREE)
+        else {
+            panic!(
+                "Expected {} interaction values",
+                N_INTERACTION_COLUMNS * SECURE_EXTENSION_DEGREE
+            );
+        };
+        let Some([claimed_sum]) = acc.claimed_sums.split_off(..1) else {
+            panic!("Expected 1 claimed sum");
+        };
+
+        // Constraints.
+        let constraint0_val = eval!(context, (in0_col0) - (in1_col4));
+        acc.accumulate(context, constraint0_val);
+
+        let constraint1_val = eval!(context, (in0_col1) - (in1_col5));
+        acc.accumulate(context, constraint1_val);
+
+        let constraint2_val = eval!(context, (in0_col2) - (in1_col6));
+        acc.accumulate(context, constraint2_val);
+
+        let constraint3_val = eval!(context, (in0_col3) - (in1_col7));
+        acc.accumulate(context, constraint3_val);
+
+        // Logup constraints.
+        let prev_logup_sum = from_partial_evals(
+            context,
+            [
+                interaction_0_limb0.at_prev,
+                interaction_0_limb1.at_prev,
+                interaction_0_limb2.at_prev,
+                interaction_0_limb3.at_prev,
+            ],
+        );
+        let cur_logup_sum = from_partial_evals(
+            context,
+            [
+                interaction_0_limb0.at_oods,
+                interaction_0_limb1.at_oods,
+                interaction_0_limb2.at_oods,
+                interaction_0_limb3.at_oods,
+            ],
+        );
+        let n_instances = context.constant((1 << self.log_size).into());
+        let cumsum_shift = div(context, *claimed_sum, n_instances);
+        let diff = eval!(context, (cur_logup_sum) - (prev_logup_sum));
+        let shifted_diff = eval!(context, (diff) + (cumsum_shift));
+
+        let in0_gate_lookup_frac = get_frac(context, acc.interaction_elements, context.one(), &[in0_address, in0_col0, in0_col1, in0_col2, in0_col3]);
+        let in1_gate_lookup_frac = get_frac(context, acc.interaction_elements, context.one(), &[in1_address, in1_col4, in1_col5, in1_col6, in1_col7]);
+
+        let logup_constraint_val = pair_logup_term(
+            context,
+            in0_gate_lookup_frac,
+            in1_gate_lookup_frac,
+            shifted_diff,
+        );
+        acc.accumulate(context, logup_constraint_val);
     }
 }

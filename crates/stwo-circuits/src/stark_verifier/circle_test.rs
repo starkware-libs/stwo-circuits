@@ -7,7 +7,8 @@ use stwo::core::fields::qm31::QM31;
 use crate::circuits::context::TraceContext;
 use crate::circuits::ops::Guess;
 use crate::circuits::test_utils::{packed_values, simd_from_u32s};
-use crate::stark_verifier::circle::{add_points, add_points_simd, double_x, double_x_simd};
+use crate::stark_verifier::circle::double_x;
+use crate::stark_verifier::circle::{add_points, add_points_simd, double_x_simd};
 
 #[test]
 fn test_double_x() {

@@ -1,5 +1,6 @@
 pub mod components;
 pub mod relations;
+pub mod statement;
 
 use crate::circuit_air::components::N_COMPONENTS;
 use stwo::core::channel::Channel;

@@ -36,6 +36,7 @@ impl CircuitComponents {
             qm31_ops::Eval {
                 log_size: circuit_claim.log_sizes[ComponentList::Qm31Ops as usize],
                 gate_lookup_elements: interaction_elements.gate.clone(),
+                preprocessed_column_indices: [0, 1, 2, 3, 4, 5, 6, 7],
             },
             interaction_claim.claimed_sums[ComponentList::Qm31Ops as usize],
         );
@@ -44,6 +45,7 @@ impl CircuitComponents {
             eq::Eval {
                 log_size: circuit_claim.log_sizes[ComponentList::Eq as usize],
                 gate_lookup_elements: interaction_elements.gate.clone(),
+                preprocessed_column_indices: [8, 9],
             },
             interaction_claim.claimed_sums[ComponentList::Eq as usize],
         );

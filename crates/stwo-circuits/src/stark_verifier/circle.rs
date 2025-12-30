@@ -3,6 +3,7 @@ use stwo::core::fields::m31::M31;
 
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
+use crate::circuits::ops::div;
 use crate::circuits::simd::Simd;
 use crate::eval;
 
@@ -63,4 +64,27 @@ pub fn generator_point_simd(
 ) -> CirclePoint<Simd> {
     let pt = generator_point(log_domain_size);
     CirclePoint { x: Simd::repeat(context, pt.x, size), y: Simd::repeat(context, pt.y, size) }
+}
+
+/// Computes the polynomial that vanishes on the canonical coset of size `2^log_trace_size`.
+///
+/// The polynomial is `pi^{log_trace_size - 1}(x) = pi(...(pi(x))...)`.
+fn coset_vanishing_poly(
+    context: &mut Context<impl IValue>,
+    mut x: Var,
+    log_trace_size: usize,
+) -> Var {
+    assert!(log_trace_size >= 1);
+
+    for _ in 0..(log_trace_size - 1) {
+        x = double_x(context, x);
+    }
+    x
+}
+
+/// Computes the inverse of the domain polynomial at `x`. See [coset_vanishing_poly].
+pub fn denom_inverse(context: &mut Context<impl IValue>, x: Var, log_trace_size: usize) -> Var {
+    let one = context.one();
+    let denom = coset_vanishing_poly(context, x, log_trace_size);
+    div(context, one, denom)
 }
