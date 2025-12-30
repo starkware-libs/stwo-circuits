@@ -58,7 +58,7 @@ impl CircuitComponents {
         .collect()
     }
 
-    pub fn components(&self) -> Vec<&dyn Component> {
-        self.provers().into_iter().map(|component| component as &dyn Component).collect()
+    pub fn components(self) -> Vec<Box<dyn Component>> {
+        vec![Box::new(self.qm31_ops) as Box<dyn Component>, Box::new(self.eq) as Box<dyn Component>]
     }
 }
