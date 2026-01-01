@@ -8,8 +8,11 @@ use crate::circuits::simd::Simd;
 #[path = "extract_bits_test.rs"]
 pub mod test;
 
-/// For each `M31` value in the given [Simd], returns the value as a 31-bit integer in the range
-/// `[0, 2^31 - 1)`.
+/// For each `M31` lane in the given [Simd], returns its `N_BITS`-bit binary decomposition.
+/// If `N_BITS == 31`, additionally enforces that `0` is encoded canonically as
+/// `0b0000...0000` (and not `0b1111...1111`).
+/// If any input exceeds `2^N_BITS - 1`, a circuit constraints is going to be violated and
+/// `context.is_circuit_valid()` will return `false`.
 pub fn extract_bits<const N_BITS: usize>(
     context: &mut Context<impl IValue>,
     input: &Simd,

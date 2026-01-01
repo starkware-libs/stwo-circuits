@@ -37,3 +37,18 @@ fn test_validate_extract_bits(#[case] success: bool) {
 
     assert_eq!(context.is_circuit_valid(), success);
 }
+
+#[rstest]
+#[case::full_simd(4)]
+#[case::partial_simd(3)]
+fn test_extract_bits_as_range_check(#[case] len: usize) {
+    let mut context = TraceContext::default();
+
+    let out_of_range_value = 1 << 5;
+    let mut input_values = vec![out_of_range_value];
+    input_values.resize(len, 3);
+    let input = simd_from_u32s(&mut context, input_values);
+    let _bits = extract_bits::<5>(&mut context, &input);
+
+    assert!(!context.is_circuit_valid());
+}
