@@ -9,7 +9,10 @@ use crate::circuits::simd::Simd;
 pub mod test;
 
 /// For each `M31` value in the given [Simd], returns the value as a 31-bit integer in the range
-/// `[0, 2^31 - 1)`.
+/// `[0, 2^N_BITS - 1)`.
+/// If N_BITS = 31, also checks that `0` is represented as `0b0000...0000`, rather than
+/// `0b1111...1111`. if one of the input values is out of range is larger than 2^N_BITS - 1, the
+/// circuit will ne be satisfied (context.validate_circuit) will panic.
 pub fn extract_bits<const N_BITS: usize>(
     context: &mut Context<impl IValue>,
     input: &Simd,
