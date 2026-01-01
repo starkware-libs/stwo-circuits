@@ -8,7 +8,7 @@ use stwo::core::fields::qm31::QM31;
 use crate::circuits::EXTENSION_DEGREE;
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::{IValue, qm31_from_u32s};
-use crate::circuits::ops::{Guess, add, eq, pointwise_mul, sub};
+use crate::circuits::ops::{Guess, add, eq, mul, pointwise_mul, sub};
 use crate::circuits::wrappers::M31Wrapper;
 use crate::eval;
 
@@ -118,6 +118,11 @@ impl Simd {
             data: zip_eq(&a.data, &b.data).map(|(x, y)| pointwise_mul(context, *x, *y)).collect(),
             len: a.len,
         }
+    }
+
+    /// Multiplies all the elements of `a` by the scalar `b`.
+    pub fn scalar_mul(context: &mut Context<impl IValue>, a: &Simd, b: &M31Wrapper<Var>) -> Simd {
+        Simd { data: a.data.iter().map(|x| mul(context, *x, *b.get())).collect(), len: a.len }
     }
 
     /// Returns an *unconstrained* [Simd] initialized (hint) with `1/x` if `x != 0`,
