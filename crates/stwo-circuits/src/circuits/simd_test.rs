@@ -12,6 +12,7 @@ use crate::circuits::ops::{Guess, guess};
 use crate::circuits::simd::Simd;
 use crate::circuits::test_utils::{packed_values, simd_from_u32s};
 use crate::circuits::wrappers::M31Wrapper;
+use crate::stark_verifier::extract_bits::extract_bits;
 
 #[test]
 fn test_repeat() {
@@ -449,4 +450,24 @@ fn test_scalar_mul_circuit() {
 
     "#]]
     .assert_debug_eq(&context.circuit);
+}
+
+#[test]
+fn test_pow2_circuit() {
+    let mut context = TraceContext::default();
+    let input_vals = vec![12, 6, 5, 3, 4];
+    let expected_res = input_vals.iter().map(|v| 1 << v).collect_vec();
+
+    let input = simd_from_u32s(&mut context, input_vals);
+    let bits = extract_bits::<5>(&mut context, &input);
+    let res = Simd::pow2(&mut context, &bits);
+
+    assert_eq!(res.len(), 5);
+    assert_eq!(
+        packed_values(&context, &res),
+        &[
+            qm31_from_u32s(expected_res[0], expected_res[1], expected_res[2], expected_res[3]),
+            qm31_from_u32s(expected_res[4], 1, 1, 1)
+        ]
+    );
 }
