@@ -1,5 +1,6 @@
 use crate::circuit_air::components::prelude::*;
 
+pub const N_PREPROCESSED_COLUMNS: usize = 8;
 pub const N_TRACE_COLUMNS: usize = 12;
 
 pub struct Eval {
@@ -124,5 +125,101 @@ impl FrameworkEval for Eval {
 
         eval.finalize_logup_in_pairs();
         eval
+    }
+}
+
+pub struct CircuitQm31OpsComponent {
+    pub preprocessed_column_indices: [usize; N_PREPROCESSED_COLUMNS],
+}
+
+impl CircuitEval for CircuitQm31OpsComponent {
+    fn evaluate(
+        &self,
+        context: &mut Context<impl IValue>,
+        acc: &mut CompositionConstraintAccumulator<'_>,
+    ) {
+        let [
+            add_flag,
+            sub_flag,
+            _mul_flag,
+            pointwise_mul_flag,
+            in0_address,
+            in1_address,
+            out_address,
+            mults,
+        ] = acc
+            .get_preprocessed_columns::<N_PREPROCESSED_COLUMNS>(self.preprocessed_column_indices);
+
+        let [
+            in0_col0,
+            in0_col1,
+            in0_col2,
+            in0_col3,
+            in1_col4,
+            in1_col5,
+            in1_col6,
+            in1_col7,
+            out_col8,
+            out_col9,
+            out_col10,
+            out_col11,
+        ] = acc.get_trace::<N_TRACE_COLUMNS>();
+
+        // out col 8.
+        let constraint0_val = eval!(
+            context,
+            ((((add_flag) * ((in0_col0) + (in1_col4))) + ((sub_flag) * ((in0_col0) - (in1_col4))))
+                + ((pointwise_mul_flag) * ((in0_col0) * (in1_col4))))
+                - (out_col8)
+        );
+        acc.add_constraint(context, constraint0_val);
+
+        // out col 9.
+        let constraint1_val = eval!(
+            context,
+            ((((add_flag) * ((in0_col1) + (in1_col5))) + ((sub_flag) * ((in0_col1) - (in1_col5))))
+                + ((pointwise_mul_flag) * ((in0_col1) * (in1_col5))))
+                - (out_col9)
+        );
+        acc.add_constraint(context, constraint1_val);
+
+        // out col 10.
+        let constraint2_val = eval!(
+            context,
+            ((((add_flag) * ((in0_col2) + (in1_col6))) + ((sub_flag) * ((in0_col2) - (in1_col6))))
+                + ((pointwise_mul_flag) * ((in0_col2) * (in1_col6))))
+                - (out_col10)
+        );
+        acc.add_constraint(context, constraint2_val);
+
+        // out col 11.
+        let constraint3_val = eval!(
+            context,
+            ((((add_flag) * ((in0_col3) + (in1_col7))) + ((sub_flag) * ((in0_col3) - (in1_col7))))
+                + ((pointwise_mul_flag) * ((in0_col3) * (in1_col7))))
+                - (out_col11)
+        );
+        acc.add_constraint(context, constraint3_val);
+
+        acc.add_to_relation(
+            context,
+            context.one(),
+            &[in0_address, in0_col0, in0_col1, in0_col2, in0_col3],
+        );
+
+        acc.add_to_relation(
+            context,
+            context.one(),
+            &[in1_address, in1_col4, in1_col5, in1_col6, in1_col7],
+        );
+
+        let neg_mults = eval!(context, (context.zero()) - (mults));
+        acc.add_to_relation(
+            context,
+            neg_mults,
+            &[out_address, out_col8, out_col9, out_col10, out_col11],
+        );
+
+        acc.finalize_logup_in_pairs(context);
     }
 }
