@@ -35,10 +35,24 @@ pub fn combine_term(
 /// Computes the constraint polynomial for a single logup term.
 pub fn single_logup_constraint(
     context: &mut Context<impl IValue>,
-    element: &[Var],
+    term: LogupTerm,
     shifted_diff: Var,
-    interaction_elements: [Var; 2],
 ) -> Var {
-    let denominator = combine_term(context, element, interaction_elements);
-    eval!(context, ((shifted_diff) * (denominator)) - (1))
+    eval!(context, ((shifted_diff) * (term.denominator)) - (term.numerator))
+}
+
+/// Computes the constraint polynomial for a pair logup term.
+pub fn pair_logup_constraint(
+    context: &mut Context<impl IValue>,
+    term0: LogupTerm,
+    term1: LogupTerm,
+    shifted_diff: Var,
+) -> Var {
+    let denominator = eval!(context, (term0.denominator) * (term1.denominator));
+    let numerator = eval!(
+        context,
+        ((term1.numerator) * (term0.denominator)) + ((term0.numerator) * (term1.denominator))
+    );
+    let term = LogupTerm::new(numerator, denominator);
+    single_logup_constraint(context, term, shifted_diff)
 }
