@@ -3,6 +3,22 @@ use crate::circuits::context::Var;
 use crate::circuits::ivalue::IValue;
 use crate::eval;
 
+#[derive(Clone)]
+pub struct Frac {
+    pub numerator: Var,
+    pub denominator: Var,
+}
+
+pub fn get_frac(
+    context: &mut Context<impl IValue>,
+    interaction_elements: [Var; 2],
+    numerator: Var,
+    element: &[Var],
+) -> Frac {
+    let denominator = combine_term(context, element, interaction_elements);
+    Frac { numerator, denominator }
+}
+
 /// Computes the denominator of a logup term.
 pub fn combine_term(
     context: &mut Context<impl IValue>,
