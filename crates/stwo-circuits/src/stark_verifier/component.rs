@@ -47,7 +47,7 @@ impl CompositionConstraintAccumulator<'_> {
     }
 }
 /// Represents a component.
-pub trait Component {
+pub trait CircuitEval {
     /// Evaluates the composition polynomial at the OODS point (after dividing by the domain
     /// polynomial).
     fn evaluate(
