@@ -4,12 +4,12 @@ use stwo::core::fields::m31::M31;
 use super::simple_air::FIB_SEQUENCE_LENGTH;
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
-use crate::circuits::ops::{div, from_partial_evals};
+use crate::circuits::ops::div;
 use crate::eval;
 use crate::examples::simple_air::{LOG_SIZE_LONG, LOG_SIZE_SHORT};
 use crate::stark_verifier::circle::denom_inverse;
 use crate::stark_verifier::component::{CircuitEval, CompositionConstraintAccumulator};
-use crate::stark_verifier::logup::{combine_term, get_frac, single_logup_term};
+use crate::stark_verifier::logup::combine_term;
 use crate::stark_verifier::statement::{EvaluateArgs, Statement};
 
 pub struct SimpleStatement {
@@ -53,43 +53,9 @@ impl CircuitEval for SquaredFibonacciComponent {
         let constraint1_val = eval!(context, (d) - ((((b) * (b)) + ((c) * (c))) + (const_val)));
         acc.add_constraint(context, constraint1_val);
 
-        // Logup constraint.
-        // TODO(Gali): Switch to logup_in_pairs once implemented.
-        let Some([interaction0, interaction1, interaction2, interaction3]) =
-            acc.oods_samples.interaction.split_off(..4)
-        else {
-            panic!("Expected 4 interaction values");
-        };
-        let Some([claimed_sum]) = acc.claimed_sums.split_off(..1) else {
-            panic!("Expected 1 claimed sum");
-        };
+        acc.add_to_relation(context, context.one(), &[c, d]);
 
-        let prev_logup_sum = from_partial_evals(
-            context,
-            [
-                interaction0.at_prev,
-                interaction1.at_prev,
-                interaction2.at_prev,
-                interaction3.at_prev,
-            ],
-        );
-        let cur_logup_sum = from_partial_evals(
-            context,
-            [
-                interaction0.at_oods,
-                interaction1.at_oods,
-                interaction2.at_oods,
-                interaction3.at_oods,
-            ],
-        );
-        let n_instances = context.constant((1 << self.log_n_instances).into());
-        let cumsum_shift = div(context, *claimed_sum, n_instances);
-        let diff = eval!(context, (cur_logup_sum) - (prev_logup_sum));
-        let shifted_diff = eval!(context, (diff) + (cumsum_shift));
-        let frac = get_frac(context, acc.interaction_elements, context.one(), &[c, d]);
-        let logup_constraint_val = single_logup_term(context, frac, shifted_diff);
-
-        acc.add_constraint(context, logup_constraint_val);
+        acc.finalize_logup_in_pairs(context, self.log_n_instances);
     }
 }
 

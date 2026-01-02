@@ -1,9 +1,12 @@
+use itertools::Itertools;
+use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
+
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
+use crate::circuits::ops::{div, from_partial_evals};
 use crate::eval;
-use crate::stark_verifier::logup::{Frac, get_frac};
+use crate::stark_verifier::logup::{Frac, get_frac, single_logup_term};
 use crate::stark_verifier::statement::OodsSamples;
-use itertools::Itertools;
 
 /// Accumulates a psuedo-random linear combination of constraint evaluations at the OODS point and
 /// the previous point.
@@ -84,8 +87,50 @@ impl CompositionConstraintAccumulator<'_> {
         self.fracs.push(get_frac(context, self.interaction_elements, numerator, element));
     }
 
-    pub fn finalize_logup_in_pairs(&mut self, _context: &mut Context<impl IValue>, _log_size: u32) {
-        // TODO(Gali): Implement.
+    pub fn finalize_logup_in_pairs(&mut self, context: &mut Context<impl IValue>, log_size: u32) {
+        // TODO(Gali): Add more fracs.
+        let Some(
+            [interaction_0_limb0, interaction_0_limb1, interaction_0_limb2, interaction_0_limb3],
+        ) = self
+            .oods_samples
+            .interaction
+            .split_off(..self.fracs.len().div_ceil(2) * SECURE_EXTENSION_DEGREE)
+        else {
+            panic!(
+                "Expected {} interaction values",
+                self.fracs.len().div_ceil(2) * SECURE_EXTENSION_DEGREE
+            );
+        };
+        let Some([claimed_sum]) = self.claimed_sums.split_off(..1) else {
+            panic!("Expected 1 claimed sum");
+        };
+
+        let prev_logup_sum = from_partial_evals(
+            context,
+            [
+                interaction_0_limb0.at_prev,
+                interaction_0_limb1.at_prev,
+                interaction_0_limb2.at_prev,
+                interaction_0_limb3.at_prev,
+            ],
+        );
+        let cur_logup_sum = from_partial_evals(
+            context,
+            [
+                interaction_0_limb0.at_oods,
+                interaction_0_limb1.at_oods,
+                interaction_0_limb2.at_oods,
+                interaction_0_limb3.at_oods,
+            ],
+        );
+        let n_instances = context.constant((1 << log_size).into());
+        let cumsum_shift = div(context, *claimed_sum, n_instances);
+        let diff = eval!(context, (cur_logup_sum) - (prev_logup_sum));
+        let shifted_diff = eval!(context, (diff) + (cumsum_shift));
+
+        let logup_constraint_val = single_logup_term(context, self.fracs[0].clone(), shifted_diff);
+        self.add_constraint(context, logup_constraint_val);
+        self.fracs.clear();
     }
 }
 /// Represents a component.
