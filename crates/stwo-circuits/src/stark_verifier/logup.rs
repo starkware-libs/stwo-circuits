@@ -2,6 +2,19 @@ use crate::circuits::context::Context;
 use crate::circuits::context::Var;
 use crate::circuits::ivalue::IValue;
 use crate::eval;
+use stwo::core::Fraction;
+
+pub type Frac = Fraction<Var, Var>;
+
+pub fn get_frac(
+    context: &mut Context<impl IValue>,
+    interaction_elements: [Var; 2],
+    numerator: Var,
+    element: &[Var],
+) -> Frac {
+    let denominator = combine_term(context, element, interaction_elements);
+    Frac::new(numerator, denominator)
+}
 
 /// Computes the denominator of a logup term.
 pub fn combine_term(
