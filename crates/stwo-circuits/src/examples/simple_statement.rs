@@ -9,7 +9,7 @@ use crate::eval;
 use crate::examples::simple_air::{LOG_SIZE_LONG, LOG_SIZE_SHORT};
 use crate::stark_verifier::circle::denom_inverse;
 use crate::stark_verifier::component::{CircuitEval, CompositionConstraintAccumulator};
-use crate::stark_verifier::logup::{combine_term, single_logup_term};
+use crate::stark_verifier::logup::{combine_term, get_frac, single_logup_term};
 use crate::stark_verifier::statement::{EvaluateArgs, Statement};
 
 pub struct SimpleStatement {
@@ -85,8 +85,8 @@ impl CircuitEval for SquaredFibonacciComponent {
         let cumsum_shift = div(context, *claimed_sum, n_instances);
         let diff = eval!(context, (cur_logup_sum) - (prev_logup_sum));
         let shifted_diff = eval!(context, (diff) + (cumsum_shift));
-        let logup_constraint_val =
-            single_logup_term(context, &[*c, *d], shifted_diff, acc.interaction_elements);
+        let frac = get_frac(context, acc.interaction_elements, context.one(), &[*c, *d]);
+        let logup_constraint_val = single_logup_term(context, frac, shifted_diff);
 
         acc.accumulate(context, constraint0_val);
         acc.accumulate(context, constraint1_val);
