@@ -51,6 +51,7 @@ fn fill_binary_op_columns<G: Gate>(
         columns[4].push(in0);
         columns[5].push(in1);
         columns[6].push(out);
+        // TODO(Gali): Consider negating the multiplicities.
         columns[7].push(multiplicities[out]);
     }
 }
