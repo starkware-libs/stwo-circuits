@@ -43,10 +43,18 @@ impl CircuitEval for SquaredFibonacciComponent {
         context: &mut Context<impl IValue>,
         acc: &mut CompositionConstraintAccumulator<'_>,
     ) {
-        let const_val = acc.oods_samples.preprocessed_columns[self.preprocessed_column_idx];
-        let Some([a, b, c, d]) = acc.oods_samples.trace.split_off(..4) else {
-            panic!("Expected 4 trace values");
-        };
+        let [const_val] = acc.get_preprocessed_columns::<1>([self.preprocessed_column_idx]);
+        let [a, b, c, d] = acc.get_trace::<4>();
+
+        // Constraints.
+        let constraint0_val = eval!(context, (c) - ((((a) * (a)) + ((b) * (b))) + (const_val)));
+        acc.add_constraint(context, constraint0_val);
+
+        let constraint1_val = eval!(context, (d) - ((((b) * (b)) + ((c) * (c))) + (const_val)));
+        acc.add_constraint(context, constraint1_val);
+
+        // Logup constraint.
+        // TODO(Gali): Switch to logup_in_pairs once implemented.
         let Some([interaction0, interaction1, interaction2, interaction3]) =
             acc.oods_samples.interaction.split_off(..4)
         else {
@@ -56,13 +64,6 @@ impl CircuitEval for SquaredFibonacciComponent {
             panic!("Expected 1 claimed sum");
         };
 
-        // Constraints.
-        let constraint0_val =
-            eval!(context, (*c) - ((((*a) * (*a)) + ((*b) * (*b))) + (const_val)));
-        let constraint1_val =
-            eval!(context, (*d) - ((((*b) * (*b)) + ((*c) * (*c))) + (const_val)));
-
-        // Logup constraint.
         let prev_logup_sum = from_partial_evals(
             context,
             [
@@ -85,12 +86,10 @@ impl CircuitEval for SquaredFibonacciComponent {
         let cumsum_shift = div(context, *claimed_sum, n_instances);
         let diff = eval!(context, (cur_logup_sum) - (prev_logup_sum));
         let shifted_diff = eval!(context, (diff) + (cumsum_shift));
-        let frac = get_frac(context, acc.interaction_elements, context.one(), &[*c, *d]);
+        let frac = get_frac(context, acc.interaction_elements, context.one(), &[c, d]);
         let logup_constraint_val = single_logup_term(context, frac, shifted_diff);
 
-        acc.accumulate(context, constraint0_val);
-        acc.accumulate(context, constraint1_val);
-        acc.accumulate(context, logup_constraint_val);
+        acc.add_constraint(context, logup_constraint_val);
     }
 }
 
@@ -149,6 +148,7 @@ impl Statement for SimpleStatement {
             interaction_elements,
             claimed_sums,
             accumulation: context.zero(),
+            fracs: Vec::new(),
         };
 
         self.long_fib_component.evaluate(context, &mut evaluation_accumulator);
