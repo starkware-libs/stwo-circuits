@@ -1,7 +1,9 @@
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
 use crate::eval;
+use crate::stark_verifier::logup::{LogupTerm, logup_term};
 use crate::stark_verifier::statement::OodsSamples;
+use itertools::Itertools;
 
 /// Accumulates a psuedo-random linear combination of constraint evaluations at the OODS point and
 /// the previous point.
@@ -25,6 +27,7 @@ pub struct CompositionConstraintAccumulator<'a> {
     pub component_sizes: &'a [Var],
     /// Running accumulator over constraint evaluations at the OODS point and the previous point.
     pub accumulation: Var,
+    pub terms: Vec<LogupTerm>,
 }
 
 impl CompositionConstraintAccumulator<'_> {
@@ -44,6 +47,47 @@ impl CompositionConstraintAccumulator<'_> {
         assert!(self.claimed_sums.is_empty(), "unconsumed claimed sums");
 
         self.accumulation
+    }
+
+    pub fn get_preprocessed_columns<const N_PP_COLUMNS: usize>(
+        &mut self,
+        preprocessed_column_indices: [usize; N_PP_COLUMNS],
+    ) -> [Var; N_PP_COLUMNS] {
+        preprocessed_column_indices
+            .iter()
+            .map(|idx| self.oods_samples.preprocessed_columns[*idx])
+            .collect_vec()
+            .try_into()
+            .unwrap_or_else(|_| panic!("Expected {N_PP_COLUMNS} preprocessed columns"))
+    }
+
+    pub fn get_trace<const N_TRACE_COLUMNS: usize>(&mut self) -> [Var; N_TRACE_COLUMNS] {
+        if let Some(vec) = self.oods_samples.trace.split_off(..N_TRACE_COLUMNS) {
+            vec.try_into().unwrap()
+        } else {
+            panic!("Expected {N_TRACE_COLUMNS} trace values")
+        }
+    }
+
+    pub fn add_constraint(
+        &mut self,
+        context: &mut Context<impl IValue>,
+        constraint_eval_at_oods: Var,
+    ) {
+        self.accumulate(context, constraint_eval_at_oods);
+    }
+
+    pub fn add_to_relation(
+        &mut self,
+        context: &mut Context<impl IValue>,
+        numerator: Var,
+        element: &[Var],
+    ) {
+        self.terms.push(logup_term(context, self.interaction_elements, numerator, element));
+    }
+
+    pub fn finalize_logup_in_pairs(&mut self, _context: &mut Context<impl IValue>, _log_size: u32) {
+        // TODO(Gali): Implement.
     }
 }
 
