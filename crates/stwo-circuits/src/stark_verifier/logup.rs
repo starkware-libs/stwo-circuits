@@ -2,6 +2,20 @@ use crate::circuits::context::Context;
 use crate::circuits::context::Var;
 use crate::circuits::ivalue::IValue;
 use crate::eval;
+use stwo::core::Fraction;
+
+pub type LogupTerm = Fraction<Var, Var>;
+
+/// Computes the logup term for a single element.
+pub fn logup_term(
+    context: &mut Context<impl IValue>,
+    interaction_elements: [Var; 2],
+    numerator: Var,
+    element: &[Var],
+) -> LogupTerm {
+    let denominator = combine_term(context, element, interaction_elements);
+    LogupTerm::new(numerator, denominator)
+}
 
 /// Computes the denominator of a logup term.
 pub fn combine_term(
@@ -19,7 +33,7 @@ pub fn combine_term(
 }
 
 /// Computes the constraint polynomial for a single logup term.
-pub fn single_logup_term(
+pub fn single_logup_constraint(
     context: &mut Context<impl IValue>,
     element: &[Var],
     shifted_diff: Var,
