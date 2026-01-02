@@ -1,16 +1,11 @@
 use crate::circuit_air::components::prelude::*;
 
+pub const N_PREPROCESSED_COLUMNS: usize = 2;
 pub const N_TRACE_COLUMNS: usize = 8;
 
 pub struct Eval {
     pub log_size: u32,
     pub gate_lookup_elements: relations::Gate,
-}
-
-pub fn log_sizes(log_size: u32) -> TreeVec<Vec<u32>> {
-    let trace_log_sizes = vec![log_size; N_TRACE_COLUMNS];
-    let interaction_log_sizes = vec![log_size; SECURE_EXTENSION_DEGREE];
-    TreeVec::new(vec![vec![], trace_log_sizes, interaction_log_sizes])
 }
 
 pub type Component = FrameworkComponent<Eval>;
@@ -77,5 +72,52 @@ impl FrameworkEval for Eval {
 
         eval.finalize_logup_in_pairs();
         eval
+    }
+}
+
+pub struct CircuitEqComponent {
+    pub preprocessed_column_indices: [usize; N_PREPROCESSED_COLUMNS],
+}
+
+impl CircuitEval for CircuitEqComponent {
+    fn evaluate(
+        &self,
+        context: &mut Context<impl IValue>,
+        acc: &mut CompositionConstraintAccumulator<'_>,
+    ) {
+        let [in0_address, in1_address] = acc
+            .get_preprocessed_columns::<N_PREPROCESSED_COLUMNS>(self.preprocessed_column_indices);
+
+        let [in0_col0, in0_col1, in0_col2, in0_col3, in1_col4, in1_col5, in1_col6, in1_col7] =
+            acc.get_trace::<N_TRACE_COLUMNS>();
+
+        // in0 col 0 equals in1 col 4.
+        let constraint0_val = eval!(context, (in0_col0) - (in1_col4));
+        acc.add_constraint(context, constraint0_val);
+
+        // in0 col 1 equals in1 col 5.
+        let constraint1_val = eval!(context, (in0_col1) - (in1_col5));
+        acc.add_constraint(context, constraint1_val);
+
+        // in0 col 2 equals in1 col 6.
+        let constraint2_val = eval!(context, (in0_col2) - (in1_col6));
+        acc.add_constraint(context, constraint2_val);
+
+        // in0 col 3 equals in1 col 7.
+        let constraint3_val = eval!(context, (in0_col3) - (in1_col7));
+        acc.add_constraint(context, constraint3_val);
+
+        acc.add_to_relation(
+            context,
+            context.one(),
+            &[in0_address, in0_col0, in0_col1, in0_col2, in0_col3],
+        );
+        acc.add_to_relation(
+            context,
+            context.one(),
+            &[in1_address, in1_col4, in1_col5, in1_col6, in1_col7],
+        );
+
+        acc.finalize_logup_in_pairs(context);
     }
 }
