@@ -63,9 +63,6 @@ impl CircuitEval for SquaredFibonacciComponent {
         let Some([claimed_sum]) = acc.claimed_sums.split_off(..1) else {
             panic!("Expected 1 claimed sum");
         };
-        let Some([n_instances]) = acc.component_sizes.split_off(..1) else {
-            panic!("Expected 1 component size");
-        };
 
         let prev_logup_sum = from_partial_evals(
             context,
@@ -85,7 +82,8 @@ impl CircuitEval for SquaredFibonacciComponent {
                 interaction3.at_oods,
             ],
         );
-        let cumsum_shift = div(context, *claimed_sum, *n_instances);
+        let n_instances = context.constant((1 << self.log_n_instances).into());
+        let cumsum_shift = div(context, *claimed_sum, n_instances);
         let diff = eval!(context, (cur_logup_sum) - (prev_logup_sum));
         let shifted_diff = eval!(context, (diff) + (cumsum_shift));
         let frac = logup_term(context, acc.interaction_elements, context.one(), &[c, d]);
