@@ -88,6 +88,7 @@ impl CompositionConstraintAccumulator<'_> {
     }
 
     pub fn finalize_logup_in_pairs(&mut self, context: &mut Context<impl IValue>) {
+        // TODO(Gali): Get the terms from the component instead of storing them in the accumulator.
         let n_batches = self.terms.len().div_ceil(2);
         let n_interacion_columns = n_batches * SECURE_EXTENSION_DEGREE;
         let Some(interaction_columns) =
