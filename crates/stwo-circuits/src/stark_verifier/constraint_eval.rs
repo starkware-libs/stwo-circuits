@@ -1,7 +1,8 @@
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
+use crate::circuits::ops::{div, from_partial_evals};
 use crate::eval;
-use crate::stark_verifier::logup::LogupTerm;
+use crate::stark_verifier::logup::{LogupTerm, logup_term, single_logup_constraint};
 use crate::stark_verifier::statement::OodsSamples;
 
 /// Accumulates a psuedo-random linear combination of constraint evaluations at the OODS point and
@@ -71,6 +72,57 @@ impl CompositionConstraintAccumulator<'_> {
         constraint_eval_at_oods: Var,
     ) {
         self.accumulate(context, constraint_eval_at_oods);
+    }
+
+    pub fn add_to_relation(
+        &mut self,
+        context: &mut Context<impl IValue>,
+        numerator: Var,
+        element: &[Var],
+    ) {
+        self.terms.push(logup_term(context, self.interaction_elements, numerator, element));
+    }
+
+    pub fn finalize_logup_in_pairs(&mut self, context: &mut Context<impl IValue>) {
+        // TODO(Gali): Add more fracs.
+        let Some(
+            [interaction_0_limb0, interaction_0_limb1, interaction_0_limb2, interaction_0_limb3],
+        ) = self.oods_samples.interaction.split_off(..4)
+        else {
+            panic!("Expected 4 interaction values");
+        };
+        let Some(&[claimed_sum]) = self.claimed_sums.split_off(..1) else {
+            panic!("Expected 1 claimed sum");
+        };
+
+        let prev_logup_sum = from_partial_evals(
+            context,
+            [
+                interaction_0_limb0.at_prev,
+                interaction_0_limb1.at_prev,
+                interaction_0_limb2.at_prev,
+                interaction_0_limb3.at_prev,
+            ],
+        );
+        let cur_logup_sum = from_partial_evals(
+            context,
+            [
+                interaction_0_limb0.at_oods,
+                interaction_0_limb1.at_oods,
+                interaction_0_limb2.at_oods,
+                interaction_0_limb3.at_oods,
+            ],
+        );
+        let Some(&[n_instances]) = self.component_sizes.split_off(..1) else {
+            panic!("Expected 1 component size");
+        };
+        let cumsum_shift = div(context, claimed_sum, n_instances);
+        let diff = eval!(context, (cur_logup_sum) - (prev_logup_sum));
+        let shifted_diff = eval!(context, (diff) + (cumsum_shift));
+
+        let logup_constraint_val = single_logup_constraint(context, self.terms[0], shifted_diff);
+        self.add_constraint(context, logup_constraint_val);
+        self.terms.clear();
     }
 }
 
