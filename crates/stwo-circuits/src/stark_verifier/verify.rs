@@ -51,6 +51,7 @@ pub fn verify(
 
     // Range check the component log sizes.
     let component_log_size_bits = extract_bits::<LOG_SIZE_BITS>(context, &component_log_sizes);
+    // TODO(ilya): check that all the component log sizes are smaller than config.log_trace_size().
 
     channel.mix_qm31s(context, proof.component_log_sizes.iter().cloned());
 
