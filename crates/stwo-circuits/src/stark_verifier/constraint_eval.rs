@@ -2,8 +2,12 @@ use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::{div, from_partial_evals};
 use crate::eval;
-use crate::stark_verifier::logup::{LogupTerm, logup_term, single_logup_constraint};
+use crate::stark_verifier::logup::{
+    LogupTerm, logup_term, pair_logup_constraint, single_logup_constraint,
+};
 use crate::stark_verifier::statement::OodsSamples;
+use itertools::Itertools;
+use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
 
 /// Accumulates a psuedo-random linear combination of constraint evaluations at the OODS point and
 /// the previous point.
@@ -84,44 +88,73 @@ impl CompositionConstraintAccumulator<'_> {
     }
 
     pub fn finalize_logup_in_pairs(&mut self, context: &mut Context<impl IValue>) {
-        // TODO(Gali): Add more fracs.
-        let Some(
-            [interaction_0_limb0, interaction_0_limb1, interaction_0_limb2, interaction_0_limb3],
-        ) = self.oods_samples.interaction.split_off(..4)
+        let n_batches = self.terms.len().div_ceil(2);
+        let n_interacion_columns = n_batches * SECURE_EXTENSION_DEGREE;
+        let Some(interaction_columns) =
+            self.oods_samples.interaction.split_off(..n_interacion_columns)
         else {
-            panic!("Expected 4 interaction values");
+            panic!("Expected {n_interacion_columns} interaction values");
         };
+        let (prev_logup_sums, cur_logup_sums): (Vec<Var>, Vec<Var>) = interaction_columns
+            .iter()
+            .chunks(SECURE_EXTENSION_DEGREE)
+            .into_iter()
+            .map(|chunk| {
+                let chunk_vec: Vec<_> = chunk.collect();
+                let [prev_limb0, prev_limb1, prev_limb2, prev_limb3] =
+                    std::array::from_fn(|i| chunk_vec[i].at_prev);
+                let [cur_limb0, cur_limb1, cur_limb2, cur_limb3] =
+                    std::array::from_fn(|i| chunk_vec[i].at_oods);
+                (
+                    from_partial_evals(context, [prev_limb0, prev_limb1, prev_limb2, prev_limb3]),
+                    from_partial_evals(context, [cur_limb0, cur_limb1, cur_limb2, cur_limb3]),
+                )
+            })
+            .collect();
+
+        let mut prev_col_cumsum = context.zero();
+
+        // All pairs except the last are cumulatively summed in new interaction columns.
+        (0..(n_batches - 1)).for_each(|i| {
+            let cur_cumsum = cur_logup_sums[i];
+            let diff = eval!(context, (cur_cumsum) - (prev_col_cumsum));
+            prev_col_cumsum = cur_cumsum;
+
+            let logup_constraint_val =
+                pair_logup_constraint(context, self.terms[2 * i], self.terms[2 * i + 1], diff);
+            self.add_constraint(context, logup_constraint_val);
+            context.mark_as_unused(prev_logup_sums[i]);
+        });
+
+        let [prev_row_cumsum, cur_cumsum] =
+            [prev_logup_sums[n_batches - 1], cur_logup_sums[n_batches - 1]];
+
+        let diff = eval!(context, ((cur_cumsum) - (prev_row_cumsum)) - (prev_col_cumsum));
+
         let Some(&[claimed_sum]) = self.claimed_sums.split_off(..1) else {
             panic!("Expected 1 claimed sum");
         };
-
-        let prev_logup_sum = from_partial_evals(
-            context,
-            [
-                interaction_0_limb0.at_prev,
-                interaction_0_limb1.at_prev,
-                interaction_0_limb2.at_prev,
-                interaction_0_limb3.at_prev,
-            ],
-        );
-        let cur_logup_sum = from_partial_evals(
-            context,
-            [
-                interaction_0_limb0.at_oods,
-                interaction_0_limb1.at_oods,
-                interaction_0_limb2.at_oods,
-                interaction_0_limb3.at_oods,
-            ],
-        );
         let Some(&[n_instances]) = self.component_sizes.split_off(..1) else {
             panic!("Expected 1 component size");
         };
         let cumsum_shift = div(context, claimed_sum, n_instances);
-        let diff = eval!(context, (cur_logup_sum) - (prev_logup_sum));
+        // Instead of checking diff = num / denom, check diff = num / denom - cumsum_shift.
+        // This makes (num / denom - cumsum_shift) have sum zero, which makes the constraint
+        // uniform - apply on all rows.
         let shifted_diff = eval!(context, (diff) + (cumsum_shift));
 
-        let logup_constraint_val = single_logup_constraint(context, self.terms[0], shifted_diff);
+        let logup_constraint_val = if self.terms.len().is_multiple_of(2) {
+            pair_logup_constraint(
+                context,
+                self.terms[2 * (n_batches - 1)],
+                self.terms[2 * (n_batches - 1) + 1],
+                shifted_diff,
+            )
+        } else {
+            single_logup_constraint(context, self.terms[2 * (n_batches - 1)], shifted_diff)
+        };
         self.add_constraint(context, logup_constraint_val);
+
         self.terms.clear();
     }
 }
