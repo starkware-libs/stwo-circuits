@@ -39,7 +39,14 @@ pub fn proof_from_stark_proof(
         trace_at_oods: as_single_row(&sampled_values[1]),
         interaction_at_oods: sampled_values[2]
             .iter()
-            .map(|x| InteractionAtOods { at_oods: x[1], at_prev: x[0] })
+            .map(|x| {
+                // TODO(Gali): Make at_prev optional.
+                match x[..] {
+                    [at_prev, at_oods] => InteractionAtOods { at_oods, at_prev },
+                    [at_oods] => InteractionAtOods { at_oods, at_prev: at_oods },
+                    _ => panic!("Unexpected interaction at OODS values"),
+                }
+            })
             .collect_vec(),
         component_log_sizes: pack_component_log_sizes(component_log_sizes),
         claimed_sums,
