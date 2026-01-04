@@ -21,6 +21,8 @@ pub struct CompositionConstraintAccumulator<'a> {
     /// The claimed sums for the component.
     /// Each component consumes one claimed sum.
     pub claimed_sums: &'a [Var],
+    /// The sizes of the components.
+    pub component_sizes: &'a [Var],
     /// Running accumulator over constraint evaluations at the OODS point and the previous point.
     pub accumulation: Var,
 }
