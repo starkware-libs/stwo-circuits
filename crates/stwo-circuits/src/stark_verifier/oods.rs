@@ -1,5 +1,6 @@
 use indexmap::IndexMap;
 use itertools::{Itertools, chain, zip_eq};
+use num_traits::zero;
 use stwo::core::circle::CirclePoint;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
@@ -11,9 +12,11 @@ use crate::circuits::ops::{Guess, conj, div, from_partial_evals};
 use crate::circuits::simd::Simd;
 use crate::circuits::wrappers::M31Wrapper;
 use crate::eval;
-use crate::stark_verifier::circle::{add_points, double_x, generator_point};
+use crate::stark_verifier::circle::{add_points, double_point, double_x, generator_point};
+use crate::stark_verifier::extract_bits::extract_bits;
 use crate::stark_verifier::proof::{Proof, ProofConfig};
 use crate::stark_verifier::select_queries::Queries;
+use crate::stark_verifier::verify::MAX_TRACE_SIZE_BITS;
 
 const COMPOSITION_SPLIT: usize = 2;
 pub const N_COMPOSITION_COLUMNS: usize = COMPOSITION_SPLIT * EXTENSION_DEGREE;
@@ -87,6 +90,55 @@ pub fn empty_eval_domain_samples(
             .map(|n_columns| vec![vec![M31Wrapper::from(NoValue); n_queries]; *n_columns])
             .collect(),
     }
+}
+
+/// Given a trace generator and the component sizes, computes the period
+/// generator for each component.
+///
+/// Assumptions:
+/// - All component sizes are powers of two.
+#[allow(dead_code)]
+fn period_generators(
+    context: &mut Context<impl IValue>,
+    trace_gen: CirclePoint<M31>,
+    component_sizes: Simd,
+) -> Vec<CirclePoint<Var>> {
+    let bits = extract_bits::<MAX_TRACE_SIZE_BITS>(context, &component_sizes);
+    let mut period_gen = CirclePoint {
+        x: M31Wrapper::new_unsafe(context.constant(QM31::from_m31(
+            trace_gen.x,
+            zero(),
+            zero(),
+            zero(),
+        ))),
+        y: M31Wrapper::new_unsafe(context.constant(QM31::from_m31(
+            trace_gen.y,
+            zero(),
+            zero(),
+            zero(),
+        ))),
+    };
+
+    let bits_0 = &bits[0];
+    let mut res = CirclePoint {
+        x: Simd::scalar_mul(context, bits_0, &period_gen.x),
+        y: Simd::scalar_mul(context, bits_0, &period_gen.y),
+    };
+
+    for bit in bits.iter().skip(1) {
+        period_gen = double_point(context, &period_gen);
+
+        let zero_or_x = Simd::scalar_mul(context, bit, &period_gen.x);
+        let zero_or_y = Simd::scalar_mul(context, bit, &period_gen.y);
+        res = CirclePoint {
+            x: Simd::add(context, &res.x, &zero_or_x),
+            y: Simd::add(context, &res.y, &zero_or_y),
+        };
+    }
+
+    zip_eq(Simd::unpack(context, &res.x), Simd::unpack(context, &res.y))
+        .map(|(x, y)| CirclePoint { x, y })
+        .collect()
 }
 
 /// Computes the expected value of the composition polynomial at the OODS point, based on the

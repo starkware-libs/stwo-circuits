@@ -19,6 +19,7 @@ use crate::stark_verifier::select_queries::{
 use crate::stark_verifier::statement::{EvaluateArgs, OodsSamples, Statement};
 
 pub const LOG_SIZE_BITS: usize = 5;
+pub const MAX_TRACE_SIZE_BITS: usize = 29;
 
 #[cfg(test)]
 #[path = "verify_test.rs"]
