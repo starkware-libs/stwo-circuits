@@ -8,8 +8,8 @@ use crate::stark_verifier::constraint_eval::CompositionConstraintAccumulator;
 use crate::stark_verifier::statement::{EvaluateArgs, Statement};
 
 pub struct CircuitStatement {
-    pub qm31_ops: qm31_ops::CircuitQm31OpsComponent,
     pub eq: eq::CircuitEqComponent,
+    pub qm31_ops: qm31_ops::CircuitQm31OpsComponent,
 }
 impl Statement for CircuitStatement {
     fn evaluate(&self, context: &mut Context<impl IValue>, args: EvaluateArgs<'_>) -> Var {
@@ -33,8 +33,8 @@ impl Statement for CircuitStatement {
             terms: Vec::new(),
         };
 
-        self.qm31_ops.evaluate(context, &mut evaluation_accumulator);
         self.eq.evaluate(context, &mut evaluation_accumulator);
+        self.qm31_ops.evaluate(context, &mut evaluation_accumulator);
 
         let final_evaluation = evaluation_accumulator.finalize();
 
@@ -56,11 +56,11 @@ impl Statement for CircuitStatement {
         };
 
         let trace_column_log_sizes = vec![
-            size_0, size_0, size_0, size_0, size_0, size_0, size_0, size_0, size_0, size_0, size_0,
-            size_0, size_1, size_1, size_1, size_1, size_1, size_1, size_1, size_1,
+            size_0, size_0, size_0, size_0, size_0, size_0, size_0, size_0, size_1, size_1, size_1,
+            size_1, size_1, size_1, size_1, size_1, size_1, size_1, size_1, size_1,
         ];
         let interaction_column_log_sizes = vec![
-            size_0, size_0, size_0, size_0, size_0, size_0, size_0, size_0, size_1, size_1, size_1,
+            size_0, size_0, size_0, size_0, size_1, size_1, size_1, size_1, size_1, size_1, size_1,
             size_1,
         ];
 
