@@ -4,6 +4,7 @@ pub mod constraint_eval;
 pub mod extract_bits;
 pub mod fri;
 pub mod fri_proof;
+pub mod logup;
 pub mod merkle;
 pub mod oods;
 pub mod proof;
