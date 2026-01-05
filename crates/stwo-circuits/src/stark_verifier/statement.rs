@@ -11,7 +11,6 @@ pub struct OodsSamples<'a> {
     pub trace: &'a [Var],
     pub interaction: &'a [InteractionAtOods<Var>],
 }
-
 pub struct EvaluateArgs<'a> {
     pub oods_samples: OodsSamples<'a>,
     pub pt: CirclePoint<Var>,
