@@ -139,11 +139,11 @@ impl PreProcessedTrace {
         let mut pp_trace = Self { columns: vec![], column_indices: HashMap::new() };
         let multiplicities = circuit.compute_multiplicities().0;
 
-        // Add QM31 operations columns.
-        add_qm31_ops_to_preprocessed_trace(circuit, multiplicities, &mut pp_trace);
-
         // Add Eq columns.
         add_eq_to_preprocessed_trace(circuit, &mut pp_trace);
+
+        // Add QM31 operations columns.
+        add_qm31_ops_to_preprocessed_trace(circuit, multiplicities, &mut pp_trace);
 
         // TODO(Gali): Add Blake columns.
 

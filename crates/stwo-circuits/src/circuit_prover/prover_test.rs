@@ -1,6 +1,6 @@
-use crate::circuit_air::components::{eq, qm31_ops, ComponentList};
+use crate::circuit_air::components::{ComponentList, eq, qm31_ops};
 use crate::circuit_air::statement::CircuitStatement;
-use crate::circuit_prover::prover::{finalize_context, prove_circuit, CircuitProof};
+use crate::circuit_prover::prover::{CircuitProof, finalize_context, prove_circuit};
 use crate::circuit_prover::witness::preprocessed::N_PP_COLUMNS;
 use crate::circuits::context::TraceContext;
 use crate::circuits::ops::Guess;
@@ -116,12 +116,12 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
         &config,
         &CircuitStatement {
             qm31_ops: qm31_ops::CircuitQm31OpsComponent {
-                preprocessed_column_indices: [0, 1, 2, 3, 4, 5, 6, 7],
+                preprocessed_column_indices: [2, 3, 4, 5, 6, 7, 8, 9],
                 log_size: claim.log_sizes[ComponentList::Qm31Ops as usize],
                 claimed_sum: interaction_claim.claimed_sums[ComponentList::Qm31Ops as usize],
             },
             eq: eq::CircuitEqComponent {
-                preprocessed_column_indices: [8, 9],
+                preprocessed_column_indices: [0, 1],
                 log_size: claim.log_sizes[ComponentList::Eq as usize],
                 claimed_sum: interaction_claim.claimed_sums[ComponentList::Eq as usize],
             },
