@@ -8,7 +8,7 @@ use crate::circuits::ops::{div, from_partial_evals};
 use crate::eval;
 use crate::examples::simple_air::{LOG_SIZE_LONG, LOG_SIZE_SHORT};
 use crate::stark_verifier::circle::double_x;
-use crate::stark_verifier::component::{Component, CompositionConstraintAccumulator};
+use crate::stark_verifier::constraint_eval::{CircuitEval, CompositionConstraintAccumulator};
 use crate::stark_verifier::statement::{EvaluateArgs, Statement};
 
 /// Computes the polynomial that vanishes on the canonical coset of size `2^log_trace_size`.
@@ -85,7 +85,7 @@ pub struct SquaredFibonacciComponent {
     pub log_n_instances: u32,
     pub preprocessed_column_idx: usize,
 }
-impl Component for SquaredFibonacciComponent {
+impl CircuitEval for SquaredFibonacciComponent {
     fn evaluate(
         &self,
         context: &mut Context<impl IValue>,
