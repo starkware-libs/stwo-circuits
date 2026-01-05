@@ -38,10 +38,13 @@ pub trait Statement {
     // Returns the log sizes of the trace and interaction columns.
     fn column_log_sizes(&self, component_log_sizes: Vec<Var>) -> [Vec<Var>; 2];
 
-    /// Given the periodicity sample points for each component, returns the sample points for each
-    /// column in the interaction trace.
+    /// Given the periodicity sample points for each component, returns the an optional sample
+    /// points for each column in the interaction trace.
+    /// If a coulmn has a periodicity sample point, it means that it is a cumulative sum column.
+    /// In that case, the column is sampled at three points, the periodicity sample point, the
+    /// previous point and the OODS point.
     fn column_periodicity_sample_points(
         &self,
         sample_points_per_component: &[CirclePoint<Var>],
-    ) -> Vec<CirclePoint<Var>>;
+    ) -> Vec<Option<CirclePoint<Var>>>;
 }

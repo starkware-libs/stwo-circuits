@@ -20,10 +20,6 @@ pub struct ProofConfig {
     pub n_preprocessed_columns: usize,
     pub n_trace_columns: usize,
     pub n_interaction_columns: usize,
-    // Per column in the interaction trace, an indicator of whether it is a cumulative sum column.
-    // This is used to determine whether to include a sample point at the previous point in the
-    // OODS response.
-    pub cumulative_sum_columns: Vec<bool>,
 
     // Number of components in the AIR.
     pub n_components: usize,

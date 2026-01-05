@@ -37,7 +37,6 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
         n_trace_columns: 8,
         n_interaction_columns: 8,
         n_components: 2,
-        cumulative_sum_columns: vec![true; 8],
         fri: FriConfig {
             log_trace_size: LOG_SIZE_LONG.try_into().unwrap(),
             log_blowup_factor: 1,

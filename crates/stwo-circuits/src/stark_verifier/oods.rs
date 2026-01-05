@@ -187,7 +187,7 @@ pub fn collect_oods_responses(
     config: &ProofConfig,
     oods_point: CirclePoint<Var>,
     component_sizes: Simd,
-    periodicity_generator_broadcast: impl Fn(&[CirclePoint<Var>]) -> Vec<CirclePoint<Var>>,
+    periodicity_generator_broadcast: impl Fn(&[CirclePoint<Var>]) -> Vec<Option<CirclePoint<Var>>>,
     proof: &Proof<Var>,
 ) -> Vec<OodsResponse> {
     // The generator of the trace subgroup on the circle.
@@ -223,40 +223,39 @@ pub fn collect_oods_responses(
             pt: oods_point,
             value: proof.trace_at_oods[column_idx],
         }),
-        zip_eq(
-            config.cumulative_sum_columns.iter().enumerate(),
-            periodicity_sample_points_per_column
-        )
-        .flat_map(|((column_idx, is_cumulative_sum_column), periodicity_sample_point)| {
-            let at_oods_response = OodsResponse {
-                trace_idx: 2,
-                column_idx,
-                pt: oods_point,
-                value: proof.interaction_at_oods[column_idx].at_oods,
-            };
-
-            if !*is_cumulative_sum_column {
-                // Only the cumulative sum columns are sampled as `oods_point_at_prev_row`.
-                return vec![at_oods_response];
-            }
-
-            //priodicity_check.
-            vec![
-                OodsResponse {
+        periodicity_sample_points_per_column.iter().enumerate().flat_map(
+            |(column_idx, opt_periodicity_sample_point)| {
+                let at_oods_response = OodsResponse {
                     trace_idx: 2,
                     column_idx,
-                    pt: periodicity_sample_point,
+                    pt: oods_point,
                     value: proof.interaction_at_oods[column_idx].at_oods,
-                },
-                OodsResponse {
-                    trace_idx: 2,
-                    column_idx,
-                    pt: oods_point_at_prev_row,
-                    value: proof.interaction_at_oods[column_idx].at_prev,
-                },
-                at_oods_response,
-            ]
-        }),
+                };
+
+                let Some(periodicity_sample_point) = opt_periodicity_sample_point else {
+                    // If there is no periodicity sample point, this column isn't a cumulative sum.
+                    // In that case we only sample the response at the OODS point
+                    return vec![at_oods_response];
+                };
+
+                //priodicity_check.
+                vec![
+                    OodsResponse {
+                        trace_idx: 2,
+                        column_idx,
+                        pt: *periodicity_sample_point,
+                        value: proof.interaction_at_oods[column_idx].at_oods,
+                    },
+                    OodsResponse {
+                        trace_idx: 2,
+                        column_idx,
+                        pt: oods_point_at_prev_row,
+                        value: proof.interaction_at_oods[column_idx].at_prev,
+                    },
+                    at_oods_response,
+                ]
+            }
+        ),
         (0..N_COMPOSITION_COLUMNS).map(|column_idx| OodsResponse {
             trace_idx: 3,
             column_idx,

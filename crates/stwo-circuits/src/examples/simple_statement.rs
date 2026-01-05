@@ -228,11 +228,20 @@ impl Statement for SimpleStatement {
     fn column_periodicity_sample_points(
         &self,
         component_periodicity_generators: &[CirclePoint<Var>],
-    ) -> Vec<CirclePoint<Var>> {
+    ) -> Vec<Option<CirclePoint<Var>>> {
         let [gen_0, gen_1] = component_periodicity_generators[..] else {
             panic!("Expected 2 periodicity generators");
         };
 
-        vec![gen_0, gen_0, gen_0, gen_0, gen_1, gen_1, gen_1, gen_1]
+        vec![
+            Some(gen_0),
+            Some(gen_0),
+            Some(gen_0),
+            Some(gen_0),
+            Some(gen_1),
+            Some(gen_1),
+            Some(gen_1),
+            Some(gen_1),
+        ]
     }
 }
