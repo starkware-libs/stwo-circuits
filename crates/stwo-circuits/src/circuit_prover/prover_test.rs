@@ -42,7 +42,6 @@ fn test_prove_and_stark_verify_fibonacci_context() {
     // Verify.
     let verifier_channel = &mut Blake2sM31Channel::default();
     let pcs_config = PcsConfig::default();
-    pcs_config.mix_into(verifier_channel);
     let commitment_scheme =
         &mut CommitmentSchemeVerifier::<Blake2sM31MerkleChannel>::new(pcs_config);
 

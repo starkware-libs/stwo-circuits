@@ -46,6 +46,9 @@ pub fn verify(
 
     let mut channel = Channel::new(context);
 
+    // Mix the trace commitments into the channel.
+    channel.mix_commitment(context, proof.preprocessed_root);
+
     let component_log_sizes =
         Simd::from_packed(proof.component_log_sizes.clone(), config.n_components);
 
@@ -57,8 +60,6 @@ pub fn verify(
 
     let column_log_sizes = statement.column_log_sizes(Simd::unpack(context, &component_log_sizes));
 
-    // Mix the trace commitments into the channel.
-    channel.mix_commitment(context, proof.preprocessed_root);
     channel.mix_commitment(context, proof.trace_root);
 
     // TODO(lior): Add proof of work before drawing the interaction elements.
