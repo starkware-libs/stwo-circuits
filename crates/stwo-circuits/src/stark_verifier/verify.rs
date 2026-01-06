@@ -111,16 +111,26 @@ pub fn verify(
     eq(context, composition_eval, expected_composition_eval);
 
     // Verify the values in `proof.trace_at_oods` and `proof.composition_eval_at_oods`.
-    // Start by adding the values to the channel.
+    // Start by adding the values to the channel. Values belonging to cumulative sum columns are
+    // added twice, once for the previous point and once for the OODS point.
+    let interaction_at_oods = proof
+        .interaction_at_oods
+        .iter()
+        .enumerate()
+        .flat_map(|(i, interaction)| {
+            if config.cumulative_sum_columns[i] {
+                vec![interaction.at_prev, interaction.at_oods]
+            } else {
+                vec![interaction.at_oods]
+            }
+        })
+        .collect_vec();
     channel.mix_qm31s(
         context,
         chain!(
             proof.preprocessed_columns_at_oods.iter().cloned(),
             proof.trace_at_oods.iter().cloned(),
-            proof
-                .interaction_at_oods
-                .iter()
-                .flat_map(|interaction| [interaction.at_prev, interaction.at_oods]),
+            interaction_at_oods,
             proof.composition_eval_at_oods,
         ),
     );
