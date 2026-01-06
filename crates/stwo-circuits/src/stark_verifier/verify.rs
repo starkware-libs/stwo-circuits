@@ -53,12 +53,13 @@ pub fn verify(
     let component_log_size_bits = extract_bits::<LOG_SIZE_BITS>(context, &component_log_sizes);
     // TODO(ilya): check that all the component log sizes are smaller than config.log_trace_size().
 
+    // Mix the trace commitments into the channel.
+    channel.mix_commitment(context, proof.preprocessed_root);
+
     channel.mix_qm31s(context, proof.component_log_sizes.iter().cloned());
 
     let column_log_sizes = statement.column_log_sizes(Simd::unpack(context, &component_log_sizes));
 
-    // Mix the trace commitments into the channel.
-    channel.mix_commitment(context, proof.preprocessed_root);
     channel.mix_commitment(context, proof.trace_root);
 
     // TODO(lior): Add proof of work before drawing the interaction elements.
