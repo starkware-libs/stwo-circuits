@@ -3,7 +3,9 @@ pub mod relations;
 pub mod statement;
 
 use crate::circuit_air::components::N_COMPONENTS;
+use itertools::Itertools;
 use stwo::core::channel::Channel;
+use stwo::core::fields::m31::BaseField;
 use stwo::core::fields::qm31::SecureField;
 
 pub type ComponentLogSize = u32;
@@ -15,7 +17,15 @@ pub struct CircuitClaim {
 impl CircuitClaim {
     pub fn mix_into(&self, channel: &mut impl Channel) {
         let Self { log_sizes } = self;
-        channel.mix_u32s(log_sizes);
+        let log_sizes_qm31 = log_sizes
+            .chunks(4)
+            .map(|chunk| {
+                SecureField::from_m31_array(std::array::from_fn(|j| {
+                    BaseField::from_u32_unchecked(*chunk.get(j).unwrap_or(&0))
+                }))
+            })
+            .collect_vec();
+        channel.mix_felts(&log_sizes_qm31);
     }
 }
 

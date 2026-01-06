@@ -170,13 +170,13 @@ pub fn create_proof()
         CommitmentSchemeProver::<SimdBackend, Blake2sM31MerkleChannel>::new(config, &twiddles);
     commitment_scheme.set_store_polynomials_coefficients();
 
-    prover_channel.mix_felts(&[QM31::from_u32_unchecked(LOG_SIZE_LONG, LOG_SIZE_SHORT, 0, 0)]);
-
     // Preprocessed trace
     let mut tree_builder = commitment_scheme.tree_builder();
     tree_builder
         .extend_evals([generate_seq_column(LOG_SIZE_SHORT), generate_seq_column(LOG_SIZE_LONG)]);
     tree_builder.commit(prover_channel);
+
+    prover_channel.mix_felts(&[QM31::from_u32_unchecked(LOG_SIZE_LONG, LOG_SIZE_SHORT, 0, 0)]);
 
     // Trace.
     let trace_1 = generate_trace(LOG_SIZE_LONG);
