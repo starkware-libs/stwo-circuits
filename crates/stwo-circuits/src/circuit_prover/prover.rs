@@ -62,7 +62,6 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
 
     // Setup protocol.
     let channel = &mut Blake2sM31Channel::default();
-    pcs_config.mix_into(channel);
     let mut commitment_scheme =
         CommitmentSchemeProver::<SimdBackend, Blake2sM31MerkleChannel>::new(pcs_config, &twiddles);
 
