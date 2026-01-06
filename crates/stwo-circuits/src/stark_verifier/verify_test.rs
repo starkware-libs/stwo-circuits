@@ -35,9 +35,12 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
         n_proof_of_work_bits: 10,
         n_preprocessed_columns: 2,
         n_trace_columns: 8,
-        n_interaction_columns: 8,
+        n_interaction_columns: 16,
         n_components: 2,
-        cumulative_sum_columns: vec![true; 8],
+        cumulative_sum_columns: vec![
+            false, false, false, false, true, true, true, true, false, false, false, false, true,
+            true, true, true,
+        ],
         fri: FriConfig {
             log_trace_size: LOG_SIZE_LONG.try_into().unwrap(),
             log_blowup_factor: 1,
