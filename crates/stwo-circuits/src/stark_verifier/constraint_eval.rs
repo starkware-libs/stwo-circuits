@@ -32,11 +32,17 @@ pub struct CompositionConstraintAccumulator<'a> {
     pub composition_polynomial_coeff: Var,
     /// The interaction elements for the logup sums constraint.
     pub interaction_elements: [Var; 2],
-    /// The data associated with each component.
+    /// The component data for each components.
     pub component_data: &'a [ComponentData],
     /// Running accumulator over constraint evaluations at the OODS point and the previous point.
     pub accumulation: Var,
     pub terms: Vec<LogupTerm>,
+}
+
+
+struct ComponentData {
+    pub log_size: Var,
+    pub claimed_sum: Var,
 }
 
 impl CompositionConstraintAccumulator<'_> {
