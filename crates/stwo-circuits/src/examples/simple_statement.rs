@@ -131,19 +131,4 @@ impl Statement for SimpleStatement {
         let denom_inverse = denom_inverse(context, pt.x, log_domain_size);
         eval!(context, (final_evaluation) * (denom_inverse))
     }
-
-    fn column_log_sizes(&self, component_log_sizes: Vec<Var>) -> [Vec<Var>; 2] {
-        let [size_0, size_1] = component_log_sizes[..] else {
-            panic!("Expected 2 component log sizes");
-        };
-
-        let trace_column_log_sizes =
-            vec![size_0, size_0, size_0, size_0, size_1, size_1, size_1, size_1];
-        let interaction_column_log_sizes = vec![
-            size_0, size_0, size_0, size_0, size_0, size_0, size_0, size_0, size_1, size_1, size_1,
-            size_1, size_1, size_1, size_1, size_1,
-        ];
-
-        [trace_column_log_sizes, interaction_column_log_sizes]
-    }
 }
