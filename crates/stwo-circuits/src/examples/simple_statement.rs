@@ -1,3 +1,4 @@
+use itertools::{Itertools, zip_eq};
 use num_traits::One;
 use stwo::core::fields::m31::M31;
 
@@ -8,7 +9,9 @@ use crate::circuits::ops::div;
 use crate::eval;
 use crate::examples::simple_air::{LOG_SIZE_LONG, LOG_SIZE_SHORT};
 use crate::stark_verifier::circle::denom_inverse;
-use crate::stark_verifier::constraint_eval::{CircuitEval, CompositionConstraintAccumulator};
+use crate::stark_verifier::constraint_eval::{
+    CircuitEval, ComponentData, CompositionConstraintAccumulator,
+};
 use crate::stark_verifier::logup::combine_term;
 use crate::stark_verifier::statement::{EvaluateArgs, Statement};
 
@@ -113,8 +116,9 @@ impl Statement for SimpleStatement {
             oods_samples,
             composition_polynomial_coeff,
             interaction_elements,
-            claimed_sums,
-            component_sizes,
+            component_data: &zip_eq(claimed_sums, component_sizes)
+                .map(|(&claimed_sum, &n_instances)| ComponentData { claimed_sum, n_instances })
+                .collect_vec(),
             accumulation: context.zero(),
             terms: Vec::new(),
         };

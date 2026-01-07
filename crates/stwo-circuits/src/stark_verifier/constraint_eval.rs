@@ -9,6 +9,14 @@ use crate::stark_verifier::statement::OodsSamples;
 use itertools::Itertools;
 use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
 
+// Data accosiated with a specific compoonent.
+pub struct ComponentData {
+    /// The number of instances in the component.
+    pub n_instances: Var,
+    /// The claimed sums for the component.
+    pub claimed_sum: Var,
+}
+
 /// Accumulates a psuedo-random linear combination of constraint evaluations at the OODS point and
 /// the previous point.
 ///
@@ -24,11 +32,8 @@ pub struct CompositionConstraintAccumulator<'a> {
     pub composition_polynomial_coeff: Var,
     /// The interaction elements for the logup sums constraint.
     pub interaction_elements: [Var; 2],
-    /// The claimed sums for the component.
-    /// Each component consumes one claimed sum.
-    pub claimed_sums: &'a [Var],
-    /// The sizes of the components.
-    pub component_sizes: &'a [Var],
+    /// The data associated with each component.
+    pub component_data: &'a [ComponentData],
     /// Running accumulator over constraint evaluations at the OODS point and the previous point.
     pub accumulation: Var,
     pub terms: Vec<LogupTerm>,
@@ -48,7 +53,7 @@ impl CompositionConstraintAccumulator<'_> {
     pub fn finalize(self) -> Var {
         assert!(self.oods_samples.trace.is_empty(), "unconsumed trace OODS samples");
         assert!(self.oods_samples.interaction.is_empty(), "unconsumed interaction OODS samples");
-        assert!(self.claimed_sums.is_empty(), "unconsumed claimed sums");
+        assert!(self.component_data.is_empty(), "unconsumed component data");
 
         self.accumulation
     }
@@ -131,11 +136,10 @@ impl CompositionConstraintAccumulator<'_> {
 
         let diff = eval!(context, ((cur_cumsum) - (prev_row_cumsum)) - (prev_col_cumsum));
 
-        let Some(&[claimed_sum]) = self.claimed_sums.split_off(..1) else {
+        let Some(&[ComponentData { claimed_sum, n_instances }]) =
+            self.component_data.split_off(..1)
+        else {
             panic!("Expected 1 claimed sum");
-        };
-        let Some(&[n_instances]) = self.component_sizes.split_off(..1) else {
-            panic!("Expected 1 component size");
         };
         let cumsum_shift = div(context, claimed_sum, n_instances);
         // Instead of checking diff = num / denom, check diff = num / denom - cumsum_shift.
