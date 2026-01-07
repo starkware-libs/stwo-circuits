@@ -1,4 +1,4 @@
-use itertools::{Itertools, chain};
+use itertools::{Itertools, chain, izip};
 
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
@@ -54,8 +54,6 @@ pub fn verify(
     // TODO(ilya): check that all the component log sizes are smaller than config.log_trace_size().
 
     channel.mix_qm31s(context, proof.component_log_sizes.iter().cloned());
-
-    let column_log_sizes = statement.column_log_sizes(Simd::unpack(context, &component_log_sizes));
 
     // Mix the trace commitments into the channel.
     channel.mix_commitment(context, proof.preprocessed_root);
@@ -142,10 +140,11 @@ pub fn verify(
     // Check decommitment of trace queries.
     let bits = queries.bits.iter().map(|simd| Simd::unpack(context, simd)).collect_vec();
 
+    let column_log_sizes_by_trace = column_log_sizes_by_trace(context, config, component_log_sizes);
     decommit_eval_domain_samples(
         context,
         config.n_queries(),
-        &column_log_sizes,
+        &column_log_sizes_by_trace,
         &proof.eval_domain_samples,
         &proof.eval_domain_auth_paths,
         &bits,
@@ -163,4 +162,27 @@ pub fn verify(
     );
 
     fri_decommit(context, &proof.fri, &config.fri, &fri_input, &bits, &queries.points, &fri_alphas);
+}
+
+// Returns the column_log_sizes_by_trace, which includes the column log sizes for the trace and
+// interaction columns.
+fn column_log_sizes_by_trace(
+    context: &mut Context<impl IValue>,
+    config: &ProofConfig,
+    component_log_sizes: Simd,
+) -> [Vec<Var>; 2] {
+    let mut column_log_sizes = [
+        Vec::with_capacity(config.n_trace_columns),
+        Vec::with_capacity(config.n_interaction_columns),
+    ];
+
+    for (n_trace_columns, n_interaction_columns, log_size) in izip!(
+        &config.trace_columns_per_component,
+        &config.interaction_columns_per_component,
+        Simd::unpack(context, &component_log_sizes)
+    ) {
+        column_log_sizes[0].extend(vec![log_size; *n_trace_columns]);
+        column_log_sizes[1].extend(vec![log_size; *n_interaction_columns]);
+    }
+    column_log_sizes
 }

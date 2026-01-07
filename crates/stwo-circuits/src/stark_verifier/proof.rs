@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use stwo::core::air::Component;
-use stwo::core::pcs::{PcsConfig, TreeVec};
+use stwo::core::pcs::PcsConfig;
 
 use crate::circuits::blake::HashValue;
 use crate::circuits::context::{Context, Var};
@@ -20,11 +20,14 @@ pub struct ProofConfig {
     // TODO(lior): Add a check on the total security bits of the protocol given parameters
     //   such as `n_proof_of_work_bits`, `fri.n_queries`, etc.
     pub n_proof_of_work_bits: usize,
-
-    // AIR structure.
-    pub n_preprocessed_columns: usize,
     pub n_trace_columns: usize,
     pub n_interaction_columns: usize,
+
+    // AIR structure.
+    pub trace_columns_per_component: Vec<usize>,
+    pub interaction_columns_per_component: Vec<usize>,
+    pub n_preprocessed_columns: usize,
+
     // Per column in the interaction trace, an indicator of whether it is a cumulative sum column.
     // This is used to determine whether to include a sample point at the previous point in the
     // OODS response.
@@ -40,13 +43,27 @@ impl ProofConfig {
         let preprocessed_indices: HashSet<usize> =
             HashSet::from_iter(components.iter().flat_map(|c| c.preprocessed_column_indices()));
 
-        let [_preprocessed_columns_with_duplicates, trace_columns, interaction_columns] =
-            &TreeVec::concat_cols(components.iter().map(|c| c.trace_log_degree_bounds())).0[..]
-        else {
-            panic!("Expected 3 traces");
-        };
+        let mut log_trace_size = 0;
 
-        let log_trace_size = trace_columns.iter().max().unwrap();
+        let (trace_columns_per_component, interaction_columns_per_component): (Vec<_>, Vec<_>) =
+            components
+                .iter()
+                .map(|c| {
+                    let [_preprocessed_columns, trace_columns, interaction_columns] =
+                        &c.trace_log_degree_bounds().0[..]
+                    else {
+                        panic!("Expected 3 traces");
+                    };
+
+                    trace_columns.first().inspect(|log_size| {
+                        if **log_size > log_trace_size {
+                            log_trace_size = **log_size;
+                        }
+                    });
+
+                    (trace_columns.len(), interaction_columns.len())
+                })
+                .unzip();
 
         // TODO(ilya): Get `cumulative_sum_columns` from the components.
 
@@ -59,12 +76,14 @@ impl ProofConfig {
         Self {
             n_proof_of_work_bits: *pow_bits as usize,
             n_preprocessed_columns: preprocessed_indices.len(),
-            n_trace_columns: trace_columns.len(),
-            n_interaction_columns: interaction_columns.len(),
+            n_trace_columns: trace_columns_per_component.iter().sum(),
+            n_interaction_columns: interaction_columns_per_component.iter().sum(),
+            trace_columns_per_component,
+            interaction_columns_per_component,
             n_components: components.len(),
             cumulative_sum_columns: vec![true; 8],
             fri: FriConfig {
-                log_trace_size: *log_trace_size as usize,
+                log_trace_size: log_trace_size as usize,
                 log_blowup_factor: *log_blowup_factor as usize,
                 n_queries: *n_queries,
                 log_n_last_layer_coefs: *log_last_layer_degree_bound as usize,
