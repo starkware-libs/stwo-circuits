@@ -67,6 +67,19 @@ impl ProofConfig {
 
         // TODO(ilya): Get `cumulative_sum_columns` from the components.
 
+        let n_interaction_columns = interaction_columns_per_component.iter().sum();
+
+        let mut cumulative_sum_columns = Vec::with_capacity(n_interaction_columns);
+        for n_interaction_columns in &interaction_columns_per_component {
+            // The last 4 interaction columns of every component are cumulative sum columns.
+            assert!(
+                *n_interaction_columns >= 4_usize,
+                "Expected at least 4 interaction columns per component"
+            );
+            cumulative_sum_columns.extend(vec![false; *n_interaction_columns - 4]);
+            cumulative_sum_columns.extend(vec![true; 4]);
+        }
+
         let PcsConfig {
             pow_bits,
             fri_config:
@@ -77,11 +90,11 @@ impl ProofConfig {
             n_proof_of_work_bits: *pow_bits as usize,
             n_preprocessed_columns: preprocessed_indices.len(),
             n_trace_columns: trace_columns_per_component.iter().sum(),
-            n_interaction_columns: interaction_columns_per_component.iter().sum(),
+            n_interaction_columns,
             trace_columns_per_component,
             interaction_columns_per_component,
             n_components: components.len(),
-            cumulative_sum_columns: vec![true; 8],
+            cumulative_sum_columns,
             fri: FriConfig {
                 log_trace_size: log_trace_size as usize,
                 log_blowup_factor: *log_blowup_factor as usize,
