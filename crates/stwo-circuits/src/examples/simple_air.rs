@@ -77,8 +77,18 @@ impl FrameworkEval for Eval {
             b = c;
         }
 
+        eval.add_to_relation(RelationEntry::new(
+            &self.lookup_elements,
+            E::EF::one(),
+            &[a.clone(), b.clone()],
+        ));
+        eval.add_to_relation(RelationEntry::new(
+            &self.lookup_elements,
+            E::EF::one(),
+            &[a.clone(), b.clone()],
+        ));
         eval.add_to_relation(RelationEntry::new(&self.lookup_elements, E::EF::one(), &[a, b]));
-        eval.finalize_logup();
+        eval.finalize_logup_in_pairs();
 
         eval
     }
@@ -125,6 +135,20 @@ pub fn generate_interaction_trace(
 ) -> (ColumnVec<CircleEvaluation<SimdBackend, BaseField, BitReversedOrder>>, SecureField) {
     let log_instances = trace[0].values.length.ilog2();
     let mut logup_gen = LogupTraceGenerator::new(log_instances);
+
+    let mut col_gen = logup_gen.new_col();
+    for vec_row in 0..(1 << (log_instances - LOG_N_LANES)) {
+        let denom0: PackedSecureField = lookup_elements.combine(&[
+            trace[FIB_SEQUENCE_LENGTH - 2].values.data[vec_row],
+            trace[FIB_SEQUENCE_LENGTH - 1].values.data[vec_row],
+        ]);
+        let denom1: PackedSecureField = lookup_elements.combine(&[
+            trace[FIB_SEQUENCE_LENGTH - 2].values.data[vec_row],
+            trace[FIB_SEQUENCE_LENGTH - 1].values.data[vec_row],
+        ]);
+        col_gen.write_frac(vec_row, denom0 + denom1, denom0 * denom1);
+    }
+    col_gen.finalize_col();
 
     let mut col_gen = logup_gen.new_col();
     for vec_row in 0..(1 << (log_instances - LOG_N_LANES)) {

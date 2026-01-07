@@ -55,6 +55,8 @@ impl CircuitEval for SquaredFibonacciComponent {
 
         // Logup constraint.
         acc.add_to_relation(context, context.one(), &[c, d]);
+        acc.add_to_relation(context, context.one(), &[c, d]);
+        acc.add_to_relation(context, context.one(), &[c, d]);
         acc.finalize_logup_in_pairs(context);
     }
 }
@@ -74,13 +76,18 @@ impl SquaredFibonacciComponent {
                 (a, b) = (b, a * a + b * b + M31::from(j));
             }
             let elements = [context.constant(a.into()), context.constant(b.into())];
-            let denom = combine_term(context, &elements, interaction_elements);
+            let denom1 = combine_term(context, &elements, interaction_elements);
 
-            let inv = div(context, context.one(), denom);
+            let denom = eval!(context, (denom1) * (denom1));
+            let numerator = eval!(context, (denom1) + (denom1));
+
+            let frac0 = div(context, numerator, denom);
+            let frac1 = div(context, context.one(), denom1);
+            let frac = eval!(context, (frac0) + (frac1));
 
             // Note that the sum is negated because we want to use the values that are yielded in
             // the witness.
-            sum = eval!(context, (sum) - (inv));
+            sum = eval!(context, (sum) - (frac));
         }
         sum
     }
@@ -134,8 +141,10 @@ impl Statement for SimpleStatement {
 
         let trace_column_log_sizes =
             vec![size_0, size_0, size_0, size_0, size_1, size_1, size_1, size_1];
-        let interaction_column_log_sizes =
-            vec![size_0, size_0, size_0, size_0, size_1, size_1, size_1, size_1];
+        let interaction_column_log_sizes = vec![
+            size_0, size_0, size_0, size_0, size_0, size_0, size_0, size_0, size_1, size_1, size_1,
+            size_1, size_1, size_1, size_1, size_1,
+        ];
 
         [trace_column_log_sizes, interaction_column_log_sizes]
     }
