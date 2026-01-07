@@ -1,4 +1,4 @@
-use itertools::{Itertools, chain};
+use itertools::{Itertools, chain, zip_eq};
 
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
@@ -6,6 +6,7 @@ use crate::circuits::ops::eq;
 use crate::circuits::simd::Simd;
 use crate::eval;
 use crate::stark_verifier::channel::Channel;
+use crate::stark_verifier::constraint_eval::ComponentData;
 use crate::stark_verifier::extract_bits::extract_bits;
 use crate::stark_verifier::fri::{fri_commit, fri_decommit};
 use crate::stark_verifier::merkle::decommit_eval_domain_samples;
@@ -98,8 +99,9 @@ pub fn verify(
             log_domain_size: config.log_trace_size(),
             composition_polynomial_coeff,
             interaction_elements: [interaction_z, interaction_alpha],
-            claimed_sums: &proof.claimed_sums,
-            component_sizes: &unpacked_component_sizes,
+            component_data: &zip_eq(&proof.claimed_sums, &unpacked_component_sizes)
+                .map(|(&claimed_sum, &n_instances)| ComponentData { claimed_sum, n_instances })
+                .collect_vec(),
         },
     );
     let expected_composition_eval = extract_expected_composition_eval(

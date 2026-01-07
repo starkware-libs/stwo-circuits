@@ -2,6 +2,7 @@ use stwo::core::circle::CirclePoint;
 
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
+use crate::stark_verifier::constraint_eval::ComponentData;
 use crate::stark_verifier::proof::InteractionAtOods;
 
 /// Values at the OODS point (and its previous point where applicable).
@@ -17,8 +18,7 @@ pub struct EvaluateArgs<'a> {
     pub log_domain_size: usize,
     pub composition_polynomial_coeff: Var,
     pub interaction_elements: [Var; 2],
-    pub claimed_sums: &'a [Var],
-    pub component_sizes: &'a [Var],
+    pub component_data: &'a [ComponentData],
 }
 
 /// Represents an AIR and its public inputs.
