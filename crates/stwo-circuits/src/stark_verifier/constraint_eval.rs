@@ -39,12 +39,6 @@ pub struct CompositionConstraintAccumulator<'a> {
     pub terms: Vec<LogupTerm>,
 }
 
-
-struct ComponentData {
-    pub log_size: Var,
-    pub claimed_sum: Var,
-}
-
 impl CompositionConstraintAccumulator<'_> {
     /// Incorporate the next constraint evaluation at the OODS point.
     pub fn accumulate(&mut self, context: &mut Context<impl IValue>, constraint_eval_at_oods: Var) {

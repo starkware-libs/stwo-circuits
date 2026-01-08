@@ -12,7 +12,7 @@ use crate::circuits::ops::{Guess, conj, div, from_partial_evals};
 use crate::circuits::simd::Simd;
 use crate::circuits::wrappers::M31Wrapper;
 use crate::eval;
-use crate::stark_verifier::circle::{add_points, double_point, double_x, generator_point};
+use crate::stark_verifier::circle::{add_points, double_point, double_x};
 use crate::stark_verifier::extract_bits::extract_bits;
 use crate::stark_verifier::proof::{Proof, ProofConfig};
 use crate::stark_verifier::select_queries::Queries;
@@ -98,7 +98,7 @@ pub fn empty_eval_domain_samples(
 ///
 /// Assumptions:
 /// - All component sizes are powers of two.
-fn period_generators(
+pub fn period_generators(
     context: &mut Context<impl IValue>,
     trace_gen: CirclePoint<M31>,
     component_sizes: Simd,
@@ -186,23 +186,11 @@ pub struct OodsResponse {
 pub fn collect_oods_responses(
     context: &mut Context<impl IValue>,
     config: &ProofConfig,
+    trace_gen: CirclePoint<M31>,
     oods_point: CirclePoint<Var>,
-    component_sizes: Simd,
-    periodicity_generator_broadcast: impl Fn(&[CirclePoint<Var>]) -> Vec<Option<CirclePoint<Var>>>,
+    periodicity_sample_points_per_column: &[Option<CirclePoint<Var>>],
     proof: &Proof<Var>,
 ) -> Vec<OodsResponse> {
-    // The generator of the trace subgroup on the circle.
-    let trace_gen: CirclePoint<M31> = generator_point(config.log_trace_size());
-
-    let period_generators_per_component = period_generators(context, trace_gen, component_sizes);
-    let periodicity_sample_points_per_component = period_generators_per_component
-        .into_iter()
-        .map(|pt| add_points(context, &oods_point, &pt))
-        .collect_vec();
-
-    let periodicity_sample_points_per_column =
-        periodicity_generator_broadcast(&periodicity_sample_points_per_component);
-
     // The negation of the trace generator, as `CirclePoint<Var>`.
     let neg_trace_gen: CirclePoint<Var> = CirclePoint {
         x: context.constant(trace_gen.x.into()),
@@ -241,20 +229,22 @@ pub fn collect_oods_responses(
                     return vec![at_oods_response];
                 };
 
-                //priodicity_check.
                 vec![
+                    // Periodicity check.
                     OodsResponse {
                         trace_idx: 2,
                         column_idx,
                         pt: *periodicity_sample_point,
                         value: proof.interaction_at_oods[column_idx].at_oods,
                     },
+                    // Previous row.
                     OodsResponse {
                         trace_idx: 2,
                         column_idx,
                         pt: oods_point_at_prev_row,
                         value: proof.interaction_at_oods[column_idx].at_prev,
                     },
+                    // OODS point.
                     at_oods_response,
                 ]
             }
