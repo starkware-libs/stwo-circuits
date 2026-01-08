@@ -27,6 +27,7 @@ pub struct CircuitProof {
     pub claim: CircuitClaim,
     pub interaction_claim: CircuitInteractionClaim,
     pub components: Vec<Box<dyn Component>>,
+    pub pcs_config: PcsConfig,
     pub stark_proof: Result<ExtendedStarkProof<Blake2sM31MerkleHasher>, ProvingError>,
 }
 
@@ -113,6 +114,7 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
         components: component_builder.components(),
         claim,
         interaction_claim,
+        pcs_config,
         stark_proof: proof,
     }
 }
