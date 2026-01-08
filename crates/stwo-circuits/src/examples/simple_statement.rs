@@ -37,10 +37,10 @@ pub struct SquaredFibonacciComponent {
     pub log_n_instances: u32,
     pub preprocessed_column_idx: usize,
 }
-impl CircuitEval for SquaredFibonacciComponent {
+impl<Value: IValue> CircuitEval<Value> for SquaredFibonacciComponent {
     fn evaluate(
         &self,
-        context: &mut Context<impl IValue>,
+        context: &mut Context<Value>,
         acc: &mut CompositionConstraintAccumulator<'_>,
     ) {
         let [const_val] = acc.get_preprocessed_columns::<1>([self.preprocessed_column_idx]);
@@ -93,10 +93,10 @@ impl SquaredFibonacciComponent {
     }
 }
 
-impl Statement for SimpleStatement {
+impl<Value: IValue> Statement<Value> for SimpleStatement {
     fn public_logup_sum(
         &self,
-        context: &mut Context<impl IValue>,
+        context: &mut Context<Value>,
         interaction_elements: [Var; 2],
     ) -> Var {
         let prev_sum = context.zero();
@@ -105,7 +105,7 @@ impl Statement for SimpleStatement {
         self.short_fib_component.public_logup_sum(context, prev_sum, interaction_elements)
     }
 
-    fn evaluate(&self, context: &mut Context<impl IValue>, args: EvaluateArgs<'_>) -> Var {
+    fn evaluate(&self, context: &mut Context<Value>, args: EvaluateArgs<'_>) -> Var {
         let EvaluateArgs {
             oods_samples,
             pt,
@@ -124,8 +124,10 @@ impl Statement for SimpleStatement {
             terms: Vec::new(),
         };
 
-        self.long_fib_component.evaluate(context, &mut evaluation_accumulator);
-        self.short_fib_component.evaluate(context, &mut evaluation_accumulator);
+        for component in [&self.long_fib_component, &self.short_fib_component] {
+            component.evaluate(context, &mut evaluation_accumulator);
+        }
+
         let final_evaluation = evaluation_accumulator.finalize();
 
         let denom_inverse = denom_inverse(context, pt.x, log_domain_size);

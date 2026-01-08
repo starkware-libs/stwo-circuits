@@ -95,10 +95,12 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
         &proof_vars,
         &config,
         &CircuitStatement {
-            qm31_ops: qm31_ops::CircuitQm31OpsComponent {
-                preprocessed_column_indices: [2, 3, 4, 5, 6, 7, 8, 9],
-            },
-            eq: eq::CircuitEqComponent { preprocessed_column_indices: [0, 1] },
+            components: vec![
+                Box::new(eq::CircuitEqComponent { preprocessed_column_indices: [0, 1] }),
+                Box::new(qm31_ops::CircuitQm31OpsComponent {
+                    preprocessed_column_indices: [2, 3, 4, 5, 6, 7, 8, 9],
+                }),
+            ],
         },
     );
     context.check_vars_used();

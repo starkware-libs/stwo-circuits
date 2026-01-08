@@ -132,10 +132,10 @@ pub struct CircuitQm31OpsComponent {
     pub preprocessed_column_indices: [usize; N_PREPROCESSED_COLUMNS],
 }
 
-impl CircuitEval for CircuitQm31OpsComponent {
+impl<Value: IValue> CircuitEval<Value> for CircuitQm31OpsComponent {
     fn evaluate(
         &self,
-        context: &mut Context<impl IValue>,
+        context: &mut Context<Value>,
         acc: &mut CompositionConstraintAccumulator<'_>,
     ) {
         let [

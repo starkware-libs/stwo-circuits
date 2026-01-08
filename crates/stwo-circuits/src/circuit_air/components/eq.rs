@@ -79,10 +79,10 @@ pub struct CircuitEqComponent {
     pub preprocessed_column_indices: [usize; N_PREPROCESSED_COLUMNS],
 }
 
-impl CircuitEval for CircuitEqComponent {
+impl<Value: IValue> CircuitEval<Value> for CircuitEqComponent {
     fn evaluate(
         &self,
-        context: &mut Context<impl IValue>,
+        context: &mut Context<Value>,
         acc: &mut CompositionConstraintAccumulator<'_>,
     ) {
         let [in0_address, in1_address] = acc
