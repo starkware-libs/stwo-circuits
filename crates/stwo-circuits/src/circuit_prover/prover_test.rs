@@ -89,6 +89,8 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
         n_trace_columns: proof.proof.queried_values[1].len(),
         n_interaction_columns: proof.proof.queried_values[2].len(),
         n_components: components.len(),
+        trace_columns_per_component: vec![8, 12],
+        interaction_columns_per_component: vec![4, 8],
         cumulative_sum_columns: vec![
             true, true, true, true, false, false, false, false, true, true, true, true,
         ],
