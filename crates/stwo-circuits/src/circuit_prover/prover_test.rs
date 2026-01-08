@@ -1,12 +1,10 @@
 use crate::circuit_air::components::{eq, qm31_ops};
 use crate::circuit_air::statement::CircuitStatement;
 use crate::circuit_prover::prover::{CircuitProof, finalize_context, prove_circuit};
-use crate::circuit_prover::witness::preprocessed::N_PP_COLUMNS;
 use crate::circuits::context::TraceContext;
 use crate::circuits::ops::Guess;
 use crate::circuits::{context::Context, ops::guess};
 use crate::eval;
-use crate::stark_verifier::fri_proof::FriConfig;
 use crate::stark_verifier::proof::ProofConfig;
 use crate::stark_verifier::proof_from_stark_proof::proof_from_stark_proof;
 use expect_test::expect;
@@ -14,7 +12,7 @@ use num_traits::{One, Zero};
 use stwo::core::air::Component;
 use stwo::core::channel::Blake2sM31Channel;
 use stwo::core::fields::qm31::QM31;
-use stwo::core::pcs::{CommitmentSchemeVerifier, PcsConfig, TreeVec};
+use stwo::core::pcs::{CommitmentSchemeVerifier, TreeVec};
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 
 // Not a power of 2 so that we can test component padding.
@@ -42,14 +40,13 @@ fn test_prove_and_stark_verify_fibonacci_context() {
     fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
 
-    let CircuitProof { components, claim, interaction_claim, stark_proof } =
+    let CircuitProof { components, claim, interaction_claim, pcs_config, stark_proof } =
         prove_circuit(&mut fibonacci_context);
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
 
     // Verify.
     let verifier_channel = &mut Blake2sM31Channel::default();
-    let pcs_config = PcsConfig::default();
     let commitment_scheme =
         &mut CommitmentSchemeVerifier::<Blake2sM31MerkleChannel>::new(pcs_config);
 
@@ -77,31 +74,13 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
 
-    let CircuitProof { components, claim, interaction_claim, stark_proof } =
+    let CircuitProof { components, claim, interaction_claim, pcs_config, stark_proof } =
         prove_circuit(&mut fibonacci_context);
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
 
     // Verify.
-    let config = ProofConfig {
-        n_proof_of_work_bits: proof.proof.config.pow_bits as usize,
-        n_preprocessed_columns: N_PP_COLUMNS,
-        n_trace_columns: proof.proof.queried_values[1].len(),
-        n_interaction_columns: proof.proof.queried_values[2].len(),
-        n_components: components.len(),
-        trace_columns_per_component: vec![8, 12],
-        interaction_columns_per_component: vec![4, 8],
-        cumulative_sum_columns: vec![
-            true, true, true, true, false, false, false, false, true, true, true, true,
-        ],
-        fri: FriConfig {
-            log_trace_size: *claim.log_sizes.iter().max().unwrap() as usize,
-            log_blowup_factor: proof.proof.config.fri_config.log_blowup_factor as usize,
-            n_queries: proof.proof.config.fri_config.n_queries,
-            log_n_last_layer_coefs: proof.proof.config.fri_config.log_last_layer_degree_bound
-                as usize,
-        },
-    };
+    let config = ProofConfig::new(&components, &pcs_config);
 
     let mut context = TraceContext::default();
     let proof = proof_from_stark_proof(
