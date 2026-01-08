@@ -1,4 +1,5 @@
 use itertools::{Itertools, chain, izip, zip_eq};
+use stwo::core::circle::CirclePoint;
 
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
@@ -167,7 +168,14 @@ pub fn verify(
     );
 
     // Compute FRI input.
-    let oods_responses = collect_oods_responses(context, config, oods_point, proof);
+    let oods_responses = collect_oods_responses(
+        context,
+        config,
+        oods_point,
+        component_sizes,
+        |sample_points| column_periodicity_sample_points(config, sample_points),
+        proof,
+    );
     let fri_input = compute_fri_input(
         context,
         &oods_responses,
@@ -200,4 +208,20 @@ fn column_log_sizes_by_trace(
         column_log_sizes[1].extend(vec![log_size; *n_interaction_columns_in_component]);
     }
     column_log_sizes
+}
+
+/// Given the periodicity sample points for each component, returns the sample points for each
+/// column in the interaction trace.
+fn column_periodicity_sample_points(
+    config: &ProofConfig,
+    sample_points_per_component: &[CirclePoint<Var>],
+) -> Vec<CirclePoint<Var>> {
+    let mut periodicity_sample_points_per_column = Vec::with_capacity(config.n_interaction_columns);
+    for (n_interaction_columns_in_component, sample_point) in
+        izip!(&config.interaction_columns_per_component, sample_points_per_component)
+    {
+        periodicity_sample_points_per_column
+            .extend(vec![sample_point; *n_interaction_columns_in_component]);
+    }
+    periodicity_sample_points_per_column
 }
