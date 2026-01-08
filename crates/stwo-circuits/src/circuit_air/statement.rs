@@ -19,16 +19,14 @@ impl Statement for CircuitStatement {
             log_domain_size,
             composition_polynomial_coeff,
             interaction_elements,
-            claimed_sums,
-            component_sizes,
+            component_data,
         } = args;
 
         let mut evaluation_accumulator = CompositionConstraintAccumulator {
             oods_samples,
             composition_polynomial_coeff,
             interaction_elements,
-            claimed_sums,
-            component_sizes,
+            component_data,
             accumulation: context.zero(),
             terms: Vec::new(),
         };
