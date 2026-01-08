@@ -22,16 +22,16 @@ pub struct EvaluateArgs<'a> {
 }
 
 /// Represents an AIR and its public inputs.
-pub trait Statement {
+pub trait Statement<Value: IValue> {
     /// Evaluates the composition polynomial at the OODS point (after dividing by the domain
     /// polynomial).
-    fn evaluate(&self, context: &mut Context<impl IValue>, args: EvaluateArgs<'_>) -> Var;
+    fn evaluate(&self, context: &mut Context<Value>, args: EvaluateArgs<'_>) -> Var;
 
     /// Computes the part of the logup sum that is determined by the (public) statement rather than
     /// by the witness.
     fn public_logup_sum(
         &self,
-        context: &mut Context<impl IValue>,
+        context: &mut Context<Value>,
         interaction_elements: [Var; 2],
     ) -> Var;
 }

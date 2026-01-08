@@ -1,4 +1,3 @@
-use crate::circuit_air::components::{eq, qm31_ops};
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
 use crate::eval;
@@ -7,12 +6,11 @@ use crate::stark_verifier::constraint_eval::CircuitEval;
 use crate::stark_verifier::constraint_eval::CompositionConstraintAccumulator;
 use crate::stark_verifier::statement::{EvaluateArgs, Statement};
 
-pub struct CircuitStatement {
-    pub eq: eq::CircuitEqComponent,
-    pub qm31_ops: qm31_ops::CircuitQm31OpsComponent,
+pub struct CircuitStatement<Value: IValue> {
+    pub components: Vec<Box<dyn CircuitEval<Value>>>,
 }
-impl Statement for CircuitStatement {
-    fn evaluate(&self, context: &mut Context<impl IValue>, args: EvaluateArgs<'_>) -> Var {
+impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
+    fn evaluate(&self, context: &mut Context<Value>, args: EvaluateArgs<'_>) -> Var {
         let EvaluateArgs {
             oods_samples,
             pt,
@@ -31,8 +29,11 @@ impl Statement for CircuitStatement {
             terms: Vec::new(),
         };
 
-        self.eq.evaluate(context, &mut evaluation_accumulator);
-        self.qm31_ops.evaluate(context, &mut evaluation_accumulator);
+        for component in &self.components {
+            component.evaluate(context, &mut evaluation_accumulator);
+        }
+        // self.eq.evaluate(context, &mut evaluation_accumulator);
+        // self.qm31_ops.evaluate(context, &mut evaluation_accumulator);
 
         let final_evaluation = evaluation_accumulator.finalize();
 
@@ -42,7 +43,7 @@ impl Statement for CircuitStatement {
 
     fn public_logup_sum(
         &self,
-        context: &mut Context<impl IValue>,
+        context: &mut Context<Value>,
         _interaction_elements: [Var; 2],
     ) -> Var {
         context.zero()
