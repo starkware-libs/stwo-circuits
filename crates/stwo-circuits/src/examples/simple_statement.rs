@@ -44,7 +44,7 @@ impl CircuitEval for SquaredFibonacciComponent {
         acc: &mut CompositionConstraintAccumulator<'_>,
     ) {
         let [const_val] = acc.get_preprocessed_columns::<1>([self.preprocessed_column_idx]);
-        let [a, b, c, d] = acc.get_trace::<4>();
+        let [a, b, c, d] = acc.get_trace(4).try_into().unwrap();
 
         // Constraints.
         let constraint0_val = eval!(context, (c) - ((((a) * (a)) + ((b) * (b))) + (const_val)));

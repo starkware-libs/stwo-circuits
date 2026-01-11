@@ -67,12 +67,8 @@ impl CompositionConstraintAccumulator<'_> {
         })
     }
 
-    pub fn get_trace<const N_TRACE_COLUMNS: usize>(&mut self) -> [Var; N_TRACE_COLUMNS] {
-        if let Some(vec) = self.oods_samples.trace.split_off(..N_TRACE_COLUMNS) {
-            vec.try_into().unwrap()
-        } else {
-            panic!("Expected {N_TRACE_COLUMNS} trace values")
-        }
+    pub fn get_trace(&mut self, num_columns: usize) -> &[Var] {
+        self.oods_samples.trace.split_off(..num_columns).unwrap()
     }
 
     pub fn add_constraint(

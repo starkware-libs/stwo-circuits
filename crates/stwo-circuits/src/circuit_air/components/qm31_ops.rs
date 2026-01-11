@@ -163,7 +163,7 @@ impl CircuitEval for CircuitQm31OpsComponent {
             out_col9,
             out_col10,
             out_col11,
-        ] = acc.get_trace::<N_TRACE_COLUMNS>();
+        ] = acc.get_trace(N_TRACE_COLUMNS).try_into().unwrap();
 
         // out col 8.
         let constraint0_val = eval!(

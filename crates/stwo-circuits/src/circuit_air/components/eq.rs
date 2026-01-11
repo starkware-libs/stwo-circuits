@@ -89,7 +89,7 @@ impl CircuitEval for CircuitEqComponent {
             .get_preprocessed_columns::<N_PREPROCESSED_COLUMNS>(self.preprocessed_column_indices);
 
         let [in0_col0, in0_col1, in0_col2, in0_col3, in1_col4, in1_col5, in1_col6, in1_col7] =
-            acc.get_trace::<N_TRACE_COLUMNS>();
+            acc.get_trace(N_TRACE_COLUMNS).try_into().unwrap();
 
         // in0 col 0 equals in1 col 4.
         let constraint0_val = eval!(context, (in0_col0) - (in1_col4));
