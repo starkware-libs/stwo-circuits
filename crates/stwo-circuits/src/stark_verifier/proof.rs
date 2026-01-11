@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use itertools::zip_eq;
 use stwo::core::air::Component;
 use stwo::core::pcs::PcsConfig;
 
@@ -27,6 +28,11 @@ pub struct ProofConfig {
     pub n_interaction_columns: usize,
     pub trace_columns_per_component: Vec<usize>,
     pub interaction_columns_per_component: Vec<usize>,
+
+    // Per column in the interaction trace, an indicator of whether it is a cumulative sum column.
+    // This is used to determine whether to include a sample point at the previous point in the
+    // OODS response.
+    pub cumulative_sum_columns: Vec<bool>,
 
     // Number of components in the AIR.
     pub n_components: usize,
@@ -60,6 +66,16 @@ impl ProofConfig {
                 .unzip();
 
         let n_interaction_columns = interaction_columns_per_component.iter().sum();
+        let mut cumulative_sum_columns = Vec::with_capacity(n_interaction_columns);
+        for n_interaction_columns_in_component in &interaction_columns_per_component {
+            // The last 4 interaction columns of every component are cumulative sum columns.
+            assert!(
+                *n_interaction_columns_in_component >= 4_usize,
+                "Expected at least 4 interaction columns per component"
+            );
+            cumulative_sum_columns.extend(vec![false; *n_interaction_columns_in_component - 4]);
+            cumulative_sum_columns.extend(vec![true; 4]);
+        }
 
         let PcsConfig {
             pow_bits,
@@ -75,6 +91,7 @@ impl ProofConfig {
             trace_columns_per_component,
             interaction_columns_per_component,
             n_components: components.len(),
+            cumulative_sum_columns,
             fri: FriConfig {
                 log_trace_size: log_trace_size as usize,
                 log_blowup_factor: *log_blowup_factor as usize,
@@ -115,9 +132,8 @@ impl ProofConfig {
 pub struct InteractionAtOods<T> {
     /// The value at the OODS point and optionally the value at the previous point
     /// (`oods_point - trace_generator`).
-    // TODO(lior): Make the second element optional.
     pub at_oods: T,
-    pub at_prev: T,
+    pub at_prev: Option<T>,
 }
 
 impl<Value: IValue> Guess<Value> for InteractionAtOods<Value> {
@@ -126,7 +142,7 @@ impl<Value: IValue> Guess<Value> for InteractionAtOods<Value> {
     fn guess(&self, context: &mut Context<Value>) -> Self::Target {
         InteractionAtOods {
             at_oods: self.at_oods.guess(context),
-            at_prev: self.at_prev.guess(context),
+            at_prev: self.at_prev.map(|at_prev| at_prev.guess(context)),
         }
     }
 }
@@ -170,6 +186,12 @@ impl<T> Proof<T> {
         // Validate interaction_at_oods.
         assert_eq!(self.interaction_at_oods.len(), config.n_interaction_columns);
 
+        for (interaction_at_oods, is_cumulative_sum) in
+            zip_eq(&self.interaction_at_oods, &config.cumulative_sum_columns)
+        {
+            assert_eq!(interaction_at_oods.at_prev.is_some(), *is_cumulative_sum);
+        }
+
         // Validate eval_domain_samples.
         self.eval_domain_samples
             .validate_structure(&config.n_columns_per_trace(), config.n_queries());
@@ -203,10 +225,17 @@ pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
         composition_polynomial_root: HashValue(NoValue, NoValue),
         preprocessed_columns_at_oods: vec![NoValue; config.n_preprocessed_columns],
         trace_at_oods: vec![NoValue; config.n_trace_columns],
-        interaction_at_oods: vec![
-            InteractionAtOods { at_oods: NoValue, at_prev: NoValue };
-            config.n_interaction_columns
-        ],
+        interaction_at_oods: config
+            .cumulative_sum_columns
+            .iter()
+            .map(|is_cumulative_sum| {
+                if *is_cumulative_sum {
+                    InteractionAtOods { at_oods: NoValue, at_prev: Some(NoValue) }
+                } else {
+                    InteractionAtOods { at_oods: NoValue, at_prev: None }
+                }
+            })
+            .collect(),
         component_log_sizes: vec![NoValue; config.n_components.div_ceil(4)],
         claimed_sums: vec![NoValue; config.n_components],
         composition_eval_at_oods: [NoValue; N_COMPOSITION_COLUMNS],

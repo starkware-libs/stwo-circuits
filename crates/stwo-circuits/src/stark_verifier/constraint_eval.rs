@@ -123,7 +123,8 @@ impl CompositionConstraintAccumulator<'_> {
             self.add_constraint(context, logup_constraint_val);
         }
 
-        let prev_row_cumsum = from_partial_evals(context, last_chunk.each_ref().map(|x| x.at_prev));
+        let prev_row_cumsum =
+            from_partial_evals(context, last_chunk.each_ref().map(|x| x.at_prev.unwrap()));
         let cur_cumsum = from_partial_evals(context, last_chunk.each_ref().map(|x| x.at_oods));
 
         let diff = eval!(context, ((cur_cumsum) - (prev_row_cumsum)) - (prev_col_cumsum));
