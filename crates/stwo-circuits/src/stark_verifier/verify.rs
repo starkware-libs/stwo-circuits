@@ -7,13 +7,12 @@ use crate::circuits::ops::eq;
 use crate::circuits::simd::Simd;
 use crate::eval;
 use crate::stark_verifier::channel::Channel;
-use crate::stark_verifier::circle::{add_points, generator_point};
 use crate::stark_verifier::constraint_eval::ComponentData;
 use crate::stark_verifier::extract_bits::extract_bits;
 use crate::stark_verifier::fri::{fri_commit, fri_decommit};
 use crate::stark_verifier::merkle::decommit_eval_domain_samples;
 use crate::stark_verifier::oods::{
-    collect_oods_responses, compute_fri_input, extract_expected_composition_eval, period_generators,
+    collect_oods_responses, compute_fri_input, extract_expected_composition_eval,
 };
 use crate::stark_verifier::proof::{Proof, ProofConfig};
 use crate::stark_verifier::select_queries::{
@@ -114,15 +113,6 @@ pub fn verify(
     );
     eq(context, composition_eval, expected_composition_eval);
 
-    // The generator of the trace subgroup on the circle.
-    let trace_gen = generator_point(config.log_trace_size());
-
-    let period_generators_per_component = period_generators(context, trace_gen, component_sizes);
-    let periodicity_sample_points_per_component = period_generators_per_component
-        .into_iter()
-        .map(|pt| add_points(context, &oods_point, &pt))
-        .collect_vec();
-
     // Verify the values in `proof.trace_at_oods` and `proof.composition_eval_at_oods`.
     // Start by adding the values to the channel. Values belonging to cumulative sum columns are
     // added twice, once for the previous point and once for the OODS point.
@@ -166,8 +156,6 @@ pub fn verify(
     let bits = queries.bits.iter().map(|simd| Simd::unpack(context, simd)).collect_vec();
 
     let column_log_sizes_by_trace = column_log_sizes_by_trace(context, config, component_log_sizes);
-    let periodicity_sample_points_per_column =
-        column_periodicity_sample_points(config, &periodicity_sample_points_per_component);
 
     decommit_eval_domain_samples(
         context,
@@ -183,9 +171,9 @@ pub fn verify(
     let oods_responses = collect_oods_responses(
         context,
         config,
-        trace_gen,
         oods_point,
-        &periodicity_sample_points_per_column,
+        component_sizes,
+        |sample_points| column_periodicity_sample_points(config, sample_points),
         proof,
     );
     let fri_input = compute_fri_input(
@@ -222,26 +210,18 @@ fn column_log_sizes_by_trace(
     column_log_sizes
 }
 
-/// Given the periodicity sample points for each component, returns an optional sample
-/// point for each column in the interaction trace.
-///
-/// If a coulmn has a periodicity sample point, it means that it is a cumulative sum column.
+/// Given the periodicity sample points for each component, returns the sample points for each
+/// column in the interaction trace.
 fn column_periodicity_sample_points(
     config: &ProofConfig,
     sample_points_per_component: &[CirclePoint<Var>],
-) -> Vec<Option<CirclePoint<Var>>> {
+) -> Vec<CirclePoint<Var>> {
     let mut periodicity_sample_points_per_column = Vec::with_capacity(config.n_interaction_columns);
     for (n_interaction_columns_in_component, sample_point) in
         izip!(&config.interaction_columns_per_component, sample_points_per_component)
     {
-        // The last 4 interaction columns of every component are cumulative sum columns.
-        assert!(
-            *n_interaction_columns_in_component >= 4_usize,
-            "Expected at least 4 interaction columns per component"
-        );
         periodicity_sample_points_per_column
-            .extend(vec![None; *n_interaction_columns_in_component - 4]);
-        periodicity_sample_points_per_column.extend(vec![Some(*sample_point); 4]);
+            .extend(vec![sample_point; *n_interaction_columns_in_component]);
     }
     periodicity_sample_points_per_column
 }
