@@ -1,8 +1,10 @@
 pub use crate::circuit_air::relations;
 pub use crate::circuits::context::Context;
+pub use crate::circuits::context::Var;
 pub use crate::circuits::ivalue::IValue;
 pub use crate::eval;
 pub use crate::stark_verifier::constraint_eval::{CircuitEval, CompositionConstraintAccumulator};
+pub use crate::stark_verifier::proof::InteractionAtOods;
 pub use itertools::chain;
 pub use num_traits::One;
 pub use num_traits::Zero;

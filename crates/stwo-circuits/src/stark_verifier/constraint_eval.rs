@@ -5,6 +5,7 @@ use crate::eval;
 use crate::stark_verifier::logup::{
     LogupTerm, logup_term, pair_logup_constraint, single_logup_constraint,
 };
+use crate::stark_verifier::proof::InteractionAtOods;
 use crate::stark_verifier::statement::OodsSamples;
 use itertools::Itertools;
 use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
@@ -71,6 +72,10 @@ impl CompositionConstraintAccumulator<'_> {
         self.oods_samples.trace.split_off(..num_columns).unwrap()
     }
 
+    pub fn get_interaction_trace(&mut self, num_columns: usize) -> &[InteractionAtOods<Var>] {
+        self.oods_samples.interaction.split_off(..num_columns).unwrap()
+    }
+
     pub fn add_constraint(
         &mut self,
         context: &mut Context<impl IValue>,
@@ -88,15 +93,13 @@ impl CompositionConstraintAccumulator<'_> {
         self.terms.push(logup_term(context, self.interaction_elements, numerator, element));
     }
 
-    pub fn finalize_logup_in_pairs(&mut self, context: &mut Context<impl IValue>) {
+    pub fn finalize_logup_in_pairs(
+        &mut self,
+        context: &mut Context<impl IValue>,
+        interaction_columns: &[InteractionAtOods<Var>],
+    ) {
         // TODO(Gali): Get the terms from the component instead of storing them in the accumulator.
         let n_batches = self.terms.len().div_ceil(2);
-        let n_interacion_columns = n_batches * SECURE_EXTENSION_DEGREE;
-        let Some(interaction_columns) =
-            self.oods_samples.interaction.split_off(..n_interacion_columns)
-        else {
-            panic!("Expected {n_interacion_columns} interaction values");
-        };
         let (prev_logup_sums, cur_logup_sums): (Vec<Var>, Vec<Var>) = interaction_columns
             .iter()
             .chunks(SECURE_EXTENSION_DEGREE)
@@ -163,7 +166,23 @@ pub trait CircuitEval {
     /// polynomial).
     fn evaluate(
         &self,
+        input: &[Var],
+        interaction_trace: &[InteractionAtOods<Var>],
         context: &mut Context<impl IValue>,
         acc: &mut CompositionConstraintAccumulator<'_>,
-    );
+    ) -> Vec<Var>;
+
+    fn num_trace_columns(&self) -> usize;
+
+    fn num_interaction_columns(&self) -> usize;
+
+    fn evaluate_on_trace(
+        &self,
+        context: &mut Context<impl IValue>,
+        acc: &mut CompositionConstraintAccumulator<'_>,
+    ) -> Vec<Var> {
+        let input = acc.get_trace(self.num_trace_columns()).to_owned();
+        let interaction = acc.get_interaction_trace(self.num_interaction_columns()).to_owned();
+        self.evaluate(&input, &interaction, context, acc)
+    }
 }

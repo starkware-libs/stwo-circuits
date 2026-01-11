@@ -31,8 +31,8 @@ impl Statement for CircuitStatement {
             terms: Vec::new(),
         };
 
-        self.eq.evaluate(context, &mut evaluation_accumulator);
-        self.qm31_ops.evaluate(context, &mut evaluation_accumulator);
+        self.eq.evaluate_on_trace(context, &mut evaluation_accumulator);
+        self.qm31_ops.evaluate_on_trace(context, &mut evaluation_accumulator);
 
         let final_evaluation = evaluation_accumulator.finalize();
 

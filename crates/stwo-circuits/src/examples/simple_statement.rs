@@ -10,6 +10,7 @@ use crate::examples::simple_air::{LOG_SIZE_LONG, LOG_SIZE_SHORT};
 use crate::stark_verifier::circle::denom_inverse;
 use crate::stark_verifier::constraint_eval::{CircuitEval, CompositionConstraintAccumulator};
 use crate::stark_verifier::logup::combine_term;
+use crate::stark_verifier::proof::InteractionAtOods;
 use crate::stark_verifier::statement::{EvaluateArgs, Statement};
 
 pub struct SimpleStatement {
@@ -40,11 +41,13 @@ pub struct SquaredFibonacciComponent {
 impl CircuitEval for SquaredFibonacciComponent {
     fn evaluate(
         &self,
+        input: &[Var],
+        interaction_trace: &[InteractionAtOods<Var>],
         context: &mut Context<impl IValue>,
         acc: &mut CompositionConstraintAccumulator<'_>,
-    ) {
+    ) -> Vec<Var> {
         let [const_val] = acc.get_preprocessed_columns::<1>([self.preprocessed_column_idx]);
-        let [a, b, c, d] = acc.get_trace(4).try_into().unwrap();
+        let [a, b, c, d] = input.try_into().unwrap();
 
         // Constraints.
         let constraint0_val = eval!(context, (c) - ((((a) * (a)) + ((b) * (b))) + (const_val)));
@@ -57,7 +60,17 @@ impl CircuitEval for SquaredFibonacciComponent {
         acc.add_to_relation(context, context.one(), &[c, d]);
         acc.add_to_relation(context, context.one(), &[c, d]);
         acc.add_to_relation(context, context.one(), &[c, d]);
-        acc.finalize_logup_in_pairs(context);
+        acc.finalize_logup_in_pairs(context, interaction_trace);
+
+        vec![]
+    }
+
+    fn num_trace_columns(&self) -> usize {
+        4
+    }
+
+    fn num_interaction_columns(&self) -> usize {
+        8
     }
 }
 
@@ -124,8 +137,8 @@ impl Statement for SimpleStatement {
             terms: Vec::new(),
         };
 
-        self.long_fib_component.evaluate(context, &mut evaluation_accumulator);
-        self.short_fib_component.evaluate(context, &mut evaluation_accumulator);
+        self.long_fib_component.evaluate_on_trace(context, &mut evaluation_accumulator);
+        self.short_fib_component.evaluate_on_trace(context, &mut evaluation_accumulator);
         let final_evaluation = evaluation_accumulator.finalize();
 
         let denom_inverse = denom_inverse(context, pt.x, log_domain_size);
