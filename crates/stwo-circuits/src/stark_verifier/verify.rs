@@ -137,6 +137,7 @@ pub fn verify<Value: IValue>(
                 if opt_periodicity_sample_point.is_some() {
                     vec![interaction.at_prev, interaction.at_oods]
                 } else {
+                    context.mark_as_unused(interaction.at_prev);
                     vec![interaction.at_oods]
                 }
             })
