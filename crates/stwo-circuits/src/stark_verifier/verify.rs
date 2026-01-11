@@ -226,26 +226,19 @@ fn column_log_sizes_by_trace(
     column_log_sizes
 }
 
-/// Given the periodicity sample points for each component, returns an optional sample
-/// point for each column in the interaction trace.
-///
-/// If a coulmn has a periodicity sample point, it means that it is a cumulative sum column.
+/// Given the periodicity sample points for each component, returns the periodicity sample points
+/// for each column in the interaction trace.
+/// The periodicity sample points are the sample points used for the periodicity check.
 fn column_periodicity_sample_points(
     config: &ProofConfig,
     sample_points_per_component: &[CirclePoint<Var>],
-) -> Vec<Option<CirclePoint<Var>>> {
+) -> Vec<CirclePoint<Var>> {
     let mut periodicity_sample_points_per_column = Vec::with_capacity(config.n_interaction_columns);
     for (n_interaction_columns_in_component, sample_point) in
         izip!(&config.interaction_columns_per_component, sample_points_per_component)
     {
-        // The last 4 interaction columns of every component are cumulative sum columns.
-        assert!(
-            *n_interaction_columns_in_component >= 4_usize,
-            "Expected at least 4 interaction columns per component"
-        );
         periodicity_sample_points_per_column
-            .extend(vec![None; *n_interaction_columns_in_component - 4]);
-        periodicity_sample_points_per_column.extend(vec![Some(*sample_point); 4]);
+            .extend(vec![sample_point; *n_interaction_columns_in_component]);
     }
     periodicity_sample_points_per_column
 }
