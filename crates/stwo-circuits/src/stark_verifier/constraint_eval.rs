@@ -101,39 +101,30 @@ impl CompositionConstraintAccumulator<'_> {
         else {
             panic!("Expected {n_interacion_columns} interaction values");
         };
-        let (prev_logup_sums, cur_logup_sums): (Vec<Var>, Vec<Var>) = interaction_columns
-            .iter()
-            .chunks(SECURE_EXTENSION_DEGREE)
-            .into_iter()
-            .map(|chunk| {
-                let chunk_vec: Vec<_> = chunk.collect();
-                let [prev_limb0, prev_limb1, prev_limb2, prev_limb3] =
-                    std::array::from_fn(|i| chunk_vec[i].at_prev);
-                let [cur_limb0, cur_limb1, cur_limb2, cur_limb3] =
-                    std::array::from_fn(|i| chunk_vec[i].at_oods);
-                (
-                    from_partial_evals(context, [prev_limb0, prev_limb1, prev_limb2, prev_limb3]),
-                    from_partial_evals(context, [cur_limb0, cur_limb1, cur_limb2, cur_limb3]),
-                )
-            })
-            .collect();
-
+        let (interaction_columns, last_chunk) = interaction_columns.split_last_chunk().unwrap();
         let mut prev_col_cumsum = context.zero();
 
-        // All pairs except the last are cumulatively summed in new interaction columns.
-        (0..(n_batches - 1)).for_each(|i| {
-            let cur_cumsum = cur_logup_sums[i];
-            let diff = eval!(context, (cur_cumsum) - (prev_col_cumsum));
+        // Merge the computation of cur_logup_sums and the constraints loop.
+        for (i, chunk) in
+            interaction_columns.iter().chunks(SECURE_EXTENSION_DEGREE).into_iter().enumerate()
+        {
+            let mut chunk_iter = chunk;
+            let cur_cumsum = from_partial_evals(
+                context,
+                std::array::from_fn(|_| chunk_iter.next().unwrap().at_oods),
+            );
+            // All pairs except the last are cumulatively summed in new interaction columns.
+            let diff =
+                if i > 1 { eval!(context, (cur_cumsum) - (prev_col_cumsum)) } else { cur_cumsum };
             prev_col_cumsum = cur_cumsum;
 
             let logup_constraint_val =
                 pair_logup_constraint(context, self.terms[2 * i], self.terms[2 * i + 1], diff);
             self.add_constraint(context, logup_constraint_val);
-            context.mark_as_unused(prev_logup_sums[i]);
-        });
+        }
 
-        let [prev_row_cumsum, cur_cumsum] =
-            [prev_logup_sums[n_batches - 1], cur_logup_sums[n_batches - 1]];
+        let prev_row_cumsum = from_partial_evals(context, last_chunk.each_ref().map(|x| x.at_prev));
+        let cur_cumsum = from_partial_evals(context, last_chunk.each_ref().map(|x| x.at_oods));
 
         let diff = eval!(context, ((cur_cumsum) - (prev_row_cumsum)) - (prev_col_cumsum));
 
