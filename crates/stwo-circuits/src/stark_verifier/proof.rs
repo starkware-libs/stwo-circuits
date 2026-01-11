@@ -28,11 +28,6 @@ pub struct ProofConfig {
     pub trace_columns_per_component: Vec<usize>,
     pub interaction_columns_per_component: Vec<usize>,
 
-    // Per column in the interaction trace, an indicator of whether it is a cumulative sum column.
-    // This is used to determine whether to include a sample point at the previous point in the
-    // OODS response.
-    pub cumulative_sum_columns: Vec<bool>,
-
     // Number of components in the AIR.
     pub n_components: usize,
 
@@ -65,16 +60,6 @@ impl ProofConfig {
                 .unzip();
 
         let n_interaction_columns = interaction_columns_per_component.iter().sum();
-        let mut cumulative_sum_columns = Vec::with_capacity(n_interaction_columns);
-        for n_interaction_columns_in_component in &interaction_columns_per_component {
-            // The last 4 interaction columns of every component are cumulative sum columns.
-            assert!(
-                *n_interaction_columns_in_component >= 4_usize,
-                "Expected at least 4 interaction columns per component"
-            );
-            cumulative_sum_columns.extend(vec![false; *n_interaction_columns_in_component - 4]);
-            cumulative_sum_columns.extend(vec![true; 4]);
-        }
 
         let PcsConfig {
             pow_bits,
@@ -90,7 +75,6 @@ impl ProofConfig {
             trace_columns_per_component,
             interaction_columns_per_component,
             n_components: components.len(),
-            cumulative_sum_columns,
             fri: FriConfig {
                 log_trace_size: log_trace_size as usize,
                 log_blowup_factor: *log_blowup_factor as usize,
