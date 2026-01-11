@@ -135,9 +135,10 @@ pub struct CircuitQm31OpsComponent {
 impl CircuitEval for CircuitQm31OpsComponent {
     fn evaluate(
         &self,
+        input: &[Var],
         context: &mut Context<impl IValue>,
         acc: &mut CompositionConstraintAccumulator<'_>,
-    ) {
+    ) -> Vec<Var> {
         let [
             add_flag,
             sub_flag,
@@ -163,7 +164,7 @@ impl CircuitEval for CircuitQm31OpsComponent {
             out_col9,
             out_col10,
             out_col11,
-        ] = acc.get_trace(N_TRACE_COLUMNS).try_into().unwrap();
+        ] = input.try_into().unwrap();
 
         // out col 8.
         let constraint0_val = eval!(
@@ -221,5 +222,11 @@ impl CircuitEval for CircuitQm31OpsComponent {
         );
 
         acc.finalize_logup_in_pairs(context);
+
+        vec![]
+    }
+
+    fn num_trace_columns(&self) -> usize {
+        N_TRACE_COLUMNS
     }
 }

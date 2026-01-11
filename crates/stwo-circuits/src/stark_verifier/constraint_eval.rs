@@ -163,7 +163,19 @@ pub trait CircuitEval {
     /// polynomial).
     fn evaluate(
         &self,
+        input: &[Var],
         context: &mut Context<impl IValue>,
         acc: &mut CompositionConstraintAccumulator<'_>,
-    );
+    ) -> Vec<Var>;
+
+    fn num_trace_columns(&self) -> usize;
+
+    fn evaluate_on_trace(
+        &self,
+        context: &mut Context<impl IValue>,
+        acc: &mut CompositionConstraintAccumulator<'_>,
+    ) -> Vec<Var> {
+        let input = acc.get_trace(self.num_trace_columns()).to_owned();
+        self.evaluate(&input, context, acc)
+    }
 }

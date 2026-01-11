@@ -40,11 +40,12 @@ pub struct SquaredFibonacciComponent {
 impl CircuitEval for SquaredFibonacciComponent {
     fn evaluate(
         &self,
+        input: &[Var],
         context: &mut Context<impl IValue>,
         acc: &mut CompositionConstraintAccumulator<'_>,
-    ) {
+    ) -> Vec<Var> {
         let [const_val] = acc.get_preprocessed_columns::<1>([self.preprocessed_column_idx]);
-        let [a, b, c, d] = acc.get_trace(4).try_into().unwrap();
+        let [a, b, c, d] = input.try_into().unwrap();
 
         // Constraints.
         let constraint0_val = eval!(context, (c) - ((((a) * (a)) + ((b) * (b))) + (const_val)));
@@ -58,6 +59,12 @@ impl CircuitEval for SquaredFibonacciComponent {
         acc.add_to_relation(context, context.one(), &[c, d]);
         acc.add_to_relation(context, context.one(), &[c, d]);
         acc.finalize_logup_in_pairs(context);
+
+        vec![]
+    }
+
+    fn num_trace_columns(&self) -> usize {
+        4
     }
 }
 
@@ -124,8 +131,8 @@ impl Statement for SimpleStatement {
             terms: Vec::new(),
         };
 
-        self.long_fib_component.evaluate(context, &mut evaluation_accumulator);
-        self.short_fib_component.evaluate(context, &mut evaluation_accumulator);
+        self.long_fib_component.evaluate_on_trace(context, &mut evaluation_accumulator);
+        self.short_fib_component.evaluate_on_trace(context, &mut evaluation_accumulator);
         let final_evaluation = evaluation_accumulator.finalize();
 
         let denom_inverse = denom_inverse(context, pt.x, log_domain_size);
