@@ -125,23 +125,20 @@ pub fn verify<Value: IValue>(
         .map(|pt| add_points(context, &oods_point, &pt))
         .collect_vec();
 
-    let periodicity_sample_points_per_column =
-        column_periodicity_sample_points(config, &periodicity_sample_points_per_component);
-
     // Verify the values in `proof.trace_at_oods` and `proof.composition_eval_at_oods`.
     // Start by adding the values to the channel. Values belonging to cumulative sum columns are
     // added twice, once for the previous point and once for the OODS point.
-    let interaction_at_oods =
-        zip_eq(&proof.interaction_at_oods, &periodicity_sample_points_per_column)
-            .flat_map(|(interaction, opt_periodicity_sample_point)| {
-                if opt_periodicity_sample_point.is_some() {
-                    vec![interaction.at_prev, interaction.at_oods]
-                } else {
-                    context.mark_as_unused(interaction.at_prev);
-                    vec![interaction.at_oods]
-                }
-            })
-            .collect_vec();
+    let interaction_at_oods = proof
+        .interaction_at_oods
+        .iter()
+        .flat_map(|interaction| {
+            if let Some(interaction_at_prev) = interaction.at_prev {
+                vec![interaction_at_prev, interaction.at_oods]
+            } else {
+                vec![interaction.at_oods]
+            }
+        })
+        .collect_vec();
     channel.mix_qm31s(
         context,
         chain!(
@@ -171,6 +168,9 @@ pub fn verify<Value: IValue>(
     let bits = queries.bits.iter().map(|simd| Simd::unpack(context, simd)).collect_vec();
 
     let column_log_sizes_by_trace = column_log_sizes_by_trace(context, config, component_log_sizes);
+    let periodicity_sample_points_per_column =
+        column_periodicity_sample_points(config, &periodicity_sample_points_per_component);
+
     decommit_eval_domain_samples(
         context,
         config.n_queries(),
