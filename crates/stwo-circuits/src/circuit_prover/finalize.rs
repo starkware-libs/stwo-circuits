@@ -8,7 +8,13 @@ fn pad_qm31_ops(context: &mut Context<QM31>) {
     let qm31_ops_n_rows = context.circuit.add.len()
         + context.circuit.sub.len()
         + context.circuit.mul.len()
-        + context.circuit.pointwise_mul.len();
+        + context.circuit.pointwise_mul.len()
+        + context
+            .circuit
+            .permutation
+            .iter()
+            .map(|p| p.inputs.len() + p.outputs.len())
+            .sum::<usize>();
 
     let qm31_padding =
         std::cmp::max(qm31_ops_n_rows.next_power_of_two(), N_LANES) - qm31_ops_n_rows;
