@@ -7,10 +7,9 @@ use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::div;
 use crate::eval;
 use crate::examples::simple_air::{LOG_SIZE_LONG, LOG_SIZE_SHORT};
-use crate::stark_verifier::circle::denom_inverse;
 use crate::stark_verifier::constraint_eval::{CircuitEval, CompositionConstraintAccumulator};
 use crate::stark_verifier::logup::combine_term;
-use crate::stark_verifier::statement::{EvaluateArgs, Statement};
+use crate::stark_verifier::statement::Statement;
 
 pub struct SimpleStatement<Value: IValue> {
     log_component_sizes: Vec<u32>,
@@ -87,6 +86,10 @@ fn squared_fibonacci_public_logup_sum(
 }
 
 impl<Value: IValue> Statement<Value> for SimpleStatement<Value> {
+    fn get_components(&self) -> &[Box<dyn CircuitEval<Value>>] {
+        &self.components
+    }
+
     fn public_logup_sum(
         &self,
         context: &mut Context<Value>,
@@ -102,34 +105,5 @@ impl<Value: IValue> Statement<Value> for SimpleStatement<Value> {
             );
         }
         prev_sum
-    }
-
-    fn evaluate(&self, context: &mut Context<Value>, args: EvaluateArgs<'_>) -> Var {
-        let EvaluateArgs {
-            oods_samples,
-            pt,
-            log_domain_size,
-            composition_polynomial_coeff,
-            interaction_elements,
-            component_data,
-        } = args;
-
-        let mut evaluation_accumulator = CompositionConstraintAccumulator {
-            oods_samples,
-            composition_polynomial_coeff,
-            interaction_elements,
-            component_data,
-            accumulation: context.zero(),
-            terms: Vec::new(),
-        };
-
-        for component in &self.components {
-            component.evaluate(context, &mut evaluation_accumulator);
-        }
-
-        let final_evaluation = evaluation_accumulator.finalize();
-
-        let denom_inverse = denom_inverse(context, pt.x, log_domain_size);
-        eval!(context, (final_evaluation) * (denom_inverse))
     }
 }
