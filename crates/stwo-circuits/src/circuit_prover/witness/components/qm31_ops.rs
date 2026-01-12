@@ -1,8 +1,15 @@
+use num_traits::Zero;
+use rayon::slice::{ParallelSlice, ParallelSliceMut};
+
 use crate::circuit_air::components::qm31_ops::N_TRACE_COLUMNS;
 use crate::circuit_prover::witness::components::prelude::*;
 
 pub type InputType = [[M31; 4]; 3];
 pub type PackedInputType = [[PackedM31; 4]; 3];
+
+pub struct TraceGenerator {
+    pub first_permutation_row: usize,
+}
 
 /// Retrieves the component's inputs from the context values, using the addresses provided in the
 /// preprocessed trace.
@@ -12,25 +19,49 @@ pub fn extract_component_inputs(
     in1_address: &[usize],
     out_address: &[usize],
     context_values: &[QM31],
+    trace_generator: &TraceGenerator,
 ) -> Vec<InputType> {
-    let n_rows = in0_address.len();
-    assert_eq!(n_rows, in1_address.len());
-    assert_eq!(n_rows, out_address.len());
+    let first_permutation_row = trace_generator.first_permutation_row;
+    let n_total_rows = in0_address.len();
+    assert_eq!(n_total_rows, in1_address.len());
+    assert_eq!(n_total_rows, out_address.len());
+    assert!(first_permutation_row <= n_total_rows);
 
-    let mut inputs = Vec::with_capacity(n_rows);
+    let mut inputs = Vec::with_capacity(n_total_rows);
     unsafe {
-        inputs.set_len(n_rows);
+        inputs.set_len(n_total_rows);
     }
 
-    (inputs.par_iter_mut(), in0_address.par_iter(), in1_address.par_iter(), out_address.par_iter())
-        .into_par_iter()
-        .for_each(|(input, in0_address, in1_address, out_address)| {
-            *input = [
-                context_values[*in0_address].to_m31_array(),
-                context_values[*in1_address].to_m31_array(),
-                context_values[*out_address].to_m31_array(),
-            ];
-        });
+    // Handle non-permutation and permutation rows in parallel.
+    let (non_perm_inputs, perm_inputs) = inputs.split_at_mut(first_permutation_row);
+    let (non_perm_in0, _) = in0_address.split_at(first_permutation_row);
+    let (non_perm_in1, perm_in1) = in1_address.split_at(first_permutation_row);
+    let (non_perm_out, perm_out) = out_address.split_at(first_permutation_row);
+
+    rayon::join(
+        || {
+            // Handle non-permutation rows.
+            (non_perm_inputs, non_perm_in0, non_perm_in1, non_perm_out).into_par_iter().for_each(
+                |(input, in0_address, in1_address, out_address)| {
+                    *input = [in0_address, in1_address, out_address]
+                        .map(|address| context_values[*address].to_m31_array());
+                },
+            );
+        },
+        || {
+            // Handle permutation rows in chunks of 2. The in0 address is always 0.
+            let zero = QM31::zero().to_m31_array();
+            (perm_inputs.par_chunks_mut(2), perm_in1.par_chunks(2), perm_out.par_chunks(2))
+                .into_par_iter()
+                .for_each(|(input_chunk, in1_chunk, out_chunk)| {
+                    let input_value = context_values[in1_chunk[0]].to_m31_array();
+                    input_chunk[0] = [zero, input_value, input_value];
+
+                    let output_value = context_values[out_chunk[1]].to_m31_array();
+                    input_chunk[1] = [zero, output_value, output_value];
+                });
+        },
+    );
 
     inputs
 }
@@ -39,6 +70,7 @@ pub fn write_trace(
     context_values: &[QM31],
     preprocessed_trace: &PreProcessedTrace,
     tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, Blake2sM31MerkleChannel>,
+    trace_generator: &TraceGenerator,
 ) -> (ComponentLogSize, LookupData) {
     let add_flag =
         preprocessed_trace.get_column(&PreProcessedColumnId { id: "qm31_ops_add_flag".to_owned() });
@@ -57,7 +89,13 @@ pub fn write_trace(
     let mults =
         preprocessed_trace.get_column(&PreProcessedColumnId { id: "qm31_ops_mults".to_owned() });
 
-    let inputs = extract_component_inputs(in0_address, in1_address, out_address, context_values);
+    let inputs = extract_component_inputs(
+        in0_address,
+        in1_address,
+        out_address,
+        context_values,
+        trace_generator,
+    );
 
     let n_rows = inputs.len();
     assert_ne!(n_rows, 0);
