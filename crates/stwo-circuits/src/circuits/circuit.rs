@@ -291,6 +291,7 @@ impl Circuit {
         let mut n_yields = vec![0; self.n_vars];
 
         for gate in self.all_gates() {
+            println!("gate: {:?}", gate);
             for use_var in gate.uses() {
                 n_uses[use_var] += 1;
             }

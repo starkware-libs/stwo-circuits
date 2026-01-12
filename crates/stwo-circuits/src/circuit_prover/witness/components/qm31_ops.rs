@@ -1,8 +1,14 @@
+use num_traits::Zero;
+
 use crate::circuit_air::components::qm31_ops::N_TRACE_COLUMNS;
 use crate::circuit_prover::witness::components::prelude::*;
 
 pub type InputType = [[M31; 4]; 3];
 pub type PackedInputType = [[PackedM31; 4]; 3];
+
+pub struct TraceGenerator {
+    pub n_non_permutation_rows: usize,
+}
 
 /// Retrieves the component's inputs from the context values, using the addresses provided in the
 /// preprocessed trace.
@@ -12,17 +18,26 @@ pub fn extract_component_inputs(
     in1_address: &[usize],
     out_address: &[usize],
     context_values: &[QM31],
+    trace_generator: &TraceGenerator,
 ) -> Vec<InputType> {
-    let n_rows = in0_address.len();
-    assert_eq!(n_rows, in1_address.len());
-    assert_eq!(n_rows, out_address.len());
+    let n_non_permutation_rows = trace_generator.n_non_permutation_rows;
+    let n_total_rows = in0_address.len();
+    assert_eq!(n_total_rows, in1_address.len());
+    assert_eq!(n_total_rows, out_address.len());
+    assert!(n_non_permutation_rows <= n_total_rows);
 
-    let mut inputs = Vec::with_capacity(n_rows);
+    let mut inputs = Vec::with_capacity(n_total_rows);
     unsafe {
-        inputs.set_len(n_rows);
+        inputs.set_len(n_total_rows);
     }
 
-    (inputs.par_iter_mut(), in0_address.par_iter(), in1_address.par_iter(), out_address.par_iter())
+    // Handle non-permutation rows.
+    (
+        inputs[..n_non_permutation_rows].par_iter_mut(),
+        in0_address[..n_non_permutation_rows].par_iter(),
+        in1_address[..n_non_permutation_rows].par_iter(),
+        out_address[..n_non_permutation_rows].par_iter(),
+    )
         .into_par_iter()
         .for_each(|(input, in0_address, in1_address, out_address)| {
             *input = [
@@ -32,6 +47,26 @@ pub fn extract_component_inputs(
             ];
         });
 
+    // Handle permutation rows.
+    (
+        inputs[n_non_permutation_rows..].par_iter_mut(),
+        in0_address[n_non_permutation_rows..].par_iter(),
+        in1_address[n_non_permutation_rows..].par_iter(),
+        out_address[n_non_permutation_rows..].par_iter(),
+    )
+        .into_par_iter()
+        .for_each(|(input, in0_address, in1_address, out_address)| {
+            let zero = context_values[*in0_address]; // Always 0.
+            assert_eq!(zero, QM31::zero());
+            // Sort addresses: smallest is real, largest is permutation.
+            let real_address = in1_address.min(out_address);
+            let permutation_address = in1_address.max(out_address);
+            assert!(*permutation_address >= context_values.len());
+
+            let value = context_values[*real_address];
+            *input = [zero.to_m31_array(), value.to_m31_array(), value.to_m31_array()];
+        });
+
     inputs
 }
 
@@ -39,6 +74,7 @@ pub fn write_trace(
     context_values: &[QM31],
     preprocessed_trace: &PreProcessedTrace,
     tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, Blake2sM31MerkleChannel>,
+    trace_generator: &TraceGenerator,
 ) -> (ComponentLogSize, LookupData) {
     let add_flag =
         preprocessed_trace.get_column(&PreProcessedColumnId { id: "qm31_ops_add_flag".to_owned() });
@@ -57,7 +93,13 @@ pub fn write_trace(
     let mults =
         preprocessed_trace.get_column(&PreProcessedColumnId { id: "qm31_ops_mults".to_owned() });
 
-    let inputs = extract_component_inputs(in0_address, in1_address, out_address, context_values);
+    let inputs = extract_component_inputs(
+        in0_address,
+        in1_address,
+        out_address,
+        context_values,
+        &trace_generator,
+    );
 
     let n_rows = inputs.len();
     assert_ne!(n_rows, 0);

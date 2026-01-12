@@ -40,7 +40,10 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     let pcs_config = PcsConfig::default();
 
     // Generate preprocessed trace.
-    let preprocessed_trace = PreProcessedTrace::generate_preprocessed_trace(&context.circuit);
+    let (preprocessed_trace, trace_generator) =
+        PreProcessedTrace::generate_preprocessed_trace(&context.circuit);
+    println!("preprocessed_trace: {:?}", preprocessed_trace.ids());
+    println!("preprocessed_trace: {:?}", preprocessed_trace.columns);
 
     // The trace size is the size of the largest column in the preprocessed trace (since all
     // components have preprocessed columns).
@@ -74,7 +77,7 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     // Base trace.
     let mut tree_builder = commitment_scheme.tree_builder();
     let (claim, interaction_generator) =
-        write_trace(context.values(), &preprocessed_trace, &mut tree_builder);
+        write_trace(context.values(), &preprocessed_trace, &mut tree_builder, &trace_generator);
     claim.mix_into(channel);
     tree_builder.commit(channel);
 
