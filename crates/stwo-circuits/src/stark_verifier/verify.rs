@@ -1,4 +1,4 @@
-use itertools::{Itertools, chain, izip, zip_eq};
+use itertools::{Itertools, chain, izip};
 use stwo::core::circle::CirclePoint;
 
 use crate::circuits::context::{Context, Var};
@@ -8,7 +8,7 @@ use crate::circuits::simd::Simd;
 use crate::eval;
 use crate::stark_verifier::channel::Channel;
 use crate::stark_verifier::circle::{add_points, generator_point};
-use crate::stark_verifier::constraint_eval::{ComponentData, compute_composition_polynomial};
+use crate::stark_verifier::constraint_eval::compute_composition_polynomial;
 use crate::stark_verifier::extract_bits::extract_bits;
 use crate::stark_verifier::fri::{fri_commit, fri_decommit};
 use crate::stark_verifier::merkle::decommit_eval_domain_samples;
@@ -103,9 +103,8 @@ pub fn verify<Value: IValue>(
             log_domain_size: config.log_trace_size(),
             composition_polynomial_coeff,
             interaction_elements: [interaction_z, interaction_alpha],
-            component_data: &zip_eq(&proof.claimed_sums, &unpacked_component_sizes)
-                .map(|(&claimed_sum, &n_instances)| ComponentData { claimed_sum, n_instances })
-                .collect_vec(),
+            claimed_sums: &proof.claimed_sums,
+            component_log_sizes: &unpacked_component_sizes,
         },
     );
     let expected_composition_eval = extract_expected_composition_eval(
