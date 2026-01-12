@@ -29,9 +29,6 @@ pub trait Statement<Value: IValue> {
 
     /// Computes the part of the logup sum that is determined by the (public) statement rather than
     /// by the witness.
-    fn public_logup_sum(
-        &self,
-        context: &mut Context<Value>,
-        interaction_elements: [Var; 2],
-    ) -> Var;
+    fn public_logup_sum(&self, context: &mut Context<Value>, interaction_elements: [Var; 2])
+    -> Var;
 }

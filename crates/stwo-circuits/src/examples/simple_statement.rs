@@ -12,29 +12,24 @@ use crate::stark_verifier::constraint_eval::{CircuitEval, CompositionConstraintA
 use crate::stark_verifier::logup::combine_term;
 use crate::stark_verifier::statement::{EvaluateArgs, Statement};
 
-pub struct SimpleStatement {
-    pub long_fib_component: SquaredFibonacciComponent,
-    pub short_fib_component: SquaredFibonacciComponent,
+pub struct SimpleStatement<Value: IValue> {
+    log_component_sizes: Vec<u32>,
+    components: Vec<Box<dyn CircuitEval<Value>>>,
 }
 
-impl Default for SimpleStatement {
+impl<Value: IValue> Default for SimpleStatement<Value> {
     fn default() -> Self {
         Self {
-            long_fib_component: SquaredFibonacciComponent {
-                log_n_instances: LOG_SIZE_LONG,
-                preprocessed_column_idx: 1,
-            },
-            short_fib_component: SquaredFibonacciComponent {
-                log_n_instances: LOG_SIZE_SHORT,
-                preprocessed_column_idx: 0,
-            },
+            log_component_sizes: vec![LOG_SIZE_LONG, LOG_SIZE_SHORT],
+            components: vec![
+                Box::new(SquaredFibonacciComponent { preprocessed_column_idx: 1 }),
+                Box::new(SquaredFibonacciComponent { preprocessed_column_idx: 0 }),
+            ],
         }
     }
 }
 
 pub struct SquaredFibonacciComponent {
-    // TODO(ilya): Take this from the proof instead of the component.
-    pub log_n_instances: u32,
     pub preprocessed_column_idx: usize,
 }
 impl<Value: IValue> CircuitEval<Value> for SquaredFibonacciComponent {
@@ -61,48 +56,52 @@ impl<Value: IValue> CircuitEval<Value> for SquaredFibonacciComponent {
     }
 }
 
-impl SquaredFibonacciComponent {
-    fn public_logup_sum(
-        &self,
-        context: &mut Context<impl IValue>,
-        prev_sum: Var,
-        interaction_elements: [Var; 2],
-    ) -> Var {
-        let mut sum = prev_sum;
-        for j in 0..(1 << self.log_n_instances) {
-            let mut a: M31 = M31::one();
-            let mut b: M31 = j.into();
-            for _ in 0..(FIB_SEQUENCE_LENGTH - 2) {
-                (a, b) = (b, a * a + b * b + M31::from(j));
-            }
-            let elements = [context.constant(a.into()), context.constant(b.into())];
-            let denom1 = combine_term(context, &elements, interaction_elements);
-
-            let denom = eval!(context, (denom1) * (denom1));
-            let numerator = eval!(context, (denom1) + (denom1));
-
-            let frac0 = div(context, numerator, denom);
-            let frac1 = div(context, context.one(), denom1);
-            let frac = eval!(context, (frac0) + (frac1));
-
-            // Note that the sum is negated because we want to use the values that are yielded in
-            // the witness.
-            sum = eval!(context, (sum) - (frac));
+fn squared_fibonacci_public_logup_sum(
+    context: &mut Context<impl IValue>,
+    prev_sum: Var,
+    interaction_elements: [Var; 2],
+    log_n_instances: u32,
+) -> Var {
+    let mut sum = prev_sum;
+    for j in 0..(1 << log_n_instances) {
+        let mut a: M31 = M31::one();
+        let mut b: M31 = j.into();
+        for _ in 0..(FIB_SEQUENCE_LENGTH - 2) {
+            (a, b) = (b, a * a + b * b + M31::from(j));
         }
-        sum
+        let elements = [context.constant(a.into()), context.constant(b.into())];
+        let denom1 = combine_term(context, &elements, interaction_elements);
+
+        let denom = eval!(context, (denom1) * (denom1));
+        let numerator = eval!(context, (denom1) + (denom1));
+
+        let frac0 = div(context, numerator, denom);
+        let frac1 = div(context, context.one(), denom1);
+        let frac = eval!(context, (frac0) + (frac1));
+
+        // Note that the sum is negated because we want to use the values that are yielded in
+        // the witness.
+        sum = eval!(context, (sum) - (frac));
     }
+    sum
 }
 
-impl<Value: IValue> Statement<Value> for SimpleStatement {
+impl<Value: IValue> Statement<Value> for SimpleStatement<Value> {
     fn public_logup_sum(
         &self,
         context: &mut Context<Value>,
         interaction_elements: [Var; 2],
     ) -> Var {
-        let prev_sum = context.zero();
-        let prev_sum =
-            self.long_fib_component.public_logup_sum(context, prev_sum, interaction_elements);
-        self.short_fib_component.public_logup_sum(context, prev_sum, interaction_elements)
+        let mut prev_sum = context.zero();
+        for log_n_instances in &self.log_component_sizes {
+            prev_sum = squared_fibonacci_public_logup_sum(
+                context,
+                prev_sum,
+                interaction_elements,
+                *log_n_instances,
+            );
+        }
+        prev_sum
     }
 
     fn evaluate(&self, context: &mut Context<Value>, args: EvaluateArgs<'_>) -> Var {
@@ -124,7 +123,7 @@ impl<Value: IValue> Statement<Value> for SimpleStatement {
             terms: Vec::new(),
         };
 
-        for component in [&self.long_fib_component, &self.short_fib_component] {
+        for component in &self.components {
             component.evaluate(context, &mut evaluation_accumulator);
         }
 
