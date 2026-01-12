@@ -1,4 +1,4 @@
-use crate::circuit_air::components::prelude::*;
+use crate::{circuit_air::components::prelude::*, circuits::context::Var};
 
 pub const N_PREPROCESSED_COLUMNS: usize = 2;
 pub const N_TRACE_COLUMNS: usize = 8;
@@ -83,13 +83,17 @@ impl<Value: IValue> CircuitEval<Value> for CircuitEqComponent {
     fn evaluate(
         &self,
         context: &mut Context<Value>,
+        trace_columns: &[Var],
         acc: &mut CompositionConstraintAccumulator<'_>,
     ) {
         let [in0_address, in1_address] = acc
             .get_preprocessed_columns::<N_PREPROCESSED_COLUMNS>(self.preprocessed_column_indices);
 
         let [in0_col0, in0_col1, in0_col2, in0_col3, in1_col4, in1_col5, in1_col6, in1_col7] =
-            acc.get_trace::<N_TRACE_COLUMNS>();
+            *trace_columns
+        else {
+            panic!("Expected {} trace columns", N_TRACE_COLUMNS)
+        };
 
         // in0 col 0 equals in1 col 4.
         let constraint0_val = eval!(context, (in0_col0) - (in1_col4));
@@ -117,7 +121,5 @@ impl<Value: IValue> CircuitEval<Value> for CircuitEqComponent {
             context.one(),
             &[in1_address, in1_col4, in1_col5, in1_col6, in1_col7],
         );
-
-        acc.finalize_logup_in_pairs(context);
     }
 }

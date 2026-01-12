@@ -6,8 +6,9 @@ use crate::stark_verifier::circle::denom_inverse;
 use crate::stark_verifier::logup::{
     LogupTerm, logup_term, pair_logup_constraint, single_logup_constraint,
 };
-use crate::stark_verifier::statement::{EvaluateArgs, OodsSamples};
-use itertools::Itertools;
+use crate::stark_verifier::proof::{InteractionAtOods, ProofConfig};
+use crate::stark_verifier::statement::EvaluateArgs;
+use itertools::{Itertools, izip};
 use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
 
 // Data accosiated with a specific compoonent.
@@ -28,7 +29,7 @@ pub struct ComponentData {
 pub struct CompositionConstraintAccumulator<'a> {
     /// The OODS samples for the preprocessed columns, trace, and interaction.
     /// Each component will consume a subset of these samples.
-    pub oods_samples: OodsSamples<'a>,
+    pub preprocessed_columns: &'a [Var],
     /// The random coefficient for the composition polynomial.
     pub composition_polynomial_coeff: Var,
     /// The interaction elements for the logup sums constraint.
@@ -52,8 +53,6 @@ impl CompositionConstraintAccumulator<'_> {
     ///
     /// Panics if not all expected samples/claimed sums have been consumed.
     pub fn finalize(self) -> Var {
-        assert!(self.oods_samples.trace.is_empty(), "unconsumed trace OODS samples");
-        assert!(self.oods_samples.interaction.is_empty(), "unconsumed interaction OODS samples");
         assert!(self.component_data.is_empty(), "unconsumed component data");
 
         self.accumulation
@@ -63,17 +62,7 @@ impl CompositionConstraintAccumulator<'_> {
         &mut self,
         preprocessed_column_indices: [usize; N_PP_COLUMNS],
     ) -> [Var; N_PP_COLUMNS] {
-        std::array::from_fn(|idx| {
-            self.oods_samples.preprocessed_columns[preprocessed_column_indices[idx]]
-        })
-    }
-
-    pub fn get_trace<const N_TRACE_COLUMNS: usize>(&mut self) -> [Var; N_TRACE_COLUMNS] {
-        if let Some(vec) = self.oods_samples.trace.split_off(..N_TRACE_COLUMNS) {
-            vec.try_into().unwrap()
-        } else {
-            panic!("Expected {N_TRACE_COLUMNS} trace values")
-        }
+        std::array::from_fn(|idx| self.preprocessed_columns[preprocessed_column_indices[idx]])
     }
 
     pub fn add_constraint(
@@ -93,15 +82,20 @@ impl CompositionConstraintAccumulator<'_> {
         self.terms.push(logup_term(context, self.interaction_elements, numerator, element));
     }
 
-    pub fn finalize_logup_in_pairs(&mut self, context: &mut Context<impl IValue>) {
+    pub fn finalize_logup_in_pairs(
+        &mut self,
+        context: &mut Context<impl IValue>,
+        interaction_columns: &[InteractionAtOods<Var>],
+    ) {
         // TODO(Gali): Get the terms from the component instead of storing them in the accumulator.
         let n_batches = self.terms.len().div_ceil(2);
-        let n_interacion_columns = n_batches * SECURE_EXTENSION_DEGREE;
-        let Some(interaction_columns) =
-            self.oods_samples.interaction.split_off(..n_interacion_columns)
-        else {
-            panic!("Expected {n_interacion_columns} interaction values");
-        };
+        assert_eq!(
+            n_batches * SECURE_EXTENSION_DEGREE,
+            interaction_columns.len(),
+            "Expected {} interaction columns",
+            n_batches * SECURE_EXTENSION_DEGREE
+        );
+
         let (prev_logup_sums, cur_logup_sums): (Vec<Var>, Vec<Var>) = interaction_columns
             .iter()
             .chunks(SECURE_EXTENSION_DEGREE)
@@ -169,17 +163,27 @@ pub trait CircuitEval<Value: IValue> {
     fn evaluate(
         &self,
         context: &mut Context<Value>,
+        trace_columns: &[Var],
         acc: &mut CompositionConstraintAccumulator<'_>,
     );
 }
 
+pub fn get_n_columns<'a, T>(columns: &mut &'a [T], n: usize) -> &'a [T] {
+    if let Some(vec) = columns.split_off(..n) {
+        vec.try_into().unwrap()
+    } else {
+        panic!("Expected {n} columns")
+    }
+}
+
 pub fn compute_composition_polynomial<Value: IValue>(
     context: &mut Context<Value>,
+    config: &ProofConfig,
     components: &[Box<dyn CircuitEval<Value>>],
     args: EvaluateArgs<'_>,
 ) -> Var {
     let EvaluateArgs {
-        oods_samples,
+        mut oods_samples,
         pt,
         log_domain_size,
         composition_polynomial_coeff,
@@ -188,7 +192,7 @@ pub fn compute_composition_polynomial<Value: IValue>(
     } = args;
 
     let mut evaluation_accumulator = CompositionConstraintAccumulator {
-        oods_samples,
+        preprocessed_columns: oods_samples.preprocessed_columns,
         composition_polynomial_coeff,
         interaction_elements,
         component_data,
@@ -196,8 +200,17 @@ pub fn compute_composition_polynomial<Value: IValue>(
         terms: Vec::new(),
     };
 
-    for component in components {
-        component.evaluate(context, &mut evaluation_accumulator);
+    for (component, n_trace_columns_in_component, n_interaction_columns_in_component) in izip!(
+        components,
+        &config.trace_columns_per_component,
+        &config.interaction_columns_per_component
+    ) {
+        let trace_columns = get_n_columns(&mut oods_samples.trace, *n_trace_columns_in_component);
+        let interaction_columns =
+            get_n_columns(&mut oods_samples.interaction, *n_interaction_columns_in_component);
+        component.evaluate(context, trace_columns, &mut evaluation_accumulator);
+
+        evaluation_accumulator.finalize_logup_in_pairs(context, interaction_columns);
     }
 
     let final_evaluation = evaluation_accumulator.finalize();
