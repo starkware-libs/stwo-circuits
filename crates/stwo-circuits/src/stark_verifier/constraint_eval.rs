@@ -34,8 +34,6 @@ pub struct CompositionConstraintAccumulator<'a> {
     pub composition_polynomial_coeff: Var,
     /// The interaction elements for the logup sums constraint.
     pub interaction_elements: [Var; 2],
-    /// The data associated with each component.
-    pub component_data: &'a [ComponentData],
     /// Running accumulator over constraint evaluations at the OODS point and the previous point.
     pub accumulation: Var,
     pub terms: Vec<LogupTerm>,
@@ -53,8 +51,6 @@ impl CompositionConstraintAccumulator<'_> {
     ///
     /// Panics if not all expected samples/claimed sums have been consumed.
     pub fn finalize(self) -> Var {
-        assert!(self.component_data.is_empty(), "unconsumed component data");
-
         self.accumulation
     }
 
@@ -86,6 +82,7 @@ impl CompositionConstraintAccumulator<'_> {
         &mut self,
         context: &mut Context<impl IValue>,
         interaction_columns: &[InteractionAtOods<Var>],
+        ComponentData { claimed_sum, n_instances }: &ComponentData,
     ) {
         // TODO(Gali): Get the terms from the component instead of storing them in the accumulator.
         let n_batches = self.terms.len().div_ceil(2);
@@ -131,10 +128,7 @@ impl CompositionConstraintAccumulator<'_> {
             [prev_logup_sums[n_batches - 1], cur_logup_sums[n_batches - 1]];
 
         let diff = eval!(context, ((cur_cumsum) - (prev_row_cumsum)) - (prev_col_cumsum));
-
-        let &ComponentData { claimed_sum, n_instances } =
-            self.component_data.split_off_first().unwrap();
-        let cumsum_shift = div(context, claimed_sum, n_instances);
+        let cumsum_shift = div(context, *claimed_sum, *n_instances);
         // Instead of checking diff = num / denom, check diff = num / denom - cumsum_shift.
         // This makes (num / denom - cumsum_shift) have sum zero, which makes the constraint
         // uniform - apply on all rows.
@@ -184,14 +178,13 @@ pub fn compute_composition_polynomial<Value: IValue>(
         log_domain_size,
         composition_polynomial_coeff,
         interaction_elements,
-        component_data,
+        mut component_data,
     } = args;
 
     let mut evaluation_accumulator = CompositionConstraintAccumulator {
         preprocessed_columns: oods_samples.preprocessed_columns,
         composition_polynomial_coeff,
         interaction_elements,
-        component_data,
         accumulation: context.zero(),
         terms: Vec::new(),
     };
@@ -206,7 +199,13 @@ pub fn compute_composition_polynomial<Value: IValue>(
             get_n_columns(&mut oods_samples.interaction, *n_interaction_columns_in_component);
         component.evaluate(context, trace_columns, &mut evaluation_accumulator);
 
-        evaluation_accumulator.finalize_logup_in_pairs(context, interaction_columns);
+        let cur_component_data = component_data.split_off_first().unwrap();
+
+        evaluation_accumulator.finalize_logup_in_pairs(
+            context,
+            interaction_columns,
+            cur_component_data,
+        );
     }
 
     assert!(oods_samples.trace.is_empty(), "unconsumed trace columns");
