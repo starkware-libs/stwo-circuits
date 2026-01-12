@@ -1,4 +1,6 @@
-use crate::circuits::circuit::Circuit;
+use crate::circuit_prover::witness::components::qm31_ops;
+use crate::circuit_prover::witness::trace::TraceGenerator;
+use crate::circuits::circuit::{Circuit, Permutation};
 use crate::circuits::circuit::{Eq, Gate};
 use itertools::Itertools;
 use std::collections::HashMap;
@@ -42,10 +44,10 @@ fn fill_binary_op_columns<G: Gate>(
     multiplicities: &[usize],
     columns: &mut [Vec<usize>; N_QM31_OPS_PP_COLUMNS],
 ) {
+    let op_code_idx = op_code as usize;
     for gate in gates.iter() {
         let [in0, in1] = gate.uses()[..] else { panic!("Expected 2 uses for gate") };
         let [out] = gate.yields()[..] else { panic!("Expected 1 yield for gate") };
-        let op_code_idx = op_code as usize;
         (0..N_OP_CODES).for_each(|i| {
             columns[i].push(if i == op_code_idx { 1 } else { 0 });
         });
@@ -54,6 +56,55 @@ fn fill_binary_op_columns<G: Gate>(
         columns[6].push(out);
         // TODO(Gali): Consider negating the multiplicities.
         columns[7].push(multiplicities[out]);
+    }
+}
+
+/// Implements a permutation gate with n inputs and n outputs using 2n Add gates.
+///
+/// Process:
+/// 1. First n gates: Write inputs to permutation wire
+///    - `permutation_wire = Add(0, input_i)` for each input i
+/// 2. Next n gates: Read outputs from permutation wire
+///    - `output_i = Add(0, permutation_wire)` for each output i
+///
+/// The permutation wire acts as a shared buffer holding all input values.
+fn fill_permutation_columns(
+    gates: &[Permutation],
+    multiplicities: &[usize],
+    columns: &mut [Vec<usize>; N_QM31_OPS_PP_COLUMNS],
+    first_unused_address: usize,
+) {
+    let add_op_code_idx = OpCode::Add as usize;
+    let mut permutation_address = first_unused_address;
+    for gate in gates.iter() {
+        let inputs = gate.uses();
+        let outputs = gate.yields();
+        assert_eq!(
+            inputs.len(),
+            outputs.len(),
+            "Expected same number of inputs and outputs for permutation gate"
+        );
+        (0..N_OP_CODES).for_each(|i| {
+            columns[i].extend(std::iter::repeat_n(
+                (i == add_op_code_idx) as usize,
+                inputs.len() + outputs.len(),
+            ));
+        });
+
+        for input in inputs.iter() {
+            columns[4].push(0);
+            columns[5].push(*input);
+            columns[6].push(permutation_address);
+            columns[7].push(1);
+        }
+        for output in outputs.iter() {
+            columns[4].push(0);
+            columns[5].push(permutation_address);
+            columns[6].push(*output);
+            columns[7].push(multiplicities[*output]);
+        }
+
+        permutation_address += 1;
     }
 }
 
@@ -74,9 +125,8 @@ fn add_qm31_ops_to_preprocessed_trace(
     circuit: &Circuit,
     multiplicities: Vec<usize>,
     pp_trace: &mut PreProcessedTrace,
-) {
-    let Circuit { n_vars: _, add, sub, mul, pointwise_mul, eq: _, blake: _, permutation: _ } =
-        circuit;
+) -> qm31_ops::TraceGenerator {
+    let Circuit { n_vars, add, sub, mul, pointwise_mul, eq: _, blake: _, permutation } = circuit;
     let mut qm31_ops_columns: [_; N_QM31_OPS_PP_COLUMNS] = std::array::from_fn(|_| vec![]);
     fill_binary_op_columns(add, OpCode::Add, &multiplicities, &mut qm31_ops_columns);
     fill_binary_op_columns(sub, OpCode::Sub, &multiplicities, &mut qm31_ops_columns);
@@ -87,6 +137,10 @@ fn add_qm31_ops_to_preprocessed_trace(
         &multiplicities,
         &mut qm31_ops_columns,
     );
+    let qm31_ops_trace_generator =
+        qm31_ops::TraceGenerator { first_permutation_row: qm31_ops_columns[4].len() };
+
+    fill_permutation_columns(permutation, &multiplicities, &mut qm31_ops_columns, *n_vars);
 
     let n_columns = pp_trace.columns.len();
     pp_trace.column_indices.extend([
@@ -100,6 +154,7 @@ fn add_qm31_ops_to_preprocessed_trace(
         (PreProcessedColumnId { id: "qm31_ops_mults".to_owned() }, n_columns + 7),
     ]);
     pp_trace.columns.extend(qm31_ops_columns);
+    qm31_ops_trace_generator
 }
 
 /// Adds the preprocessed columns of eq component to the preprocessed trace. If the component
@@ -130,25 +185,31 @@ fn add_eq_to_preprocessed_trace(circuit: &Circuit, pp_trace: &mut PreProcessedTr
 /// A collection of preprocessed columns, whose values are publicly acknowledged, and independent of
 /// the proof.
 pub struct PreProcessedTrace {
-    columns: Vec<Vec<usize>>,
+    pub columns: Vec<Vec<usize>>,
     column_indices: HashMap<PreProcessedColumnId, usize>,
 }
 
 impl PreProcessedTrace {
     /// Generates the preprocessed trace for the circuit, assuming it is already finalized.
-    pub fn generate_preprocessed_trace(circuit: &Circuit) -> Self {
+    pub fn generate_preprocessed_trace(circuit: &Circuit) -> (Self, TraceGenerator) {
         let mut pp_trace = Self { columns: vec![], column_indices: HashMap::new() };
-        let multiplicities = circuit.compute_multiplicities().0;
+
+        // Fix multiplicities for the permutation gates.
+        let mut multiplicities = circuit.compute_multiplicities().0;
+        let additional_zero_multiplicity: usize =
+            circuit.permutation.iter().map(|gate| gate.inputs.len() + gate.outputs.len()).sum();
+        multiplicities[0] += additional_zero_multiplicity;
 
         // Add Eq columns.
         add_eq_to_preprocessed_trace(circuit, &mut pp_trace);
 
         // Add QM31 operations columns.
-        add_qm31_ops_to_preprocessed_trace(circuit, multiplicities, &mut pp_trace);
+        let qm31_ops_trace_generator =
+            add_qm31_ops_to_preprocessed_trace(circuit, multiplicities, &mut pp_trace);
 
         // TODO(Gali): Add Blake columns.
 
-        pp_trace
+        (pp_trace, TraceGenerator { qm31_ops_trace_generator })
     }
 
     pub fn log_sizes(&self) -> Vec<u32> {

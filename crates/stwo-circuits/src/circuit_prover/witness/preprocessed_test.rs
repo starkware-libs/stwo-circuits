@@ -22,7 +22,7 @@ fn test_generate_preprocessed_trace() {
     // TODO(Gali): Add blake gates
 
     let preprocessed_trace =
-        PreProcessedTrace::generate_preprocessed_trace(&circuit).get_trace::<SimdBackend>();
+        PreProcessedTrace::generate_preprocessed_trace(&circuit).0.get_trace::<SimdBackend>();
 
     assert_eq!(preprocessed_trace.len(), 10);
     assert_eq!(preprocessed_trace[0].values.len(), 2);
