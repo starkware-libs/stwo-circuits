@@ -90,6 +90,7 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
         interaction_claim.claimed_sums.to_vec(),
     );
     let proof_vars = proof.guess(&mut context);
+
     crate::stark_verifier::verify::verify(
         &mut context,
         &proof_vars,
