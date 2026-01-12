@@ -8,7 +8,7 @@ use crate::circuits::simd::Simd;
 use crate::eval;
 use crate::stark_verifier::channel::Channel;
 use crate::stark_verifier::circle::{add_points, generator_point};
-use crate::stark_verifier::constraint_eval::ComponentData;
+use crate::stark_verifier::constraint_eval::{ComponentData, compute_composition_polynomial};
 use crate::stark_verifier::extract_bits::extract_bits;
 use crate::stark_verifier::fri::{fri_commit, fri_decommit};
 use crate::stark_verifier::merkle::decommit_eval_domain_samples;
@@ -89,8 +89,9 @@ pub fn verify<Value: IValue>(
 
     // Compute the composition evaluation at the OODS point from `proof.*_at_oods` and compare
     // to `proof.composition_eval_at_oods`.
-    let composition_eval = statement.evaluate(
+    let composition_eval = compute_composition_polynomial(
         context,
+        statement.get_components(),
         EvaluateArgs {
             oods_samples: OodsSamples {
                 preprocessed_columns: &proof.preprocessed_columns_at_oods,

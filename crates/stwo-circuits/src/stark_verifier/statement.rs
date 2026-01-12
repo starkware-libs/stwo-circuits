@@ -2,7 +2,7 @@ use stwo::core::circle::CirclePoint;
 
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
-use crate::stark_verifier::constraint_eval::ComponentData;
+use crate::stark_verifier::constraint_eval::{CircuitEval, ComponentData};
 use crate::stark_verifier::proof::InteractionAtOods;
 
 /// Values at the OODS point (and its previous point where applicable).
@@ -23,9 +23,8 @@ pub struct EvaluateArgs<'a> {
 
 /// Represents an AIR and its public inputs.
 pub trait Statement<Value: IValue> {
-    /// Evaluates the composition polynomial at the OODS point (after dividing by the domain
-    /// polynomial).
-    fn evaluate(&self, context: &mut Context<Value>, args: EvaluateArgs<'_>) -> Var;
+    /// Returns the components of the statement.
+    fn get_components(&self) -> &[Box<dyn CircuitEval<Value>>];
 
     /// Computes the part of the logup sum that is determined by the (public) statement rather than
     /// by the witness.
