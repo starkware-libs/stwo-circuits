@@ -91,6 +91,7 @@ pub fn verify<Value: IValue>(
     // to `proof.composition_eval_at_oods`.
     let composition_eval = compute_composition_polynomial(
         context,
+        config,
         statement.get_components(),
         EvaluateArgs {
             oods_samples: OodsSamples {

@@ -35,10 +35,11 @@ impl<Value: IValue> CircuitEval<Value> for SquaredFibonacciComponent {
     fn evaluate(
         &self,
         context: &mut Context<Value>,
+        trace_columns: &[Var],
         acc: &mut CompositionConstraintAccumulator<'_>,
     ) {
         let [const_val] = acc.get_preprocessed_columns::<1>([self.preprocessed_column_idx]);
-        let [a, b, c, d] = acc.get_trace::<4>();
+        let [a, b, c, d] = *trace_columns else { panic!("Expected 4 trace columns") };
 
         // Constraints.
         let constraint0_val = eval!(context, (c) - ((((a) * (a)) + ((b) * (b))) + (const_val)));
@@ -51,7 +52,6 @@ impl<Value: IValue> CircuitEval<Value> for SquaredFibonacciComponent {
         acc.add_to_relation(context, context.one(), &[c, d]);
         acc.add_to_relation(context, context.one(), &[c, d]);
         acc.add_to_relation(context, context.one(), &[c, d]);
-        acc.finalize_logup_in_pairs(context);
     }
 }
 
