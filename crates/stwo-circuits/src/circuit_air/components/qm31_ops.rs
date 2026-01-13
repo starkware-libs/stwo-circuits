@@ -136,7 +136,7 @@ impl<Value: IValue> CircuitEval<Value> for CircuitQm31OpsComponent {
     fn evaluate(
         &self,
         context: &mut Context<Value>,
-        trace_columns: &[Var],
+        component_data: &ComponentData<'_>,
         acc: &mut CompositionConstraintAccumulator<'_>,
     ) {
         let [
@@ -164,7 +164,7 @@ impl<Value: IValue> CircuitEval<Value> for CircuitQm31OpsComponent {
             out_col9,
             out_col10,
             out_col11,
-        ] = *trace_columns
+        ] = *component_data.trace_columns
         else {
             panic!("Expected {N_TRACE_COLUMNS} trace columns")
         };

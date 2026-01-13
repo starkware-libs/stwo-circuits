@@ -7,7 +7,9 @@ use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::div;
 use crate::eval;
 use crate::examples::simple_air::{LOG_SIZE_LONG, LOG_SIZE_SHORT};
-use crate::stark_verifier::constraint_eval::{CircuitEval, CompositionConstraintAccumulator};
+use crate::stark_verifier::constraint_eval::{
+    CircuitEval, ComponentData, CompositionConstraintAccumulator,
+};
 use crate::stark_verifier::logup::combine_term;
 use crate::stark_verifier::statement::Statement;
 
@@ -35,11 +37,13 @@ impl<Value: IValue> CircuitEval<Value> for SquaredFibonacciComponent {
     fn evaluate(
         &self,
         context: &mut Context<Value>,
-        trace_columns: &[Var],
+        component_data: &ComponentData<'_>,
         acc: &mut CompositionConstraintAccumulator<'_>,
     ) {
         let [const_val] = acc.get_preprocessed_columns::<1>([self.preprocessed_column_idx]);
-        let [a, b, c, d] = *trace_columns else { panic!("Expected 4 trace columns") };
+        let [a, b, c, d] = *component_data.trace_columns else {
+            panic!("Expected 4 trace columns")
+        };
 
         // Constraints.
         let constraint0_val = eval!(context, (c) - ((((a) * (a)) + ((b) * (b))) + (const_val)));
