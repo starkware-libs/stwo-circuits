@@ -2,8 +2,10 @@ use stwo::core::circle::CirclePoint;
 
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
+use crate::circuits::simd::Simd;
 use crate::stark_verifier::constraint_eval::CircuitEval;
 use crate::stark_verifier::proof::InteractionAtOods;
+use crate::stark_verifier::verify::MAX_TRACE_SIZE_BITS;
 
 /// Values at the OODS point (and its previous point where applicable).
 pub struct OodsSamples<'a> {
@@ -20,6 +22,7 @@ pub struct EvaluateArgs<'a> {
     pub interaction_elements: [Var; 2],
     pub claimed_sums: &'a [Var],
     pub component_log_sizes: &'a [Var],
+    pub n_instances_bits: &'a [Simd; MAX_TRACE_SIZE_BITS],
 }
 
 /// Represents an AIR and its public inputs.

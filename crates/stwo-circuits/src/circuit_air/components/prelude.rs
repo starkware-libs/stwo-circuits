@@ -3,6 +3,7 @@ pub use crate::circuits::context::{Context, Var};
 pub use crate::circuits::ivalue::IValue;
 pub use crate::eval;
 pub use crate::stark_verifier::constraint_eval::{CircuitEval, CompositionConstraintAccumulator};
+pub use crate::stark_verifier::verify::MAX_TRACE_SIZE_BITS;
 pub use itertools::chain;
 pub use num_traits::One;
 pub use num_traits::Zero;
