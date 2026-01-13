@@ -106,6 +106,13 @@ pub fn accumulate_constraints(
 }
 pub struct Component {}
 impl<Value: IValue> CircuitEval<Value> for Component {
+    fn trace_columns(&self) -> usize {
+        9
+    }
+
+    fn interaction_columns(&self) -> usize {
+        12
+    }
     fn evaluate(
         &self,
         context: &mut Context<Value>,

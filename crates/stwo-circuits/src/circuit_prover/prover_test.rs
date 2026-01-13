@@ -1,6 +1,6 @@
-use crate::circuit_air::components::{eq, qm31_ops};
 use crate::circuit_air::statement::CircuitStatement;
 use crate::circuit_prover::prover::{CircuitProof, finalize_context, prove_circuit};
+use crate::circuit_prover::witness::preprocessed::N_PP_COLUMNS;
 use crate::circuits::context::TraceContext;
 use crate::circuits::ivalue::{IValue, qm31_from_u32s};
 use crate::circuits::ops::{Guess, permute};
@@ -121,13 +121,20 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
 
-    let CircuitProof { components, claim, interaction_claim, pcs_config, stark_proof } =
+    let CircuitProof { components: _, claim, interaction_claim, pcs_config, stark_proof } =
         prove_circuit(&mut fibonacci_context);
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
 
     // Verify.
-    let config = ProofConfig::new(&components, &pcs_config);
+    let log_trace_size = claim.log_sizes.iter().max().unwrap();
+    let statement = CircuitStatement::default();
+    let config = ProofConfig::from_statement(
+        &statement,
+        N_PP_COLUMNS,
+        *log_trace_size as usize,
+        &pcs_config,
+    );
 
     let mut context = TraceContext::default();
     let proof = proof_from_stark_proof(
@@ -138,19 +145,7 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     );
     let proof_vars = proof.guess(&mut context);
 
-    crate::stark_verifier::verify::verify(
-        &mut context,
-        &proof_vars,
-        &config,
-        &CircuitStatement {
-            components: vec![
-                Box::new(eq::CircuitEqComponent { preprocessed_column_indices: [0, 1] }),
-                Box::new(qm31_ops::CircuitQm31OpsComponent {
-                    preprocessed_column_indices: [2, 3, 4, 5, 6, 7, 8, 9],
-                }),
-            ],
-        },
-    );
+    crate::stark_verifier::verify::verify(&mut context, &proof_vars, &config, &statement);
     context.check_vars_used();
     context.finalize_guessed_vars();
     context.circuit.check_yields();
