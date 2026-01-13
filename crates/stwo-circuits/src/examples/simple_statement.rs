@@ -10,6 +10,7 @@ use crate::examples::simple_air::{LOG_SIZE_LONG, LOG_SIZE_SHORT};
 use crate::stark_verifier::constraint_eval::{CircuitEval, CompositionConstraintAccumulator};
 use crate::stark_verifier::logup::combine_term;
 use crate::stark_verifier::statement::Statement;
+use crate::stark_verifier::verify::MAX_TRACE_SIZE_BITS;
 
 pub struct SimpleStatement<Value: IValue> {
     log_component_sizes: Vec<u32>,
@@ -36,6 +37,7 @@ impl<Value: IValue> CircuitEval<Value> for SquaredFibonacciComponent {
         &self,
         context: &mut Context<Value>,
         trace_columns: &[Var],
+        _opt_n_instances_bits: Option<[Var; MAX_TRACE_SIZE_BITS]>,
         acc: &mut CompositionConstraintAccumulator<'_>,
     ) {
         let [const_val] = acc.get_preprocessed_columns::<1>([self.preprocessed_column_idx]);

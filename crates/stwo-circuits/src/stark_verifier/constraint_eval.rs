@@ -1,6 +1,7 @@
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::{div, from_partial_evals};
+use crate::circuits::simd::Simd;
 use crate::eval;
 use crate::stark_verifier::circle::denom_inverse;
 use crate::stark_verifier::logup::{
@@ -8,6 +9,7 @@ use crate::stark_verifier::logup::{
 };
 use crate::stark_verifier::proof::{InteractionAtOods, ProofConfig};
 use crate::stark_verifier::statement::EvaluateArgs;
+use crate::stark_verifier::verify::MAX_TRACE_SIZE_BITS;
 use itertools::{Itertools, izip};
 use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
 
@@ -158,8 +160,13 @@ pub trait CircuitEval<Value: IValue> {
         &self,
         context: &mut Context<Value>,
         trace_columns: &[Var],
+        opt_n_instances_bits: Option<[Var; MAX_TRACE_SIZE_BITS]>,
         acc: &mut CompositionConstraintAccumulator<'_>,
     );
+
+    fn requires_n_instances_bits(&self) -> bool {
+        false
+    }
 }
 
 pub fn get_n_columns<'a, T>(columns: &mut &'a [T], n: usize) -> &'a [T] {
@@ -179,6 +186,7 @@ pub fn compute_composition_polynomial<Value: IValue>(
         composition_polynomial_coeff,
         interaction_elements,
         mut component_data,
+        n_instances_bits,
     } = args;
 
     let mut evaluation_accumulator = CompositionConstraintAccumulator {
@@ -189,15 +197,28 @@ pub fn compute_composition_polynomial<Value: IValue>(
         terms: Vec::new(),
     };
 
-    for (component, n_trace_columns_in_component, n_interaction_columns_in_component) in izip!(
-        components,
-        &config.trace_columns_per_component,
-        &config.interaction_columns_per_component
-    ) {
+    for (idx, (component, n_trace_columns_in_component, n_interaction_columns_in_component)) in
+        izip!(
+            components,
+            &config.trace_columns_per_component,
+            &config.interaction_columns_per_component
+        )
+        .enumerate()
+    {
         let trace_columns = get_n_columns(&mut oods_samples.trace, *n_trace_columns_in_component);
         let interaction_columns =
             get_n_columns(&mut oods_samples.interaction, *n_interaction_columns_in_component);
-        component.evaluate(context, trace_columns, &mut evaluation_accumulator);
+
+        let opt_n_instances_bits = component
+            .requires_n_instances_bits()
+            .then(|| n_instances_bits.each_ref().map(|bits| Simd::unpack_idx(context, bits, idx)));
+
+        component.evaluate(
+            context,
+            trace_columns,
+            opt_n_instances_bits,
+            &mut evaluation_accumulator,
+        );
 
         let cur_component_data = component_data.split_off_first().unwrap();
 

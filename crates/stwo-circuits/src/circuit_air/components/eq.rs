@@ -84,6 +84,7 @@ impl<Value: IValue> CircuitEval<Value> for CircuitEqComponent {
         &self,
         context: &mut Context<Value>,
         trace_columns: &[Var],
+        _opt_n_instances_bits: Option<[Var; MAX_TRACE_SIZE_BITS]>,
         acc: &mut CompositionConstraintAccumulator<'_>,
     ) {
         let [in0_address, in1_address] = acc
