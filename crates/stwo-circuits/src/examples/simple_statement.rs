@@ -34,6 +34,14 @@ pub struct SquaredFibonacciComponent {
     pub preprocessed_column_idx: usize,
 }
 impl<Value: IValue> CircuitEval<Value> for SquaredFibonacciComponent {
+    fn trace_columns(&self) -> usize {
+        4
+    }
+
+    fn interaction_columns(&self) -> usize {
+        8
+    }
+
     fn evaluate(
         &self,
         context: &mut Context<Value>,
