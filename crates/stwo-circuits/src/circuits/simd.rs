@@ -1,3 +1,5 @@
+use std::sync::LazyLock;
+
 use itertools::{Itertools, zip_eq};
 use num_traits::{One, Zero};
 use stwo::core::fields::FieldExpOps;
@@ -15,6 +17,22 @@ use crate::eval;
 #[cfg(test)]
 #[path = "simd_test.rs"]
 pub mod test;
+
+static UNIT_VECS: LazyLock<[QM31; 4]> = LazyLock::new(|| {
+    [
+        qm31_from_u32s(1, 0, 0, 0),
+        qm31_from_u32s(0, 1, 0, 0),
+        qm31_from_u32s(0, 0, 1, 0),
+        qm31_from_u32s(0, 0, 0, 1),
+    ]
+});
+static UNIT_VECS_INV: LazyLock<[QM31; 3]> = LazyLock::new(|| {
+    [
+        qm31_from_u32s(0, 1, 0, 0).inverse(),
+        qm31_from_u32s(0, 0, 1, 0).inverse(),
+        qm31_from_u32s(0, 0, 0, 1).inverse(),
+    ]
+});
 
 /// A vector of `M31` values, represented in packed form.
 ///
@@ -187,34 +205,23 @@ impl Simd {
 
     /// Unpacks a [Simd] into a vector of [Var]s, where each [Var] represents a single [M31] value.
     pub fn unpack(context: &mut Context<impl IValue>, input: &Simd) -> Vec<Var> {
-        let unit_vecs = [
-            qm31_from_u32s(1, 0, 0, 0),
-            qm31_from_u32s(0, 1, 0, 0),
-            qm31_from_u32s(0, 0, 1, 0),
-            qm31_from_u32s(0, 0, 0, 1),
-        ];
-        let unit_vecs_inv = [
-            qm31_from_u32s(0, 1, 0, 0).inverse(),
-            qm31_from_u32s(0, 0, 1, 0).inverse(),
-            qm31_from_u32s(0, 0, 0, 1).inverse(),
-        ];
+        (0..input.len).map(|i| Self::unpack_idx(context, input, i)).collect_vec()
+    }
 
-        (0..input.len)
-            .map(|i| {
-                let qm31_var = input.data[i / 4];
-                let coord = i % 4;
-                // To obtain the `coord`-th coordinate, `c`, start with pointwise multiplication
-                // by a unit vector. This results in `c * unit_vecs[coord]`.
-                let unit_vec = context.constant(unit_vecs[coord]);
-                let x = pointwise_mul(context, qm31_var, unit_vec);
-                // Then, divide by `unit_vecs[coord]` to get `c`.
-                if coord == 0 {
-                    x
-                } else {
-                    eval!(context, (x) * (context.constant(unit_vecs_inv[coord - 1])))
-                }
-            })
-            .collect_vec()
+    /// Unpacks the `idx`-th [M31] value from the [Simd].
+    pub fn unpack_idx(context: &mut Context<impl IValue>, input: &Simd, idx: usize) -> Var {
+        let qm31_var = input.data[idx / 4];
+        let coord = idx % 4;
+        // To obtain the `coord`-th coordinate, `c`, start with pointwise multiplication
+        // by a unit vector. This results in `c * unit_vecs[coord]`.
+        let unit_vec = context.constant(UNIT_VECS[coord]);
+        let x = pointwise_mul(context, qm31_var, unit_vec);
+        // Then, divide by `unit_vecs[coord]` to get `c`.
+        if coord == 0 {
+            x
+        } else {
+            eval!(context, (x) * (context.constant(UNIT_VECS_INV[coord - 1])))
+        }
     }
 
     /// Packs a vector of [M31] values into [Simd].
