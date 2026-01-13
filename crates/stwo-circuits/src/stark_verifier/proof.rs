@@ -1,7 +1,4 @@
-use std::collections::HashSet;
-
-use itertools::zip_eq;
-use stwo::core::air::Component;
+use itertools::{Itertools, zip_eq};
 use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
 use stwo::core::pcs::PcsConfig;
 
@@ -9,6 +6,7 @@ use crate::circuits::blake::HashValue;
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::{IValue, NoValue};
 use crate::circuits::ops::Guess;
+use crate::stark_verifier::constraint_eval::CircuitEval;
 use crate::stark_verifier::fri_proof::{FriConfig, FriProof, empty_fri_proof};
 use crate::stark_verifier::merkle::{AuthPath, AuthPaths};
 use crate::stark_verifier::oods::{
@@ -41,30 +39,16 @@ pub struct ProofConfig {
     pub fri: FriConfig,
 }
 impl ProofConfig {
-    pub fn new(components: &[Box<dyn Component>], pcs_config: &PcsConfig) -> Self {
-        let preprocessed_indices: HashSet<usize> =
-            HashSet::from_iter(components.iter().flat_map(|c| c.preprocessed_column_indices()));
-
-        let mut log_trace_size = 0;
-
-        let (trace_columns_per_component, interaction_columns_per_component): (Vec<_>, Vec<_>) =
-            components
-                .iter()
-                .map(|c| {
-                    let [_preprocessed_columns, trace_columns, interaction_columns] =
-                        &c.trace_log_degree_bounds().0[..]
-                    else {
-                        panic!("Expected 3 traces");
-                    };
-
-                    let component_log_size = *trace_columns.first().unwrap();
-                    if component_log_size > log_trace_size {
-                        log_trace_size = component_log_size;
-                    }
-
-                    (trace_columns.len(), interaction_columns.len())
-                })
-                .unzip();
+    pub fn new(
+        components: &[Box<dyn CircuitEval<impl IValue>>],
+        n_preprocessed_columns: usize,
+        log_trace_size: usize,
+        pcs_config: &PcsConfig,
+    ) -> Self {
+        let trace_columns_per_component =
+            components.iter().map(|c| c.trace_columns()).collect_vec();
+        let interaction_columns_per_component =
+            components.iter().map(|c| c.interaction_columns()).collect_vec();
 
         let n_interaction_columns = interaction_columns_per_component.iter().sum();
         let mut cumulative_sum_columns = Vec::with_capacity(n_interaction_columns);
@@ -91,7 +75,7 @@ impl ProofConfig {
 
         Self {
             n_proof_of_work_bits: *pow_bits as usize,
-            n_preprocessed_columns: preprocessed_indices.len(),
+            n_preprocessed_columns,
             n_trace_columns: trace_columns_per_component.iter().sum(),
             n_interaction_columns,
             trace_columns_per_component,
@@ -99,7 +83,7 @@ impl ProofConfig {
             n_components: components.len(),
             cumulative_sum_columns,
             fri: FriConfig {
-                log_trace_size: log_trace_size as usize,
+                log_trace_size,
                 log_blowup_factor: *log_blowup_factor as usize,
                 n_queries: *n_queries,
                 log_n_last_layer_coefs: *log_last_layer_degree_bound as usize,

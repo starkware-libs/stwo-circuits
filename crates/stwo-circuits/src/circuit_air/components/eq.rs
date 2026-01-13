@@ -80,6 +80,14 @@ pub struct CircuitEqComponent {
 }
 
 impl<Value: IValue> CircuitEval<Value> for CircuitEqComponent {
+    fn trace_columns(&self) -> usize {
+        N_TRACE_COLUMNS
+    }
+
+    fn interaction_columns(&self) -> usize {
+        4
+    }
+
     fn evaluate(
         &self,
         context: &mut Context<Value>,

@@ -30,16 +30,24 @@ enum ProofModifier {
 #[case::wrong_fri_auth_path(ProofModifier::WrongFriAuthPath)]
 #[case::wrong_fri_sibling(ProofModifier::WrongFriSibling)]
 fn test_verify(#[case] proof_modifier: ProofModifier) {
-    let (components, PublicInput { claimed_sums, component_log_sizes }, pcs_config, mut proof) =
+    use crate::stark_verifier::statement::Statement;
+
+    let (_components, PublicInput { claimed_sums, component_log_sizes }, pcs_config, mut proof) =
         create_proof();
 
-    let config = ProofConfig::new(&components, &pcs_config);
+    let simple_statement = SimpleStatement::default();
+    let config = ProofConfig::new(
+        simple_statement.get_components(),
+        2,
+        *component_log_sizes.iter().max().unwrap() as usize,
+        &pcs_config,
+    );
     // Create a NoValue version.
     let novalue_circuit = {
         let empty_proof = empty_proof(&config);
         let mut novalue_context = Context::<NoValue>::default();
         let proof_vars = empty_proof.guess(&mut novalue_context);
-        verify(&mut novalue_context, &proof_vars, &config, &SimpleStatement::default());
+        verify(&mut novalue_context, &proof_vars, &config, &simple_statement);
         novalue_context.finalize_guessed_vars();
         novalue_context.circuit
     };

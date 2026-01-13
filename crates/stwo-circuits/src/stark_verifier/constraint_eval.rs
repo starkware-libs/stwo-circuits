@@ -164,6 +164,9 @@ pub trait CircuitEval<Value: IValue> {
         componenet_data: &ComponentData<'_>,
         acc: &mut CompositionConstraintAccumulator<'_>,
     );
+
+    fn trace_columns(&self) -> usize;
+    fn interaction_columns(&self) -> usize;
 }
 
 pub fn get_n_columns<'a, T>(columns: &mut &'a [T], n: usize) -> &'a [T] {

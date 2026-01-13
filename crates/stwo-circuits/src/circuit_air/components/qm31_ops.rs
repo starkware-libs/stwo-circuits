@@ -133,6 +133,14 @@ pub struct CircuitQm31OpsComponent {
 }
 
 impl<Value: IValue> CircuitEval<Value> for CircuitQm31OpsComponent {
+    fn trace_columns(&self) -> usize {
+        N_TRACE_COLUMNS
+    }
+
+    fn interaction_columns(&self) -> usize {
+        8
+    }
+
     fn evaluate(
         &self,
         context: &mut Context<Value>,
