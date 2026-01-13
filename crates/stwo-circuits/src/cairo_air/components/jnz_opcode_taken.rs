@@ -226,4 +226,12 @@ impl<Value: IValue> CircuitEval<Value> for Component {
     ) {
         accumulate_constraints(component_data.trace_columns, context, acc);
     }
+
+    fn trace_columns(&self) -> usize {
+        47
+    }
+
+    fn interaction_columns(&self) -> usize {
+        16
+    }
 }

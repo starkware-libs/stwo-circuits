@@ -196,8 +196,10 @@ pub fn create_proof()
 
     // Preprocessed trace
     let mut tree_builder = commitment_scheme.tree_builder();
-    tree_builder
-        .extend_evals([generate_seq_column(LOG_SIZE_SHORT), generate_seq_column(LOG_SIZE_LONG)]);
+    tree_builder.extend_evals(vec![
+        generate_seq_column(LOG_SIZE_SHORT),
+        generate_seq_column(LOG_SIZE_LONG),
+    ]);
     tree_builder.commit(prover_channel);
 
     prover_channel.mix_felts(&[QM31::from_u32_unchecked(LOG_SIZE_LONG, LOG_SIZE_SHORT, 0, 0)]);
