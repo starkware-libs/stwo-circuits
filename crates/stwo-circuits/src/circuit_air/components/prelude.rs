@@ -1,5 +1,5 @@
 pub use crate::circuit_air::relations;
-pub use crate::circuits::context::Context;
+pub use crate::circuits::context::{Context, Var};
 pub use crate::circuits::ivalue::IValue;
 pub use crate::eval;
 pub use crate::stark_verifier::constraint_eval::{CircuitEval, CompositionConstraintAccumulator};

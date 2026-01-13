@@ -136,6 +136,7 @@ impl<Value: IValue> CircuitEval<Value> for CircuitQm31OpsComponent {
     fn evaluate(
         &self,
         context: &mut Context<Value>,
+        trace_columns: &[Var],
         acc: &mut CompositionConstraintAccumulator<'_>,
     ) {
         let [
@@ -163,7 +164,10 @@ impl<Value: IValue> CircuitEval<Value> for CircuitQm31OpsComponent {
             out_col9,
             out_col10,
             out_col11,
-        ] = acc.get_trace::<N_TRACE_COLUMNS>();
+        ] = *trace_columns
+        else {
+            panic!("Expected {N_TRACE_COLUMNS} trace columns")
+        };
 
         // out col 8.
         let constraint0_val = eval!(
@@ -219,7 +223,5 @@ impl<Value: IValue> CircuitEval<Value> for CircuitQm31OpsComponent {
             neg_mults,
             &[out_address, out_col8, out_col9, out_col10, out_col11],
         );
-
-        acc.finalize_logup_in_pairs(context);
     }
 }
