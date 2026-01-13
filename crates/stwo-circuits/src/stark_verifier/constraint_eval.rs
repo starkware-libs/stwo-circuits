@@ -15,6 +15,10 @@ use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
 
 // Data accosiated with a specific compoonent.
 pub struct ComponentData<'a> {
+    /// The trace columns of the component.
+    pub trace_columns: &'a [Var],
+    /// The interaction columns of the component.
+    pub interaction_columns: &'a [InteractionAtOods<Var>],
     /// The number of instances in the component.
     pub n_instances: Var,
     /// The claimed sum of the component.
@@ -154,7 +158,7 @@ pub trait CircuitEval<Value: IValue> {
     fn evaluate(
         &self,
         context: &mut Context<Value>,
-        trace_columns: &[Var],
+        component_data: &ComponentData<'_>,
         acc: &mut CompositionConstraintAccumulator<'_>,
     );
 }
@@ -210,14 +214,16 @@ pub fn compute_composition_polynomial<Value: IValue>(
         let interaction_columns =
             get_n_columns(&mut oods_samples.interaction, *n_interaction_columns_in_component);
 
-        component.evaluate(context, trace_columns, &mut evaluation_accumulator);
-
         let component_data = ComponentData {
+            trace_columns,
+            interaction_columns,
             claimed_sum,
             n_instances: component_size,
             index: component_index,
             n_instances_bits,
         };
+
+        component.evaluate(context, &component_data, &mut evaluation_accumulator);
 
         evaluation_accumulator.finalize_logup_in_pairs(
             context,
