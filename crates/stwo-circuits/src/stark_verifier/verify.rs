@@ -86,6 +86,7 @@ pub fn verify<Value: IValue>(
 
     let component_sizes = Simd::pow2(context, &component_log_size_bits);
     let unpacked_component_sizes = Simd::unpack(context, &component_sizes);
+    let component_sizes_bits = extract_bits::<MAX_TRACE_SIZE_BITS>(context, &component_sizes);
 
     // Compute the composition evaluation at the OODS point from `proof.*_at_oods` and compare
     // to `proof.composition_eval_at_oods`.
@@ -104,7 +105,8 @@ pub fn verify<Value: IValue>(
             composition_polynomial_coeff,
             interaction_elements: [interaction_z, interaction_alpha],
             claimed_sums: &proof.claimed_sums,
-            component_log_sizes: &unpacked_component_sizes,
+            component_sizes: &unpacked_component_sizes,
+            n_instances_bits: &component_sizes_bits,
         },
     );
     let expected_composition_eval = extract_expected_composition_eval(
@@ -118,7 +120,8 @@ pub fn verify<Value: IValue>(
     // The generator of the trace subgroup on the circle.
     let trace_gen = generator_point(config.log_trace_size());
 
-    let period_generators_per_component = period_generators(context, trace_gen, component_sizes);
+    let period_generators_per_component =
+        period_generators(context, trace_gen, component_sizes_bits);
     let periodicity_sample_points_per_component = period_generators_per_component
         .into_iter()
         .map(|pt| add_points(context, &oods_point, &pt))
