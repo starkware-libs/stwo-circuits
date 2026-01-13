@@ -300,6 +300,18 @@ fn test_unpack() {
 }
 
 #[test]
+fn test_unpack_idx() {
+    let mut context = TraceContext::default();
+    let input = vec![12, 6, 5, 20, 1];
+    let packed = simd_from_u32s(&mut context, input.clone());
+
+    for (i, expected) in input.iter().enumerate() {
+        let unpacked = Simd::unpack_idx(&mut context, &packed, i);
+        assert_eq!(context.get(unpacked), qm31_from_u32s(*expected, 0, 0, 0));
+    }
+}
+
+#[test]
 fn test_unpack_circuit() {
     let mut context = Context::<NoValue>::default();
     let input = Simd::from_packed(vec![NoValue; 2].guess(&mut context), 6);
