@@ -1,0 +1,117 @@
+// This file was created by the AIR team.
+
+use crate::cairo_air::components::prelude::*;
+
+pub fn accumulate_constraints(
+    input: &[Var],
+    context: &mut Context<impl IValue>,
+    acc: &mut CompositionConstraintAccumulator<'_>,
+) {
+    let [
+        input_pc_col0,
+        input_ap_col1,
+        input_fp_col2,
+        offset0_col3,
+        dst_base_fp_col4,
+        ap_update_add_1_col5,
+        mem_dst_base_col6,
+        dst_id_col7,
+        enabler,
+    ] = input.try_into().unwrap();
+    let enabler_constraint_value = eval!(context, ((enabler) * (enabler)) - (enabler));
+    acc.add_constraint(context, enabler_constraint_value);
+
+    let [decode_instruction_de75a_output_tmp_e1597_5_offset0] =
+        decode_instruction_de75a::accumulate_constraints(
+            &[
+                eval!(context, input_pc_col0),
+                eval!(context, offset0_col3),
+                eval!(context, dst_base_fp_col4),
+                eval!(context, ap_update_add_1_col5),
+            ],
+            context,
+            acc,
+        )
+        .try_into()
+        .unwrap();
+
+    //mem_dst_base.
+    let constraint_1_value = eval!(
+        context,
+        (mem_dst_base_col6)
+            - (((dst_base_fp_col4) * (input_fp_col2))
+                + (((1) - (dst_base_fp_col4)) * (input_ap_col1)))
+    );
+    acc.add_constraint(context, constraint_1_value);
+
+    mem_verify::accumulate_constraints(
+        &[
+            eval!(
+                context,
+                (mem_dst_base_col6) + (decode_instruction_de75a_output_tmp_e1597_5_offset0)
+            ),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, dst_id_col7),
+        ],
+        context,
+        acc,
+    );
+
+    // Use Opcodes.
+    let tuple_3 = &[
+        eval!(context, 428564188),
+        eval!(context, input_pc_col0),
+        eval!(context, input_ap_col1),
+        eval!(context, input_fp_col2),
+    ];
+    let numerator_3 = eval!(context, 1);
+    acc.add_to_relation(context, numerator_3, tuple_3);
+
+    // Yield Opcodes.
+    let tuple_4 = &[
+        eval!(context, 428564188),
+        eval!(context, (input_pc_col0) + (2)),
+        eval!(context, (input_ap_col1) + (ap_update_add_1_col5)),
+        eval!(context, input_fp_col2),
+    ];
+    let numerator_4 = eval!(context, -1);
+    acc.add_to_relation(context, numerator_4, tuple_4);
+}
+pub struct Component {}
+impl<Value: IValue> CircuitEval<Value> for Component {
+    fn evaluate(
+        &self,
+        context: &mut Context<Value>,
+        input: &[Var],
+        acc: &mut CompositionConstraintAccumulator<'_>,
+    ) {
+        accumulate_constraints(input, context, acc);
+    }
+}
