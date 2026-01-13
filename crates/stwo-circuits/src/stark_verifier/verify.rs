@@ -40,11 +40,11 @@ pub fn validate_logup_sum(
     eq(context, log_up_sum, context.zero());
 }
 
-pub fn verify(
-    context: &mut Context<impl IValue>,
+pub fn verify<Value: IValue>(
+    context: &mut Context<Value>,
     proof: &Proof<Var>,
     config: &ProofConfig,
-    statement: &impl Statement,
+    statement: &impl Statement<Value>,
 ) {
     proof.validate_structure(config);
 
