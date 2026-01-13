@@ -161,6 +161,12 @@ pub trait CircuitEval<Value: IValue> {
         component_data: &ComponentData<'_>,
         acc: &mut CompositionConstraintAccumulator<'_>,
     );
+
+    /// Returns the number of trace columns used by the component.
+    fn trace_columns(&self) -> usize;
+
+    /// Returns the number of interaction columns used by the component.
+    fn interaction_columns(&self) -> usize;
 }
 
 pub fn get_n_columns<'a, T>(columns: &mut &'a [T], n: usize) -> &'a [T] {

@@ -33,7 +33,7 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
     let (components, PublicInput { claimed_sums, component_log_sizes }, pcs_config, mut proof) =
         create_proof();
 
-    let config = ProofConfig::new(&components, &pcs_config);
+    let config = ProofConfig::from_rust_components(&components, &pcs_config);
     // Create a NoValue version.
     let novalue_circuit = {
         let empty_proof = empty_proof(&config);

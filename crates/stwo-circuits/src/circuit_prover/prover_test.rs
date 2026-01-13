@@ -80,7 +80,7 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     let proof = stark_proof.unwrap();
 
     // Verify.
-    let config = ProofConfig::new(&components, &pcs_config);
+    let config = ProofConfig::from_rust_components(&components, &pcs_config);
 
     let mut context = TraceContext::default();
     let proof = proof_from_stark_proof(

@@ -2,6 +2,7 @@ use crate::circuit_air::components::prelude::*;
 
 pub const N_PREPROCESSED_COLUMNS: usize = 8;
 pub const N_TRACE_COLUMNS: usize = 12;
+pub const N_INTERACTION_COLUMNS: usize = 8;
 
 pub struct Eval {
     pub log_size: u32,
@@ -133,6 +134,14 @@ pub struct CircuitQm31OpsComponent {
 }
 
 impl<Value: IValue> CircuitEval<Value> for CircuitQm31OpsComponent {
+    fn trace_columns(&self) -> usize {
+        N_TRACE_COLUMNS
+    }
+
+    fn interaction_columns(&self) -> usize {
+        N_INTERACTION_COLUMNS
+    }
+
     fn evaluate(
         &self,
         context: &mut Context<Value>,
