@@ -58,11 +58,8 @@ impl CompositionConstraintAccumulator<'_> {
         self.accumulation
     }
 
-    pub fn get_preprocessed_columns<const N_PP_COLUMNS: usize>(
-        &mut self,
-        preprocessed_column_indices: [usize; N_PP_COLUMNS],
-    ) -> [Var; N_PP_COLUMNS] {
-        std::array::from_fn(|idx| self.preprocessed_columns[preprocessed_column_indices[idx]])
+    pub fn get_preprocessed_column(&self, preprocessed_column_idx: usize) -> Var {
+        self.preprocessed_columns[preprocessed_column_idx]
     }
 
     pub fn add_constraint(
