@@ -139,17 +139,14 @@ impl<Value: IValue> CircuitEval<Value> for CircuitQm31OpsComponent {
         trace_columns: &[Var],
         acc: &mut CompositionConstraintAccumulator<'_>,
     ) {
-        let [
-            add_flag,
-            sub_flag,
-            _mul_flag,
-            pointwise_mul_flag,
-            in0_address,
-            in1_address,
-            out_address,
-            mults,
-        ] = acc
-            .get_preprocessed_columns::<N_PREPROCESSED_COLUMNS>(self.preprocessed_column_indices);
+        let add_flag = acc.get_preprocessed_column(self.preprocessed_column_indices[0]);
+        let sub_flag = acc.get_preprocessed_column(self.preprocessed_column_indices[1]);
+        let _mul_flag = acc.get_preprocessed_column(self.preprocessed_column_indices[2]);
+        let pointwise_mul_flag = acc.get_preprocessed_column(self.preprocessed_column_indices[3]);
+        let in0_address = acc.get_preprocessed_column(self.preprocessed_column_indices[4]);
+        let in1_address = acc.get_preprocessed_column(self.preprocessed_column_indices[5]);
+        let out_address = acc.get_preprocessed_column(self.preprocessed_column_indices[6]);
+        let mults = acc.get_preprocessed_column(self.preprocessed_column_indices[7]);
 
         let [
             in0_col0,

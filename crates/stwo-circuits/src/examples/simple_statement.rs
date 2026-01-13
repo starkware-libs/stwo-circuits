@@ -38,7 +38,7 @@ impl<Value: IValue> CircuitEval<Value> for SquaredFibonacciComponent {
         trace_columns: &[Var],
         acc: &mut CompositionConstraintAccumulator<'_>,
     ) {
-        let [const_val] = acc.get_preprocessed_columns::<1>([self.preprocessed_column_idx]);
+        let const_val = acc.get_preprocessed_column(self.preprocessed_column_idx);
         let [a, b, c, d] = *trace_columns else { panic!("Expected 4 trace columns") };
 
         // Constraints.
