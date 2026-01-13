@@ -6,8 +6,8 @@ use stwo::core::vcs::blake2_hash::Blake2sHash;
 use crate::circuits::context::{Context, TraceContext};
 use crate::circuits::ivalue::NoValue;
 use crate::circuits::ops::Guess;
-use crate::examples::simple_air::PublicInput;
 use crate::examples::simple_air::create_proof;
+use crate::examples::simple_air::{LOG_SIZE_LONG, PublicInput};
 use crate::examples::simple_statement::SimpleStatement;
 use crate::stark_verifier::proof::{ProofConfig, empty_proof};
 use crate::stark_verifier::proof_from_stark_proof::proof_from_stark_proof;
@@ -30,16 +30,23 @@ enum ProofModifier {
 #[case::wrong_fri_auth_path(ProofModifier::WrongFriAuthPath)]
 #[case::wrong_fri_sibling(ProofModifier::WrongFriSibling)]
 fn test_verify(#[case] proof_modifier: ProofModifier) {
-    let (components, PublicInput { claimed_sums, component_log_sizes }, pcs_config, mut proof) =
+    let (_components, PublicInput { claimed_sums, component_log_sizes }, pcs_config, mut proof) =
         create_proof();
 
-    let config = ProofConfig::new(&components, &pcs_config);
+    let statement = &SimpleStatement::default();
+
+    let config = ProofConfig::from_statement(
+        statement,
+        2,
+        LOG_SIZE_LONG as usize,
+        &pcs_config,
+    );
     // Create a NoValue version.
     let novalue_circuit = {
         let empty_proof = empty_proof(&config);
         let mut novalue_context = Context::<NoValue>::default();
         let proof_vars = empty_proof.guess(&mut novalue_context);
-        verify(&mut novalue_context, &proof_vars, &config, &SimpleStatement::default());
+        verify(&mut novalue_context, &proof_vars, &config, statement);
         novalue_context.finalize_guessed_vars();
         novalue_context.circuit
     };
