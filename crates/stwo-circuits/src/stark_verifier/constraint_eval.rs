@@ -100,6 +100,7 @@ impl CompositionConstraintAccumulator<'_> {
     ) {
         // TODO(Gali): Get the terms from the component instead of storing them in the accumulator.
         let n_batches = self.terms.len().div_ceil(2);
+        assert_eq!(interaction_columns.len(), n_batches * SECURE_EXTENSION_DEGREE);
         let (interaction_columns, last_chunk) = interaction_columns.split_last_chunk().unwrap();
         let mut prev_col_cumsum = context.zero();
 
