@@ -153,6 +153,25 @@ impl<Value: IValue> Guess<Value> for InteractionAtOods<Value> {
     }
 }
 
+pub struct Claim<T> {
+    // The log sizes of the components in the AIR.
+    pub component_log_sizes: Vec<T>,
+
+    // Claimed sum for each component in the AIR.
+    pub claimed_sums: Vec<T>,
+    // TODO(Gali): Add public claim and enable bits fields.
+}
+impl<Value: IValue> Guess<Value> for Claim<Value> {
+    type Target = Claim<Var>;
+
+    fn guess(&self, context: &mut Context<Value>) -> Self::Target {
+        Claim {
+            component_log_sizes: self.component_log_sizes.guess(context),
+            claimed_sums: self.claimed_sums.guess(context),
+        }
+    }
+}
+
 pub struct Proof<T> {
     // Merkle roots.
     pub preprocessed_root: HashValue<T>,
@@ -160,11 +179,8 @@ pub struct Proof<T> {
     pub interaction_root: HashValue<T>,
     pub composition_polynomial_root: HashValue<T>,
 
-    // The log sizes of the components in the AIR.
-    pub component_log_sizes: Vec<T>,
-
-    // Claimed sum for each component in the AIR.
-    pub claimed_sums: Vec<T>,
+    // Claim.
+    pub claim: Claim<T>,
 
     // Evaluations at the OODS point and the previous point.
     pub preprocessed_columns_at_oods: Vec<T>,
@@ -241,8 +257,10 @@ pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
                 }
             })
             .collect(),
-        component_log_sizes: vec![NoValue; config.n_components.div_ceil(4)],
-        claimed_sums: vec![NoValue; config.n_components],
+        claim: Claim {
+            component_log_sizes: vec![NoValue; config.n_components.div_ceil(4)],
+            claimed_sums: vec![NoValue; config.n_components],
+        },
         composition_eval_at_oods: [NoValue; N_COMPOSITION_COLUMNS],
         eval_domain_samples: empty_eval_domain_samples(
             &config.n_columns_per_trace(),
@@ -265,8 +283,7 @@ impl<Value: IValue> Guess<Value> for Proof<Value> {
             trace_root: self.trace_root.guess(context),
             interaction_root: self.interaction_root.guess(context),
             composition_polynomial_root: self.composition_polynomial_root.guess(context),
-            component_log_sizes: self.component_log_sizes.guess(context),
-            claimed_sums: self.claimed_sums.guess(context),
+            claim: self.claim.guess(context),
             preprocessed_columns_at_oods: self.preprocessed_columns_at_oods.guess(context),
             trace_at_oods: self.trace_at_oods.guess(context),
             interaction_at_oods: self.interaction_at_oods.guess(context),

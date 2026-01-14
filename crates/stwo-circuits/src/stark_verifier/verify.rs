@@ -54,13 +54,13 @@ pub fn verify<Value: IValue>(
     channel.mix_commitment(context, proof.preprocessed_root);
 
     let component_log_sizes =
-        Simd::from_packed(proof.component_log_sizes.clone(), config.n_components);
+        Simd::from_packed(proof.claim.component_log_sizes.clone(), config.n_components);
 
     // Range check the component log sizes.
     let component_log_size_bits = extract_bits::<LOG_SIZE_BITS>(context, &component_log_sizes);
     // TODO(ilya): check that all the component log sizes are smaller than config.log_trace_size().
 
-    channel.mix_qm31s(context, proof.component_log_sizes.iter().cloned());
+    channel.mix_qm31s(context, proof.claim.component_log_sizes.iter().cloned());
 
     // Mix the trace commitments into the channel.
     channel.mix_commitment(context, proof.trace_root);
@@ -71,9 +71,9 @@ pub fn verify<Value: IValue>(
     let [interaction_z, interaction_alpha] = channel.draw_two_qm31s(context);
 
     let public_logup_sum = statement.public_logup_sum(context, [interaction_z, interaction_alpha]);
-    validate_logup_sum(context, public_logup_sum, &proof.claimed_sums);
+    validate_logup_sum(context, public_logup_sum, &proof.claim.claimed_sums);
 
-    channel.mix_qm31s(context, proof.claimed_sums.iter().cloned());
+    channel.mix_qm31s(context, proof.claim.claimed_sums.iter().cloned());
     channel.mix_commitment(context, proof.interaction_root);
 
     // Draw a random QM31 coefficient for the composition polynomial.
@@ -104,7 +104,7 @@ pub fn verify<Value: IValue>(
             log_domain_size: config.log_trace_size(),
             composition_polynomial_coeff,
             interaction_elements: [interaction_z, interaction_alpha],
-            claimed_sums: &proof.claimed_sums,
+            claimed_sums: &proof.claim.claimed_sums,
             component_sizes: &unpacked_component_sizes,
             n_instances_bits: &component_sizes_bits,
         },
