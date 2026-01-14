@@ -186,7 +186,7 @@ pub fn collect_oods_responses(
     config: &ProofConfig,
     trace_gen: CirclePoint<M31>,
     oods_point: CirclePoint<Var>,
-    periodicity_sample_points_per_column: &[Option<CirclePoint<Var>>],
+    periodicity_sample_points_per_column: &[CirclePoint<Var>],
     proof: &Proof<Var>,
 ) -> Vec<OodsResponse> {
     // The negation of the trace generator, as `CirclePoint<Var>`.
@@ -212,41 +212,42 @@ pub fn collect_oods_responses(
             pt: oods_point,
             value: proof.trace_at_oods[column_idx],
         }),
-        periodicity_sample_points_per_column.iter().enumerate().flat_map(
-            |(column_idx, opt_periodicity_sample_point)| {
-                let at_oods_response = OodsResponse {
+        zip_eq(
+            config.cumulative_sum_columns.iter().enumerate(),
+            periodicity_sample_points_per_column
+        )
+        .flat_map(|((column_idx, is_cumulative_sum), periodicity_sample_point)| {
+            let at_oods_response = OodsResponse {
+                trace_idx: 2,
+                column_idx,
+                pt: oods_point,
+                value: proof.interaction_at_oods[column_idx].at_oods,
+            };
+
+            if !is_cumulative_sum {
+                // This is a regular interaction column with a single sample at the OODS point.
+                return vec![at_oods_response];
+            };
+
+            vec![
+                // Periodicity check.
+                OodsResponse {
                     trace_idx: 2,
                     column_idx,
-                    pt: oods_point,
+                    pt: *periodicity_sample_point,
                     value: proof.interaction_at_oods[column_idx].at_oods,
-                };
-
-                let Some(periodicity_sample_point) = opt_periodicity_sample_point else {
-                    // If there is no periodicity sample point, this column isn't a cumulative sum.
-                    // In that case we only sample the response at the OODS point
-                    return vec![at_oods_response];
-                };
-
-                vec![
-                    // Periodicity check.
-                    OodsResponse {
-                        trace_idx: 2,
-                        column_idx,
-                        pt: *periodicity_sample_point,
-                        value: proof.interaction_at_oods[column_idx].at_oods,
-                    },
-                    // Previous row.
-                    OodsResponse {
-                        trace_idx: 2,
-                        column_idx,
-                        pt: oods_point_at_prev_row,
-                        value: proof.interaction_at_oods[column_idx].at_prev.unwrap(),
-                    },
-                    // OODS point.
-                    at_oods_response,
-                ]
-            }
-        ),
+                },
+                // Previous row.
+                OodsResponse {
+                    trace_idx: 2,
+                    column_idx,
+                    pt: oods_point_at_prev_row,
+                    value: proof.interaction_at_oods[column_idx].at_prev.unwrap(),
+                },
+                // OODS point.
+                at_oods_response,
+            ]
+        }),
         (0..N_COMPOSITION_COLUMNS).map(|column_idx| OodsResponse {
             trace_idx: 3,
             column_idx,
