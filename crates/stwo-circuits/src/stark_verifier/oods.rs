@@ -13,7 +13,6 @@ use crate::circuits::simd::Simd;
 use crate::circuits::wrappers::M31Wrapper;
 use crate::eval;
 use crate::stark_verifier::circle::{add_points, double_point, double_x};
-use crate::stark_verifier::extract_bits::extract_bits;
 use crate::stark_verifier::proof::{Proof, ProofConfig};
 use crate::stark_verifier::select_queries::Queries;
 use crate::stark_verifier::verify::MAX_TRACE_SIZE_BITS;
@@ -101,9 +100,8 @@ pub fn empty_eval_domain_samples(
 pub fn period_generators(
     context: &mut Context<impl IValue>,
     trace_gen: CirclePoint<M31>,
-    component_sizes: Simd,
+    component_sizes_bits: [Simd; MAX_TRACE_SIZE_BITS],
 ) -> Vec<CirclePoint<Var>> {
-    let bits = extract_bits::<MAX_TRACE_SIZE_BITS>(context, &component_sizes);
     let mut period_gen = CirclePoint {
         x: M31Wrapper::new_unsafe(context.constant(QM31::from_m31(
             trace_gen.x,
@@ -119,13 +117,13 @@ pub fn period_generators(
         ))),
     };
 
-    let bits_0 = &bits[0];
+    let bits_0 = &component_sizes_bits[0];
     let mut res = CirclePoint {
         x: Simd::scalar_mul(context, bits_0, &period_gen.x),
         y: Simd::scalar_mul(context, bits_0, &period_gen.y),
     };
 
-    for bit in bits.iter().skip(1) {
+    for bit in component_sizes_bits.iter().skip(1) {
         period_gen = double_point(context, &period_gen);
 
         let zero_or_x = Simd::scalar_mul(context, bit, &period_gen.x);

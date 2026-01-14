@@ -1,6 +1,7 @@
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::{div, from_partial_evals};
+use crate::circuits::simd::Simd;
 use crate::eval;
 use crate::stark_verifier::circle::denom_inverse;
 use crate::stark_verifier::logup::{
@@ -8,15 +9,31 @@ use crate::stark_verifier::logup::{
 };
 use crate::stark_verifier::proof::{InteractionAtOods, ProofConfig};
 use crate::stark_verifier::statement::EvaluateArgs;
+use crate::stark_verifier::verify::MAX_TRACE_SIZE_BITS;
 use itertools::{Itertools, izip};
 use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
 
 // Data accosiated with a specific compoonent.
-pub struct ComponentData {
+pub struct ComponentData<'a> {
     /// The number of instances in the component.
     pub n_instances: Var,
     /// The claimed sum of the component.
     pub claimed_sum: Var,
+
+    /// The index of the component.
+    index: usize,
+
+    /// Simd of bits representing the `n_instances` in the component.
+    n_instances_bits: &'a [Simd; MAX_TRACE_SIZE_BITS],
+}
+
+impl<'a> ComponentData<'a> {
+    pub fn get_n_instances_bits(
+        &self,
+        context: &mut Context<impl IValue>,
+    ) -> [Var; MAX_TRACE_SIZE_BITS] {
+        self.n_instances_bits.each_ref().map(|bits| Simd::unpack_idx(context, bits, self.index))
+    }
 }
 
 /// Accumulates a psuedo-random linear combination of constraint evaluations at the OODS point and
@@ -79,7 +96,7 @@ impl CompositionConstraintAccumulator<'_> {
         &mut self,
         context: &mut Context<impl IValue>,
         interaction_columns: &[InteractionAtOods<Var>],
-        ComponentData { claimed_sum, n_instances }: &ComponentData,
+        component_data: &ComponentData<'_>,
     ) {
         // TODO(Gali): Get the terms from the component instead of storing them in the accumulator.
         let n_batches = self.terms.len().div_ceil(2);
@@ -108,7 +125,7 @@ impl CompositionConstraintAccumulator<'_> {
         let cur_cumsum = from_partial_evals(context, last_chunk.each_ref().map(|x| x.at_oods));
 
         let diff = eval!(context, ((cur_cumsum) - (prev_row_cumsum)) - (prev_col_cumsum));
-        let cumsum_shift = div(context, *claimed_sum, *n_instances);
+        let cumsum_shift = div(context, component_data.claimed_sum, component_data.n_instances);
         // Instead of checking diff = num / denom, check diff = num / denom - cumsum_shift.
         // This makes (num / denom - cumsum_shift) have sum zero, which makes the constraint
         // uniform - apply on all rows.
@@ -159,7 +176,8 @@ pub fn compute_composition_polynomial<Value: IValue>(
         composition_polynomial_coeff,
         interaction_elements,
         claimed_sums,
-        component_log_sizes,
+        component_sizes,
+        n_instances_bits,
     } = args;
 
     let mut evaluation_accumulator = CompositionConstraintAccumulator {
@@ -171,24 +189,35 @@ pub fn compute_composition_polynomial<Value: IValue>(
     };
 
     for (
-        component,
-        n_trace_columns_in_component,
-        n_interaction_columns_in_component,
-        &claimed_sum,
-        &component_log_size,
+        component_index,
+        (
+            component,
+            n_trace_columns_in_component,
+            n_interaction_columns_in_component,
+            &claimed_sum,
+            &component_size,
+        ),
     ) in izip!(
         components,
         &config.trace_columns_per_component,
         &config.interaction_columns_per_component,
         claimed_sums,
-        component_log_sizes,
-    ) {
+        component_sizes,
+    )
+    .enumerate()
+    {
         let trace_columns = get_n_columns(&mut oods_samples.trace, *n_trace_columns_in_component);
         let interaction_columns =
             get_n_columns(&mut oods_samples.interaction, *n_interaction_columns_in_component);
+
         component.evaluate(context, trace_columns, &mut evaluation_accumulator);
 
-        let component_data = ComponentData { claimed_sum, n_instances: component_log_size };
+        let component_data = ComponentData {
+            claimed_sum,
+            n_instances: component_size,
+            index: component_index,
+            n_instances_bits,
+        };
 
         evaluation_accumulator.finalize_logup_in_pairs(
             context,
