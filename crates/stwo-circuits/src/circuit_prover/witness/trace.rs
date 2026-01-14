@@ -9,15 +9,24 @@ use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::prover::TreeBuilder;
 use stwo::prover::backend::simd::SimdBackend;
 
+pub struct TraceGenerator {
+    pub qm31_ops_trace_generator: qm31_ops::TraceGenerator,
+}
+
 pub fn write_trace(
     context_values: &[QM31],
     preprocessed_trace: &PreProcessedTrace,
     tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, Blake2sM31MerkleChannel>,
+    trace_generator: &TraceGenerator,
 ) -> (CircuitClaim, CircuitInteractionClaimGenerator) {
     let (eq_log_size, eq_lookup_data) =
         eq::write_trace(context_values, preprocessed_trace, tree_builder);
-    let (qm31_ops_log_size, qm31_ops_lookup_data) =
-        qm31_ops::write_trace(context_values, preprocessed_trace, tree_builder);
+    let (qm31_ops_log_size, qm31_ops_lookup_data) = qm31_ops::write_trace(
+        context_values,
+        preprocessed_trace,
+        tree_builder,
+        &trace_generator.qm31_ops_trace_generator,
+    );
 
     (
         CircuitClaim { log_sizes: [eq_log_size, qm31_ops_log_size] },
