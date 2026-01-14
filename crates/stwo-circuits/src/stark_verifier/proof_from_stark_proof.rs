@@ -13,7 +13,7 @@ use crate::circuits::ivalue::qm31_from_u32s;
 use crate::stark_verifier::fri_proof::{FriCommitProof, FriProof};
 use crate::stark_verifier::merkle::{AuthPath, AuthPaths};
 use crate::stark_verifier::oods::EvalDomainSamples;
-use crate::stark_verifier::proof::{InteractionAtOods, N_TRACES, Proof, ProofConfig};
+use crate::stark_verifier::proof::{Claim, InteractionAtOods, N_TRACES, Proof, ProofConfig};
 
 /// Constructs [Proof] with the values from the given proof ([ExtendedStarkProof]).
 pub fn proof_from_stark_proof(
@@ -45,8 +45,10 @@ pub fn proof_from_stark_proof(
                 _ => panic!("Unexpected interaction at OODS values"),
             })
             .collect_vec(),
-        component_log_sizes: pack_component_log_sizes(component_log_sizes),
-        claimed_sums,
+        claim: Claim {
+            component_log_sizes: pack_component_log_sizes(component_log_sizes),
+            claimed_sums,
+        },
         composition_eval_at_oods: as_single_row(&sampled_values[3]).try_into().unwrap(),
         eval_domain_samples: construct_eval_domain_samples(proof, config),
         eval_domain_auth_paths: construct_eval_domain_auth_paths(proof, config),
