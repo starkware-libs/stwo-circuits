@@ -83,14 +83,14 @@ impl<Value: IValue> CircuitEval<Value> for CircuitEqComponent {
     fn evaluate(
         &self,
         context: &mut Context<Value>,
-        trace_columns: &[Var],
+        component_data: &ComponentData<'_>,
         acc: &mut CompositionConstraintAccumulator<'_>,
     ) {
         let in0_address = acc.get_preprocessed_column(self.preprocessed_column_indices[0]);
         let in1_address = acc.get_preprocessed_column(self.preprocessed_column_indices[1]);
 
         let [in0_col0, in0_col1, in0_col2, in0_col3, in1_col4, in1_col5, in1_col6, in1_col7] =
-            *trace_columns
+            *component_data.trace_columns
         else {
             panic!("Expected {N_TRACE_COLUMNS} trace columns")
         };

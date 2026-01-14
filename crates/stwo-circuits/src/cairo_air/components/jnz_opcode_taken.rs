@@ -221,9 +221,9 @@ impl<Value: IValue> CircuitEval<Value> for Component {
     fn evaluate(
         &self,
         context: &mut Context<Value>,
-        input: &[Var],
+        component_data: &ComponentData<'_>,
         acc: &mut CompositionConstraintAccumulator<'_>,
     ) {
-        accumulate_constraints(input, context, acc);
+        accumulate_constraints(component_data.trace_columns, context, acc);
     }
 }
