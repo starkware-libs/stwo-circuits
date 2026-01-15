@@ -49,8 +49,11 @@ macro_rules! eval {
 }
 
 /// Adds an equality gate to the circuit.
-pub fn eq(context: &mut Context<impl IValue>, a: Var, b: Var) {
+pub fn eq<Value: IValue + PartialEq>(context: &mut Context<Value>, a: Var, b: Var) {
     context.stats.equals += 1;
+    if context.assert_eq_on_eval {
+        assert_eq!(context.get(a), context.get(b), "Eq failed: Vars {a:?} and {b:?}");
+    }
     context.circuit.eq.push(Eq { in0: a.idx, in1: b.idx });
 }
 

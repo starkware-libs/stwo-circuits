@@ -49,6 +49,7 @@ pub struct Context<Value: IValue> {
     ///
     /// See [guess].
     pub guessed_vars: Option<Vec<usize>>,
+    pub assert_eq_on_eval: bool,
 }
 impl<Value: IValue> Context<Value> {
     pub fn values(&self) -> &Vec<Value> {
@@ -141,6 +142,7 @@ impl<Value: IValue> Default for Context<Value> {
             stats: Stats::default(),
             unused_vars: HashSet::new(),
             guessed_vars: Some(vec![]),
+            assert_eq_on_eval: false,
         };
         // Register zero and one as the first constants.
         res.constant(QM31::zero());
@@ -161,5 +163,9 @@ impl TraceContext {
     /// Validates that the values satisfy the circuit.
     pub fn validate_circuit(&self) {
         self.circuit.check(self.values()).unwrap();
+    }
+
+    pub fn enable_assert_eq_on_eval(&mut self) {
+        self.assert_eq_on_eval = true;
     }
 }
