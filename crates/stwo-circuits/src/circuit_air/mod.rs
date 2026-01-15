@@ -31,11 +31,13 @@ impl CircuitClaim {
 }
 
 pub struct CircuitInteractionElements {
-    pub gate: relations::Gate,
+    pub common_lookup_elements: relations::CommonLookupElements,
 }
 impl CircuitInteractionElements {
     pub fn draw(channel: &mut impl Channel) -> CircuitInteractionElements {
-        CircuitInteractionElements { gate: relations::Gate::draw(channel) }
+        CircuitInteractionElements {
+            common_lookup_elements: relations::CommonLookupElements::draw(channel),
+        }
     }
 }
 

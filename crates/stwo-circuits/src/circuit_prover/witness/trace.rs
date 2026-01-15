@@ -52,13 +52,13 @@ pub fn write_interaction_trace(
         *component_log_size_iter.next().unwrap(),
         circuit_interaction_claim_generator.eq_lookup_data,
         tree_builder,
-        &interaction_elements.gate,
+        &interaction_elements.common_lookup_elements,
     );
     let qm31_ops_claimed_sum = qm31_ops::write_interaction_trace(
         *component_log_size_iter.next().unwrap(),
         circuit_interaction_claim_generator.qm31_ops_lookup_data,
         tree_builder,
-        &interaction_elements.gate,
+        &interaction_elements.common_lookup_elements,
     );
     CircuitInteractionClaim { claimed_sums: [eq_claimed_sum, qm31_ops_claimed_sum] }
 }
