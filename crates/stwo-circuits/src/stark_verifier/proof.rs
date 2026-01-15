@@ -157,7 +157,8 @@ impl<Value: IValue> Guess<Value> for InteractionAtOods<Value> {
 
 pub struct Claim<T> {
     // The log sizes of the components in the AIR.
-    pub component_log_sizes: Vec<T>,
+    // Every QM31 hold up to 4 component log sizes.
+    pub packed_component_log_sizes: Vec<T>,
 
     // Claimed sum for each component in the AIR.
     pub claimed_sums: Vec<T>,
@@ -168,7 +169,7 @@ impl<Value: IValue> Guess<Value> for Claim<Value> {
 
     fn guess(&self, context: &mut Context<Value>) -> Self::Target {
         Claim {
-            component_log_sizes: self.component_log_sizes.guess(context),
+            packed_component_log_sizes: self.packed_component_log_sizes.guess(context),
             claimed_sums: self.claimed_sums.guess(context),
         }
     }
@@ -260,7 +261,7 @@ pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
             })
             .collect(),
         claim: Claim {
-            component_log_sizes: vec![NoValue; config.n_components.div_ceil(4)],
+            packed_component_log_sizes: vec![NoValue; config.n_components.div_ceil(4)],
             claimed_sums: vec![NoValue; config.n_components],
         },
         composition_eval_at_oods: [NoValue; N_COMPOSITION_COLUMNS],
