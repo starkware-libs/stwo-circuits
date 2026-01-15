@@ -46,6 +46,7 @@ pub fn proof_from_stark_proof(
             })
             .collect_vec(),
         claim: Claim {
+            packed_enable_bits: pack_component_log_sizes(vec![1; config.n_components]),
             packed_component_log_sizes: pack_component_log_sizes(component_log_sizes),
             claimed_sums,
         },
