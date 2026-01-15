@@ -3,6 +3,7 @@ pub mod relations;
 pub mod statement;
 
 use crate::circuit_air::components::N_COMPONENTS;
+use crate::stark_verifier::proof_from_stark_proof::pack_component_log_sizes;
 use itertools::Itertools;
 use stwo::core::channel::Channel;
 use stwo::core::fields::m31::BaseField;
@@ -17,6 +18,11 @@ pub struct CircuitClaim {
 impl CircuitClaim {
     pub fn mix_into(&self, channel: &mut impl Channel) {
         let Self { log_sizes } = self;
+
+        // mix the enable bits into the channel.
+        channel.mix_felts(&pack_component_log_sizes(
+            [true, true].iter().map(|b| if *b { 1 } else { 0 }).collect(),
+        ));
         let log_sizes_qm31 = log_sizes
             .chunks(4)
             .map(|chunk| {

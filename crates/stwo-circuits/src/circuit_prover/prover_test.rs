@@ -140,6 +140,7 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     let proof = proof_from_stark_proof(
         &proof,
         &config,
+        vec![true, true],
         claim.log_sizes.to_vec(),
         interaction_claim.claimed_sums.to_vec(),
     );

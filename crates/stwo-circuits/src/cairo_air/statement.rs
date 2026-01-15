@@ -2,6 +2,7 @@ use crate::cairo_air::components;
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
 use crate::stark_verifier::constraint_eval::CircuitEval;
+use crate::stark_verifier::proof::Claim;
 use crate::stark_verifier::statement::Statement;
 
 pub struct CairoStatement<Value: IValue> {
@@ -27,6 +28,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         &self,
         context: &mut Context<Value>,
         _interaction_elements: [Var; 2],
+        _claim: &Claim<Var>,
     ) -> Var {
         context.zero()
     }

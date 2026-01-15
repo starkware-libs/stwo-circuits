@@ -1,3 +1,4 @@
+use itertools::zip_eq;
 use num_traits::One;
 use stwo::core::fields::m31::M31;
 
@@ -5,12 +6,14 @@ use super::simple_air::FIB_SEQUENCE_LENGTH;
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::div;
+use crate::circuits::simd::Simd;
 use crate::eval;
 use crate::examples::simple_air::{LOG_SIZE_LONG, LOG_SIZE_SHORT};
 use crate::stark_verifier::constraint_eval::{
     CircuitEval, ComponentData, CompositionConstraintAccumulator,
 };
 use crate::stark_verifier::logup::combine_term;
+use crate::stark_verifier::proof::Claim;
 use crate::stark_verifier::statement::Statement;
 
 pub struct SimpleStatement<Value: IValue> {
@@ -70,11 +73,10 @@ impl<Value: IValue> CircuitEval<Value> for SquaredFibonacciComponent {
 
 fn squared_fibonacci_public_logup_sum(
     context: &mut Context<impl IValue>,
-    prev_sum: Var,
     interaction_elements: [Var; 2],
     log_n_instances: u32,
 ) -> Var {
-    let mut sum = prev_sum;
+    let mut sum = context.zero();
     for j in 0..(1 << log_n_instances) {
         let mut a: M31 = M31::one();
         let mut b: M31 = j.into();
@@ -107,16 +109,20 @@ impl<Value: IValue> Statement<Value> for SimpleStatement<Value> {
         &self,
         context: &mut Context<Value>,
         interaction_elements: [Var; 2],
+        claim: &Claim<Var>,
     ) -> Var {
-        let mut prev_sum = context.zero();
-        for log_n_instances in &self.log_component_sizes {
-            prev_sum = squared_fibonacci_public_logup_sum(
-                context,
-                prev_sum,
-                interaction_elements,
-                *log_n_instances,
-            );
+        let mut sum = context.zero();
+
+        let [packed_enable_bits] = &claim.packed_enable_bits[..] else {
+            panic!("Expected 1 QM31 with 3 bits")
+        };
+        let enable_bits = Simd::unpack(context, &Simd::from_packed(vec![*packed_enable_bits], 3));
+
+        for (log_n_instances, enable_bit) in zip_eq(&self.log_component_sizes, enable_bits) {
+            let fib_logup_sum =
+                squared_fibonacci_public_logup_sum(context, interaction_elements, *log_n_instances);
+            sum = eval!(context, (sum) + ((fib_logup_sum) * (enable_bit)));
         }
-        prev_sum
+        sum
     }
 }

@@ -156,19 +156,24 @@ impl<Value: IValue> Guess<Value> for InteractionAtOods<Value> {
 }
 
 pub struct Claim<T> {
+    // Every QM31 hold 4 bit.
+    // TODO(ilya): Consider packing 29 bits into one M31.
+    pub packed_enable_bits: Vec<T>,
+
     // The log sizes of the components in the AIR.
     // Every QM31 hold up to 4 component log sizes.
     pub packed_component_log_sizes: Vec<T>,
 
     // Claimed sum for each component in the AIR.
     pub claimed_sums: Vec<T>,
-    // TODO(Gali): Add public claim and enable bits fields.
+    // TODO(Gali): Add public claim.
 }
 impl<Value: IValue> Guess<Value> for Claim<Value> {
     type Target = Claim<Var>;
 
     fn guess(&self, context: &mut Context<Value>) -> Self::Target {
         Claim {
+            packed_enable_bits: self.packed_enable_bits.guess(context),
             packed_component_log_sizes: self.packed_component_log_sizes.guess(context),
             claimed_sums: self.claimed_sums.guess(context),
         }
@@ -261,6 +266,7 @@ pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
             })
             .collect(),
         claim: Claim {
+            packed_enable_bits: vec![NoValue; config.n_components.div_ceil(4)],
             packed_component_log_sizes: vec![NoValue; config.n_components.div_ceil(4)],
             claimed_sums: vec![NoValue; config.n_components],
         },
