@@ -46,7 +46,7 @@ pub fn proof_from_stark_proof(
             })
             .collect_vec(),
         claim: Claim {
-            component_log_sizes: pack_component_log_sizes(component_log_sizes),
+            packed_component_log_sizes: pack_component_log_sizes(component_log_sizes),
             claimed_sums,
         },
         composition_eval_at_oods: as_single_row(&sampled_values[3]).try_into().unwrap(),

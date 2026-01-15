@@ -54,13 +54,13 @@ pub fn verify<Value: IValue>(
     channel.mix_commitment(context, proof.preprocessed_root);
 
     let component_log_sizes =
-        Simd::from_packed(proof.claim.component_log_sizes.clone(), config.n_components);
+        Simd::from_packed(proof.claim.packed_component_log_sizes.clone(), config.n_components);
 
     // Range check the component log sizes.
     let component_log_size_bits = extract_bits::<LOG_SIZE_BITS>(context, &component_log_sizes);
     // TODO(ilya): check that all the component log sizes are smaller than config.log_trace_size().
 
-    channel.mix_qm31s(context, proof.claim.component_log_sizes.iter().cloned());
+    channel.mix_qm31s(context, proof.claim.packed_component_log_sizes.iter().cloned());
 
     // Mix the trace commitments into the channel.
     channel.mix_commitment(context, proof.trace_root);
