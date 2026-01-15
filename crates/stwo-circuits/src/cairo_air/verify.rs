@@ -1,7 +1,9 @@
 use crate::cairo_air::statement::CairoStatement;
-use crate::circuits::context::Context;
+use crate::circuits::context::{Context, TraceContext};
+use crate::circuits::ops::Guess;
 use crate::stark_verifier::proof::{Proof, ProofConfig};
 use crate::stark_verifier::proof_from_stark_proof::proof_from_stark_proof;
+use crate::stark_verifier::verify::verify;
 use cairo_air::air::{CairoClaim, CairoInteractionClaim};
 use cairo_air::blake::air::InteractionClaim as BlakeInteractionClaim;
 use cairo_air::builtins_air::BuiltinsInteractionClaim;
@@ -28,8 +30,17 @@ pub struct ExtendedCairoProof<H: MerkleHasherLifted> {
 
 /// Circuit Verifies an [ExtendedCairoProof].
 // TODO(Gali): Add test.
-pub fn verify_cairo(_proof: &ExtendedCairoProof<Blake2sM31MerkleHasher>) -> Context<QM31> {
-    unimplemented!()
+pub fn verify_cairo(proof: &ExtendedCairoProof<Blake2sM31MerkleHasher>) -> Context<QM31> {
+    let statement = CairoStatement::<QM31>::default();
+
+    let (config, proof) = proof_from_cairo_proof(proof, &statement);
+
+    let mut context = TraceContext::default();
+    let proof_vars = proof.guess(&mut context);
+
+    verify(&mut context, &proof_vars, &config, &statement);
+
+    context
 }
 
 /// Prepares the input for the circuit verifier by converting the [ExtendedCairoProof] to a
