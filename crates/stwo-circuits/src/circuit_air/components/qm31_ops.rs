@@ -3,10 +3,10 @@ use crate::circuit_air::components::prelude::*;
 pub const N_PREPROCESSED_COLUMNS: usize = 8;
 pub const N_TRACE_COLUMNS: usize = 12;
 pub const N_INTERACTION_COLUMNS: usize = 8;
-
+use crate::circuit_air::relations::GATE_RELATION_ID;
 pub struct Eval {
     pub log_size: u32,
-    pub gate_lookup_elements: relations::Gate,
+    pub common_lookup_elements: relations::CommonLookupElements,
 }
 
 pub type Component = FrameworkComponent<Eval>;
@@ -21,6 +21,7 @@ impl FrameworkEval for Eval {
     }
 
     fn evaluate<E: EvalAtRow>(&self, mut eval: E) -> E {
+        let m31_gate_relation_id = E::F::from(GATE_RELATION_ID);
         let add_flag = eval
             .get_preprocessed_column(PreProcessedColumnId { id: "qm31_ops_add_flag".to_owned() });
         let sub_flag = eval
@@ -89,9 +90,10 @@ impl FrameworkEval for Eval {
         );
 
         eval.add_to_relation(RelationEntry::new(
-            &self.gate_lookup_elements,
+            &self.common_lookup_elements,
             E::EF::one(),
             &[
+                m31_gate_relation_id.clone(),
                 in0_address.clone(),
                 in0_col0.clone(),
                 in0_col1.clone(),
@@ -101,9 +103,10 @@ impl FrameworkEval for Eval {
         ));
 
         eval.add_to_relation(RelationEntry::new(
-            &self.gate_lookup_elements,
+            &self.common_lookup_elements,
             E::EF::one(),
             &[
+                m31_gate_relation_id.clone(),
                 in1_address.clone(),
                 in1_col4.clone(),
                 in1_col5.clone(),
@@ -113,9 +116,10 @@ impl FrameworkEval for Eval {
         ));
 
         eval.add_to_relation(RelationEntry::new(
-            &self.gate_lookup_elements,
+            &self.common_lookup_elements,
             -E::EF::from(mults),
             &[
+                m31_gate_relation_id.clone(),
                 out_address.clone(),
                 out_col8.clone(),
                 out_col9.clone(),
@@ -148,6 +152,7 @@ impl<Value: IValue> CircuitEval<Value> for CircuitQm31OpsComponent {
         component_data: &ComponentData<'_>,
         acc: &mut CompositionConstraintAccumulator<'_>,
     ) {
+        let gate_relation_id = context.constant(SecureField::from(GATE_RELATION_ID));
         let add_flag = acc.get_preprocessed_column(self.preprocessed_column_indices[0]);
         let sub_flag = acc.get_preprocessed_column(self.preprocessed_column_indices[1]);
         let _mul_flag = acc.get_preprocessed_column(self.preprocessed_column_indices[2]);
@@ -214,20 +219,20 @@ impl<Value: IValue> CircuitEval<Value> for CircuitQm31OpsComponent {
         acc.add_to_relation(
             context,
             context.one(),
-            &[in0_address, in0_col0, in0_col1, in0_col2, in0_col3],
+            &[gate_relation_id, in0_address, in0_col0, in0_col1, in0_col2, in0_col3],
         );
 
         acc.add_to_relation(
             context,
             context.one(),
-            &[in1_address, in1_col4, in1_col5, in1_col6, in1_col7],
+            &[gate_relation_id, in1_address, in1_col4, in1_col5, in1_col6, in1_col7],
         );
 
         let neg_mults = eval!(context, (context.zero()) - (mults));
         acc.add_to_relation(
             context,
             neg_mults,
-            &[out_address, out_col8, out_col9, out_col10, out_col11],
+            &[gate_relation_id, out_address, out_col8, out_col9, out_col10, out_col11],
         );
     }
 }

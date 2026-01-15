@@ -2,6 +2,7 @@ use num_traits::Zero;
 use rayon::slice::{ParallelSlice, ParallelSliceMut};
 
 use crate::circuit_air::components::qm31_ops::N_TRACE_COLUMNS;
+use crate::circuit_air::relations::GATE_RELATION_ID;
 use crate::circuit_prover::witness::components::prelude::*;
 
 pub type InputType = [[M31; 4]; 3];
@@ -186,9 +187,30 @@ fn write_trace_simd(
             *row[10] = out_col10;
             let out_col11 = qm_31_ops_input[2][3];
             *row[11] = out_col11;
-            *lookup_data.in_0 = [in0_address, in0_col0, in0_col1, in0_col2, in0_col3];
-            *lookup_data.in_1 = [in1_address, in1_col4, in1_col5, in1_col6, in1_col7];
-            *lookup_data.out = [out_address, out_col8, out_col9, out_col10, out_col11];
+            *lookup_data.in_0 = [
+                PackedM31::from(GATE_RELATION_ID),
+                in0_address,
+                in0_col0,
+                in0_col1,
+                in0_col2,
+                in0_col3,
+            ];
+            *lookup_data.in_1 = [
+                PackedM31::from(GATE_RELATION_ID),
+                in1_address,
+                in1_col4,
+                in1_col5,
+                in1_col6,
+                in1_col7,
+            ];
+            *lookup_data.out = [
+                PackedM31::from(GATE_RELATION_ID),
+                out_address,
+                out_col8,
+                out_col9,
+                out_col10,
+                out_col11,
+            ];
             *lookup_data.mults = mults;
         });
 
@@ -197,9 +219,9 @@ fn write_trace_simd(
 
 #[derive(Uninitialized, IterMut, ParIterMut)]
 pub struct LookupData {
-    in_0: Vec<[PackedM31; 5]>,
-    in_1: Vec<[PackedM31; 5]>,
-    out: Vec<[PackedM31; 5]>,
+    in_0: Vec<[PackedM31; 6]>,
+    in_1: Vec<[PackedM31; 6]>,
+    out: Vec<[PackedM31; 6]>,
     mults: Vec<PackedM31>,
 }
 
@@ -207,7 +229,7 @@ pub fn write_interaction_trace(
     log_size: u32,
     lookup_data: LookupData,
     tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, Blake2sM31MerkleChannel>,
-    gate: &relations::Gate,
+    common_lookup_elements: &relations::CommonLookupElements,
 ) -> ClaimedSum {
     let mut logup_gen = LogupTraceGenerator::new(log_size);
 
@@ -215,8 +237,8 @@ pub fn write_interaction_trace(
     let mut col_gen = logup_gen.new_col();
     (col_gen.par_iter_mut(), &lookup_data.in_0, &lookup_data.in_1).into_par_iter().for_each(
         |(writer, values0, values1)| {
-            let denom0: PackedQM31 = gate.combine(values0);
-            let denom1: PackedQM31 = gate.combine(values1);
+            let denom0: PackedQM31 = common_lookup_elements.combine(values0);
+            let denom1: PackedQM31 = common_lookup_elements.combine(values1);
             writer.write_frac(denom0 + denom1, denom0 * denom1);
         },
     );
@@ -226,7 +248,7 @@ pub fn write_interaction_trace(
     let mut col_gen = logup_gen.new_col();
     (col_gen.par_iter_mut(), &lookup_data.out, lookup_data.mults).into_par_iter().for_each(
         |(writer, values, mults)| {
-            let denom = gate.combine(values);
+            let denom = common_lookup_elements.combine(values);
             writer.write_frac(-PackedQM31::one() * mults, denom);
         },
     );
