@@ -1,4 +1,4 @@
-use crate::circuit_air::components::prelude::*;
+use crate::circuit_air::{components::prelude::*, relations::GATE_RELATION_ID};
 
 pub const N_PREPROCESSED_COLUMNS: usize = 2;
 pub const N_TRACE_COLUMNS: usize = 8;
@@ -6,7 +6,7 @@ pub const N_INTERACTION_COLUMNS: usize = 4;
 
 pub struct Eval {
     pub log_size: u32,
-    pub gate_lookup_elements: relations::Gate,
+    pub common_lookup_elements: relations::CommonLookupElements,
 }
 
 pub type Component = FrameworkComponent<Eval>;
@@ -21,6 +21,7 @@ impl FrameworkEval for Eval {
     }
 
     fn evaluate<E: EvalAtRow>(&self, mut eval: E) -> E {
+        let m31_gate_relation_id = E::F::from(GATE_RELATION_ID);
         let in0_address =
             eval.get_preprocessed_column(PreProcessedColumnId { id: "eq_in0_address".to_owned() });
         let in1_address =
@@ -48,9 +49,10 @@ impl FrameworkEval for Eval {
         eval.add_constraint(in0_col3.clone() - in1_col7.clone());
 
         eval.add_to_relation(RelationEntry::new(
-            &self.gate_lookup_elements,
+            &self.common_lookup_elements,
             E::EF::one(),
             &[
+                m31_gate_relation_id.clone(),
                 in0_address.clone(),
                 in0_col0.clone(),
                 in0_col1.clone(),
@@ -60,9 +62,10 @@ impl FrameworkEval for Eval {
         ));
 
         eval.add_to_relation(RelationEntry::new(
-            &self.gate_lookup_elements,
+            &self.common_lookup_elements,
             E::EF::one(),
             &[
+                m31_gate_relation_id.clone(),
                 in1_address.clone(),
                 in1_col4.clone(),
                 in1_col5.clone(),
@@ -95,6 +98,7 @@ impl<Value: IValue> CircuitEval<Value> for CircuitEqComponent {
         component_data: &ComponentData<'_>,
         acc: &mut CompositionConstraintAccumulator<'_>,
     ) {
+        let gate_relation_id = context.constant(SecureField::from(GATE_RELATION_ID));
         let in0_address = acc.get_preprocessed_column(self.preprocessed_column_indices[0]);
         let in1_address = acc.get_preprocessed_column(self.preprocessed_column_indices[1]);
 
@@ -123,12 +127,12 @@ impl<Value: IValue> CircuitEval<Value> for CircuitEqComponent {
         acc.add_to_relation(
             context,
             context.one(),
-            &[in0_address, in0_col0, in0_col1, in0_col2, in0_col3],
+            &[gate_relation_id, in0_address, in0_col0, in0_col1, in0_col2, in0_col3],
         );
         acc.add_to_relation(
             context,
             context.one(),
-            &[in1_address, in1_col4, in1_col5, in1_col6, in1_col7],
+            &[gate_relation_id, in1_address, in1_col4, in1_col5, in1_col6, in1_col7],
         );
     }
 }
