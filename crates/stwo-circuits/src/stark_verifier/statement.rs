@@ -20,6 +20,7 @@ pub struct EvaluateArgs<'a> {
     pub log_domain_size: usize,
     pub composition_polynomial_coeff: Var,
     pub interaction_elements: [Var; 2],
+    pub enable_bits: &'a [Var],
     pub claimed_sums: &'a [Var],
     pub component_sizes: &'a [Var],
     pub n_instances_bits: &'a [Simd; MAX_TRACE_SIZE_BITS],

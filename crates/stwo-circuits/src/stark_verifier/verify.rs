@@ -87,6 +87,9 @@ pub fn verify<Value: IValue>(
     let component_sizes = Simd::pow2(context, &component_log_size_bits);
     let unpacked_component_sizes = Simd::unpack(context, &component_sizes);
     let component_sizes_bits = extract_bits::<MAX_TRACE_SIZE_BITS>(context, &component_sizes);
+    let simd_enable_bits =
+        Simd::from_packed(proof.claim.packed_enable_bits.clone(), config.n_components);
+    let enable_bits = Simd::unpack(context, &simd_enable_bits);
 
     // Compute the composition evaluation at the OODS point from `proof.*_at_oods` and compare
     // to `proof.composition_eval_at_oods`.
@@ -105,6 +108,7 @@ pub fn verify<Value: IValue>(
             composition_polynomial_coeff,
             interaction_elements: [interaction_z, interaction_alpha],
             claimed_sums: &proof.claim.claimed_sums,
+            enable_bits: &enable_bits,
             component_sizes: &unpacked_component_sizes,
             n_instances_bits: &component_sizes_bits,
         },
