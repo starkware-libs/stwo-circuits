@@ -51,6 +51,8 @@ impl<'a> ComponentData<'a> {
 /// so that after N constraints:
 ///   accumulation = Σ_{i=0..N-1} composition_polynomial_coeff^{N-1-i} * c_i.
 pub struct CompositionConstraintAccumulator {
+    /// The enable bits of the current component.
+    enable_bit: Var,
     /// The OODS samples for the preprocessed columns, trace, and interaction.
     /// Each component will consume a subset of these samples.
     pub preprocessed_columns: HashMap<PreProcessedColumnId, Var>,
@@ -64,11 +66,35 @@ pub struct CompositionConstraintAccumulator {
 }
 
 impl CompositionConstraintAccumulator {
+    pub fn new(
+        context: &mut Context<impl IValue>,
+        preprocessed_columns: HashMap<PreProcessedColumnId, Var>,
+        composition_polynomial_coeff: Var,
+        interaction_elements: [Var; 2],
+    ) -> Self {
+        Self {
+            enable_bit: context.zero(),
+            preprocessed_columns,
+            composition_polynomial_coeff,
+            interaction_elements,
+            accumulation: context.zero(),
+            terms: Vec::new(),
+        }
+    }
+
+    /// Sets the enable bit for the current component.
+    pub fn set_enable_bit(&mut self, enable_bit: Var) {
+        self.enable_bit = enable_bit;
+    }
+
     /// Incorporate the next constraint evaluation at the OODS point.
     pub fn accumulate(&mut self, context: &mut Context<impl IValue>, constraint_eval_at_oods: Var) {
         let shifted_accumulation =
             eval!(context, (self.accumulation) * (self.composition_polynomial_coeff));
-        self.accumulation = eval!(context, (shifted_accumulation) + (constraint_eval_at_oods));
+        let zero_or_constraint_eval_at_oods =
+            eval!(context, (constraint_eval_at_oods) * (self.enable_bit));
+        self.accumulation =
+            eval!(context, (shifted_accumulation) + (zero_or_constraint_eval_at_oods));
     }
 
     /// Finish accumulation and return the combined value.
@@ -189,6 +215,7 @@ pub fn compute_composition_polynomial<Value: IValue>(
         log_domain_size,
         composition_polynomial_coeff,
         interaction_elements,
+        enable_bits,
         claimed_sums,
         component_sizes,
         n_instances_bits,
@@ -198,13 +225,12 @@ pub fn compute_composition_polynomial<Value: IValue>(
         statement.get_preprocessed_column_ids(),
         oods_samples.preprocessed_columns.iter().cloned(),
     ));
-    let mut evaluation_accumulator = CompositionConstraintAccumulator {
+    let mut evaluation_accumulator = CompositionConstraintAccumulator::new(
+        context,
         preprocessed_columns,
         composition_polynomial_coeff,
         interaction_elements,
-        accumulation: context.zero(),
-        terms: Vec::new(),
-    };
+    );
 
     for (
         component_index,
@@ -212,6 +238,7 @@ pub fn compute_composition_polynomial<Value: IValue>(
             component,
             n_trace_columns_in_component,
             n_interaction_columns_in_component,
+            &enable_bit,
             &claimed_sum,
             &component_size,
         ),
@@ -219,11 +246,13 @@ pub fn compute_composition_polynomial<Value: IValue>(
         statement.get_components(),
         &config.trace_columns_per_component,
         &config.interaction_columns_per_component,
+        enable_bits,
         claimed_sums,
         component_sizes,
     )
     .enumerate()
     {
+        evaluation_accumulator.set_enable_bit(enable_bit);
         let trace_columns = get_n_columns(&mut oods_samples.trace, *n_trace_columns_in_component);
         let interaction_columns =
             get_n_columns(&mut oods_samples.interaction, *n_interaction_columns_in_component);
