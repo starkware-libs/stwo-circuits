@@ -21,10 +21,11 @@ pub struct SimpleStatement<Value: IValue> {
 impl<Value: IValue> Default for SimpleStatement<Value> {
     fn default() -> Self {
         Self {
-            log_component_sizes: vec![LOG_SIZE_LONG, LOG_SIZE_SHORT],
+            log_component_sizes: vec![LOG_SIZE_LONG, LOG_SIZE_SHORT, LOG_SIZE_LONG],
             components: vec![
                 Box::new(SquaredFibonacciComponent { preprocessed_column_idx: 1 }),
                 Box::new(SquaredFibonacciComponent { preprocessed_column_idx: 0 }),
+                Box::new(SquaredFibonacciComponent { preprocessed_column_idx: 1 }),
             ],
         }
     }

@@ -4,7 +4,7 @@ use stwo::core::pcs::{CommitmentSchemeVerifier, PcsConfig, TreeVec};
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::core::verifier::verify;
 
-use crate::examples::simple_air::{PublicInput, create_proof};
+use crate::examples::simple_air::{LOG_SIZE_LONG, LOG_SIZE_SHORT, PublicInput, create_proof};
 use crate::stark_verifier::proof_from_stark_proof::pack_component_log_sizes;
 
 #[test]
@@ -18,12 +18,15 @@ fn verify_simple_proof() {
     let commitment_scheme = &mut CommitmentSchemeVerifier::<Blake2sM31MerkleChannel>::new(config);
 
     // Retrieve the expected column sizes in each commitment interaction, from the AIR.
-    let mut sizes = TreeVec::concat_cols(components.iter().map(|c| c.trace_log_degree_bounds()));
+    let sizes = TreeVec::concat_cols(components.iter().map(|c| c.trace_log_degree_bounds()));
 
-    // Sort the preprocessed column sizes.
-    sizes[0].sort();
+    let preprocessed_column_sizes = vec![LOG_SIZE_SHORT, LOG_SIZE_LONG];
 
-    commitment_scheme.commit(proof.proof.commitments[0], &sizes[0], verifier_channel);
+    commitment_scheme.commit(
+        proof.proof.commitments[0],
+        &preprocessed_column_sizes,
+        verifier_channel,
+    );
     verifier_channel.mix_felts(&pack_component_log_sizes(component_log_sizes));
     commitment_scheme.commit(proof.proof.commitments[1], &sizes[1], verifier_channel);
     verifier_channel.mix_felts(&claimed_sums);
