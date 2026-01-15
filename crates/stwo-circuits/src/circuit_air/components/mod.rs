@@ -35,7 +35,7 @@ impl CircuitComponents {
             tree_span_provider,
             eq::Eval {
                 log_size: circuit_claim.log_sizes[ComponentList::Eq as usize],
-                gate_lookup_elements: interaction_elements.gate.clone(),
+                common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
             },
             interaction_claim.claimed_sums[ComponentList::Eq as usize],
         );
@@ -43,7 +43,7 @@ impl CircuitComponents {
             tree_span_provider,
             qm31_ops::Eval {
                 log_size: circuit_claim.log_sizes[ComponentList::Qm31Ops as usize],
-                gate_lookup_elements: interaction_elements.gate.clone(),
+                common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
             },
             interaction_claim.claimed_sums[ComponentList::Qm31Ops as usize],
         );
