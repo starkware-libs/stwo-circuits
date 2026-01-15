@@ -38,6 +38,8 @@ impl CircuitInteractionElements {
     }
 }
 
+
+
 pub struct CircuitInteractionClaim {
     pub claimed_sums: [ClaimedSum; N_COMPONENTS],
 }
