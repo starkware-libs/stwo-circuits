@@ -202,13 +202,18 @@ pub fn create_proof()
     ]);
     tree_builder.commit(prover_channel);
 
-    prover_channel.mix_felts(&[QM31::from_u32_unchecked(LOG_SIZE_LONG, LOG_SIZE_SHORT, 0, 0)]);
+    prover_channel.mix_felts(&[QM31::from_u32_unchecked(
+        LOG_SIZE_LONG,
+        LOG_SIZE_SHORT,
+        LOG_SIZE_LONG,
+        0,
+    )]);
 
     // Trace.
     let trace_1 = generate_trace(LOG_SIZE_LONG);
     let trace_2 = generate_trace(LOG_SIZE_SHORT);
     let mut tree_builder = commitment_scheme.tree_builder();
-    tree_builder.extend_evals([trace_1.clone(), trace_2.clone()].concat());
+    tree_builder.extend_evals([trace_1.clone(), trace_2.clone(), trace_1.clone()].concat());
     tree_builder.commit(prover_channel);
 
     // TODO(lior): Add proof of work before drawing the lookup elements.
@@ -221,9 +226,11 @@ pub fn create_proof()
         generate_interaction_trace(&trace_1, &lookup_elements.0);
     let (interaction_trace_2, claimed_sum_2) =
         generate_interaction_trace(&trace_2, &lookup_elements.0);
-    prover_channel.mix_felts(&[claimed_sum_1, claimed_sum_2]);
+    prover_channel.mix_felts(&[claimed_sum_1, claimed_sum_2, claimed_sum_1]);
     let mut tree_builder = commitment_scheme.tree_builder();
-    tree_builder.extend_evals([interaction_trace_1, interaction_trace_2].concat());
+    tree_builder.extend_evals(
+        [interaction_trace_1.clone(), interaction_trace_2, interaction_trace_1].concat(),
+    );
     tree_builder.commit(prover_channel);
 
     let short_preprocessed_column = PreProcessedColumnId { id: "row_const_short".into() };
@@ -239,7 +246,7 @@ pub fn create_proof()
         &mut trace_location_allocator,
         Eval {
             lookup_elements: lookup_elements.clone(),
-            preprocessed_column_id: long_preprocessed_column,
+            preprocessed_column_id: long_preprocessed_column.clone(),
             log_n_instances: LOG_SIZE_LONG,
         },
         claimed_sum_1,
@@ -248,26 +255,37 @@ pub fn create_proof()
     let component_2 = SimpleComponent::new(
         &mut trace_location_allocator,
         Eval {
-            lookup_elements,
+            lookup_elements: lookup_elements.clone(),
             preprocessed_column_id: short_preprocessed_column,
             log_n_instances: LOG_SIZE_SHORT,
         },
         claimed_sum_2,
     );
+
+    let component_3 = SimpleComponent::new(
+        &mut trace_location_allocator,
+        Eval {
+            lookup_elements,
+            preprocessed_column_id: long_preprocessed_column,
+            log_n_instances: LOG_SIZE_LONG,
+        },
+        claimed_sum_1,
+    );
     let proof = prove_ex::<SimdBackend, Blake2sM31MerkleChannel>(
-        &[&component_1, &component_2],
+        &[&component_1, &component_2, &component_3],
         prover_channel,
         commitment_scheme,
     )
     .unwrap();
 
-    let components: Vec<Box<dyn Component>> = vec![Box::new(component_1), Box::new(component_2)];
+    let components: Vec<Box<dyn Component>> =
+        vec![Box::new(component_1), Box::new(component_2), Box::new(component_3)];
 
     (
         components,
         PublicInput {
-            claimed_sums: vec![claimed_sum_1, claimed_sum_2],
-            component_log_sizes: vec![LOG_SIZE_LONG, LOG_SIZE_SHORT],
+            claimed_sums: vec![claimed_sum_1, claimed_sum_2, claimed_sum_1],
+            component_log_sizes: vec![LOG_SIZE_LONG, LOG_SIZE_SHORT, LOG_SIZE_LONG],
         },
         config,
         proof,
