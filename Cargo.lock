@@ -432,7 +432,7 @@ dependencies = [
 [[package]]
 name = "cairo-air"
 version = "0.1.1"
-source = "git+https://github.com/starkware-libs/stwo-cairo?rev=2253bb0#2253bb068c4e81bee8c7a070118e34304a457bec"
+source = "git+https://github.com/starkware-libs/stwo-cairo?rev=2856c9f5#2856c9f57f8fa65b5de1e48e212e7573eaec609b"
 dependencies = [
  "bincode",
  "bzip2",
@@ -1886,7 +1886,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 [[package]]
 name = "std-shims"
 version = "0.1.0"
-source = "git+https://github.com/starkware-libs/stwo?rev=6b5c843#6b5c84396da9ce282dc6accb343dd7ef6d1b9966"
+source = "git+https://github.com/starkware-libs/stwo?rev=91bdbd70#91bdbd70697047161c9d4be8ae8e0fec14a5e263"
 
 [[package]]
 name = "strsim"
@@ -1897,7 +1897,7 @@ checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 [[package]]
 name = "stwo"
 version = "0.1.1"
-source = "git+https://github.com/starkware-libs/stwo?rev=6b5c843#6b5c84396da9ce282dc6accb343dd7ef6d1b9966"
+source = "git+https://github.com/starkware-libs/stwo?rev=91bdbd70#91bdbd70697047161c9d4be8ae8e0fec14a5e263"
 dependencies = [
  "blake2",
  "blake3",
@@ -1925,7 +1925,7 @@ dependencies = [
 [[package]]
 name = "stwo-air-utils"
 version = "0.1.1"
-source = "git+https://github.com/starkware-libs/stwo?rev=6b5c843#6b5c84396da9ce282dc6accb343dd7ef6d1b9966"
+source = "git+https://github.com/starkware-libs/stwo?rev=91bdbd70#91bdbd70697047161c9d4be8ae8e0fec14a5e263"
 dependencies = [
  "bytemuck",
  "itertools 0.12.1",
@@ -1937,7 +1937,7 @@ dependencies = [
 [[package]]
 name = "stwo-air-utils-derive"
 version = "0.1.0"
-source = "git+https://github.com/starkware-libs/stwo?rev=6b5c843#6b5c84396da9ce282dc6accb343dd7ef6d1b9966"
+source = "git+https://github.com/starkware-libs/stwo?rev=91bdbd70#91bdbd70697047161c9d4be8ae8e0fec14a5e263"
 dependencies = [
  "itertools 0.13.0",
  "proc-macro2",
@@ -1948,7 +1948,7 @@ dependencies = [
 [[package]]
 name = "stwo-cairo-common"
 version = "0.1.0"
-source = "git+https://github.com/starkware-libs/stwo-cairo?rev=2253bb0#2253bb068c4e81bee8c7a070118e34304a457bec"
+source = "git+https://github.com/starkware-libs/stwo-cairo?rev=2856c9f5#2856c9f57f8fa65b5de1e48e212e7573eaec609b"
 dependencies = [
  "bytemuck",
  "itertools 0.12.1",
@@ -1967,7 +1967,7 @@ dependencies = [
 [[package]]
 name = "stwo-cairo-serialize"
 version = "0.1.0"
-source = "git+https://github.com/starkware-libs/stwo-cairo?rev=2253bb0#2253bb068c4e81bee8c7a070118e34304a457bec"
+source = "git+https://github.com/starkware-libs/stwo-cairo?rev=2856c9f5#2856c9f57f8fa65b5de1e48e212e7573eaec609b"
 dependencies = [
  "starknet-ff",
  "stwo",
@@ -1977,7 +1977,7 @@ dependencies = [
 [[package]]
 name = "stwo-cairo-serialize-derive"
 version = "0.1.0"
-source = "git+https://github.com/starkware-libs/stwo-cairo?rev=2253bb0#2253bb068c4e81bee8c7a070118e34304a457bec"
+source = "git+https://github.com/starkware-libs/stwo-cairo?rev=2856c9f5#2856c9f57f8fa65b5de1e48e212e7573eaec609b"
 dependencies = [
  "quote",
  "syn 2.0.111",
@@ -2006,7 +2006,7 @@ dependencies = [
 [[package]]
 name = "stwo-constraint-framework"
 version = "0.1.1"
-source = "git+https://github.com/starkware-libs/stwo?rev=6b5c843#6b5c84396da9ce282dc6accb343dd7ef6d1b9966"
+source = "git+https://github.com/starkware-libs/stwo?rev=91bdbd70#91bdbd70697047161c9d4be8ae8e0fec14a5e263"
 dependencies = [
  "hashbrown 0.16.1",
  "itertools 0.12.1",
