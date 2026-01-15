@@ -19,6 +19,7 @@ use crate::stark_verifier::proof::{Claim, InteractionAtOods, N_TRACES, Proof, Pr
 pub fn proof_from_stark_proof(
     proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
     config: &ProofConfig,
+    enable_bits: Vec<bool>,
     component_log_sizes: Vec<u32>,
     claimed_sums: Vec<QM31>,
 ) -> Proof<QM31> {
@@ -46,7 +47,8 @@ pub fn proof_from_stark_proof(
             })
             .collect_vec(),
         claim: Claim {
-            packed_component_log_sizes: pack_component_log_sizes(component_log_sizes),
+            packed_enable_bits: pack_enable_bits(&enable_bits),
+            packed_component_log_sizes: pack_component_log_sizes(&component_log_sizes),
             claimed_sums,
         },
         composition_eval_at_oods: as_single_row(&sampled_values[3]).try_into().unwrap(),
@@ -204,16 +206,24 @@ fn construct_fri_siblings(
     res
 }
 
+/// Packs the enable bits into QM31s.
+pub fn pack_enable_bits(enable_bits: &[bool]) -> Vec<QM31> {
+    pack_into_qm31s(enable_bits.iter().map(|b| if *b { 1 } else { 0 }))
+}
+
 /// Packs the component log sizes into QM31s.
 /// Each QM31 holds up to 4 log sizes and the last one is padded with zeros.
-pub fn pack_component_log_sizes(component_log_sizes: Vec<u32>) -> Vec<QM31> {
-    component_log_sizes
-        .iter()
+pub fn pack_component_log_sizes(component_log_sizes: &[u32]) -> Vec<QM31> {
+    pack_into_qm31s(component_log_sizes.iter().cloned())
+}
+
+pub fn pack_into_qm31s<T: Into<M31>>(values: impl Iterator<Item = T>) -> Vec<QM31> {
+    values
         .chunks(4)
         .into_iter()
         .map(|mut chunk| {
             QM31::from_m31_array(array::from_fn(|_| {
-                M31::from_u32_unchecked(*chunk.next().unwrap_or(&0))
+                chunk.next().map(|v| v.into()).unwrap_or(M31::zero())
             }))
         })
         .collect_vec()

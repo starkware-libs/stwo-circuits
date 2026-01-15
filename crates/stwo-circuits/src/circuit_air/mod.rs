@@ -4,9 +4,8 @@ pub mod relations;
 pub mod statement;
 
 use crate::circuit_air::components::N_COMPONENTS;
-use itertools::Itertools;
+use crate::stark_verifier::proof_from_stark_proof::{pack_component_log_sizes, pack_enable_bits};
 use stwo::core::channel::Channel;
-use stwo::core::fields::m31::BaseField;
 use stwo::core::fields::qm31::SecureField;
 
 pub type ComponentLogSize = u32;
@@ -18,15 +17,10 @@ pub struct CircuitClaim {
 impl CircuitClaim {
     pub fn mix_into(&self, channel: &mut impl Channel) {
         let Self { log_sizes } = self;
-        let log_sizes_qm31 = log_sizes
-            .chunks(4)
-            .map(|chunk| {
-                SecureField::from_m31_array(std::array::from_fn(|j| {
-                    BaseField::from_u32_unchecked(*chunk.get(j).unwrap_or(&0))
-                }))
-            })
-            .collect_vec();
-        channel.mix_felts(&log_sizes_qm31);
+
+        // mix the enable bits into the channel.
+        channel.mix_felts(&pack_enable_bits(&[true, true]));
+        channel.mix_felts(&pack_component_log_sizes(log_sizes));
     }
 }
 
