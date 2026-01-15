@@ -1,26 +1,24 @@
-use crate::circuit_air::components::{eq, qm31_ops};
+use crate::cairo_air::components;
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
-
 use crate::stark_verifier::constraint_eval::CircuitEval;
 use crate::stark_verifier::statement::Statement;
 
-pub struct CircuitStatement<Value: IValue> {
+pub struct CairoStatement<Value: IValue> {
     pub components: Vec<Box<dyn CircuitEval<Value>>>,
 }
-impl<Value: IValue> Default for CircuitStatement<Value> {
+impl<Value: IValue> Default for CairoStatement<Value> {
     fn default() -> Self {
         Self {
             components: vec![
-                Box::new(eq::CircuitEqComponent { preprocessed_column_indices: [0, 1] }),
-                Box::new(qm31_ops::CircuitQm31OpsComponent {
-                    preprocessed_column_indices: [2, 3, 4, 5, 6, 7, 8, 9],
-                }),
+                Box::new(components::jnz_opcode_taken::Component {}),
+                Box::new(components::jnz_opcode_non_taken::Component {}),
             ],
         }
     }
 }
-impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
+
+impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
     fn get_components(&self) -> &[Box<dyn CircuitEval<Value>>] {
         &self.components
     }
