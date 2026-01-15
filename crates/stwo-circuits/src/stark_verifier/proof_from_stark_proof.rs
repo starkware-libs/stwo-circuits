@@ -19,6 +19,7 @@ use crate::stark_verifier::proof::{Claim, InteractionAtOods, N_TRACES, Proof, Pr
 pub fn proof_from_stark_proof(
     proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
     config: &ProofConfig,
+    enable_bits: Vec<bool>,
     component_log_sizes: Vec<u32>,
     claimed_sums: Vec<QM31>,
 ) -> Proof<QM31> {
@@ -46,6 +47,9 @@ pub fn proof_from_stark_proof(
             })
             .collect_vec(),
         claim: Claim {
+            packed_enable_bits: pack_component_log_sizes(
+                enable_bits.iter().map(|x| if *x { 1 } else { 0 }).collect_vec(),
+            ),
             packed_component_log_sizes: pack_component_log_sizes(component_log_sizes),
             claimed_sums,
         },

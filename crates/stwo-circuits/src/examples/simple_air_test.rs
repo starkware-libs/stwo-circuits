@@ -10,8 +10,12 @@ use crate::stark_verifier::proof_from_stark_proof::pack_component_log_sizes;
 #[test]
 fn verify_simple_proof() {
     let config = PcsConfig::default();
-    let (components, PublicInput { claimed_sums, component_log_sizes }, _config, proof) =
-        create_proof();
+    let (
+        components,
+        PublicInput { enable_bits: _, claimed_sums, component_log_sizes },
+        _config,
+        proof,
+    ) = create_proof();
 
     // Verify.
     let verifier_channel = &mut Blake2sM31Channel::default();
@@ -19,7 +23,6 @@ fn verify_simple_proof() {
 
     // Retrieve the expected column sizes in each commitment interaction, from the AIR.
     let sizes = TreeVec::concat_cols(components.iter().map(|c| c.trace_log_degree_bounds()));
-
     let preprocessed_column_sizes = vec![LOG_SIZE_SHORT, LOG_SIZE_LONG];
 
     commitment_scheme.commit(

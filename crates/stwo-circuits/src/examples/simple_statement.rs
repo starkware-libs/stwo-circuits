@@ -109,7 +109,7 @@ impl<Value: IValue> Statement<Value> for SimpleStatement<Value> {
         interaction_elements: [Var; 2],
     ) -> Var {
         let mut prev_sum = context.zero();
-        for log_n_instances in &self.log_component_sizes {
+        for log_n_instances in self.log_component_sizes.iter().skip(1) {
             prev_sum = squared_fibonacci_public_logup_sum(
                 context,
                 prev_sum,

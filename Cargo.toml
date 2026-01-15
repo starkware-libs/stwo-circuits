@@ -17,17 +17,17 @@ itertools = { version = "0.12", default-features = false, features = [
     "use_alloc",
 ] }
 num-traits = { version = "0.2.19", default-features = false }
-stwo = { git = "https://github.com/starkware-libs/stwo", rev = "6b5c843", features = [
+stwo = { git = "https://github.com/starkware-libs/stwo", rev = "91bdbd70", features = [
     "parallel",
     "prover",
 ], default-features = false }
-stwo-constraint-framework = { git = "https://github.com/starkware-libs/stwo", rev = "6b5c843", features = [
+stwo-constraint-framework = { git = "https://github.com/starkware-libs/stwo", rev = "91bdbd70", features = [
     "parallel",
     "prover",
 ] }
-stwo-air-utils-derive = { git = "https://github.com/starkware-libs/stwo", rev = "6b5c843" }
-stwo-air-utils = { git = "https://github.com/starkware-libs/stwo", rev = "6b5c843" }
-cairo-air = {git = "https://github.com/starkware-libs/stwo-cairo", rev = "2253bb0"}
+stwo-air-utils-derive = { git = "https://github.com/starkware-libs/stwo", rev = "91bdbd70" }
+stwo-air-utils = { git = "https://github.com/starkware-libs/stwo", rev = "91bdbd70" }
+cairo-air = {git = "https://github.com/starkware-libs/stwo-cairo", rev = "2856c9f5"}
 rstest = "0.26.1"
 expect-test = "1.5.1"
 rayon = "1.10.0"

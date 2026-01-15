@@ -1,5 +1,5 @@
 use itertools::{Itertools, zip_eq};
-use num_traits::One;
+use num_traits::{One, Zero};
 use stwo::core::ColumnVec;
 use stwo::core::air::Component;
 use stwo::core::channel::{Blake2sM31Channel, Channel};
@@ -172,6 +172,7 @@ fn generate_seq_column(
 
 // The public input for the simple AIR verifier.
 pub struct PublicInput {
+    pub enable_bits: Vec<bool>,
     pub claimed_sums: Vec<QM31>,
     pub component_log_sizes: Vec<u32>,
 }
@@ -202,18 +203,26 @@ pub fn create_proof()
     ]);
     tree_builder.commit(prover_channel);
 
-    prover_channel.mix_felts(&[QM31::from_u32_unchecked(
-        LOG_SIZE_LONG,
-        LOG_SIZE_SHORT,
-        LOG_SIZE_LONG,
-        0,
-    )]);
+    prover_channel.mix_felts(&[QM31::from_u32_unchecked(LOG_SIZE_LONG, LOG_SIZE_SHORT, 0, 0)]);
 
     // Trace.
-    let trace_1 = generate_trace(LOG_SIZE_LONG);
-    let trace_2 = generate_trace(LOG_SIZE_SHORT);
+    // Component_1 is disabled (trace size 0) but still needs zero-filled traces for prove_ex
+    // Component_2 uses LOG_SIZE_SHORT, Component_3 uses LOG_SIZE_LONG
+    let trace_1 = generate_trace(LOG_SIZE_LONG); // For component_1
+    let trace_2 = generate_trace(LOG_SIZE_SHORT); // For component_2
     let mut tree_builder = commitment_scheme.tree_builder();
-    tree_builder.extend_evals([trace_1.clone(), trace_2.clone(), trace_1.clone()].concat());
+    tree_builder.extend_evals(
+        [
+            trace_1.clone(),
+            trace_2.clone(),
+            // Zero-filled for component_3
+            vec![
+                CircleEvaluation::<SimdBackend, _, BitReversedOrder>::zero_padding();
+                trace_1.len()
+            ],
+        ]
+        .concat(),
+    );
     tree_builder.commit(prover_channel);
 
     // TODO(lior): Add proof of work before drawing the lookup elements.
@@ -221,15 +230,25 @@ pub fn create_proof()
     // Draw lookup element.
     let lookup_elements = SimpleRelation::draw(prover_channel);
 
-    // Interaction trace.
     let (interaction_trace_1, claimed_sum_1) =
-        generate_interaction_trace(&trace_1, &lookup_elements.0);
+        generate_interaction_trace(&trace_1, &lookup_elements.0); // For component_3
     let (interaction_trace_2, claimed_sum_2) =
-        generate_interaction_trace(&trace_2, &lookup_elements.0);
-    prover_channel.mix_felts(&[claimed_sum_1, claimed_sum_2, claimed_sum_1]);
+        generate_interaction_trace(&trace_2, &lookup_elements.0); // For component_2
+
+    let claimed_sums = vec![claimed_sum_1, claimed_sum_2, QM31::zero()];
+    prover_channel.mix_felts(&claimed_sums);
     let mut tree_builder = commitment_scheme.tree_builder();
+    let n_interaction_columns = interaction_trace_2.len();
     tree_builder.extend_evals(
-        [interaction_trace_1.clone(), interaction_trace_2, interaction_trace_1].concat(),
+        [
+            interaction_trace_1,
+            interaction_trace_2,
+            vec![
+                CircleEvaluation::<SimdBackend, _, BitReversedOrder>::zero_padding();
+                n_interaction_columns
+            ],
+        ]
+        .concat(),
     );
     tree_builder.commit(prover_channel);
 
@@ -241,6 +260,7 @@ pub fn create_proof()
         short_preprocessed_column.clone(),
         long_preprocessed_column.clone(),
     ]);
+
     // Prove constraints.
     let component_1 = SimpleComponent::new(
         &mut trace_location_allocator,
@@ -251,7 +271,6 @@ pub fn create_proof()
         },
         claimed_sum_1,
     );
-
     let component_2 = SimpleComponent::new(
         &mut trace_location_allocator,
         Eval {
@@ -261,16 +280,17 @@ pub fn create_proof()
         },
         claimed_sum_2,
     );
-
-    let component_3 = SimpleComponent::new(
+    let component_3 = SimpleComponent::disabled(
         &mut trace_location_allocator,
         Eval {
             lookup_elements,
             preprocessed_column_id: long_preprocessed_column,
-            log_n_instances: LOG_SIZE_LONG,
+            log_n_instances: 0,
         },
-        claimed_sum_1,
     );
+
+    // Component_1 is disabled with trace size 0, but it still needs to be in prove_ex
+    // for the proof structure to match (it will have empty columns)
     let proof = prove_ex::<SimdBackend, Blake2sM31MerkleChannel>(
         &[&component_1, &component_2, &component_3],
         prover_channel,
@@ -284,8 +304,10 @@ pub fn create_proof()
     (
         components,
         PublicInput {
-            claimed_sums: vec![claimed_sum_1, claimed_sum_2, claimed_sum_1],
-            component_log_sizes: vec![LOG_SIZE_LONG, LOG_SIZE_SHORT, LOG_SIZE_LONG],
+            enable_bits: vec![true, true, false],
+            claimed_sums,
+            // Component_1 is disabled, so it has trace size 0
+            component_log_sizes: vec![LOG_SIZE_LONG, LOG_SIZE_SHORT, 0],
         },
         config,
         proof,
