@@ -93,10 +93,12 @@ impl<Value: IValue> CircuitEval<Value> for CircuitEqComponent {
         &self,
         context: &mut Context<Value>,
         component_data: &ComponentData<'_>,
-        acc: &mut CompositionConstraintAccumulator<'_>,
+        acc: &mut CompositionConstraintAccumulator,
     ) {
-        let in0_address = acc.get_preprocessed_column(self.preprocessed_column_indices[0]);
-        let in1_address = acc.get_preprocessed_column(self.preprocessed_column_indices[1]);
+        let in0_address =
+            acc.get_preprocessed_column(&PreProcessedColumnId { id: "eq_in0_address".to_owned() });
+        let in1_address =
+            acc.get_preprocessed_column(&PreProcessedColumnId { id: "eq_in1_address".to_owned() });
 
         let [in0_col0, in0_col1, in0_col2, in0_col3, in1_col4, in1_col5, in1_col6, in1_col7] =
             *component_data.trace_columns

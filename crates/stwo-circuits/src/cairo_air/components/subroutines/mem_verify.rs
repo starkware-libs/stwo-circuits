@@ -5,8 +5,10 @@ use crate::cairo_air::components::prelude::*;
 pub fn accumulate_constraints(
     input: &[Var],
     context: &mut Context<impl IValue>,
-    acc: &mut CompositionConstraintAccumulator<'_>,
+    component_data: &ComponentData<'_>,
+    acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
+    let _ = component_data;
     let [
         mem_verify_input_address,
         mem_verify_input_value_limb_0,
@@ -43,6 +45,7 @@ pub fn accumulate_constraints(
     read_id::accumulate_constraints(
         &[eval!(context, mem_verify_input_address), eval!(context, id_col0)],
         context,
+        component_data,
         acc,
     );
 
