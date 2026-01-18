@@ -20,7 +20,6 @@ pub mod test;
 const N_QM31_OPS_PP_COLUMNS: usize = 8;
 const N_EQ_PP_COLUMNS: usize = 2;
 const N_OP_CODES: usize = 4;
-pub const N_PP_COLUMNS: usize = N_QM31_OPS_PP_COLUMNS + N_EQ_PP_COLUMNS;
 
 #[derive(Copy, Clone)]
 enum OpCode {

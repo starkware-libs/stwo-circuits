@@ -1,12 +1,13 @@
 use num_traits::One;
 use stwo::core::fields::m31::M31;
+use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 use super::simple_air::FIB_SEQUENCE_LENGTH;
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::div;
 use crate::eval;
-use crate::examples::simple_air::{LOG_SIZE_LONG, LOG_SIZE_SHORT};
+use crate::examples::simple_air::{FIB_PREPROCESSED_COLUMNS, LOG_SIZE_LONG, LOG_SIZE_SHORT};
 use crate::stark_verifier::constraint_eval::{
     CircuitEval, ComponentData, CompositionConstraintAccumulator,
 };
@@ -23,15 +24,23 @@ impl<Value: IValue> Default for SimpleStatement<Value> {
         Self {
             log_component_sizes: vec![LOG_SIZE_LONG, LOG_SIZE_SHORT],
             components: vec![
-                Box::new(SquaredFibonacciComponent { preprocessed_column_idx: 1 }),
-                Box::new(SquaredFibonacciComponent { preprocessed_column_idx: 0 }),
+                Box::new(SquaredFibonacciComponent {
+                    preprocessed_column_id: PreProcessedColumnId {
+                        id: "row_const_long".to_string(),
+                    },
+                }),
+                Box::new(SquaredFibonacciComponent {
+                    preprocessed_column_id: PreProcessedColumnId {
+                        id: "row_const_short".to_string(),
+                    },
+                }),
             ],
         }
     }
 }
 
 pub struct SquaredFibonacciComponent {
-    pub preprocessed_column_idx: usize,
+    pub preprocessed_column_id: PreProcessedColumnId,
 }
 impl<Value: IValue> CircuitEval<Value> for SquaredFibonacciComponent {
     fn trace_columns(&self) -> usize {
@@ -46,9 +55,9 @@ impl<Value: IValue> CircuitEval<Value> for SquaredFibonacciComponent {
         &self,
         context: &mut Context<Value>,
         component_data: &ComponentData<'_>,
-        acc: &mut CompositionConstraintAccumulator<'_>,
+        acc: &mut CompositionConstraintAccumulator,
     ) {
-        let const_val = acc.get_preprocessed_column(self.preprocessed_column_idx);
+        let const_val = acc.get_preprocessed_column(&self.preprocessed_column_id);
         let [a, b, c, d] = *component_data.trace_columns else {
             panic!("Expected 4 trace columns")
         };
@@ -117,5 +126,12 @@ impl<Value: IValue> Statement<Value> for SimpleStatement<Value> {
             );
         }
         prev_sum
+    }
+
+    fn get_preprocessed_column_ids(&self) -> Vec<PreProcessedColumnId> {
+        FIB_PREPROCESSED_COLUMNS
+            .iter()
+            .map(|id| PreProcessedColumnId { id: id.to_string() })
+            .collect()
     }
 }

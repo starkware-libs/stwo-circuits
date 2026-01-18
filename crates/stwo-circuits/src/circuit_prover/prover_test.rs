@@ -1,6 +1,5 @@
 use crate::circuit_air::statement::CircuitStatement;
 use crate::circuit_prover::prover::{CircuitProof, finalize_context, prove_circuit};
-use crate::circuit_prover::witness::preprocessed::N_PP_COLUMNS;
 use crate::circuits::context::TraceContext;
 use crate::circuits::ivalue::{IValue, qm31_from_u32s};
 use crate::circuits::ops::{Guess, permute};
@@ -129,12 +128,7 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     // Verify.
     let log_trace_size = claim.log_sizes.iter().max().unwrap();
     let statement = CircuitStatement::default();
-    let config = ProofConfig::from_statement(
-        &statement,
-        N_PP_COLUMNS,
-        *log_trace_size as usize,
-        &pcs_config,
-    );
+    let config = ProofConfig::from_statement(&statement, *log_trace_size as usize, &pcs_config);
 
     let mut context = TraceContext::default();
     let proof = proof_from_stark_proof(

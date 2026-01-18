@@ -37,6 +37,8 @@ const _: () = assert!(LOG_SIZE_SHORT >= LOG_N_LANES);
 
 pub const FIB_SEQUENCE_LENGTH: usize = 4;
 
+pub const FIB_PREPROCESSED_COLUMNS: [&str; 2] = ["row_const_short", "row_const_long"];
+
 relation!(SimpleRelation, 2);
 
 pub type SimpleComponent = FrameworkComponent<Eval>;
@@ -230,10 +232,13 @@ pub fn create_proof()
     let long_preprocessed_column = PreProcessedColumnId { id: "row_const_long".into() };
 
     // Allocate the preprocessed columns in ascending size order.
-    let mut trace_location_allocator = TraceLocationAllocator::new_with_preprocessed_columns(&[
-        short_preprocessed_column.clone(),
-        long_preprocessed_column.clone(),
-    ]);
+    let mut trace_location_allocator = TraceLocationAllocator::new_with_preprocessed_columns(
+        &FIB_PREPROCESSED_COLUMNS
+            .iter()
+            .map(|id| PreProcessedColumnId { id: id.to_string() })
+            .collect_vec(),
+    );
+
     // Prove constraints.
     let component_1 = SimpleComponent::new(
         &mut trace_location_allocator,

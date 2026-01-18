@@ -1,4 +1,5 @@
 use stwo::core::circle::CirclePoint;
+use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
@@ -29,6 +30,8 @@ pub struct EvaluateArgs<'a> {
 pub trait Statement<Value: IValue> {
     /// Returns the components of the statement.
     fn get_components(&self) -> &[Box<dyn CircuitEval<Value>>];
+
+    fn get_preprocessed_column_ids(&self) -> Vec<PreProcessedColumnId>;
 
     /// Computes the part of the logup sum that is determined by the (public) statement rather than
     /// by the witness.

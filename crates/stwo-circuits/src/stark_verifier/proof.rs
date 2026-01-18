@@ -40,11 +40,11 @@ pub struct ProofConfig {
 impl ProofConfig {
     pub fn from_statement<Value: IValue>(
         statement: &impl Statement<Value>,
-        n_preprocessed_columns: usize,
         log_trace_size: usize,
         pcs_config: &PcsConfig,
     ) -> Self {
         let components = statement.get_components();
+        let n_preprocessed_columns = statement.get_preprocessed_column_ids().len();
         let trace_columns_per_component =
             components.iter().map(|c| c.trace_columns()).collect_vec();
         let interaction_columns_per_component =

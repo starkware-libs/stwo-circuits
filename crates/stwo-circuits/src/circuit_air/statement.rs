@@ -1,4 +1,7 @@
 use crate::circuit_air::components::{eq, qm31_ops};
+use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
+
+use crate::circuit_air::preprocessed_columns::PREPROCESSED_COLUMNS_ORDER;
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
 
@@ -31,5 +34,12 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
         _interaction_elements: [Var; 2],
     ) -> Var {
         context.zero()
+    }
+
+    fn get_preprocessed_column_ids(&self) -> Vec<PreProcessedColumnId> {
+        PREPROCESSED_COLUMNS_ORDER
+            .iter()
+            .map(|id| PreProcessedColumnId { id: id.to_string() })
+            .collect()
     }
 }
