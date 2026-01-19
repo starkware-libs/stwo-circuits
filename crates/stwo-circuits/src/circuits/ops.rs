@@ -33,6 +33,12 @@ macro_rules! eval {
         $crate::circuits::ops::sub($ctx, __tmp0, __tmp1)
     }};
 
+    ($ctx:expr, - ($($a:tt)+)) => {{
+        let __tmp0 = $ctx.zero();
+        let __tmp1 = $crate::eval!($ctx, $($a)+);
+        $crate::circuits::ops::sub($ctx, __tmp0, __tmp1)
+    }};
+
     ($ctx:expr, ($($a:tt)+) * ($($b:tt)+)) => {{
         let __tmp0 = $crate::eval!($ctx, $($a)+);
         let __tmp1 = $crate::eval!($ctx, $($b)+);
