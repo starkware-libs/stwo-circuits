@@ -1,0 +1,51 @@
+// This file was created by the AIR team.
+
+use crate::cairo_air::components::prelude::*;
+
+pub const N_TRACE_COLUMNS: usize = 1;
+pub const N_INTERACTION_COLUMNS: usize = 4;
+
+pub fn accumulate_constraints(
+    input: &[Var],
+    context: &mut Context<impl IValue>,
+    component_data: &ComponentData<'_>,
+    acc: &mut CompositionConstraintAccumulator,
+) {
+    let _ = component_data;
+    let [multiplicity_0] = input.try_into().unwrap();
+    let range_check_4_3_column_0 = acc.get_preprocessed_column(&PreProcessedColumnId {
+        id: "range_check_4_3_column_0".to_owned(),
+    });
+    let range_check_4_3_column_1 = acc.get_preprocessed_column(&PreProcessedColumnId {
+        id: "range_check_4_3_column_1".to_owned(),
+    });
+
+    // Yield RangeCheck_4_3.
+    let tuple_0 = &[
+        eval!(context, 1567323731),
+        eval!(context, range_check_4_3_column_0),
+        eval!(context, range_check_4_3_column_1),
+    ];
+    let numerator_0 = eval!(context, -(multiplicity_0));
+    acc.add_to_relation(context, numerator_0, tuple_0);
+}
+
+pub struct Component {}
+impl<Value: IValue> CircuitEval<Value> for Component {
+    fn evaluate(
+        &self,
+        context: &mut Context<Value>,
+        component_data: &ComponentData<'_>,
+        acc: &mut CompositionConstraintAccumulator,
+    ) {
+        accumulate_constraints(component_data.trace_columns, context, component_data, acc);
+    }
+
+    fn trace_columns(&self) -> usize {
+        N_TRACE_COLUMNS
+    }
+
+    fn interaction_columns(&self) -> usize {
+        N_INTERACTION_COLUMNS
+    }
+}
