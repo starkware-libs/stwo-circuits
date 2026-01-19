@@ -1,4 +1,13 @@
+pub mod add_ap_opcode;
+pub mod assert_eq_opcode;
 pub mod jnz_opcode_non_taken;
 pub mod jnz_opcode_taken;
+pub mod jump_opcode_rel_imm;
 pub mod prelude;
+pub mod range_check_11;
+pub mod range_check_18;
+pub mod range_check_4_3;
+pub mod range_check_7_2_5;
+pub mod ret_opcode;
 pub mod subroutines;
+pub mod verify_instruction;

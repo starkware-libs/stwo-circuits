@@ -14,8 +14,17 @@ impl<Value: IValue> Default for CairoStatement<Value> {
     fn default() -> Self {
         Self {
             components: vec![
-                Box::new(components::jnz_opcode_taken::Component {}),
+                Box::new(components::add_ap_opcode::Component {}),
+                Box::new(components::assert_eq_opcode::Component {}),
                 Box::new(components::jnz_opcode_non_taken::Component {}),
+                Box::new(components::jnz_opcode_taken::Component {}),
+                Box::new(components::jump_opcode_rel_imm::Component {}),
+                Box::new(components::range_check_11::Component {}),
+                Box::new(components::range_check_18::Component {}),
+                Box::new(components::range_check_4_3::Component {}),
+                Box::new(components::range_check_7_2_5::Component {}),
+                Box::new(components::ret_opcode::Component {}),
+                Box::new(components::verify_instruction::Component {}),
             ],
         }
     }
