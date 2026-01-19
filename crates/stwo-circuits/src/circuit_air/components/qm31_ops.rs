@@ -146,16 +146,28 @@ impl<Value: IValue> CircuitEval<Value> for CircuitQm31OpsComponent {
         &self,
         context: &mut Context<Value>,
         component_data: &ComponentData<'_>,
-        acc: &mut CompositionConstraintAccumulator<'_>,
+        acc: &mut CompositionConstraintAccumulator,
     ) {
-        let add_flag = acc.get_preprocessed_column(self.preprocessed_column_indices[0]);
-        let sub_flag = acc.get_preprocessed_column(self.preprocessed_column_indices[1]);
-        let _mul_flag = acc.get_preprocessed_column(self.preprocessed_column_indices[2]);
-        let pointwise_mul_flag = acc.get_preprocessed_column(self.preprocessed_column_indices[3]);
-        let in0_address = acc.get_preprocessed_column(self.preprocessed_column_indices[4]);
-        let in1_address = acc.get_preprocessed_column(self.preprocessed_column_indices[5]);
-        let out_address = acc.get_preprocessed_column(self.preprocessed_column_indices[6]);
-        let mults = acc.get_preprocessed_column(self.preprocessed_column_indices[7]);
+        let add_flag = acc
+            .get_preprocessed_column(&PreProcessedColumnId { id: "qm31_ops_add_flag".to_owned() });
+        let sub_flag = acc
+            .get_preprocessed_column(&PreProcessedColumnId { id: "qm31_ops_sub_flag".to_owned() });
+        let _mul_flag = acc
+            .get_preprocessed_column(&PreProcessedColumnId { id: "qm31_ops_mul_flag".to_owned() });
+        let pointwise_mul_flag = acc.get_preprocessed_column(&PreProcessedColumnId {
+            id: "qm31_ops_pointwise_mul_flag".to_owned(),
+        });
+        let in0_address = acc.get_preprocessed_column(&PreProcessedColumnId {
+            id: "qm31_ops_in0_address".to_owned(),
+        });
+        let in1_address = acc.get_preprocessed_column(&PreProcessedColumnId {
+            id: "qm31_ops_in1_address".to_owned(),
+        });
+        let out_address = acc.get_preprocessed_column(&PreProcessedColumnId {
+            id: "qm31_ops_out_address".to_owned(),
+        });
+        let mults =
+            acc.get_preprocessed_column(&PreProcessedColumnId { id: "qm31_ops_mults".to_owned() });
 
         let [
             in0_col0,

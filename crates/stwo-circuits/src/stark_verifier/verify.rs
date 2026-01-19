@@ -93,7 +93,7 @@ pub fn verify<Value: IValue>(
     let composition_eval = compute_composition_polynomial(
         context,
         config,
-        statement.get_components(),
+        statement,
         EvaluateArgs {
             oods_samples: OodsSamples {
                 preprocessed_columns: &proof.preprocessed_columns_at_oods,

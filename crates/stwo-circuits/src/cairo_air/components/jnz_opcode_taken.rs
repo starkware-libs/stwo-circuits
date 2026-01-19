@@ -2,11 +2,16 @@
 
 use crate::cairo_air::components::prelude::*;
 
+pub const N_TRACE_COLUMNS: usize = 47;
+pub const N_INTERACTION_COLUMNS: usize = 16;
+
 pub fn accumulate_constraints(
     input: &[Var],
     context: &mut Context<impl IValue>,
-    acc: &mut CompositionConstraintAccumulator<'_>,
+    component_data: &ComponentData<'_>,
+    acc: &mut CompositionConstraintAccumulator,
 ) {
+    let _ = component_data;
     let [
         input_pc_col0,
         input_ap_col1,
@@ -68,6 +73,7 @@ pub fn accumulate_constraints(
                 eval!(context, ap_update_add_1_col5),
             ],
             context,
+            component_data,
             acc,
         )
         .try_into()
@@ -119,6 +125,7 @@ pub fn accumulate_constraints(
             eval!(context, dst_limb_27_col35),
         ],
         context,
+        component_data,
         acc,
     );
 
@@ -191,6 +198,7 @@ pub fn accumulate_constraints(
             eval!(context, partial_limb_msb_col45),
         ],
         context,
+        component_data,
         acc,
     )
     .try_into()
@@ -216,22 +224,23 @@ pub fn accumulate_constraints(
     let numerator_11 = eval!(context, -1);
     acc.add_to_relation(context, numerator_11, tuple_11);
 }
+
 pub struct Component {}
 impl<Value: IValue> CircuitEval<Value> for Component {
     fn evaluate(
         &self,
         context: &mut Context<Value>,
         component_data: &ComponentData<'_>,
-        acc: &mut CompositionConstraintAccumulator<'_>,
+        acc: &mut CompositionConstraintAccumulator,
     ) {
-        accumulate_constraints(component_data.trace_columns, context, acc);
+        accumulate_constraints(component_data.trace_columns, context, component_data, acc);
     }
 
     fn trace_columns(&self) -> usize {
-        47
+        N_TRACE_COLUMNS
     }
 
     fn interaction_columns(&self) -> usize {
-        16
+        N_INTERACTION_COLUMNS
     }
 }

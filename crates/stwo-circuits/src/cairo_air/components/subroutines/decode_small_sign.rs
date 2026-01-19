@@ -5,8 +5,10 @@ use crate::cairo_air::components::prelude::*;
 pub fn accumulate_constraints(
     input: &[Var],
     context: &mut Context<impl IValue>,
-    acc: &mut CompositionConstraintAccumulator<'_>,
+    component_data: &ComponentData<'_>,
+    acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
+    let _ = component_data;
     let [msb_col0, mid_limbs_set_col1] = input.try_into().unwrap();
 
     //msb is a bit.

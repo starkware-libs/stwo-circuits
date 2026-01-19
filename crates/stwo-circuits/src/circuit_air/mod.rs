@@ -1,4 +1,5 @@
 pub mod components;
+pub mod preprocessed_columns;
 pub mod relations;
 pub mod statement;
 

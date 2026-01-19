@@ -5,8 +5,10 @@ use crate::cairo_air::components::prelude::*;
 pub fn accumulate_constraints(
     input: &[Var],
     context: &mut Context<impl IValue>,
-    acc: &mut CompositionConstraintAccumulator<'_>,
+    component_data: &ComponentData<'_>,
+    acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
+    let _ = component_data;
     let [cond_range_check_2_input_limb_0, cond_range_check_2_input_limb_1, partial_limb_msb_col0] =
         input.try_into().unwrap();
 

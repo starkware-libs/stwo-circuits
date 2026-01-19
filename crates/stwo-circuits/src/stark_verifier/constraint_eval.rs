@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::{div, from_partial_evals};
@@ -8,10 +10,11 @@ use crate::stark_verifier::logup::{
     LogupTerm, logup_term, pair_logup_constraint, single_logup_constraint,
 };
 use crate::stark_verifier::proof::{InteractionAtOods, ProofConfig};
-use crate::stark_verifier::statement::EvaluateArgs;
+use crate::stark_verifier::statement::{EvaluateArgs, Statement};
 use crate::stark_verifier::verify::MAX_TRACE_SIZE_BITS;
-use itertools::{Itertools, izip};
+use itertools::{Itertools, izip, zip_eq};
 use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
+use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 // Data accosiated with a specific compoonent.
 pub struct ComponentData<'a> {
@@ -47,10 +50,10 @@ impl<'a> ComponentData<'a> {
 ///   accumulation <- accumulation * composition_polynomial_coeff + c_i
 /// so that after N constraints:
 ///   accumulation = Σ_{i=0..N-1} composition_polynomial_coeff^{N-1-i} * c_i.
-pub struct CompositionConstraintAccumulator<'a> {
+pub struct CompositionConstraintAccumulator {
     /// The OODS samples for the preprocessed columns, trace, and interaction.
     /// Each component will consume a subset of these samples.
-    pub preprocessed_columns: &'a [Var],
+    pub preprocessed_columns: HashMap<PreProcessedColumnId, Var>,
     /// The random coefficient for the composition polynomial.
     pub composition_polynomial_coeff: Var,
     /// The interaction elements for the logup sums constraint.
@@ -60,7 +63,7 @@ pub struct CompositionConstraintAccumulator<'a> {
     pub terms: Vec<LogupTerm>,
 }
 
-impl CompositionConstraintAccumulator<'_> {
+impl CompositionConstraintAccumulator {
     /// Incorporate the next constraint evaluation at the OODS point.
     pub fn accumulate(&mut self, context: &mut Context<impl IValue>, constraint_eval_at_oods: Var) {
         let shifted_accumulation =
@@ -75,8 +78,8 @@ impl CompositionConstraintAccumulator<'_> {
         self.accumulation
     }
 
-    pub fn get_preprocessed_column(&self, preprocessed_column_idx: usize) -> Var {
-        self.preprocessed_columns[preprocessed_column_idx]
+    pub fn get_preprocessed_column(&self, preprocessed_column_idx: &PreProcessedColumnId) -> Var {
+        *self.preprocessed_columns.get(preprocessed_column_idx).unwrap()
     }
 
     pub fn add_constraint(
@@ -160,7 +163,7 @@ pub trait CircuitEval<Value: IValue> {
         &self,
         context: &mut Context<Value>,
         component_data: &ComponentData<'_>,
-        acc: &mut CompositionConstraintAccumulator<'_>,
+        acc: &mut CompositionConstraintAccumulator,
     );
 
     /// Returns the number of trace columns used by the component.
@@ -177,7 +180,7 @@ pub fn get_n_columns<'a, T>(columns: &mut &'a [T], n: usize) -> &'a [T] {
 pub fn compute_composition_polynomial<Value: IValue>(
     context: &mut Context<Value>,
     config: &ProofConfig,
-    components: &[Box<dyn CircuitEval<Value>>],
+    statement: &impl Statement<Value>,
     args: EvaluateArgs<'_>,
 ) -> Var {
     let EvaluateArgs {
@@ -191,8 +194,12 @@ pub fn compute_composition_polynomial<Value: IValue>(
         n_instances_bits,
     } = args;
 
+    let preprocessed_columns = HashMap::from_iter(zip_eq(
+        statement.get_preprocessed_column_ids(),
+        oods_samples.preprocessed_columns.iter().cloned(),
+    ));
     let mut evaluation_accumulator = CompositionConstraintAccumulator {
-        preprocessed_columns: oods_samples.preprocessed_columns,
+        preprocessed_columns,
         composition_polynomial_coeff,
         interaction_elements,
         accumulation: context.zero(),
@@ -209,7 +216,7 @@ pub fn compute_composition_polynomial<Value: IValue>(
             &component_size,
         ),
     ) in izip!(
-        components,
+        statement.get_components(),
         &config.trace_columns_per_component,
         &config.interaction_columns_per_component,
         claimed_sums,

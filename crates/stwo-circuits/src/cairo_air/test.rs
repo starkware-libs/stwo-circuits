@@ -15,7 +15,7 @@ fn test_verify() {
 
     let statement = CairoStatement::default();
 
-    let config = ProofConfig::from_statement(&statement, 0, 4, &pcs_config);
+    let config = ProofConfig::from_statement(&statement, 4, &pcs_config);
 
     let empty_proof = empty_proof(&config);
     let mut novalue_context = Context::<NoValue>::default();

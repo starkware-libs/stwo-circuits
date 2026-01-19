@@ -1,4 +1,7 @@
 use crate::cairo_air::components;
+use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
+
+use crate::cairo_air::preprocessed_columns::PREPROCESSED_COLUMNS_ORDER;
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
 use crate::stark_verifier::constraint_eval::CircuitEval;
@@ -29,5 +32,12 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         _interaction_elements: [Var; 2],
     ) -> Var {
         context.zero()
+    }
+
+    fn get_preprocessed_column_ids(&self) -> Vec<PreProcessedColumnId> {
+        PREPROCESSED_COLUMNS_ORDER
+            .iter()
+            .map(|id| PreProcessedColumnId { id: id.to_string() })
+            .collect()
     }
 }
