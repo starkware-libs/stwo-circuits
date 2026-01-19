@@ -26,6 +26,7 @@ pub trait IValue:
     + std::ops::Sub<Output = Self>
     + std::ops::Mul<Output = Self>
     + std::ops::Div<Output = Self>
+    + PartialEq
 {
     fn from_qm31(value: QM31) -> Self;
 
