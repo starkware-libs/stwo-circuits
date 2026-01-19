@@ -50,6 +50,14 @@ fn test_eval_macro() {
 }
 
 #[test]
+fn test_eval_neg() {
+    let mut context = TraceContext::default();
+    let a = context.new_var(10.into());
+    let res = eval!(&mut context, (-(a)) + (13));
+    assert_eq!(context.get(res), 3.into());
+}
+
+#[test]
 fn test_div() {
     let mut context = TraceContext::default();
     let x = guess(&mut context, 10.into());
