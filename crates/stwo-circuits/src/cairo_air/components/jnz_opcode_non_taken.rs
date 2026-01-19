@@ -98,7 +98,7 @@ pub fn accumulate_constraints(
         eval!(context, input_ap_col1),
         eval!(context, input_fp_col2),
     ];
-    let numerator_3 = eval!(context, 1);
+    let numerator_3 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_3, tuple_3);
 
     // Yield Opcodes.
@@ -108,7 +108,7 @@ pub fn accumulate_constraints(
         eval!(context, (input_ap_col1) + (ap_update_add_1_col5)),
         eval!(context, input_fp_col2),
     ];
-    let numerator_4 = eval!(context, -1);
+    let numerator_4 = eval!(context, -(enabler));
     acc.add_to_relation(context, numerator_4, tuple_4);
 }
 
