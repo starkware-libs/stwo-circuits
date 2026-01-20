@@ -21,8 +21,8 @@ use crate::stark_verifier::select_queries::{
 };
 use crate::stark_verifier::statement::{EvaluateArgs, OodsSamples, Statement};
 
-pub const LOG_SIZE_BITS: usize = 5;
-pub const MAX_TRACE_SIZE_BITS: usize = 29;
+pub const LOG_SIZE_BITS: u32 = 5;
+pub const MAX_TRACE_SIZE_BITS: u32 = 29;
 
 #[cfg(test)]
 #[path = "verify_test.rs"]
@@ -57,7 +57,7 @@ pub fn verify<Value: IValue>(
         Simd::from_packed(proof.claim.packed_component_log_sizes.clone(), config.n_components);
 
     // Range check the component log sizes.
-    let component_log_size_bits = extract_bits::<LOG_SIZE_BITS>(context, &component_log_sizes);
+    let component_log_size_bits = extract_bits(context, &component_log_sizes, LOG_SIZE_BITS);
     // TODO(ilya): check that all the component log sizes are smaller than config.log_trace_size().
 
     channel.mix_qm31s(context, proof.claim.packed_component_log_sizes.iter().cloned());
@@ -86,7 +86,7 @@ pub fn verify<Value: IValue>(
 
     let component_sizes = Simd::pow2(context, &component_log_size_bits);
     let unpacked_component_sizes = Simd::unpack(context, &component_sizes);
-    let component_sizes_bits = extract_bits::<MAX_TRACE_SIZE_BITS>(context, &component_sizes);
+    let component_sizes_bits = extract_bits(context, &component_sizes, MAX_TRACE_SIZE_BITS);
 
     // Compute the composition evaluation at the OODS point from `proof.*_at_oods` and compare
     // to `proof.composition_eval_at_oods`.
@@ -121,7 +121,7 @@ pub fn verify<Value: IValue>(
     let trace_gen = generator_point(config.log_trace_size());
 
     let period_generators_per_component =
-        period_generators(context, trace_gen, component_sizes_bits);
+        period_generators(context, trace_gen, &component_sizes_bits);
     let periodicity_sample_points_per_component = period_generators_per_component
         .into_iter()
         .map(|pt| add_points(context, &oods_point, &pt))

@@ -11,7 +11,6 @@ use crate::stark_verifier::logup::{
 };
 use crate::stark_verifier::proof::{InteractionAtOods, ProofConfig};
 use crate::stark_verifier::statement::{EvaluateArgs, Statement};
-use crate::stark_verifier::verify::MAX_TRACE_SIZE_BITS;
 use itertools::{Itertools, izip, zip_eq};
 use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
@@ -31,15 +30,15 @@ pub struct ComponentData<'a> {
     index: usize,
 
     /// Simd of bits representing the `n_instances` in the component.
-    n_instances_bits: &'a [Simd; MAX_TRACE_SIZE_BITS],
+    n_instances_bits: &'a [Simd],
 }
 
 impl<'a> ComponentData<'a> {
-    pub fn get_n_instances_bits(
-        &self,
-        context: &mut Context<impl IValue>,
-    ) -> [Var; MAX_TRACE_SIZE_BITS] {
-        self.n_instances_bits.each_ref().map(|bits| Simd::unpack_idx(context, bits, self.index))
+    pub fn get_n_instances_bits(&self, context: &mut Context<impl IValue>) -> Vec<Var> {
+        self.n_instances_bits
+            .iter()
+            .map(|bits| Simd::unpack_idx(context, bits, self.index))
+            .collect_vec()
     }
 }
 

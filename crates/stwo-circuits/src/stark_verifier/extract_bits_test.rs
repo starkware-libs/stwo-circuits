@@ -11,7 +11,7 @@ fn test_extract_bits() {
     // Note that `2_u32.pow(31) - 1` is identical to `0` after the `simd_from_u32s` call.
     // It's here only as a sanity check.
     let input = simd_from_u32s(&mut context, vec![0, 12, 2_u32.pow(31) - 1, 2_u32.pow(31) - 2]);
-    let bits = extract_bits::<31>(&mut context, &input);
+    let bits = extract_bits(&mut context, &input, 31);
     assert_eq!(packed_values(&context, &bits[0]), &[qm31_from_u32s(0, 0, 0, 0)]);
     assert_eq!(packed_values(&context, &bits[1]), &[qm31_from_u32s(0, 0, 0, 1)]);
     assert_eq!(packed_values(&context, &bits[2]), &[qm31_from_u32s(0, 1, 0, 1)]);
@@ -44,11 +44,13 @@ fn test_validate_extract_bits(#[case] success: bool) {
 fn test_extract_bits_as_range_check(#[case] len: usize) {
     let mut context = TraceContext::default();
 
-    let out_of_range_value = 1 << 5;
+    let n_bits = 5;
+
+    let out_of_range_value = 1 << n_bits;
     let mut input_values = vec![out_of_range_value];
     input_values.resize(len, 3);
     let input = simd_from_u32s(&mut context, input_values);
-    let _bits = extract_bits::<5>(&mut context, &input);
+    let _bits = extract_bits(&mut context, &input, n_bits);
 
     assert!(!context.is_circuit_valid());
 }

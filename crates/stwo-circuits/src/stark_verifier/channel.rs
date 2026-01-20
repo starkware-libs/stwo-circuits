@@ -1,4 +1,5 @@
 use stwo::core::circle::CirclePoint;
+use stwo::core::fields::m31::MODULUS_BITS;
 
 use crate::circuits::blake::{HashValue, blake};
 use crate::circuits::context::{Context, Var};
@@ -122,7 +123,7 @@ impl Channel {
         let first_word = pointwise_mul(context, res0, context.one());
 
         // Check that the n_bits least significant bits are zero.
-        let bits = extract_bits::<31>(context, &Simd::from_packed(vec![first_word], 1));
+        let bits = extract_bits(context, &Simd::from_packed(vec![first_word], 1), MODULUS_BITS);
         for bit in &bits[0..n_bits] {
             eq(context, bit.get_packed()[0], context.zero());
         }
