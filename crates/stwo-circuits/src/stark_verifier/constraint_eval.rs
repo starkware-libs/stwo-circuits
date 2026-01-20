@@ -34,11 +34,18 @@ pub struct ComponentData<'a> {
 }
 
 impl<'a> ComponentData<'a> {
-    pub fn get_n_instances_bits(&self, context: &mut Context<impl IValue>) -> Vec<Var> {
-        self.n_instances_bits
-            .iter()
-            .map(|bits| Simd::unpack_idx(context, bits, self.index))
-            .collect_vec()
+    /// Returns one of the bits of the component number of rows (bit 0 is LSB).
+    /// Because the number of rows is always a power of two, only one of the bits
+    /// will be 1 and the rest will be zero.
+    pub fn get_n_instances_bit(&self, context: &mut Context<impl IValue>, bit: usize) -> Var {
+        Simd::unpack_idx(context, &self.n_instances_bits[bit], self.index)
+    }
+
+    // The number of bits required to represent the size of the largest supported component size.
+    // Note that this is one more than log2(max_component_size), because 2**n is a (n+1)-bit
+    // number.
+    pub fn max_component_size_bits(&self) -> usize {
+        self.n_instances_bits.len()
     }
 }
 
