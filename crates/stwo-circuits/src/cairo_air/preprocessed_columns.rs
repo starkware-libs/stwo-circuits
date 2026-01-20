@@ -1,3 +1,5 @@
+pub const MAX_SEQUENCE_LOG_SIZE: u32 = 25;
+
 pub const PREPROCESSED_COLUMNS_ORDER: [&str; 161] = [
     "seq_4",
     "blake_sigma_0",

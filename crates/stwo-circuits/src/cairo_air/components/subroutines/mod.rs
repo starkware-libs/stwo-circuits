@@ -10,6 +10,8 @@ pub mod mem_verify;
 pub mod mem_verify_equal;
 pub mod range_check_29;
 pub mod range_check_last_limb_bits_in_ms_limb_2;
+pub mod range_check_mem_value_n_28;
+pub mod range_check_mem_value_n_8;
 pub mod read_id;
 pub mod read_positive_known_id_num_bits_252;
 pub mod read_positive_known_id_num_bits_29;
