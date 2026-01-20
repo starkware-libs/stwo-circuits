@@ -15,7 +15,6 @@ use crate::eval;
 use crate::stark_verifier::circle::{add_points, double_point, double_x};
 use crate::stark_verifier::proof::{Proof, ProofConfig};
 use crate::stark_verifier::select_queries::Queries;
-use crate::stark_verifier::verify::MAX_TRACE_SIZE_BITS;
 
 const COMPOSITION_SPLIT: usize = 2;
 pub const N_COMPOSITION_COLUMNS: usize = COMPOSITION_SPLIT * EXTENSION_DEGREE;
@@ -100,7 +99,7 @@ pub fn empty_eval_domain_samples(
 pub fn period_generators(
     context: &mut Context<impl IValue>,
     trace_gen: CirclePoint<M31>,
-    component_sizes_bits: [Simd; MAX_TRACE_SIZE_BITS],
+    component_sizes_bits: &[Simd],
 ) -> Vec<CirclePoint<Var>> {
     let mut period_gen = CirclePoint {
         x: M31Wrapper::new_unsafe(context.constant(QM31::from_m31(

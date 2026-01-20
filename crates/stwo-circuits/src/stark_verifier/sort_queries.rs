@@ -15,8 +15,8 @@ use crate::{
     stark_verifier::verify::LOG_SIZE_BITS,
 };
 
-const COLUMN_IDX_BITS: usize = 12;
-const COLUMN_IDX_BOUND: usize = 1 << COLUMN_IDX_BITS;
+const COLUMN_IDX_BITS: u32 = 12;
+const COLUMN_IDX_BOUND: u32 = 1 << COLUMN_IDX_BITS;
 
 use crate::stark_verifier::extract_bits::extract_bits;
 
@@ -84,7 +84,7 @@ fn verify_sorted_keys<Value: IValue>(context: &mut Context<Value>, sorted_keys: 
 
     let packed = Simd::pack(context, &diffs);
     // call extract_bits to range check the values.
-    const RANGE_CHECK_BITS: usize = LOG_SIZE_BITS + COLUMN_IDX_BITS;
+    const RANGE_CHECK_BITS: u32 = LOG_SIZE_BITS + COLUMN_IDX_BITS;
 
     // The verificaion needs to fail if one of the diffs is negative.
     //
@@ -94,7 +94,7 @@ fn verify_sorted_keys<Value: IValue>(context: &mut Context<Value>, sorted_keys: 
     // => RANGE_CHECK_BITS < 30
     const _: () = assert!(RANGE_CHECK_BITS < 30);
     // Add static assert.
-    let _bits = extract_bits::<RANGE_CHECK_BITS>(context, &packed);
+    let _bits = extract_bits(context, &packed, RANGE_CHECK_BITS);
 }
 
 /// Helper struct for sorting query values.
