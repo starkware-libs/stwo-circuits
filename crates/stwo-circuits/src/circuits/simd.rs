@@ -248,10 +248,7 @@ impl Simd {
         Simd::from_packed(data, values.len())
     }
 
-    pub fn pow2<const N_BITS: usize>(
-        context: &mut Context<impl IValue>,
-        bits: &[Simd; N_BITS],
-    ) -> Simd {
+    pub fn pow2(context: &mut Context<impl IValue>, bits: &[Simd]) -> Simd {
         let len = bits[0].len();
         let mut res = Simd::one(context, len);
         let one = context.one();
@@ -260,7 +257,7 @@ impl Simd {
             let res_if_bit_is_one = Simd::scalar_mul(context, &res, &pow2);
             // Select between `res` and `res_if_bit_is_one` based on the value of the bit.
             res = Simd::select(context, bit, &res, &res_if_bit_is_one);
-            if bit_idx < N_BITS - 1 {
+            if bit_idx < bits.len() - 1 {
                 pow2 = M31Wrapper::mul(context, pow2.clone(), pow2.clone());
             }
         }

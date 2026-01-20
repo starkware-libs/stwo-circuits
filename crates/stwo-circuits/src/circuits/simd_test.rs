@@ -471,10 +471,11 @@ fn test_pow2_circuit() {
     let expected_res = input_vals.iter().map(|v| 1 << v).collect_vec();
 
     let input = simd_from_u32s(&mut context, input_vals);
-    let bits = extract_bits::<5>(&mut context, &input);
+    let n_bits = 5;
+    let bits = extract_bits(&mut context, &input, n_bits);
     let res = Simd::pow2(&mut context, &bits);
 
-    assert_eq!(res.len(), 5);
+    assert_eq!(res.len() as u32, n_bits);
     assert_eq!(
         packed_values(&context, &res),
         &[

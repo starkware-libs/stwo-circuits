@@ -8,20 +8,17 @@ use crate::circuits::simd::Simd;
 #[path = "extract_bits_test.rs"]
 pub mod test;
 
-/// For each `M31` lane in the given [Simd], returns its `N_BITS`-bit binary decomposition.
-/// If `N_BITS == 31`, additionally enforces that `0` is encoded canonically as
+/// For each `M31` lane in the given [Simd], returns its `n_bits`-bit binary decomposition.
+/// If `n_bits == 31`, additionally enforces that `0` is encoded canonically as
 /// `0b0000...0000` (and not `0b1111...1111`).
-/// If any input exceeds `2^N_BITS - 1`, a circuit constraints is going to be violated and
+/// If any input exceeds `2^n_bits - 1`, a circuit constraints is going to be violated and
 /// `context.is_circuit_valid()` will return `false`.
-pub fn extract_bits<const N_BITS: usize>(
-    context: &mut Context<impl IValue>,
-    input: &Simd,
-) -> [Simd; N_BITS] {
+pub fn extract_bits(context: &mut Context<impl IValue>, input: &Simd, n_bits: u32) -> Vec<Simd> {
     let inv_two = Simd::repeat(context, M31::from(2).inverse(), input.len());
 
     let mut value = input.clone();
     let mut bits = Vec::new();
-    for _ in 0..(N_BITS - 1) {
+    for _ in 0..(n_bits - 1) {
         let lsb = value.guess_lsb(context);
         bits.push(lsb.clone());
         value = Simd::sub(context, &value, &lsb);
@@ -32,13 +29,13 @@ pub fn extract_bits<const N_BITS: usize>(
     value.assert_bits(context);
     bits.push(value.clone());
 
-    if N_BITS >= 31 {
-        assert_eq!(N_BITS, 31);
+    if n_bits >= 31 {
+        assert_eq!(n_bits, 31);
         // Check that `0` is represented as `0b0000...0000`, rather than `0b1111...1111`.
         validate_extract_bits(context, input, &bits[0]);
     }
 
-    bits.try_into().unwrap()
+    bits
 }
 
 /// Forbids the case `0b1111...1111`, as this number should be represented as `0`.

@@ -36,6 +36,8 @@ pub struct ProofConfig {
     pub n_components: usize,
 
     pub fri: FriConfig,
+
+    pub component_log_size_bits: u32,
 }
 impl ProofConfig {
     pub fn from_statement<Value: IValue>(
@@ -106,6 +108,7 @@ impl ProofConfig {
                 n_queries: *n_queries,
                 log_n_last_layer_coefs: *log_last_layer_degree_bound as usize,
             },
+            component_log_size_bits: 5,
         }
     }
 
