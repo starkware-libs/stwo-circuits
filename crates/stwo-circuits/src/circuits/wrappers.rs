@@ -36,6 +36,12 @@ impl From<M31> for M31Wrapper<QM31> {
     }
 }
 
+impl From<M31> for M31Wrapper<NoValue> {
+    fn from(_value: M31) -> Self {
+        M31Wrapper(NoValue)
+    }
+}
+
 impl M31Wrapper<Var> {
     /// Adds a multiplication gate to the circuit, and returns the output variable.
     pub fn mul(context: &mut Context<impl IValue>, a: Self, b: Self) -> Self {
