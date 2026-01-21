@@ -226,11 +226,7 @@ impl Simd {
 
     /// Packs a vector of [M31] values into [Simd].
     pub fn pack(context: &mut Context<impl IValue>, values: &[M31Wrapper<Var>]) -> Simd {
-        let unit_vecs = [
-            context.constant(qm31_from_u32s(0, 1, 0, 0)),
-            context.constant(qm31_from_u32s(0, 0, 1, 0)),
-            context.constant(qm31_from_u32s(0, 0, 0, 1)),
-        ];
+        let unit_vecs = UNIT_VECS.map(|v| context.constant(v));
 
         let n = values.len();
         let data = (0..n.div_ceil(4))
@@ -240,7 +236,7 @@ impl Simd {
                     if 4 * i + j == n {
                         break;
                     }
-                    res = eval!(context, (res) + ((unit_vecs[j - 1]) * (*values[4 * i + j].get())));
+                    res = eval!(context, (res) + ((unit_vecs[j]) * (*values[4 * i + j].get())));
                 }
                 res
             })
