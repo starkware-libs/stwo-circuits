@@ -22,7 +22,6 @@ use crate::stark_verifier::select_queries::{
 use crate::stark_verifier::statement::{EvaluateArgs, OodsSamples, Statement};
 
 pub const LOG_SIZE_BITS: u32 = 5;
-pub const MAX_TRACE_SIZE_BITS: u32 = 29;
 
 #[cfg(test)]
 #[path = "verify_test.rs"]
@@ -58,7 +57,15 @@ pub fn verify<Value: IValue>(
 
     // Range check the component log sizes.
     let component_log_size_bits = extract_bits(context, &component_log_sizes, LOG_SIZE_BITS);
-    // TODO(ilya): check that all the component log sizes are smaller than config.log_trace_size().
+    // Since LOG_SIZE_BITS is 5, and 2**31 - 1 = M31, we need to check that not all the bits in the
+    // component log sizes are ones.
+    Simd::assert_not_all_ones(context, &component_log_size_bits);
+
+    let component_sizes = Simd::pow2(context, &component_log_size_bits);
+    // Check that the component sizes are at most 2^config.log_trace_size().
+    // Note that we need k + 1 bits to represent 2^k.
+    let component_sizes_bits =
+        extract_bits(context, &component_sizes, config.log_trace_size() as u32 + 1);
 
     channel.mix_qm31s(context, proof.claim.packed_enable_bits.iter().cloned());
     channel.mix_qm31s(context, proof.claim.packed_component_log_sizes.iter().cloned());
@@ -86,10 +93,6 @@ pub fn verify<Value: IValue>(
     // Draw a random point for the OODS.
     let oods_point = channel.draw_point(context);
 
-    let component_sizes = Simd::pow2(context, &component_log_size_bits);
-    let unpacked_component_sizes = Simd::unpack(context, &component_sizes);
-    let component_sizes_bits = extract_bits(context, &component_sizes, MAX_TRACE_SIZE_BITS);
-
     let simd_enable_bits =
         Simd::from_packed(proof.claim.packed_enable_bits.clone(), config.n_components);
     simd_enable_bits.assert_bits(context);
@@ -97,6 +100,7 @@ pub fn verify<Value: IValue>(
 
     // Compute the composition evaluation at the OODS point from `proof.*_at_oods` and compare
     // to `proof.composition_eval_at_oods`.
+    let unpacked_component_sizes = Simd::unpack(context, &component_sizes);
     let composition_eval = compute_composition_polynomial(
         context,
         config,
