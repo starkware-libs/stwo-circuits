@@ -5,8 +5,10 @@ use crate::circuits::ivalue::{IValue, qm31_from_u32s};
 use crate::circuits::ops::{Guess, permute};
 use crate::circuits::{context::Context, ops::guess};
 use crate::eval;
-use crate::stark_verifier::proof::ProofConfig;
-use crate::stark_verifier::proof_from_stark_proof::proof_from_stark_proof;
+use crate::stark_verifier::proof::{Claim, ProofConfig};
+use crate::stark_verifier::proof_from_stark_proof::{
+    pack_component_log_sizes, pack_enable_bits, proof_from_stark_proof,
+};
 use expect_test::expect;
 use num_traits::{One, Zero};
 use stwo::core::air::Component;
@@ -128,16 +130,21 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     // Verify.
     let log_trace_size = claim.log_sizes.iter().max().unwrap();
     let statement = CircuitStatement::default();
-    let config = ProofConfig::from_statement(&statement, *log_trace_size as usize, &pcs_config);
+    let claim = Claim {
+        packed_enable_bits: pack_enable_bits(&[true, true]),
+        packed_component_log_sizes: pack_component_log_sizes(&claim.log_sizes),
+        claimed_sums: interaction_claim.claimed_sums.to_vec(),
+        public_claim: vec![],
+    };
+    let config = ProofConfig::from_statement(
+        &statement,
+        *log_trace_size as usize,
+        claim.public_claim.len(),
+        &pcs_config,
+    );
 
     let mut context = TraceContext::default();
-    let proof = proof_from_stark_proof(
-        &proof,
-        &config,
-        vec![true, true],
-        claim.log_sizes.to_vec(),
-        interaction_claim.claimed_sums.to_vec(),
-    );
+    let proof = proof_from_stark_proof(&proof, &config, claim);
     let proof_vars = proof.guess(&mut context);
 
     crate::stark_verifier::verify::verify(&mut context, &proof_vars, &config, &statement);

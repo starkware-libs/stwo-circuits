@@ -4,15 +4,15 @@ use stwo::core::pcs::{CommitmentSchemeVerifier, PcsConfig, TreeVec};
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::core::verifier::verify;
 
-use crate::examples::simple_air::{LOG_SIZE_LONG, LOG_SIZE_SHORT, PublicInput, create_proof};
-use crate::stark_verifier::proof_from_stark_proof::{pack_component_log_sizes, pack_enable_bits};
+use crate::examples::simple_air::{LOG_SIZE_LONG, LOG_SIZE_SHORT, create_proof};
+use crate::stark_verifier::proof::Claim;
 
 #[test]
 fn verify_simple_proof() {
     let config = PcsConfig::default();
     let (
         components,
-        PublicInput { enable_bits, claimed_sums, component_log_sizes },
+        Claim { packed_enable_bits, packed_component_log_sizes, public_claim, claimed_sums },
         _config,
         proof,
     ) = create_proof();
@@ -30,8 +30,9 @@ fn verify_simple_proof() {
         &preprocessed_column_sizes,
         verifier_channel,
     );
-    verifier_channel.mix_felts(&pack_enable_bits(&enable_bits));
-    verifier_channel.mix_felts(&pack_component_log_sizes(&component_log_sizes));
+    verifier_channel.mix_felts(&packed_enable_bits);
+    verifier_channel.mix_felts(&packed_component_log_sizes);
+    verifier_channel.mix_felts(&public_claim);
     commitment_scheme.commit(proof.proof.commitments[1], &sizes[1], verifier_channel);
     verifier_channel.mix_felts(&claimed_sums);
     commitment_scheme.commit(proof.proof.commitments[2], &sizes[2], verifier_channel);

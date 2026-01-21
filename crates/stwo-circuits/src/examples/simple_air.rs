@@ -26,6 +26,9 @@ use stwo_constraint_framework::{
     TraceLocationAllocator, relation,
 };
 
+use crate::stark_verifier::proof::Claim;
+use crate::stark_verifier::proof_from_stark_proof::{pack_component_log_sizes, pack_public_claim};
+
 use crate::stark_verifier::proof_from_stark_proof::pack_enable_bits;
 
 #[cfg(test)]
@@ -174,16 +177,10 @@ fn generate_seq_column(
     CircleEvaluation::new(CanonicCoset::new(log_size).circle_domain(), col)
 }
 
-// The public input for the simple AIR verifier.
-pub struct PublicInput {
-    pub enable_bits: Vec<bool>,
-    pub claimed_sums: Vec<QM31>,
-    pub component_log_sizes: Vec<u32>,
-}
-
+#[allow(clippy::type_complexity)]
 /// Creates a proof for the simple AIR. See documentation in [Eval].
 pub fn create_proof()
--> (Vec<Box<dyn Component>>, PublicInput, PcsConfig, ExtendedStarkProof<Blake2sM31MerkleHasher>) {
+-> (Vec<Box<dyn Component>>, Claim<QM31>, PcsConfig, ExtendedStarkProof<Blake2sM31MerkleHasher>) {
     let config = PcsConfig::default();
     // Precompute twiddles.
     let twiddles = SimdBackend::precompute_twiddles(
@@ -207,13 +204,20 @@ pub fn create_proof()
     ]);
     tree_builder.commit(prover_channel);
 
-    let enable_bits = vec![true, true, false];
+    let packed_enable_bits = pack_enable_bits(&[true, true, false]);
 
     // Mix the enable bits into the channel.
-    prover_channel.mix_felts(&pack_enable_bits(&enable_bits));
+    prover_channel.mix_felts(&packed_enable_bits);
 
     // Mix the component log sizes into the channel.
-    prover_channel.mix_felts(&[QM31::from_u32_unchecked(LOG_SIZE_LONG, LOG_SIZE_SHORT, 0, 0)]);
+    // Component_3 is disabled, so it has trace size 0.
+    let packed_component_log_sizes = pack_component_log_sizes(&[LOG_SIZE_LONG, LOG_SIZE_SHORT, 0]);
+    prover_channel.mix_felts(&packed_component_log_sizes);
+
+    // Mix the public claim into the channel.
+    // Public claim is empty.
+    let public_claim = pack_public_claim(&[]);
+    prover_channel.mix_felts(&public_claim);
 
     let trace_1 = generate_trace(LOG_SIZE_LONG);
     let trace_2 = generate_trace(LOG_SIZE_SHORT);
@@ -310,12 +314,7 @@ pub fn create_proof()
 
     (
         components,
-        PublicInput {
-            enable_bits,
-            claimed_sums,
-            // Component_3 is disabled, so it has trace size 0
-            component_log_sizes: vec![LOG_SIZE_LONG, LOG_SIZE_SHORT, 0],
-        },
+        Claim { packed_enable_bits, packed_component_log_sizes, claimed_sums, public_claim },
         config,
         proof,
     )
