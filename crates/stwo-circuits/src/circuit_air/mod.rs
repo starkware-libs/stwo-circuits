@@ -21,6 +21,8 @@ impl CircuitClaim {
         // mix the enable bits into the channel.
         channel.mix_felts(&pack_enable_bits(&[true, true]));
         channel.mix_felts(&pack_component_log_sizes(log_sizes));
+        // public claim is empty.
+        channel.mix_felts(&[]);
     }
 }
 

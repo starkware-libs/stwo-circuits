@@ -211,6 +211,12 @@ pub fn pack_component_log_sizes(component_log_sizes: &[u32]) -> Vec<QM31> {
     pack_into_qm31s(component_log_sizes.iter().cloned())
 }
 
+/// Packs the public claim into QM31s.
+/// Each QM31 holds up to 4 public claim values and the last one is padded with zeros.
+pub fn pack_public_claim(public_claim: &[M31]) -> Vec<QM31> {
+    pack_into_qm31s(public_claim.iter().cloned())
+}
+
 pub fn pack_into_qm31s<T: Into<M31>>(values: impl Iterator<Item = T>) -> Vec<QM31> {
     values
         .chunks(4)

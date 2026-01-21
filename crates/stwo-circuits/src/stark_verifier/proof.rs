@@ -35,12 +35,16 @@ pub struct ProofConfig {
     // Number of components in the AIR.
     pub n_components: usize,
 
+    // Length of the public claim.
+    pub public_claim_len: usize,
+
     pub fri: FriConfig,
 }
 impl ProofConfig {
     pub fn from_statement<Value: IValue>(
         statement: &impl Statement<Value>,
         log_trace_size: usize,
+        public_claim_len: usize,
         pcs_config: &PcsConfig,
     ) -> Self {
         let components = statement.get_components();
@@ -56,6 +60,7 @@ impl ProofConfig {
             interaction_columns_per_component,
             n_preprocessed_columns,
             log_trace_size,
+            public_claim_len,
             pcs_config,
         )
     }
@@ -66,6 +71,7 @@ impl ProofConfig {
         interaction_columns_per_component: Vec<usize>,
         n_preprocessed_columns: usize,
         log_trace_size: usize,
+        public_claim_len: usize,
         pcs_config: &PcsConfig,
     ) -> Self {
         let n_interaction_columns = interaction_columns_per_component.iter().sum();
@@ -99,6 +105,7 @@ impl ProofConfig {
             trace_columns_per_component,
             interaction_columns_per_component,
             n_components,
+            public_claim_len,
             cumulative_sum_columns,
             fri: FriConfig {
                 log_trace_size,
@@ -166,7 +173,9 @@ pub struct Claim<T> {
 
     // Claimed sum for each component in the AIR.
     pub claimed_sums: Vec<T>,
-    // TODO(Gali): Add public claim.
+
+    // Statement-specific public claim data.
+    pub public_claim: Vec<T>,
 }
 impl<Value: IValue> Guess<Value> for Claim<Value> {
     type Target = Claim<Var>;
@@ -176,6 +185,7 @@ impl<Value: IValue> Guess<Value> for Claim<Value> {
             packed_enable_bits: self.packed_enable_bits.guess(context),
             packed_component_log_sizes: self.packed_component_log_sizes.guess(context),
             claimed_sums: self.claimed_sums.guess(context),
+            public_claim: self.public_claim.guess(context),
         }
     }
 }
@@ -225,6 +235,9 @@ impl<T> Proof<T> {
         self.eval_domain_samples
             .validate_structure(&config.n_columns_per_trace(), config.n_queries());
 
+        // Validate public claim.
+        assert_eq!(self.claim.public_claim.len(), config.public_claim_len);
+
         // Validate FRI.
         self.fri.validate_structure(&config.fri);
     }
@@ -269,6 +282,7 @@ pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
             packed_enable_bits: vec![NoValue; config.n_components.div_ceil(4)],
             packed_component_log_sizes: vec![NoValue; config.n_components.div_ceil(4)],
             claimed_sums: vec![NoValue; config.n_components],
+            public_claim: vec![],
         },
         composition_eval_at_oods: [NoValue; N_COMPOSITION_COLUMNS],
         eval_domain_samples: empty_eval_domain_samples(
