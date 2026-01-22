@@ -38,7 +38,8 @@ pub mod test;
 pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     finalize_context(context);
     let pcs_config = PcsConfig::default();
-
+    // Blake gate preprocessed trace.
+    // After creating this preprocessed trace and the next one, we need to sort the columns by size and then commit to them. 
     // Generate preprocessed trace.
     let (preprocessed_trace, trace_generator) =
         PreProcessedTrace::generate_preprocessed_trace(&context.circuit);

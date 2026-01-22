@@ -1,5 +1,6 @@
 use crate::circuit_air::statement::CircuitStatement;
 use crate::circuit_prover::prover::{CircuitProof, finalize_context, prove_circuit};
+use crate::circuits::blake::blake;
 use crate::circuits::context::TraceContext;
 use crate::circuits::ivalue::{IValue, qm31_from_u32s};
 use crate::circuits::ops::{Guess, permute};
@@ -36,6 +37,7 @@ pub fn build_fibonacci_context() -> Context<QM31> {
 
 pub fn build_permutation_context() -> Context<QM31> {
     let mut context = Context::<QM31>::default();
+    context.set_assert_eq_on_eval();
 
     let a = guess(&mut context, qm31_from_u32s(0, 2, 0, 2));
     let b = guess(&mut context, qm31_from_u32s(1, 1, 1, 1));
@@ -44,6 +46,31 @@ pub fn build_permutation_context() -> Context<QM31> {
     let _outputs = permute(&mut context, &outputs, IValue::sort_by_u_coordinate);
 
     context
+}
+
+pub fn build_blake_gate_context() -> Context<QM31> {
+    let mut context = Context::<QM31>::default();
+
+    let input1 = guess(&mut context, qm31_from_u32s(0, 1, 2, 3));
+    let input2 = guess(&mut context, qm31_from_u32s(4, 5, 6, 7));
+    let input3 = guess(&mut context, qm31_from_u32s(8, 9, 10, 11));
+    let input4 = guess(&mut context, qm31_from_u32s(12, 13, 14, 15));
+    let _output = blake(&mut context, &[input1, input2, input3, input4], 50);
+    // let n_bytes = guess(&mut context, QM31::from(16));
+    // let output = guess(&mut context, qm31_from_u32s(4, 5, 6, 7));
+
+    context
+}
+
+#[test]
+fn test_prove_and_stark_verify_blake_gate_context() {
+    let mut blake_gate_context = build_blake_gate_context();
+    blake_gate_context.finalize_guessed_vars();
+    blake_gate_context.validate_circuit();
+
+    let CircuitProof { components, claim, interaction_claim, pcs_config, stark_proof } =
+        prove_circuit(&mut blake_gate_context);
+    assert!(stark_proof.is_ok());
 }
 
 #[test]

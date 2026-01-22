@@ -31,3 +31,6 @@ cairo-air = {git = "https://github.com/starkware-libs/stwo-cairo", rev = "2253bb
 rstest = "0.26.1"
 expect-test = "1.5.1"
 rayon = "1.10.0"
+serde = "1.0.219"
+rand = { version = "0.8.5", features = ["small_rng"] }
+

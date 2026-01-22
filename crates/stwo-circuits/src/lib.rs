@@ -1,5 +1,6 @@
 #![feature(raw_slice_split)]
 #![feature(variant_count)]
+#![feature(portable_simd)]
 
 pub mod cairo_air;
 pub mod circuit_air;
