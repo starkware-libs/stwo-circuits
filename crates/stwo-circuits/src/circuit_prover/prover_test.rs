@@ -134,8 +134,14 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
         packed_enable_bits: pack_enable_bits(&[true, true]),
         packed_component_log_sizes: pack_component_log_sizes(&claim.log_sizes),
         claimed_sums: interaction_claim.claimed_sums.to_vec(),
+        public_claim: vec![],
     };
-    let config = ProofConfig::from_statement(&statement, *log_trace_size as usize, &pcs_config);
+    let config = ProofConfig::from_statement(
+        &statement,
+        *log_trace_size as usize,
+        claim.public_claim.len(),
+        &pcs_config,
+    );
 
     let mut context = TraceContext::default();
     let proof = proof_from_stark_proof(&proof, &config, claim);

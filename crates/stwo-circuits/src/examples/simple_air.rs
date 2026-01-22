@@ -27,7 +27,7 @@ use stwo_constraint_framework::{
 };
 
 use crate::stark_verifier::proof::Claim;
-use crate::stark_verifier::proof_from_stark_proof::pack_component_log_sizes;
+use crate::stark_verifier::proof_from_stark_proof::{pack_component_log_sizes, pack_public_claim};
 
 use crate::stark_verifier::proof_from_stark_proof::pack_enable_bits;
 
@@ -214,6 +214,11 @@ pub fn create_proof()
     let packed_component_log_sizes = pack_component_log_sizes(&[LOG_SIZE_LONG, LOG_SIZE_SHORT, 0]);
     prover_channel.mix_felts(&packed_component_log_sizes);
 
+    // Mix the public claim into the channel.
+    // Public claim is empty.
+    let public_claim = pack_public_claim(&[]);
+    prover_channel.mix_felts(&public_claim);
+
     let trace_1 = generate_trace(LOG_SIZE_LONG);
     let trace_2 = generate_trace(LOG_SIZE_SHORT);
     let mut tree_builder = commitment_scheme.tree_builder();
@@ -309,7 +314,7 @@ pub fn create_proof()
 
     (
         components,
-        Claim { packed_enable_bits, packed_component_log_sizes, claimed_sums },
+        Claim { packed_enable_bits, packed_component_log_sizes, claimed_sums, public_claim },
         config,
         proof,
     )
