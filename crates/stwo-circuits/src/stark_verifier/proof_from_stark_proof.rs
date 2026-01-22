@@ -19,9 +19,7 @@ use crate::stark_verifier::proof::{Claim, InteractionAtOods, N_TRACES, Proof, Pr
 pub fn proof_from_stark_proof(
     proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
     config: &ProofConfig,
-    enable_bits: Vec<bool>,
-    component_log_sizes: Vec<u32>,
-    claimed_sums: Vec<QM31>,
+    claim: Claim<QM31>,
 ) -> Proof<QM31> {
     let commitments = &proof.proof.commitments;
     let sampled_values = &proof.proof.sampled_values;
@@ -46,11 +44,7 @@ pub fn proof_from_stark_proof(
                 _ => panic!("Unexpected interaction at OODS values"),
             })
             .collect_vec(),
-        claim: Claim {
-            packed_enable_bits: pack_enable_bits(&enable_bits),
-            packed_component_log_sizes: pack_component_log_sizes(&component_log_sizes),
-            claimed_sums,
-        },
+        claim,
         composition_eval_at_oods: as_single_row(&sampled_values[3]).try_into().unwrap(),
         eval_domain_samples: construct_eval_domain_samples(proof, config),
         eval_domain_auth_paths: construct_eval_domain_auth_paths(proof, config),
