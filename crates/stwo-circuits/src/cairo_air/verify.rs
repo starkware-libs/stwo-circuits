@@ -48,8 +48,7 @@ pub fn proof_from_cairo_proof(
 ) -> (ProofConfig, Proof<SecureField>) {
     let ExtendedCairoProof {
         claim,
-        // TODO(Gali): Add interaction pow to the config.
-        interaction_pow: _,
+        interaction_pow,
         interaction_claim,
         stark_proof,
         // TODO(Gali): Add channel salt to the config.
@@ -78,6 +77,6 @@ pub fn proof_from_cairo_proof(
         public_claim: pack_public_claim(&public_claim),
     };
 
-    let proof = proof_from_stark_proof(stark_proof, &config, claim);
+    let proof = proof_from_stark_proof(stark_proof, &config, claim, *interaction_pow);
     (config, proof)
 }

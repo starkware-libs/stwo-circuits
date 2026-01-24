@@ -6,6 +6,7 @@ use stwo::core::verifier::verify;
 
 use crate::examples::simple_air::{LOG_SIZE_LONG, LOG_SIZE_SHORT, create_proof};
 use crate::stark_verifier::proof::Claim;
+use crate::stark_verifier::verify::INTERACTION_POW_BITS;
 
 #[test]
 fn verify_simple_proof() {
@@ -15,6 +16,7 @@ fn verify_simple_proof() {
         Claim { packed_enable_bits, packed_component_log_sizes, public_claim, claimed_sums },
         _config,
         proof,
+        interaction_pow,
     ) = create_proof();
 
     // Verify.
@@ -34,6 +36,8 @@ fn verify_simple_proof() {
     verifier_channel.mix_felts(&packed_component_log_sizes);
     verifier_channel.mix_felts(&public_claim);
     commitment_scheme.commit(proof.proof.commitments[1], &sizes[1], verifier_channel);
+    verifier_channel.verify_pow_nonce(INTERACTION_POW_BITS, interaction_pow);
+    verifier_channel.mix_u64(interaction_pow);
     verifier_channel.mix_felts(&claimed_sums);
     commitment_scheme.commit(proof.proof.commitments[2], &sizes[2], verifier_channel);
     verify(

@@ -211,6 +211,7 @@ pub struct Proof<T> {
     pub eval_domain_auth_paths: AuthPaths<T>,
 
     pub proof_of_work_nonce: T,
+    pub interaction_pow_nonce: T,
     pub fri: FriProof<T>,
     // TODO(lior): Add missing fields.
 }
@@ -293,6 +294,7 @@ pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
             data: vec![vec![auth_path; config.n_queries()]; N_TRACES],
         },
         proof_of_work_nonce: NoValue,
+        interaction_pow_nonce: NoValue,
         fri: empty_fri_proof(&config.fri),
     }
 }
@@ -314,6 +316,7 @@ impl<Value: IValue> Guess<Value> for Proof<Value> {
             eval_domain_samples: self.eval_domain_samples.guess(context),
             eval_domain_auth_paths: self.eval_domain_auth_paths.guess(context),
             proof_of_work_nonce: self.proof_of_work_nonce.guess(context),
+            interaction_pow_nonce: self.interaction_pow_nonce.guess(context),
             fri: self.fri.guess(context),
         }
     }
