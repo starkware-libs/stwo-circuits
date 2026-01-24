@@ -9,10 +9,12 @@ use crate::stark_verifier::proof::{Claim, ProofConfig};
 use crate::stark_verifier::proof_from_stark_proof::{
     pack_component_log_sizes, pack_enable_bits, proof_from_stark_proof,
 };
+use crate::stark_verifier::verify::INTERACTION_POW_BITS;
 use expect_test::expect;
 use num_traits::{One, Zero};
 use stwo::core::air::Component;
 use stwo::core::channel::Blake2sM31Channel;
+use stwo::core::channel::Channel;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::{CommitmentSchemeVerifier, TreeVec};
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
@@ -54,8 +56,14 @@ fn test_prove_and_stark_verify_permutation_context() {
     permutation_context.finalize_guessed_vars();
     permutation_context.validate_circuit();
 
-    let CircuitProof { components, claim, interaction_claim, pcs_config, stark_proof } =
-        prove_circuit(&mut permutation_context);
+    let CircuitProof {
+        pcs_config,
+        claim,
+        interaction_pow_nonce,
+        interaction_claim,
+        components,
+        stark_proof,
+    } = prove_circuit(&mut permutation_context);
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
 
@@ -71,6 +79,8 @@ fn test_prove_and_stark_verify_permutation_context() {
     claim.mix_into(verifier_channel);
     commitment_scheme.commit(proof.proof.commitments[1], &sizes[1], verifier_channel);
     // TODO(Gali): Draw interaction element?
+    verifier_channel.verify_pow_nonce(INTERACTION_POW_BITS, interaction_pow_nonce);
+    verifier_channel.mix_u64(interaction_pow_nonce);
     interaction_claim.mix_into(verifier_channel);
     commitment_scheme.commit(proof.proof.commitments[2], &sizes[2], verifier_channel);
     stwo::core::verifier::verify(
@@ -88,8 +98,14 @@ fn test_prove_and_stark_verify_fibonacci_context() {
     fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
 
-    let CircuitProof { components, claim, interaction_claim, pcs_config, stark_proof } =
-        prove_circuit(&mut fibonacci_context);
+    let CircuitProof {
+        pcs_config,
+        claim,
+        interaction_pow_nonce,
+        interaction_claim,
+        components,
+        stark_proof,
+    } = prove_circuit(&mut fibonacci_context);
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
 
@@ -105,6 +121,8 @@ fn test_prove_and_stark_verify_fibonacci_context() {
     claim.mix_into(verifier_channel);
     commitment_scheme.commit(proof.proof.commitments[1], &sizes[1], verifier_channel);
     // TODO(Gali): Draw interaction element?
+    verifier_channel.verify_pow_nonce(INTERACTION_POW_BITS, interaction_pow_nonce);
+    verifier_channel.mix_u64(interaction_pow_nonce);
     interaction_claim.mix_into(verifier_channel);
     commitment_scheme.commit(proof.proof.commitments[2], &sizes[2], verifier_channel);
     stwo::core::verifier::verify(
@@ -122,8 +140,14 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
 
-    let CircuitProof { components: _, claim, interaction_claim, pcs_config, stark_proof } =
-        prove_circuit(&mut fibonacci_context);
+    let CircuitProof {
+        pcs_config,
+        claim,
+        interaction_pow_nonce,
+        interaction_claim,
+        components: _,
+        stark_proof,
+    } = prove_circuit(&mut fibonacci_context);
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
 
@@ -144,7 +168,7 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     );
 
     let mut context = TraceContext::default();
-    let proof = proof_from_stark_proof(&proof, &config, claim);
+    let proof = proof_from_stark_proof(&proof, &config, claim, interaction_pow_nonce);
     let proof_vars = proof.guess(&mut context);
 
     crate::stark_verifier::verify::verify(&mut context, &proof_vars, &config, &statement);
