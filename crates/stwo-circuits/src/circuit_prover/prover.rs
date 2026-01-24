@@ -7,14 +7,17 @@ use crate::circuit_prover::witness::preprocessed::PreProcessedTrace;
 use crate::circuit_prover::witness::trace::write_interaction_trace;
 use crate::circuit_prover::witness::trace::write_trace;
 use crate::circuits::context::Context;
+use crate::stark_verifier::verify::INTERACTION_POW_BITS;
 use num_traits::Zero;
 use stwo::core::air::Component;
 use stwo::core::channel::Blake2sM31Channel;
+use stwo::core::channel::Channel;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::fields::qm31::SecureField;
 use stwo::core::pcs::PcsConfig;
 use stwo::core::poly::circle::CanonicCoset;
 use stwo::core::proof::ExtendedStarkProof;
+use stwo::core::proof_of_work::GrindOps;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 use stwo::prover::CommitmentSchemeProver;
@@ -24,10 +27,11 @@ use stwo::prover::{ProvingError, prove_ex};
 
 const COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND: u32 = 1;
 pub struct CircuitProof {
+    pub pcs_config: PcsConfig,
     pub claim: CircuitClaim,
+    pub interaction_pow_nonce: u64,
     pub interaction_claim: CircuitInteractionClaim,
     pub components: Vec<Box<dyn Component>>,
-    pub pcs_config: PcsConfig,
     pub stark_proof: Result<ExtendedStarkProof<Blake2sM31MerkleHasher>, ProvingError>,
 }
 
@@ -81,6 +85,8 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
 
     // Draw interaction elements.
     // TODO(Gali): Add proof of work.
+    let interaction_pow_nonce = SimdBackend::grind(channel, INTERACTION_POW_BITS);
+    channel.mix_u64(interaction_pow_nonce);
     let interaction_elements = CircuitInteractionElements::draw(channel);
 
     // Interaction trace.
@@ -110,12 +116,12 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
 
     // Prove stark.
     let proof = prove_ex::<SimdBackend, _>(&components, channel, commitment_scheme);
-
     CircuitProof {
-        components: component_builder.components(),
-        claim,
-        interaction_claim,
         pcs_config,
+        claim,
+        interaction_pow_nonce,
+        interaction_claim,
+        components: component_builder.components(),
         stark_proof: proof,
     }
 }

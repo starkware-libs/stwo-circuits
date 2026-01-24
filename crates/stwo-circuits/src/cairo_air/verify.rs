@@ -18,7 +18,7 @@ use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 // TODO(Gali): Move to stwo_cairo.
 pub struct ExtendedCairoProof<H: MerkleHasherLifted> {
     pub claim: CairoClaim,
-    pub interaction_pow: u64,
+    pub interaction_pow_nonce: u64,
     pub interaction_claim: CairoInteractionClaim,
     pub stark_proof: ExtendedStarkProof<H>,
     /// Optional salt used in the channel initialization.
@@ -48,8 +48,7 @@ pub fn proof_from_cairo_proof(
 ) -> (ProofConfig, Proof<SecureField>) {
     let ExtendedCairoProof {
         claim,
-        // TODO(Gali): Add interaction pow to the config.
-        interaction_pow: _,
+        interaction_pow_nonce,
         interaction_claim,
         stark_proof,
         // TODO(Gali): Add channel salt to the config.
@@ -78,6 +77,6 @@ pub fn proof_from_cairo_proof(
         public_claim: pack_public_claim(&public_claim),
     };
 
-    let proof = proof_from_stark_proof(stark_proof, &config, claim);
+    let proof = proof_from_stark_proof(stark_proof, &config, claim, *interaction_pow_nonce);
     (config, proof)
 }
