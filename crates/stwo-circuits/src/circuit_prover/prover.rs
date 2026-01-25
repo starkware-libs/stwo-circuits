@@ -33,6 +33,7 @@ pub struct CircuitProof {
     pub interaction_claim: CircuitInteractionClaim,
     pub components: Vec<Box<dyn Component>>,
     pub stark_proof: Result<ExtendedStarkProof<Blake2sM31MerkleHasher>, ProvingError>,
+    pub channel_salt: u32,
 }
 
 #[cfg(test)]
@@ -68,6 +69,10 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
 
     // Setup protocol.
     let channel = &mut Blake2sM31Channel::default();
+
+    // Mix channel salt.
+    let channel_salt = 0_u32;
+    channel.mix_u32s(&[channel_salt, 0, 0, 0]);
     let mut commitment_scheme =
         CommitmentSchemeProver::<SimdBackend, Blake2sM31MerkleChannel>::new(pcs_config, &twiddles);
 
@@ -84,7 +89,6 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     tree_builder.commit(channel);
 
     // Draw interaction elements.
-    // TODO(Gali): Add proof of work.
     let interaction_pow_nonce = SimdBackend::grind(channel, INTERACTION_POW_BITS);
     channel.mix_u64(interaction_pow_nonce);
     let interaction_elements = CircuitInteractionElements::draw(channel);
@@ -123,5 +127,6 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
         interaction_claim,
         components: component_builder.components(),
         stark_proof: proof,
+        channel_salt,
     }
 }

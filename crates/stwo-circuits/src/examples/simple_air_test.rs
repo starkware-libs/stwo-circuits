@@ -17,10 +17,12 @@ fn verify_simple_proof() {
         _config,
         proof,
         interaction_pow_nonce,
+        channel_salt,
     ) = create_proof();
 
     // Verify.
     let verifier_channel = &mut Blake2sM31Channel::default();
+    verifier_channel.mix_u32s(&[channel_salt, 0, 0, 0]);
     let commitment_scheme = &mut CommitmentSchemeVerifier::<Blake2sM31MerkleChannel>::new(config);
 
     // Retrieve the expected column sizes in each commitment interaction, from the AIR.
