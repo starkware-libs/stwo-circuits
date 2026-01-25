@@ -5,6 +5,7 @@ const LARGE_MEMORY_VALUE_ID_BASE: u32 = 0x40000000; // 2^30.
 const ID_TO_BIG_MAX_ROWS: u32 = 1 << MAX_SEQUENCE_LOG_SIZE;
 pub const N_TRACE_COLUMNS: usize = 29;
 pub const N_INTERACTION_COLUMNS: usize = 32;
+pub const MEMRORY_ID_TO_VALUE_RELATION_ID: u32 = 1662111297;
 
 pub fn accumulate_constraints(
     input: &[Var],
