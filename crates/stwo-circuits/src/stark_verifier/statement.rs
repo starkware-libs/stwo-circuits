@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use stwo::core::circle::CirclePoint;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
@@ -43,4 +45,8 @@ pub trait Statement<Value: IValue> {
         interaction_elements: [Var; 2],
         claim: &Claim<Var>,
     ) -> Var;
+
+    fn public_params(&self, _context: &mut Context<Value>) -> HashMap<String, Var> {
+        HashMap::new()
+    }
 }
