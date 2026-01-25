@@ -1,4 +1,5 @@
 use crate::cairo_air::statement::CairoStatement;
+use crate::cairo_air::statement::FlatClaim;
 use crate::circuits::context::{Context, TraceContext};
 use crate::circuits::ops::Guess;
 use crate::stark_verifier::proof::{Claim, Proof, ProofConfig};
@@ -28,11 +29,12 @@ pub struct ExtendedCairoProof<H: MerkleHasherLifted> {
 /// Circuit Verifies an [ExtendedCairoProof].
 // TODO(Gali): Add test.
 pub fn verify_cairo(proof: &ExtendedCairoProof<Blake2sM31MerkleHasher>) -> Context<QM31> {
-    let statement = CairoStatement::<QM31>::default();
+    let mut context = TraceContext::default();
+    let packed_claim = FlatClaim::default().pack::<QM31>().guess(&mut context);
+    let statement = CairoStatement::<QM31>::new(&mut context, packed_claim);
 
     let (config, proof) = proof_from_cairo_proof(proof, &statement);
 
-    let mut context = TraceContext::default();
     let proof_vars = proof.guess(&mut context);
 
     verify(&mut context, &proof_vars, &config, &statement);
