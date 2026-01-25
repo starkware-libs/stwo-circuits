@@ -2,8 +2,14 @@ use std::array;
 use std::collections::HashMap;
 
 use crate::cairo_air::components;
-use itertools::Itertools;
+use crate::circuits::ops::div;
+use crate::eval;
+use crate::stark_verifier::extract_bits::extract_bits;
+use crate::stark_verifier::logup::{combine_and_invert, combine_term};
+use cairo_air::relations::{MEMORY_ADDRESS_TO_ID_RELATION_ID, MEMORY_ID_TO_BIG_RELATION_ID};
+use itertools::{Itertools, chain};
 use num_traits::Zero;
+use stwo::core::fields::qm31::QM31;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 use crate::cairo_air::preprocessed_columns::PREPROCESSED_COLUMNS_ORDER;
@@ -29,6 +35,9 @@ pub const PUBLIC_DATA_LEN: usize = 2 * STATE_LEN
     + N_SAFE_CALL_IDS
     + PUB_MEMORY_VALUE_LEN * OUTPUT_LEN;
 
+const LIMB_BITS: usize = 9;
+const SMALL_VALUE_BITS: u32 = 27;
+
 #[derive(Clone)]
 pub struct PubMemoryValue<T> {
     pub id: T,
@@ -50,6 +59,32 @@ pub struct CasmState<T> {
 pub struct PubMemoryM31Value<T> {
     pub id: T,
     pub value: T,
+}
+
+impl PubMemoryM31Value<Var> {
+    /// Computes the address to id logup term for the public memory value.
+    pub fn logup_term(
+        &self,
+        context: &mut Context<impl IValue>,
+        interaction_elements: [Var; 2],
+    ) -> Var {
+        let simd = Simd::from_packed(vec![self.value], 1);
+        // TODO(ilya): Consider using the logup itself for the range check instead of extracting
+        // bits.
+        let extracted_bits = extract_bits(context, &simd, SMALL_VALUE_BITS);
+
+        // Add [relation_id, id , limb_0, limb_1, limb_2]
+        let element = chain!(
+            [context.constant(MEMORY_ID_TO_BIG_RELATION_ID.into()), self.id],
+            extracted_bits.chunks(LIMB_BITS).map(|limb_bits| {
+                let limb = Simd::combine_bits(context, limb_bits);
+                Simd::unpack(context, &limb)[0]
+            })
+        )
+        .collect_vec();
+
+        combine_and_invert(context, &element, interaction_elements)
+    }
 }
 
 pub struct SegmentRange<T> {
@@ -124,7 +159,9 @@ impl<Value: IValue> CairoStatement<Value> {
         let unpacked_simd = Simd::unpack(context, &packed_public_data);
 
         // TODO(ilya): Remove once we handle the public data properly.
-        for var in unpacked_simd.iter() {
+        for var in
+            unpacked_simd.iter().skip(2 * STATE_LEN + 2 * PUB_MEMORY_VALUE_M31_LEN * N_SEGMENTS)
+        {
             context.mark_as_unused(*var);
         }
         let public_data = PublicData::<Var>::parse_from_vars(&unpacked_simd[..]);
@@ -169,10 +206,10 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
     fn public_logup_sum(
         &self,
         context: &mut Context<Value>,
-        _interaction_elements: [Var; 2],
+        interaction_elements: [Var; 2],
         _claim: &Claim<Var>,
     ) -> Var {
-        context.zero()
+        public_logup_sum(context, &self.public_data, interaction_elements)
     }
 
     fn get_preprocessed_column_ids(&self) -> Vec<PreProcessedColumnId> {
@@ -203,4 +240,86 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         );
         public_params
     }
+}
+
+pub fn address_to_id_logup_term(
+    context: &mut Context<impl IValue>,
+    address: Var,
+    id: Var,
+    interaction_elements: [Var; 2],
+) -> Var {
+    let memory_address_to_id_relation_id =
+        context.constant(MEMORY_ADDRESS_TO_ID_RELATION_ID.into());
+
+    let address_to_id_logup_denominator = combine_term(
+        context,
+        &[memory_address_to_id_relation_id, address, id],
+        interaction_elements,
+    );
+    div(context, context.one(), address_to_id_logup_denominator)
+}
+
+pub fn segment_range_logup_sum(
+    context: &mut Context<impl IValue>,
+    interaction_elements: [Var; 2],
+    segement_ranges: &[SegmentRange<Var>; N_SEGMENTS],
+    mut argument_address: Var,
+    mut return_value_address: Var,
+) -> Var {
+    let one = context.one();
+    let mut sum = context.zero();
+    for (i, segment_range) in segement_ranges.iter().enumerate() {
+        if i != 0 {
+            argument_address = eval!(context, (argument_address) + (one));
+            return_value_address = eval!(context, (return_value_address) + (one));
+        }
+
+        let arg_address_to_id_logup_term = address_to_id_logup_term(
+            context,
+            argument_address,
+            segment_range.start.id,
+            interaction_elements,
+        );
+        let return_value_to_id_logup_term = address_to_id_logup_term(
+            context,
+            return_value_address,
+            segment_range.end.id,
+            interaction_elements,
+        );
+
+        sum = eval!(context, (sum) + (arg_address_to_id_logup_term));
+        sum = eval!(context, (sum) + (return_value_to_id_logup_term));
+
+        sum =
+            eval!(context, (sum) + (segment_range.start.logup_term(context, interaction_elements)));
+        sum = eval!(context, (sum) + (segment_range.end.logup_term(context, interaction_elements)));
+    }
+
+    sum
+}
+
+pub fn public_logup_sum(
+    context: &mut Context<impl IValue>,
+    public_data: &PublicData<Var>,
+    interaction_elements: [Var; 2],
+) -> Var {
+    let initial_ap = public_data.initial_state.ap;
+    let final_ap = public_data.final_state.ap;
+    context.mark_as_unused(public_data.initial_state.pc);
+    context.mark_as_unused(public_data.final_state.pc);
+    context.mark_as_unused(public_data.initial_state.fp);
+    context.mark_as_unused(public_data.final_state.fp);
+
+    let argument_address = initial_ap;
+    let return_value_address =
+        eval!(context, (final_ap) - (context.constant(QM31::from(N_SEGMENTS as u32))));
+    segment_range_logup_sum(
+        context,
+        interaction_elements,
+        &public_data.public_memory.segement_ranges,
+        argument_address,
+        return_value_address,
+    )
+
+    // TODO(ilya): Add missing logup terms.
 }
