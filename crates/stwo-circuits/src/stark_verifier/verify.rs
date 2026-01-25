@@ -22,6 +22,10 @@ use crate::stark_verifier::select_queries::{
 use crate::stark_verifier::statement::{EvaluateArgs, OodsSamples, Statement};
 
 pub const LOG_SIZE_BITS: u32 = 5;
+
+// The number of bits required to represent the size of the largest component supported.
+// Note that this is one more than log2(max_component_size), because 2**n is a (n+1)-bit
+// number.
 pub const MAX_TRACE_SIZE_BITS: u32 = 29;
 
 /// Logup security is defined by the `QM31` space (~124 bits) + `INTERACTION_POW_BITS` -
