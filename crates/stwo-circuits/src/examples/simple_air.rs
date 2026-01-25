@@ -26,6 +26,7 @@ use stwo_constraint_framework::{
     TraceLocationAllocator, relation,
 };
 
+use crate::examples::simple_statement::COMPONENT_LOG_SIZES;
 use crate::stark_verifier::proof::Claim;
 use crate::stark_verifier::proof_from_stark_proof::{pack_component_log_sizes, pack_public_claim};
 
@@ -211,7 +212,7 @@ pub fn create_proof()
 
     // Mix the component log sizes into the channel.
     // Component_3 is disabled, so it has trace size 0.
-    let packed_component_log_sizes = pack_component_log_sizes(&[LOG_SIZE_LONG, LOG_SIZE_SHORT, 0]);
+    let packed_component_log_sizes = pack_component_log_sizes(&COMPONENT_LOG_SIZES);
     prover_channel.mix_felts(&packed_component_log_sizes);
 
     // Mix the public claim into the channel.

@@ -17,15 +17,18 @@ use crate::stark_verifier::logup::combine_term;
 use crate::stark_verifier::proof::Claim;
 use crate::stark_verifier::statement::Statement;
 
+/// This is currently hardcoded in the simple air.
+/// Fixing it is not worth the effort since it doesn't happen in a real AIR.
+/// Component_3 is disabled, so it has trace size 0.
+pub const COMPONENT_LOG_SIZES: [u32; 3] = [LOG_SIZE_LONG, LOG_SIZE_SHORT, 0];
+
 pub struct SimpleStatement<Value: IValue> {
-    log_component_sizes: Vec<u32>,
     components: Vec<Box<dyn CircuitEval<Value>>>,
 }
 
 impl<Value: IValue> Default for SimpleStatement<Value> {
     fn default() -> Self {
         Self {
-            log_component_sizes: vec![LOG_SIZE_LONG, LOG_SIZE_SHORT, LOG_SIZE_LONG],
             components: vec![
                 Box::new(SquaredFibonacciComponent {
                     preprocessed_column_id: PreProcessedColumnId {
@@ -131,7 +134,7 @@ impl<Value: IValue> Statement<Value> for SimpleStatement<Value> {
         };
         let enable_bits = Simd::unpack(context, &Simd::from_packed(vec![*packed_enable_bits], 3));
 
-        for (log_n_instances, enable_bit) in zip_eq(&self.log_component_sizes, enable_bits) {
+        for (log_n_instances, enable_bit) in zip_eq(&COMPONENT_LOG_SIZES, enable_bits) {
             let fib_logup_sum =
                 squared_fibonacci_public_logup_sum(context, interaction_elements, *log_n_instances);
             sum = eval!(context, (sum) + ((fib_logup_sum) * (enable_bit)));
