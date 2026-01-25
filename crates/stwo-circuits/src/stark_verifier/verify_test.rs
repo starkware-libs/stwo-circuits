@@ -33,12 +33,7 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
     let (_components, claim, pcs_config, mut proof, interaction_pow_nonce) = create_proof();
 
     let statement = &SimpleStatement::default();
-    let config = ProofConfig::from_statement(
-        statement,
-        LOG_SIZE_LONG as usize,
-        claim.public_claim.len(),
-        &pcs_config,
-    );
+    let config = ProofConfig::from_statement(statement, LOG_SIZE_LONG as usize, &pcs_config);
     // Create a NoValue version.
     let novalue_circuit = {
         let empty_proof = empty_proof(&config);
