@@ -1,3 +1,6 @@
+use crate::stark_verifier::proof::Claim;
+use crate::stark_verifier::proof_from_stark_proof::{pack_component_log_sizes, pack_public_claim};
+use crate::stark_verifier::verify::INTERACTION_POW_BITS;
 use itertools::{Itertools, zip_eq};
 use num_traits::{One, Zero};
 use stwo::core::ColumnVec;
@@ -9,6 +12,7 @@ use stwo::core::fields::qm31::{QM31, SecureField};
 use stwo::core::pcs::PcsConfig;
 use stwo::core::poly::circle::CanonicCoset;
 use stwo::core::proof::ExtendedStarkProof;
+use stwo::core::proof_of_work::GrindOps;
 use stwo::core::vcs_lifted::blake2_merkle::{Blake2sM31MerkleChannel, Blake2sM31MerkleHasher};
 use stwo::prover::backend::Col;
 use stwo::prover::backend::Column;
@@ -27,8 +31,6 @@ use stwo_constraint_framework::{
 };
 
 use crate::examples::simple_statement::COMPONENT_LOG_SIZES;
-use crate::stark_verifier::proof::Claim;
-use crate::stark_verifier::proof_from_stark_proof::{pack_component_log_sizes, pack_public_claim};
 
 use crate::stark_verifier::proof_from_stark_proof::pack_enable_bits;
 
@@ -180,8 +182,13 @@ fn generate_seq_column(
 
 #[allow(clippy::type_complexity)]
 /// Creates a proof for the simple AIR. See documentation in [Eval].
-pub fn create_proof()
--> (Vec<Box<dyn Component>>, Claim<QM31>, PcsConfig, ExtendedStarkProof<Blake2sM31MerkleHasher>) {
+pub fn create_proof() -> (
+    Vec<Box<dyn Component>>,
+    Claim<QM31>,
+    PcsConfig,
+    ExtendedStarkProof<Blake2sM31MerkleHasher>,
+    u64,
+) {
     let config = PcsConfig::default();
     // Precompute twiddles.
     let twiddles = SimdBackend::precompute_twiddles(
@@ -237,7 +244,8 @@ pub fn create_proof()
     );
     tree_builder.commit(prover_channel);
 
-    // TODO(lior): Add proof of work before drawing the lookup elements.
+    let interaction_pow_nonce = SimdBackend::grind(prover_channel, INTERACTION_POW_BITS);
+    prover_channel.mix_u64(interaction_pow_nonce);
 
     // Draw lookup element.
     let lookup_elements = SimpleRelation::draw(prover_channel);
@@ -318,5 +326,6 @@ pub fn create_proof()
         Claim { packed_enable_bits, packed_component_log_sizes, claimed_sums, public_claim },
         config,
         proof,
+        interaction_pow_nonce,
     )
 }

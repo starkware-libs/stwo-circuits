@@ -20,6 +20,7 @@ pub fn proof_from_stark_proof(
     proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
     config: &ProofConfig,
     claim: Claim<QM31>,
+    interaction_pow_nonce: u64,
 ) -> Proof<QM31> {
     let commitments = &proof.proof.commitments;
     let sampled_values = &proof.proof.sampled_values;
@@ -28,6 +29,9 @@ pub fn proof_from_stark_proof(
     let pow: u64 = proof.proof.proof_of_work;
     let pow_high = (pow >> 32) as u32;
     let pow_low = (pow & 0xFFFFFFFF) as u32;
+
+    let interaction_pow_high = (interaction_pow_nonce >> 32) as u32;
+    let interaction_pow_low = (interaction_pow_nonce & 0xFFFFFFFF) as u32;
 
     Proof {
         preprocessed_root: commitments[0].into(),
@@ -61,6 +65,7 @@ pub fn proof_from_stark_proof(
             fri_siblings: construct_fri_siblings(proof, config),
         },
         proof_of_work_nonce: qm31_from_u32s(pow_low, pow_high, 0, 0),
+        interaction_pow_nonce: qm31_from_u32s(interaction_pow_low, interaction_pow_high, 0, 0),
     }
 }
 
