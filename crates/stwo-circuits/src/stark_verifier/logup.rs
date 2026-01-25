@@ -1,6 +1,7 @@
 use crate::circuits::context::Context;
 use crate::circuits::context::Var;
 use crate::circuits::ivalue::IValue;
+use crate::circuits::ops::div;
 use crate::eval;
 use stwo::core::Fraction;
 
@@ -30,6 +31,18 @@ pub fn combine_term(
         value = eval!(context, (value) + (*elm));
     }
     eval!(context, (value) - (interaction_elements[0]))
+}
+
+/// Computes the logup use term for the given element.
+///
+/// The use term is 1 / combine_term(context, element, interaction_elements).
+pub fn logup_use_term(
+    context: &mut Context<impl IValue>,
+    element: &[Var],
+    interaction_elements: [Var; 2],
+) -> Var {
+    let combined = combine_term(context, element, interaction_elements);
+    div(context, context.one(), combined)
 }
 
 /// Computes the constraint polynomial for a single logup term.
