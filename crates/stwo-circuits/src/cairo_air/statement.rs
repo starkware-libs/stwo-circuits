@@ -50,6 +50,17 @@ impl Default for PubMemoryValue<M31> {
     }
 }
 
+impl PubMemoryValue<Var> {
+    /// Computes the address to id logup term for the public memory value.
+    pub fn logup_term(
+        &self,
+        context: &mut Context<impl IValue>,
+        interaction_elements: [Var; 2],
+    ) -> Var {
+        id_to_big_logup_term(context, self.id, self.value.iter().copied(), interaction_elements)
+    }
+}
+
 pub struct CasmState<T> {
     pub pc: T,
     pub ap: T,
@@ -167,13 +178,6 @@ impl<Value: IValue> CairoStatement<Value> {
         let packed_public_data = Simd::from_packed(packed_public_data, public_data_len);
         let unpacked_simd = Simd::unpack(context, &packed_public_data);
 
-        // TODO(ilya): Remove once we handle the public data properly.
-        for var in unpacked_simd
-            .iter()
-            .skip(2 * STATE_LEN + 2 * PUB_MEMORY_VALUE_M31_LEN * N_SEGMENTS + N_SAFE_CALL_IDS)
-        {
-            context.mark_as_unused(*var);
-        }
         let public_data = PublicData::<Var>::parse_from_vars(&unpacked_simd[..]);
 
         Self {
@@ -331,6 +335,31 @@ fn safe_call_id_logup_term(
     eval!(context, (address_to_id_logup_term) + (id_to_value_logup_term))
 }
 
+pub fn memory_segments_logup_sum(
+    context: &mut Context<impl IValue>,
+    interaction_elements: [Var; 2],
+    mut start_address: Var,
+    memory_values: &[PubMemoryValue<Var>],
+) -> Var {
+    let one = context.one();
+    let mut sum = context.zero();
+
+    for (i, memory_value) in memory_values.iter().enumerate() {
+        if i != 0 {
+            start_address = eval!(context, (start_address) + (one));
+        }
+
+        let address_to_id_logup_term =
+            address_to_id_logup_term(context, start_address, memory_value.id, interaction_elements);
+        sum = eval!(context, (sum) + (address_to_id_logup_term));
+
+        let id_to_value_logup_term = memory_value.logup_term(context, interaction_elements);
+        sum = eval!(context, (sum) + (id_to_value_logup_term));
+    }
+
+    sum
+}
+
 pub fn public_logup_sum(
     context: &mut Context<impl IValue>,
     public_data: &PublicData<Var>,
@@ -373,6 +402,14 @@ pub fn public_logup_sum(
         return_value_address,
     );
     sum = eval!(context, (sum) + (segment_ranges_logup_sum));
+
+    let output_logup_sum = memory_segments_logup_sum(
+        context,
+        interaction_elements,
+        public_data.public_memory.segement_ranges[0].start.value,
+        &public_data.public_memory.output,
+    );
+    sum = eval!(context, (sum) + (output_logup_sum));
 
     // TODO(ilya): Add missing logup terms.
     sum
