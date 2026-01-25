@@ -1,4 +1,5 @@
 use std::array;
+use std::collections::HashMap;
 
 use crate::cairo_air::components;
 use num_traits::Zero;
@@ -161,5 +162,27 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
             .iter()
             .map(|id| PreProcessedColumnId { id: id.to_string() })
             .collect()
+    }
+
+    fn public_params(&self, _context: &mut Context<Value>) -> HashMap<String, Var> {
+        let segement_starts = self.public_data.public_memory.segement_starts;
+        let public_params: HashMap<String, Var> = HashMap::from_iter(
+            [
+                ("output_start_ptr", segement_starts[0]),
+                ("pedersen_start_ptr", segement_starts[1]),
+                ("range_check_128_start_ptr", segement_starts[2]),
+                ("ecdsa_start_ptr", segement_starts[3]),
+                ("bitwise_start_ptr", segement_starts[4]),
+                ("ec_op_start_ptr", segement_starts[5]),
+                ("keccak_start_ptr", segement_starts[6]),
+                ("poseidon_start_ptr", segement_starts[7]),
+                ("range_check_96_start_ptr", segement_starts[8]),
+                ("add_mod_start_ptr", segement_starts[9]),
+                ("mul_mod_start_ptr", segement_starts[10]),
+            ]
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v)),
+        );
+        public_params
     }
 }
