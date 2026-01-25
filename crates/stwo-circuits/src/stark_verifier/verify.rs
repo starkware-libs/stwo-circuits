@@ -115,7 +115,7 @@ pub fn verify<Value: IValue>(
         Simd::from_packed(proof.claim.packed_enable_bits.clone(), config.n_components);
     simd_enable_bits.assert_bits(context);
     let enable_bits = Simd::unpack(context, &simd_enable_bits);
-
+    
     // Compute the composition evaluation at the OODS point from `proof.*_at_oods` and compare
     // to `proof.composition_eval_at_oods`.
     let composition_eval = compute_composition_polynomial(
