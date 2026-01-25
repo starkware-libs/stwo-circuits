@@ -7,26 +7,12 @@ use crate::stark_verifier::proof_from_stark_proof::{
     pack_component_log_sizes, pack_enable_bits, proof_from_stark_proof,
 };
 use crate::stark_verifier::verify::verify;
-use cairo_air::air::{CairoClaim, CairoInteractionClaim};
-use cairo_air::combined_claim::CombinedClaim;
+use cairo_air::air::ExtendedCairoProof;
+use cairo_air::flat_claims::{flatten_interaction_claim, FlatClaim};
 use num_traits::Zero;
 use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
-use stwo::core::fields::qm31::{QM31, SecureField};
-use stwo::core::proof::ExtendedStarkProof;
-use stwo::core::vcs_lifted::MerkleHasherLifted;
+use stwo::core::fields::qm31::{SecureField, QM31};
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
-
-/// [cairo_air::air::CairoProof] with [ExtendedStarkProof] instead of
-/// [stwo::core::proof::StarkProof].
-// TODO(Gali): Move to stwo_cairo.
-pub struct ExtendedCairoProof<H: MerkleHasherLifted> {
-    pub claim: CairoClaim,
-    pub interaction_pow_nonce: u64,
-    pub interaction_claim: CairoInteractionClaim,
-    pub stark_proof: ExtendedStarkProof<H>,
-    /// Optional salt used in the channel initialization.
-    pub channel_salt: Option<u64>,
-}
 
 /// Circuit Verifies an [ExtendedCairoProof].
 // TODO(Gali): Add test.
@@ -53,27 +39,23 @@ pub fn proof_from_cairo_proof(
 ) -> (ProofConfig, Proof<SecureField>) {
     let ExtendedCairoProof {
         claim,
-        interaction_pow_nonce,
+        interaction_pow,
         interaction_claim,
-        stark_proof,
+        extended_stark_proof,
         // TODO(Gali): Add channel salt to the config.
         channel_salt: _,
+        preprocessed_trace_variant: _,
     } = proof;
 
-    let CombinedClaim {
-        component_enable_bits,
-        public_claim: _,
-        component_log_sizes,
-        component_claimed_sums,
-    } = CombinedClaim::from_cairo_claims(claim, interaction_claim);
-
-    // TODO(ilya): Create the statment based on the public_claim.
+    let FlatClaim { component_enable_bits, component_log_sizes, public_data:_ } =
+        FlatClaim::from_cairo_claim(claim);
+    let component_claimed_sums = flatten_interaction_claim(interaction_claim);
 
     let log_trace_size = component_log_sizes.iter().max().unwrap();
     let config = ProofConfig::from_statement(
         statement,
         *log_trace_size as usize,
-        &proof.stark_proof.proof.config,
+        &proof.extended_stark_proof.proof.config,
     );
 
     let claim = Claim {
@@ -82,6 +64,6 @@ pub fn proof_from_cairo_proof(
         claimed_sums: component_claimed_sums,
     };
 
-    let proof = proof_from_stark_proof(stark_proof, &config, claim, *interaction_pow_nonce);
+    let proof = proof_from_stark_proof(extended_stark_proof, &config, claim, *interaction_pow);
     (config, proof)
 }

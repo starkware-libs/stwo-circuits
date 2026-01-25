@@ -20,3 +20,6 @@ rayon.workspace = true
 indoc.workspace = true
 rstest.workspace = true
 expect-test.workspace = true
+stwo_cairo_prover.workspace = true
+dev-utils.workspace = true
+stwo_cairo_utils.workspace = true
