@@ -171,9 +171,6 @@ pub struct Claim<T> {
     // Every QM31 hold up to 4 component log sizes.
     pub packed_component_log_sizes: Vec<T>,
 
-    // Claimed sum for each component in the AIR.
-    pub claimed_sums: Vec<T>,
-
     // Statement-specific public claim data.
     pub public_claim: Vec<T>,
 }
@@ -184,7 +181,6 @@ impl<Value: IValue> Guess<Value> for Claim<Value> {
         Claim {
             packed_enable_bits: self.packed_enable_bits.guess(context),
             packed_component_log_sizes: self.packed_component_log_sizes.guess(context),
-            claimed_sums: self.claimed_sums.guess(context),
             public_claim: self.public_claim.guess(context),
         }
     }
@@ -199,6 +195,9 @@ pub struct Proof<T> {
 
     // Claim.
     pub claim: Claim<T>,
+
+    // Claimed sum for each component in the AIR.
+    pub claimed_sums: Vec<T>,
 
     // Evaluations at the OODS point and the previous point.
     pub preprocessed_columns_at_oods: Vec<T>,
@@ -281,9 +280,9 @@ pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
         claim: Claim {
             packed_enable_bits: vec![NoValue; config.n_components.div_ceil(4)],
             packed_component_log_sizes: vec![NoValue; config.n_components.div_ceil(4)],
-            claimed_sums: vec![NoValue; config.n_components],
             public_claim: vec![],
         },
+        claimed_sums: vec![NoValue; config.n_components],
         composition_eval_at_oods: [NoValue; N_COMPOSITION_COLUMNS],
         eval_domain_samples: empty_eval_domain_samples(
             &config.n_columns_per_trace(),
@@ -307,6 +306,7 @@ impl<Value: IValue> Guess<Value> for Proof<Value> {
             interaction_root: self.interaction_root.guess(context),
             composition_polynomial_root: self.composition_polynomial_root.guess(context),
             claim: self.claim.guess(context),
+            claimed_sums: self.claimed_sums.guess(context),
             preprocessed_columns_at_oods: self.preprocessed_columns_at_oods.guess(context),
             trace_at_oods: self.trace_at_oods.guess(context),
             interaction_at_oods: self.interaction_at_oods.guess(context),

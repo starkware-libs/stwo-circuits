@@ -12,7 +12,8 @@ fn verify_simple_proof() {
     let config = PcsConfig::default();
     let (
         components,
-        Claim { packed_enable_bits, packed_component_log_sizes, public_claim, claimed_sums },
+        Claim { packed_enable_bits, packed_component_log_sizes, public_claim },
+        claimed_sums,
         _config,
         proof,
     ) = create_proof();

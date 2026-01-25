@@ -74,9 +74,9 @@ pub fn verify<Value: IValue>(
 
     let public_logup_sum =
         statement.public_logup_sum(context, [interaction_z, interaction_alpha], &proof.claim);
-    validate_logup_sum(context, public_logup_sum, &proof.claim.claimed_sums);
+    validate_logup_sum(context, public_logup_sum, &proof.claimed_sums);
 
-    channel.mix_qm31s(context, proof.claim.claimed_sums.iter().cloned());
+    channel.mix_qm31s(context, proof.claimed_sums.iter().cloned());
     channel.mix_commitment(context, proof.interaction_root);
 
     // Draw a random QM31 coefficient for the composition polynomial.
@@ -112,7 +112,7 @@ pub fn verify<Value: IValue>(
             log_domain_size: config.log_trace_size(),
             composition_polynomial_coeff,
             interaction_elements: [interaction_z, interaction_alpha],
-            claimed_sums: &proof.claim.claimed_sums,
+            claimed_sums: &proof.claimed_sums,
             enable_bits: &enable_bits,
             component_sizes: &unpacked_component_sizes,
             n_instances_bits: &component_sizes_bits,

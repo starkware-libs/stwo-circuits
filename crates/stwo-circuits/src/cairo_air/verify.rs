@@ -74,10 +74,9 @@ pub fn proof_from_cairo_proof(
     let claim = Claim {
         packed_enable_bits: pack_enable_bits(&component_enable_bits),
         packed_component_log_sizes: pack_component_log_sizes(&component_log_sizes),
-        claimed_sums: component_claimed_sums,
         public_claim: pack_public_claim(&public_claim),
     };
 
-    let proof = proof_from_stark_proof(stark_proof, &config, claim);
+    let proof = proof_from_stark_proof(stark_proof, &config, claim, component_claimed_sums);
     (config, proof)
 }
