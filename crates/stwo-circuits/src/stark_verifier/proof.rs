@@ -213,6 +213,8 @@ pub struct Proof<T> {
     pub proof_of_work_nonce: T,
     pub interaction_pow_nonce: T,
     pub fri: FriProof<T>,
+
+    pub channel_salt: T,
     // TODO(lior): Add missing fields.
 }
 impl<T> Proof<T> {
@@ -296,6 +298,7 @@ pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
         proof_of_work_nonce: NoValue,
         interaction_pow_nonce: NoValue,
         fri: empty_fri_proof(&config.fri),
+        channel_salt: NoValue,
     }
 }
 
@@ -318,6 +321,7 @@ impl<Value: IValue> Guess<Value> for Proof<Value> {
             proof_of_work_nonce: self.proof_of_work_nonce.guess(context),
             interaction_pow_nonce: self.interaction_pow_nonce.guess(context),
             fri: self.fri.guess(context),
+            channel_salt: self.channel_salt.guess(context),
         }
     }
 }

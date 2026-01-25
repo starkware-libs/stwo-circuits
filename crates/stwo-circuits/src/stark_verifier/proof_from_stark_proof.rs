@@ -21,6 +21,7 @@ pub fn proof_from_stark_proof(
     config: &ProofConfig,
     claim: Claim<QM31>,
     interaction_pow_nonce: u64,
+    channel_salt: u32,
 ) -> Proof<QM31> {
     let commitments = &proof.proof.commitments;
     let sampled_values = &proof.proof.sampled_values;
@@ -66,6 +67,7 @@ pub fn proof_from_stark_proof(
         },
         proof_of_work_nonce: qm31_from_u32s(pow_low, pow_high, 0, 0),
         interaction_pow_nonce: qm31_from_u32s(interaction_pow_low, interaction_pow_high, 0, 0),
+        channel_salt: qm31_from_u32s(channel_salt, 0, 0, 0),
     }
 }
 

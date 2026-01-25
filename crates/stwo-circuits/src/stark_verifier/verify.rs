@@ -2,8 +2,8 @@ use itertools::{Itertools, chain, izip};
 use stwo::core::circle::CirclePoint;
 
 use crate::circuits::context::{Context, Var};
-use crate::circuits::ivalue::IValue;
-use crate::circuits::ops::eq;
+use crate::circuits::ivalue::{IValue, qm31_from_u32s};
+use crate::circuits::ops::{eq, pointwise_mul};
 use crate::circuits::simd::Simd;
 use crate::eval;
 use crate::stark_verifier::channel::Channel;
@@ -62,6 +62,10 @@ pub fn verify<Value: IValue>(
     proof.validate_structure(config);
 
     let mut channel = Channel::new(context);
+
+    // Validate and mix the channel salt.
+    validate_channel_salt(context, proof.channel_salt);
+    channel.mix_qm31s(context, [proof.channel_salt]);
 
     // Mix the trace commitments into the channel.
     channel.mix_commitment(context, proof.preprocessed_root);
@@ -266,4 +270,11 @@ fn column_periodicity_sample_points(
             .extend(vec![sample_point; *n_interaction_columns_in_component]);
     }
     periodicity_sample_points_per_column
+}
+
+/// Check that the salt consists of the first M31 limb.
+fn validate_channel_salt(context: &mut Context<impl IValue>, channel_salt: Var) {
+    let mask = context.constant(qm31_from_u32s(0, 1, 1, 1));
+    let masked_channel_salt = pointwise_mul(context, channel_salt, mask);
+    eq(context, masked_channel_salt, context.zero());
 }
