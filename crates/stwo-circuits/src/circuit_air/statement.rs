@@ -25,6 +25,10 @@ impl<Value: IValue> Default for CircuitStatement<Value> {
     }
 }
 impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
+    fn packed_public_data(&self) -> &[Var] {
+        &[]
+    }
+
     fn get_components(&self) -> &[Box<dyn CircuitEval<Value>>] {
         &self.components
     }

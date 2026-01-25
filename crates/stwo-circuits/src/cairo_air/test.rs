@@ -18,7 +18,7 @@ fn test_verify() {
     let flat_claim = PublicData::default().pack::<NoValue>().guess(&mut novalue_context);
     let statement = CairoStatement::new(&mut novalue_context, flat_claim);
 
-    let config = ProofConfig::from_statement(&statement, 4, 0, &pcs_config);
+    let config = ProofConfig::from_statement(&statement, 4, &pcs_config);
 
     let empty_proof = empty_proof(&config);
 

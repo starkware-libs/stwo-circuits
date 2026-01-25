@@ -114,6 +114,10 @@ fn squared_fibonacci_public_logup_sum(
 }
 
 impl<Value: IValue> Statement<Value> for SimpleStatement<Value> {
+    fn packed_public_data(&self) -> &[Var] {
+        &[]
+    }
+
     fn get_components(&self) -> &[Box<dyn CircuitEval<Value>>] {
         &self.components
     }

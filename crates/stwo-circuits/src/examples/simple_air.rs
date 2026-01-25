@@ -314,7 +314,7 @@ pub fn create_proof()
 
     (
         components,
-        Claim { packed_enable_bits, packed_component_log_sizes, claimed_sums, public_claim },
+        Claim { packed_enable_bits, packed_component_log_sizes, claimed_sums },
         config,
         proof,
     )

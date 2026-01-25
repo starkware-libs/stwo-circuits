@@ -4,7 +4,7 @@ use crate::circuits::context::{Context, TraceContext};
 use crate::circuits::ops::Guess;
 use crate::stark_verifier::proof::{Claim, Proof, ProofConfig};
 use crate::stark_verifier::proof_from_stark_proof::{
-    pack_component_log_sizes, pack_enable_bits, pack_public_claim, proof_from_stark_proof,
+    pack_component_log_sizes, pack_enable_bits, proof_from_stark_proof,
 };
 use crate::stark_verifier::verify::verify;
 use cairo_air::air::{CairoClaim, CairoInteractionClaim};
@@ -60,16 +60,17 @@ pub fn proof_from_cairo_proof(
 
     let CombinedClaim {
         component_enable_bits,
-        public_claim,
+        public_claim: _,
         component_log_sizes,
         component_claimed_sums,
     } = CombinedClaim::from_cairo_claims(claim, interaction_claim);
+
+    // TODO(ilya): Create the statment based on the public_claim.
 
     let log_trace_size = component_log_sizes.iter().max().unwrap();
     let config = ProofConfig::from_statement(
         statement,
         *log_trace_size as usize,
-        public_claim.len(),
         &proof.stark_proof.proof.config,
     );
 
@@ -77,7 +78,6 @@ pub fn proof_from_cairo_proof(
         packed_enable_bits: pack_enable_bits(&component_enable_bits),
         packed_component_log_sizes: pack_component_log_sizes(&component_log_sizes),
         claimed_sums: component_claimed_sums,
-        public_claim: pack_public_claim(&public_claim),
     };
 
     let proof = proof_from_stark_proof(stark_proof, &config, claim);
