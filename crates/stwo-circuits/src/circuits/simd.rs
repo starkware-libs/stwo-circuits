@@ -263,6 +263,19 @@ impl Simd {
         }
         res
     }
+
+    /// Packs bit-slices into a SIMD integer (LSB-first, per lane).
+    /// Assumes each bits[i] contains only 0/1 values; returns Σ bits[i] * 2^i per lane
+    pub fn combine_bits(context: &mut Context<impl IValue>, bits: &[Simd]) -> Simd {
+        let mut iter = bits.iter().rev();
+        let mut res = iter.next().unwrap().clone();
+        let two = M31Wrapper::new_unsafe(eval!(context, context.constant(QM31::from(2))));
+        for bit in iter {
+            res = Simd::scalar_mul(context, &res, &two);
+            res = Simd::add(context, &res, bit);
+        }
+        res
+    }
 }
 
 /// Returns a (constant) [Var] with the first `n` coordinates set to 1, and the rest to 0.
