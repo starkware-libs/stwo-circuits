@@ -63,12 +63,14 @@ fn test_prove_and_stark_verify_permutation_context() {
         interaction_claim,
         components,
         stark_proof,
+        channel_salt,
     } = prove_circuit(&mut permutation_context);
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
 
     // Verify.
     let verifier_channel = &mut Blake2sM31Channel::default();
+    verifier_channel.mix_felts(&[channel_salt.into()]);
     let commitment_scheme =
         &mut CommitmentSchemeVerifier::<Blake2sM31MerkleChannel>::new(pcs_config);
 
@@ -105,12 +107,14 @@ fn test_prove_and_stark_verify_fibonacci_context() {
         interaction_claim,
         components,
         stark_proof,
+        channel_salt,
     } = prove_circuit(&mut fibonacci_context);
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
 
     // Verify.
     let verifier_channel = &mut Blake2sM31Channel::default();
+    verifier_channel.mix_felts(&[channel_salt.into()]);
     let commitment_scheme =
         &mut CommitmentSchemeVerifier::<Blake2sM31MerkleChannel>::new(pcs_config);
 
@@ -147,6 +151,7 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
         interaction_claim,
         components: _,
         stark_proof,
+        channel_salt,
     } = prove_circuit(&mut fibonacci_context);
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
@@ -162,7 +167,7 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     let config = ProofConfig::from_statement(&statement, *log_trace_size as usize, &pcs_config);
 
     let mut context = TraceContext::default();
-    let proof = proof_from_stark_proof(&proof, &config, claim, interaction_pow_nonce);
+    let proof = proof_from_stark_proof(&proof, &config, claim, interaction_pow_nonce, channel_salt);
     let proof_vars = proof.guess(&mut context);
 
     crate::stark_verifier::verify::verify(&mut context, &proof_vars, &config, &statement);

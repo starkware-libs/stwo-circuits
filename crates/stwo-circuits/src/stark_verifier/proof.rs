@@ -180,6 +180,8 @@ impl<Value: IValue> Guess<Value> for Claim<Value> {
 }
 
 pub struct Proof<T> {
+    pub channel_salt: T,
+
     // Merkle roots.
     pub preprocessed_root: HashValue<T>,
     pub trace_root: HashValue<T>,
@@ -281,6 +283,7 @@ pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
         proof_of_work_nonce: NoValue,
         interaction_pow_nonce: NoValue,
         fri: empty_fri_proof(&config.fri),
+        channel_salt: NoValue,
     }
 }
 
@@ -303,6 +306,7 @@ impl<Value: IValue> Guess<Value> for Proof<Value> {
             proof_of_work_nonce: self.proof_of_work_nonce.guess(context),
             interaction_pow_nonce: self.interaction_pow_nonce.guess(context),
             fri: self.fri.guess(context),
+            channel_salt: self.channel_salt.guess(context),
         }
     }
 }
