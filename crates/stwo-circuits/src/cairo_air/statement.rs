@@ -160,6 +160,10 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         &self.components
     }
 
+    fn packed_public_data(&self) -> &[Var] {
+        self.packed_public_data.get_packed()
+    }
+
     fn public_logup_sum(
         &self,
         context: &mut Context<Value>,

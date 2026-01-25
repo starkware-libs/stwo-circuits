@@ -20,7 +20,7 @@ fn test_verify() {
         .guess(&mut novalue_context);
     let statement = CairoStatement::new(&mut novalue_context, flat_claim, PUBLIC_DATA_LEN);
 
-    let config = ProofConfig::from_statement(&statement, 20, 0, &pcs_config);
+    let config = ProofConfig::from_statement(&statement, 20, &pcs_config);
 
     let empty_proof = empty_proof(&config);
 
