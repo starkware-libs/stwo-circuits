@@ -20,6 +20,7 @@ pub fn proof_from_stark_proof(
     proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
     config: &ProofConfig,
     claim: Claim<QM31>,
+    claimed_sums: Vec<QM31>,
 ) -> Proof<QM31> {
     let commitments = &proof.proof.commitments;
     let sampled_values = &proof.proof.sampled_values;
@@ -45,6 +46,7 @@ pub fn proof_from_stark_proof(
             })
             .collect_vec(),
         claim,
+        claimed_sums,
         composition_eval_at_oods: as_single_row(&sampled_values[3]).try_into().unwrap(),
         eval_domain_samples: construct_eval_domain_samples(proof, config),
         eval_domain_auth_paths: construct_eval_domain_auth_paths(proof, config),

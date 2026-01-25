@@ -179,8 +179,13 @@ fn generate_seq_column(
 
 #[allow(clippy::type_complexity)]
 /// Creates a proof for the simple AIR. See documentation in [Eval].
-pub fn create_proof()
--> (Vec<Box<dyn Component>>, Claim<QM31>, PcsConfig, ExtendedStarkProof<Blake2sM31MerkleHasher>) {
+pub fn create_proof() -> (
+    Vec<Box<dyn Component>>,
+    Claim<QM31>,
+    Vec<QM31>,
+    PcsConfig,
+    ExtendedStarkProof<Blake2sM31MerkleHasher>,
+) {
     let config = PcsConfig::default();
     // Precompute twiddles.
     let twiddles = SimdBackend::precompute_twiddles(
@@ -314,7 +319,8 @@ pub fn create_proof()
 
     (
         components,
-        Claim { packed_enable_bits, packed_component_log_sizes, claimed_sums, public_claim },
+        Claim { packed_enable_bits, packed_component_log_sizes, public_claim },
+        claimed_sums,
         config,
         proof,
     )

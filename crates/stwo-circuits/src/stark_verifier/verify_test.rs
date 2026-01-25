@@ -30,7 +30,7 @@ enum ProofModifier {
 #[case::wrong_fri_auth_path(ProofModifier::WrongFriAuthPath)]
 #[case::wrong_fri_sibling(ProofModifier::WrongFriSibling)]
 fn test_verify(#[case] proof_modifier: ProofModifier) {
-    let (_components, claim, pcs_config, mut proof) = create_proof();
+    let (_components, claim, claimed_sums, pcs_config, mut proof) = create_proof();
 
     let statement = &SimpleStatement::default();
     let config = ProofConfig::from_statement(
@@ -75,7 +75,7 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
 
     // Create a context with values from the proof.
     let mut context = TraceContext::default();
-    let proof = proof_from_stark_proof(&proof, &config, claim);
+    let proof = proof_from_stark_proof(&proof, &config, claim, claimed_sums);
     let proof_vars = proof.guess(&mut context);
     verify(&mut context, &proof_vars, &config, &SimpleStatement::default());
 
