@@ -7,7 +7,7 @@ use crate::circuits::ops::div;
 use crate::eval;
 use crate::stark_verifier::extract_bits::extract_bits;
 use crate::stark_verifier::logup::combine_term;
-use itertools::{Itertools, chain};
+use itertools::{Itertools, chain, izip};
 use num_traits::Zero;
 use stwo::core::fields::qm31::QM31;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
@@ -61,6 +61,14 @@ pub struct PubMemoryM31Value<T> {
     pub value: T,
 }
 
+pub fn split_27bit_to_9bit_limbs(context: &mut Context<impl IValue>, value: Var) -> [Var; 3] {
+    let simd = Simd::from_packed(vec![value], 1);
+    let extracted_bits = extract_bits(context, &simd, 27);
+    let bits = extracted_bits.iter().map(|bits| Simd::unpack(context, bits)[0]).collect_vec();
+    let mut limbs_iter = bits.chunks(9).map(|limb_bits| combine_bits(context, limb_bits));
+    array::from_fn(|_| limbs_iter.next().unwrap())
+}
+
 impl PubMemoryM31Value<Var> {
     /// Computes the address to id logup term for the public memory value.
     pub fn logup_term(
@@ -68,18 +76,11 @@ impl PubMemoryM31Value<Var> {
         context: &mut Context<impl IValue>,
         interaction_elements: [Var; 2],
     ) -> Var {
-        let simd = Simd::from_packed(vec![self.value], 1);
-        // TODO(ilya): Consider using the logup itself for the range check instead of extracting
-        // bits.
-        let extracted_bits = extract_bits(context, &simd, 27);
+        let limbs = split_27bit_to_9bit_limbs(context, self.value);
 
-        let bits = extracted_bits.iter().map(|bits| Simd::unpack(context, bits)[0]).collect_vec();
-
-        let element = chain!(
-            [context.constant(MEMRORY_ID_TO_VALUE_RELATION_ID.into()), self.id],
-            bits.chunks(9).map(|limb_bits| combine_bits(context, limb_bits))
-        )
-        .collect_vec();
+        let element =
+            chain!([context.constant(MEMRORY_ID_TO_VALUE_RELATION_ID.into()), self.id], limbs,)
+                .collect_vec();
 
         let combined = combine_term(context, &element, interaction_elements);
         div(context, context.one(), combined)
@@ -158,8 +159,9 @@ impl<Value: IValue> CairoStatement<Value> {
         let unpacked_simd = Simd::unpack(context, &packed_public_data);
 
         // TODO(ilya): Remove once we handle the public data properly.
-        for var in
-            unpacked_simd.iter().skip(2 * STATE_LEN + 2 * PUB_MEMORY_VALUE_M31_LEN * N_SEGMENTS)
+        for var in unpacked_simd
+            .iter()
+            .skip(2 * STATE_LEN + 2 * PUB_MEMORY_VALUE_M31_LEN * N_SEGMENTS + N_SAFE_CALL_IDS)
         {
             context.mark_as_unused(*var);
         }
@@ -305,6 +307,26 @@ pub fn segment_range_logup_sum(
     sum
 }
 
+fn safe_call_id_logup_term(
+    context: &mut Context<impl IValue>,
+    interaction_elements: [Var; 2],
+    address: Var,
+    id: Var,
+    value_limbs: &[Var],
+) -> Var {
+    let address_to_id_logup_term =
+        address_to_id_logup_term(context, address, id, interaction_elements);
+    let element = chain!(
+        [context.constant(MEMRORY_ID_TO_VALUE_RELATION_ID.into()), id],
+        value_limbs.iter().cloned()
+    )
+    .collect_vec();
+
+    let combined = combine_term(context, &element, interaction_elements);
+    let id_to_value_logup_term = div(context, context.one(), combined);
+    eval!(context, (address_to_id_logup_term) + (id_to_value_logup_term))
+}
+
 pub fn state_logup_term(
     context: &mut Context<impl IValue>,
     interaction_elements: [Var; 2],
@@ -329,6 +351,25 @@ pub fn public_logup_sum(
 
     let mut sum = final_state_logup_term;
     sum = eval!(context, (sum) - (initial_state_logup_term));
+
+    let one = context.one();
+    let safe_call_addresses = vec![
+        eval!(context, (initial_ap) - (context.constant(QM31::from(2)))),
+        eval!(context, (initial_ap) - (one)),
+    ];
+
+    let split_initial_ap = split_27bit_to_9bit_limbs(context, initial_ap);
+    let safe_call_values = [split_initial_ap.as_slice(), &[]];
+    // Handle the safe call memory section::
+    // memory[initial_ap - 2] = (safe_call_id0, initial_ap)
+    // memory[initial_ap - 2] = (safe_call_id1, 0).
+    for (address, id, value_limbs) in
+        izip!(safe_call_addresses, &public_data.public_memory.safe_call_ids, safe_call_values)
+    {
+        let logup_term =
+            safe_call_id_logup_term(context, interaction_elements, address, *id, value_limbs);
+        sum = eval!(context, (sum) + (logup_term));
+    }
 
     let argument_address = initial_ap;
     let return_value_address = eval!(
