@@ -275,6 +275,19 @@ impl Simd {
         }
         res
     }
+
+    /// Asserts that not all the bits in each [Simd] are ones.
+    ///
+    /// Note that this function assumes that `bits.is_empty()` is false.
+    pub fn assert_not_all_ones(context: &mut Context<impl IValue>, bits: &[Simd]) {
+        let mut iter = bits.iter();
+        let mut res = iter.next().unwrap().clone();
+        for bit in iter {
+            res = Simd::mul(context, &res, bit);
+        }
+        let zero = Simd::zero(context, res.len());
+        Simd::eq(context, &res, &zero);
+    }
 }
 
 /// Returns a (constant) [Var] with the first `n` coordinates set to 1, and the rest to 0.
