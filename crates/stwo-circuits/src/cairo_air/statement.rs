@@ -36,6 +36,7 @@ pub const PUBLIC_DATA_LEN: usize = 2 * STATE_LEN
     + PUB_MEMORY_VALUE_LEN * OUTPUT_LEN;
 
 const MEMRORY_ID_TO_VALUE_RELATION_ID: u32 = 1662111297;
+const OPCODES_RELATION_ID: u32 = 428564188;
 
 #[derive(Clone)]
 pub struct PubMemoryValue<T> {
@@ -304,29 +305,44 @@ pub fn segment_range_logup_sum(
     sum
 }
 
+pub fn state_logup_term(
+    context: &mut Context<impl IValue>,
+    interaction_elements: [Var; 2],
+    state: &CasmState<Var>,
+) -> Var {
+    let opcodes_relation_id = context.constant(OPCODES_RELATION_ID.into());
+    let elements = chain!([opcodes_relation_id], [state.pc, state.ap, state.fp]).collect_vec();
+    let combined = combine_term(context, &elements, interaction_elements);
+    div(context, context.one(), combined)
+}
+
 pub fn public_logup_sum(
     context: &mut Context<impl IValue>,
     public_data: &PublicData<Var>,
     interaction_elements: [Var; 2],
 ) -> Var {
     let initial_ap = public_data.initial_state.ap;
-    context.mark_as_unused(public_data.initial_state.pc);
-    context.mark_as_unused(public_data.final_state.pc);
-    context.mark_as_unused(public_data.initial_state.fp);
-    context.mark_as_unused(public_data.final_state.fp);
+    let final_state_logup_term =
+        state_logup_term(context, interaction_elements, &public_data.final_state);
+    let initial_state_logup_term =
+        state_logup_term(context, interaction_elements, &public_data.initial_state);
+
+    let mut sum = final_state_logup_term;
+    sum = eval!(context, (sum) - (initial_state_logup_term));
 
     let argument_address = initial_ap;
     let return_value_address = eval!(
         context,
         (public_data.final_state.ap) - (context.constant(QM31::from(N_SEGMENTS as u32)))
     );
-    segment_range_logup_sum(
+    let segment_ranges_logup_sum = segment_range_logup_sum(
         context,
         interaction_elements,
         &public_data.public_memory.segement_ranges,
         argument_address,
         return_value_address,
-    )
+    );
+    eval!(context, (sum) + (segment_ranges_logup_sum))
 
     // TODO(ilya): Add missing logup terms.
 }
