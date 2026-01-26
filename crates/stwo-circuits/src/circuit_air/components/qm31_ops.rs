@@ -1,3 +1,4 @@
+use crate::cairo_air::component_utils::RelationUse;
 use crate::circuit_air::components::prelude::*;
 
 pub const N_PREPROCESSED_COLUMNS: usize = 8;
@@ -247,5 +248,9 @@ impl<Value: IValue> CircuitEval<Value> for CircuitQm31OpsComponent {
             neg_mults,
             &[gate_relation_id, out_address, out_col8, out_col9, out_col10, out_col11],
         );
+    }
+
+    fn relation_uses_per_row(&self) -> &[RelationUse] {
+        &[RelationUse { relation_id: "gate", uses: 2 }]
     }
 }

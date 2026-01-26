@@ -2,6 +2,13 @@
 
 use crate::cairo_air::components::prelude::*;
 
+pub const RELATION_USES_PER_ROW: [RelationUse; 4] = [
+    RelationUse { relation_id: "RangeCheck_9_9", uses: 1 },
+    RelationUse { relation_id: "RangeCheck_9_9_B", uses: 1 },
+    RelationUse { relation_id: "RangeCheck_9_9_C", uses: 1 },
+    RelationUse { relation_id: "RangeCheck_9_9_D", uses: 1 },
+];
+
 pub fn accumulate_constraints(
     input: &[Var],
     context: &mut Context<impl IValue>,
