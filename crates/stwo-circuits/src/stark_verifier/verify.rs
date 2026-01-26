@@ -1,10 +1,14 @@
+use std::collections::HashMap;
+
 use itertools::{Itertools, chain, izip};
 use stwo::core::circle::CirclePoint;
+use stwo::core::fields::m31::P;
 
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::eq;
 use crate::circuits::simd::Simd;
+use crate::circuits::wrappers::M31Wrapper;
 use crate::eval;
 use crate::stark_verifier::channel::Channel;
 use crate::stark_verifier::circle::{add_points, generator_point};
@@ -115,9 +119,11 @@ pub fn verify<Value: IValue>(
     simd_enable_bits.assert_bits(context);
     let enable_bits = Simd::unpack(context, &simd_enable_bits);
 
+    let unpacked_component_sizes = Simd::unpack(context, &component_sizes);
+    check_relation_uses(context, statement, &component_sizes_bits);
+
     // Compute the composition evaluation at the OODS point from `proof.*_at_oods` and compare
     // to `proof.composition_eval_at_oods`.
-    let unpacked_component_sizes = Simd::unpack(context, &component_sizes);
     let composition_eval = compute_composition_polynomial(
         context,
         config,
@@ -230,6 +236,69 @@ pub fn verify<Value: IValue>(
     );
 
     fri_decommit(context, &proof.fri, &config.fri, &fri_input, &bits, &queries.points, &fri_alphas);
+}
+
+/// Verify that no relation is used more than P times.
+/// For each relation, it verifies that sum(uses_per_row * num_rows) < P
+/// where the sum is over all the components that use the relation.
+///
+/// To avoid overflows when computing the sum, we check
+/// sum(uses_per_row * (floor(num_rows / DIV) + 1)) < floor(P / DIV)
+/// where DIV = 2 ** NUM_ROWS_SHIFT
+fn check_relation_uses<Value: IValue>(
+    context: &mut Context<impl IValue>,
+    statement: &impl Statement<Value>,
+    component_sizes_bits: &[Simd],
+) {
+    const NUM_ROWS_SHIFT: usize = 16;
+    let components = statement.get_components();
+
+    // Check that sum(uses_per_row * (floor(num_rows / DIV) + 1)) cannot overflow even for the
+    // maximal num_rows (num_rows = P).
+    // This is a sanity check that `NUM_ROWS_SHIFT` is large enough for the given statement, it
+    // does not depend on the specific assigment.
+    let mut max_shifted_uses_per_relation = HashMap::<&str, u64>::new();
+    for component in components.iter() {
+        for relation_use in component.relation_uses_per_row() {
+            let entry = max_shifted_uses_per_relation.entry(relation_use.relation_id).or_insert(0);
+            *entry += relation_use.uses * (((P >> NUM_ROWS_SHIFT) + 1) as u64);
+        }
+    }
+    assert!(max_shifted_uses_per_relation.values().all(|count| *count < (P as u64)));
+
+    // Compute floor(num_rows / DIV) for all components
+    let shifted_component_sizes = match component_sizes_bits.get(NUM_ROWS_SHIFT..) {
+        Some(high_bits) => Simd::combine_bits(context, high_bits),
+        None => Simd::zero(context, components.len()),
+    };
+    Simd::mark_partly_used(context, &shifted_component_sizes);
+
+    // Sum uses_per_row * (floor(num_rows / DIV) + 1) for all relations
+    let mut shifted_relation_uses = HashMap::new();
+    for (i, component) in components.iter().enumerate() {
+        let relation_uses = component.relation_uses_per_row();
+        if relation_uses.is_empty() {
+            continue;
+        }
+        let shifted_size = Simd::unpack_idx(context, &shifted_component_sizes, i);
+        for relation_use in component.relation_uses_per_row() {
+            let entry =
+                shifted_relation_uses.entry(relation_use.relation_id).or_insert(context.zero());
+            let uses_per_row =
+                context.constant(TryInto::<u32>::try_into(relation_use.uses).unwrap().into());
+            *entry = eval!(context, (*entry) + (((shifted_size) + (1)) * (uses_per_row)));
+        }
+    }
+
+    // Verify that the sum is less than floor(P / DIV) by expressing it as a
+    // floor(log2(P / DIV))-bit number
+    let shifted_use_counts = shifted_relation_uses
+        .into_iter()
+        .sorted_by_key(|(k, _v)| *k)
+        .map(|(_k, v)| M31Wrapper::new_unsafe(v))
+        .collect_vec();
+    let shifted_use_counts = Simd::pack(context, &shifted_use_counts);
+    extract_bits(context, &shifted_use_counts, (P >> NUM_ROWS_SHIFT).ilog2());
 }
 
 // Returns the column_log_sizes_by_trace, which includes the column log sizes for the trace and

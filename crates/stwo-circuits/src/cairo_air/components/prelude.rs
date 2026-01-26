@@ -1,4 +1,4 @@
-pub use crate::cairo_air::component_utils::seq_of_component_size;
+pub use crate::cairo_air::component_utils::*;
 pub use crate::cairo_air::components::subroutines::*;
 pub use crate::cairo_air::components::*;
 pub use crate::circuits::context::{Context, Var};

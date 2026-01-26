@@ -5,6 +5,9 @@ use crate::cairo_air::components::prelude::*;
 pub const N_TRACE_COLUMNS: usize = 8;
 pub const N_INTERACTION_COLUMNS: usize = 16;
 
+pub const RELATION_USES_PER_ROW: [RelationUse; 0] = [];
+
+#[allow(unused_variables)]
 pub fn accumulate_constraints(
     input: &[Var],
     context: &mut Context<impl IValue>,
@@ -123,5 +126,9 @@ impl<Value: IValue> CircuitEval<Value> for Component {
 
     fn interaction_columns(&self) -> usize {
         N_INTERACTION_COLUMNS
+    }
+
+    fn relation_uses_per_row(&self) -> &[RelationUse] {
+        &RELATION_USES_PER_ROW
     }
 }
