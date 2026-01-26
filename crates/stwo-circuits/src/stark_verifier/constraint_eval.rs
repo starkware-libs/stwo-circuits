@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::cairo_air::component_utils::RelationUse;
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::{div, from_partial_evals};
@@ -203,6 +204,8 @@ pub trait CircuitEval<Value: IValue> {
 
     /// Returns the number of interaction columns used by the component.
     fn interaction_columns(&self) -> usize;
+
+    fn relation_uses_per_row(&self) -> &[RelationUse];
 }
 
 pub fn get_n_columns<'a, T>(columns: &mut &'a [T], n: usize) -> &'a [T] {

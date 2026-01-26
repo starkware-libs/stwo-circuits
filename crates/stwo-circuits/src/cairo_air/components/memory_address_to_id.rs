@@ -49,4 +49,9 @@ impl<Value: IValue> CircuitEval<Value> for Component {
     fn interaction_columns(&self) -> usize {
         N_INTERACTION_COLUMNS
     }
+
+    fn relation_uses_per_row(&self) -> &[RelationUse] {
+        // This component does only yields
+        &[]
+    }
 }
