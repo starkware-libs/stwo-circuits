@@ -6,6 +6,12 @@ use crate::circuits::ops::eq;
 use crate::eval;
 use crate::stark_verifier::constraint_eval::*;
 
+#[derive(Debug)]
+pub struct RelationUse {
+    pub relation_id: &'static str,
+    pub uses: u64,
+}
+
 // Create a variable with the evaluation of seq_k where k is the log-height of
 // the component. The height is taken from component_data.get_n_instances_bits.
 pub fn seq_of_component_size(

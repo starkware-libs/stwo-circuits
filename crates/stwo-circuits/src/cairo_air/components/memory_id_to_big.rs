@@ -156,4 +156,8 @@ impl<Value: IValue> CircuitEval<Value> for Component {
     fn interaction_columns(&self) -> usize {
         N_INTERACTION_COLUMNS
     }
+
+    fn relation_uses_per_row(&self) -> &[RelationUse] {
+        &range_check_mem_value_n_28::RELATION_USES_PER_ROW
+    }
 }

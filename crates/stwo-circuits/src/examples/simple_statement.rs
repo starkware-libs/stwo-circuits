@@ -4,6 +4,7 @@ use stwo::core::fields::m31::M31;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 use super::simple_air::FIB_SEQUENCE_LENGTH;
+use crate::cairo_air::component_utils::RelationUse;
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::div;
@@ -60,6 +61,10 @@ impl<Value: IValue> CircuitEval<Value> for SquaredFibonacciComponent {
 
     fn interaction_columns(&self) -> usize {
         8
+    }
+
+    fn relation_uses_per_row(&self) -> &[RelationUse] {
+        &[RelationUse { relation_id: "fib_relation", uses: 3 }]
     }
 
     fn evaluate(
