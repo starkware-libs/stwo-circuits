@@ -5,7 +5,9 @@ use crate::cairo_air::components;
 use crate::eval;
 use crate::stark_verifier::extract_bits::extract_bits;
 use crate::stark_verifier::logup::logup_use_term;
-use cairo_air::relations::{MEMORY_ADDRESS_TO_ID_RELATION_ID, MEMORY_ID_TO_BIG_RELATION_ID};
+use cairo_air::relations::{
+    MEMORY_ADDRESS_TO_ID_RELATION_ID, MEMORY_ID_TO_BIG_RELATION_ID, OPCODES_RELATION_ID,
+};
 use itertools::{Itertools, chain};
 use num_traits::Zero;
 use stwo::core::fields::qm31::QM31;
@@ -52,6 +54,16 @@ pub struct CasmState<T> {
     pub pc: T,
     pub ap: T,
     pub fp: T,
+}
+impl CasmState<Var> {
+    pub fn logup_term(
+        &self,
+        context: &mut Context<impl IValue>,
+        interaction_elements: [Var; 2],
+    ) -> Var {
+        let elements = [context.constant(OPCODES_RELATION_ID.into()), self.pc, self.ap, self.fp];
+        logup_use_term(context, &elements, interaction_elements)
+    }
 }
 
 // A public memory value that fits in 27bits.
@@ -299,21 +311,23 @@ pub fn public_logup_sum(
 ) -> Var {
     let initial_ap = public_data.initial_state.ap;
     let final_ap = public_data.final_state.ap;
-    context.mark_as_unused(public_data.initial_state.pc);
-    context.mark_as_unused(public_data.final_state.pc);
-    context.mark_as_unused(public_data.initial_state.fp);
-    context.mark_as_unused(public_data.final_state.fp);
+    let final_state_logup_term = public_data.final_state.logup_term(context, interaction_elements);
+    let initial_state_logup_term =
+        public_data.initial_state.logup_term(context, interaction_elements);
+    let mut sum = eval!(context, (final_state_logup_term) - (initial_state_logup_term));
 
     let argument_address = initial_ap;
     let return_value_address =
         eval!(context, (final_ap) - (context.constant(QM31::from(N_SEGMENTS as u32))));
-    segment_range_logup_sum(
+    let segment_ranges_logup_sum = segment_range_logup_sum(
         context,
         interaction_elements,
         &public_data.public_memory.segement_ranges,
         argument_address,
         return_value_address,
-    )
+    );
+    sum = eval!(context, (sum) + (segment_ranges_logup_sum));
 
     // TODO(ilya): Add missing logup terms.
+    sum
 }
