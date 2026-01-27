@@ -1,5 +1,6 @@
 pub mod cond_range_check_2;
 pub mod decode_instruction_15a61;
+pub mod decode_instruction_2a7a2;
 pub mod decode_instruction_7ebc4;
 pub mod decode_instruction_d2a10;
 pub mod decode_instruction_de75a;
