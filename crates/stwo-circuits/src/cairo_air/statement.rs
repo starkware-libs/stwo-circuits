@@ -2,9 +2,11 @@ use std::array;
 use std::collections::HashMap;
 
 use crate::cairo_air::components;
+use crate::circuits::ops::Guess;
 use crate::eval;
 use crate::stark_verifier::extract_bits::extract_bits;
 use crate::stark_verifier::logup::logup_use_term;
+use crate::stark_verifier::proof_from_stark_proof::pack_into_qm31s;
 use cairo_air::relations::{
     MEMORY_ADDRESS_TO_ID_RELATION_ID, MEMORY_ID_TO_BIG_RELATION_ID, OPCODES_RELATION_ID,
 };
@@ -170,12 +172,12 @@ pub struct CairoStatement<Value: IValue> {
 }
 
 impl<Value: IValue> CairoStatement<Value> {
-    pub fn new(
-        context: &mut Context<Value>,
-        packed_public_data: Vec<Var>,
-        public_data_len: usize,
-    ) -> Self {
-        let packed_public_data = Simd::from_packed(packed_public_data, public_data_len);
+    pub fn new(context: &mut Context<Value>, public_data: Vec<M31>) -> Self {
+        let packed_public_data = pack_into_qm31s(public_data.iter().cloned())
+            .into_iter()
+            .map(|qm31| Value::from_qm31(qm31).guess(context))
+            .collect_vec();
+        let packed_public_data = Simd::from_packed(packed_public_data, public_data.len());
         let unpacked_simd = Simd::unpack(context, &packed_public_data);
 
         let public_data = PublicData::<Var>::parse_from_vars(&unpacked_simd[..]);
