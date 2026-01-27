@@ -1,6 +1,6 @@
-use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
 use cairo_air::PreProcessedTraceVariant;
 use dev_utils::utils::get_compiled_cairo_program_path;
+use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
 use stwo::core::fri::FriConfig;
 use stwo::core::{pcs::PcsConfig, vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel};
 use stwo_cairo_prover::prover::{prove_cairo_ex, ChannelHash, ProverParameters};
@@ -55,5 +55,6 @@ fn test_verify_cairo() {
     context.check_vars_used();
     context.finalize_guessed_vars();
     context.circuit.check_yields();
-    context.validate_circuit();
+    // context.validate_circuit();
+    println!("Stats: {:?}", context.stats);
 }

@@ -1,8 +1,8 @@
 use std::array;
 
 use hashbrown::HashMap;
-use itertools::Itertools;
 use itertools::chain;
+use itertools::Itertools;
 use num_traits::Zero;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
@@ -13,7 +13,7 @@ use crate::circuits::ivalue::qm31_from_u32s;
 use crate::stark_verifier::fri_proof::{FriCommitProof, FriProof};
 use crate::stark_verifier::merkle::{AuthPath, AuthPaths};
 use crate::stark_verifier::oods::EvalDomainSamples;
-use crate::stark_verifier::proof::{Claim, InteractionAtOods, N_TRACES, Proof, ProofConfig};
+use crate::stark_verifier::proof::{Claim, InteractionAtOods, Proof, ProofConfig, N_TRACES};
 
 /// Constructs [Proof] with the values from the given proof ([ExtendedStarkProof]).
 pub fn proof_from_stark_proof(
