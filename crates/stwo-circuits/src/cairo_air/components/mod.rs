@@ -1,5 +1,6 @@
 pub mod add_ap_opcode;
 pub mod assert_eq_opcode;
+pub mod call_opcode_rel_imm;
 pub mod jnz_opcode_non_taken;
 pub mod jnz_opcode_taken;
 pub mod jump_opcode_rel_imm;
