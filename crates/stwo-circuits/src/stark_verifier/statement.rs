@@ -28,6 +28,8 @@ pub struct EvaluateArgs<'a> {
 
 /// Represents an AIR and its public inputs.
 pub trait Statement<Value: IValue> {
+    fn packed_public_data(&self) -> &[Var];
+
     /// Returns the components of the statement.
     fn get_components(&self) -> &[Box<dyn CircuitEval<Value>>];
 

@@ -13,7 +13,7 @@ fn verify_simple_proof() {
     let config = PcsConfig::default();
     let (
         components,
-        Claim { packed_enable_bits, packed_component_log_sizes, public_claim, claimed_sums },
+        Claim { packed_enable_bits, packed_component_log_sizes, claimed_sums },
         _config,
         proof,
         interaction_pow_nonce,
@@ -34,7 +34,7 @@ fn verify_simple_proof() {
     );
     verifier_channel.mix_felts(&packed_enable_bits);
     verifier_channel.mix_felts(&packed_component_log_sizes);
-    verifier_channel.mix_felts(&public_claim);
+    verifier_channel.mix_felts(&[]);
     commitment_scheme.commit(proof.proof.commitments[1], &sizes[1], verifier_channel);
     verifier_channel.verify_pow_nonce(INTERACTION_POW_BITS, interaction_pow_nonce);
     verifier_channel.mix_u64(interaction_pow_nonce);
