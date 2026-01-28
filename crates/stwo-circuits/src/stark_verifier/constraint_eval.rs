@@ -153,7 +153,7 @@ impl CompositionConstraintAccumulator {
             );
             // All pairs except the last are cumulatively summed in new interaction columns.
             let diff =
-                if i > 1 { eval!(context, (cur_cumsum) - (prev_col_cumsum)) } else { cur_cumsum };
+                if i > 0 { eval!(context, (cur_cumsum) - (prev_col_cumsum)) } else { cur_cumsum };
             prev_col_cumsum = cur_cumsum;
 
             let logup_constraint_val =
