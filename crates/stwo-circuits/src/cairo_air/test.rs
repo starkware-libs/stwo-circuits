@@ -2,7 +2,7 @@ use num_traits::Zero;
 use stwo::core::fields::m31::M31;
 use stwo::core::pcs::PcsConfig;
 
-use crate::cairo_air::statement::PUBLIC_DATA_LEN;
+use crate::cairo_air::statement::{OUTPUT_LEN, PROGRAM_LEN, PUBLIC_DATA_LEN};
 use crate::{
     cairo_air::statement::CairoStatement,
     circuits::{context::Context, ivalue::NoValue, ops::Guess},
@@ -18,7 +18,7 @@ fn test_verify() {
 
     let mut novalue_context = Context::<NoValue>::default();
     let flat_claim = vec![M31::zero(); PUBLIC_DATA_LEN];
-    let statement = CairoStatement::new(&mut novalue_context, flat_claim);
+    let statement = CairoStatement::new(&mut novalue_context, flat_claim, OUTPUT_LEN, PROGRAM_LEN);
 
     let config = ProofConfig::from_statement(&statement, 20, &pcs_config);
 
