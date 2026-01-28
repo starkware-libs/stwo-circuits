@@ -9,7 +9,6 @@ use crate::stark_verifier::extract_bits::extract_bits;
 use crate::stark_verifier::logup::combine_term;
 use crate::stark_verifier::proof_from_stark_proof::pack_into_qm31s;
 use itertools::{Itertools, chain, izip};
-use num_traits::Zero;
 use stwo::core::fields::qm31::QM31;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
@@ -43,11 +42,6 @@ const OPCODES_RELATION_ID: u32 = 428564188;
 pub struct PubMemoryValue<T> {
     pub id: T,
     pub value: [T; MEMORY_VALUES_LIMBS],
-}
-impl Default for PubMemoryValue<M31> {
-    fn default() -> Self {
-        Self { id: M31::zero(), value: [M31::zero(); MEMORY_VALUES_LIMBS] }
-    }
 }
 
 impl PubMemoryValue<Var> {
