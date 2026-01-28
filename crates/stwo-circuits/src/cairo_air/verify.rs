@@ -1,4 +1,5 @@
 use crate::cairo_air::statement::CairoStatement;
+use crate::cairo_air::statement::MEMORY_VALUES_LIMBS;
 use crate::cairo_air::statement::OUTPUT_LEN;
 use crate::cairo_air::statement::PROGRAM_LEN;
 use crate::cairo_air::statement::PUBLIC_DATA_LEN;
@@ -35,7 +36,8 @@ pub struct ExtendedCairoProof<H: MerkleHasherLifted> {
 pub fn verify_cairo(proof: &ExtendedCairoProof<Blake2sM31MerkleHasher>) -> Context<QM31> {
     let mut context = TraceContext::default();
     let flat_claim = vec![M31::zero(); PUBLIC_DATA_LEN];
-    let statement = CairoStatement::<QM31>::new(&mut context, flat_claim, OUTPUT_LEN, PROGRAM_LEN);
+    let program = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; PROGRAM_LEN];
+    let statement = CairoStatement::<QM31>::new(&mut context, flat_claim, OUTPUT_LEN, program);
 
     let (config, proof) = proof_from_cairo_proof(proof, &statement);
 
