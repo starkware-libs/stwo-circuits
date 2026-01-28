@@ -11,9 +11,10 @@ pub fn accumulate_constraints(
     component_data: &ComponentData<'_>,
     acc: &mut CompositionConstraintAccumulator,
 ) {
+    // Addresses are offsetted by 1, as 0 address is reserved.
     let seq = seq_of_component_size(context, component_data, acc);
+    let mut address = eval!(context, (seq) + (1));
 
-    let mut address = seq;
     for i in 0..MEMORY_ADDRESS_TO_ID_SPLIT {
         // We compute the new address here and not at the end of the loop body
         // to avoid computing an unused address at the last iteration.
