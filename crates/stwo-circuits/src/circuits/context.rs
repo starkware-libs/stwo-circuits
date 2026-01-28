@@ -41,8 +41,11 @@ pub struct Context<Value: IValue> {
     values: Vec<Value>,
     pub stats: Stats,
     /// Set of variables that were marked by the code as "unused".
-    /// Used in [Self::check_vars_used].
+    /// [Self::check_vars_used] checks that thesea are indeed unused.
     unused_vars: HashSet<usize>,
+    /// Set of variables that were marked by the code as "maybe unused". These skip
+    /// the checks in [Self::check_vars_used] entirely.
+    maybe_unused_vars: HashSet<usize>,
     /// Set of variables that are not the result of a gate, but instead are provided by the prover.
     ///
     /// `None` if the set of guessed variables has already been finalized.
@@ -100,6 +103,13 @@ impl<Value: IValue> Context<Value> {
         assert!(self.unused_vars.insert(var.idx));
     }
 
+    /// Marks a variable as "maybe unused".
+    ///
+    /// See [Self::check_vars_used].
+    pub fn mark_as_maybe_unused(&mut self, var: &Var) {
+        assert!(self.maybe_unused_vars.insert(var.idx));
+    }
+
     /// Checks that all the variables that were defined are used in the circuit by some gate.
     ///
     /// This is a sanity check for the correction of the circuit.
@@ -110,11 +120,11 @@ impl<Value: IValue> Context<Value> {
         for (idx, uses) in var_uses.iter().enumerate() {
             let unused = *uses == 0;
             let marked_as_unused = self.unused_vars.contains(&idx);
-            if unused && !marked_as_unused {
-                panic!("Variable {idx} is unused but not marked as unused");
-            }
             if !unused && marked_as_unused {
                 panic!("Variable {idx} is used but marked as unused");
+            }
+            if unused && !(marked_as_unused || self.maybe_unused_vars.contains(&idx)) {
+                panic!("Variable {idx} is unused but not marked as unused");
             }
         }
     }
@@ -143,6 +153,7 @@ impl<Value: IValue> Default for Context<Value> {
             values: vec![],
             stats: Stats::default(),
             unused_vars: HashSet::new(),
+            maybe_unused_vars: HashSet::new(),
             guessed_vars: Some(vec![]),
             assert_eq_on_eval: false,
         };

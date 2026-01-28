@@ -1,4 +1,7 @@
-use crate::circuit_air::{components::prelude::*, relations::GATE_RELATION_ID};
+use crate::{
+    cairo_air::component_utils::RelationUse,
+    circuit_air::{components::prelude::*, relations::GATE_RELATION_ID},
+};
 
 pub const N_PREPROCESSED_COLUMNS: usize = 2;
 pub const N_TRACE_COLUMNS: usize = 8;
@@ -136,5 +139,9 @@ impl<Value: IValue> CircuitEval<Value> for CircuitEqComponent {
             context.one(),
             &[gate_relation_id, in1_address, in1_col4, in1_col5, in1_col6, in1_col7],
         );
+    }
+
+    fn relation_uses_per_row(&self) -> &[RelationUse] {
+        &[RelationUse { relation_id: "gate", uses: 2 }]
     }
 }

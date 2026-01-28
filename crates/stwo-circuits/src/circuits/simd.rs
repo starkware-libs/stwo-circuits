@@ -288,6 +288,14 @@ impl Simd {
         let zero = Simd::zero(context, res.len());
         Simd::eq(context, &res, &zero);
     }
+
+    /// Marks the variables in the Simd as "maybe unused". This is intended for cases
+    /// where we create a Simd but we will only use some of its elements.
+    pub fn mark_partly_used(context: &mut Context<impl IValue>, simd: &Simd) {
+        for chunk in &simd.data {
+            context.mark_as_maybe_unused(chunk);
+        }
+    }
 }
 
 /// Returns a (constant) [Var] with the first `n` coordinates set to 1, and the rest to 0.

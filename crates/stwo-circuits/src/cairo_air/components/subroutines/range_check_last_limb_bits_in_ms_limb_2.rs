@@ -2,6 +2,8 @@
 
 use crate::cairo_air::components::prelude::*;
 
+pub const RELATION_USES_PER_ROW: [RelationUse; 0] = [];
+
 pub fn accumulate_constraints(
     input: &[Var],
     context: &mut Context<impl IValue>,
