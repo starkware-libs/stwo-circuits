@@ -135,9 +135,12 @@ impl<Value: IValue> CairoStatement<Value> {
             components: vec![
                 Box::new(components::add_ap_opcode::Component {}),
                 Box::new(components::assert_eq_opcode::Component {}),
+                Box::new(components::call_opcode_rel_imm::Component {}),
                 Box::new(components::jnz_opcode_non_taken::Component {}),
                 Box::new(components::jnz_opcode_taken::Component {}),
                 Box::new(components::jump_opcode_rel_imm::Component {}),
+                Box::new(components::ret_opcode::Component {}),
+                Box::new(components::verify_instruction::Component {}),
                 Box::new(components::memory_address_to_id::Component {}),
                 Box::new(components::memory_id_to_big::Component { index: 0 }),
                 Box::new(components::memory_id_to_big::Component { index: 1 }),
@@ -147,9 +150,8 @@ impl<Value: IValue> CairoStatement<Value> {
                 Box::new(components::range_check_11::Component {}),
                 Box::new(components::range_check_18::Component {}),
                 Box::new(components::range_check_4_3::Component {}),
+                Box::new(components::range_check_9_9::Component {}),
                 Box::new(components::range_check_7_2_5::Component {}),
-                Box::new(components::ret_opcode::Component {}),
-                Box::new(components::verify_instruction::Component {}),
             ],
         }
     }
