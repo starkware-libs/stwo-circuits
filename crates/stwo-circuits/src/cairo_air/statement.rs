@@ -21,7 +21,8 @@ use crate::stark_verifier::proof::Claim;
 use crate::stark_verifier::statement::Statement;
 use stwo::core::fields::m31::M31;
 
-const OUTPUT_LEN: usize = 1;
+pub const OUTPUT_LEN: usize = 1;
+pub const PROGRAM_LEN: usize = 128;
 const N_SEGMENTS: usize = 11;
 const N_SAFE_CALL_IDS: usize = 2;
 
@@ -33,7 +34,7 @@ const STATE_LEN: usize = 3;
 pub const PUBLIC_DATA_LEN: usize = 2 * STATE_LEN
     + 2 * PUB_MEMORY_VALUE_M31_LEN * N_SEGMENTS
     + N_SAFE_CALL_IDS
-    + PUB_MEMORY_VALUE_LEN * OUTPUT_LEN;
+    + PUB_MEMORY_VALUE_LEN * (OUTPUT_LEN + PROGRAM_LEN);
 
 const MEMRORY_ID_TO_VALUE_RELATION_ID: u32 = 1662111297;
 const OPCODES_RELATION_ID: u32 = 428564188;
@@ -110,6 +111,10 @@ pub struct PublicMemory<T> {
     pub safe_call_ids: [T; 2],
     /// Output must be the last thing as it is variable length.
     pub output: Vec<PubMemoryValue<T>>,
+
+    // TODO(ilya): Enforce that we are running a specific program, for example by moving the values
+    // to the consts.
+    pub program: Vec<PubMemoryValue<T>>,
 }
 
 pub struct PublicData<T> {
@@ -120,7 +125,7 @@ pub struct PublicData<T> {
 
 impl PublicData<Var> {
     /// Parses the public data from a slice of variables.
-    pub fn parse_from_vars(data: &[Var]) -> Self {
+    pub fn parse_from_vars(data: &[Var], output_len: usize, program_len: usize) -> Self {
         let mut iter = data.iter();
 
         let initial_state = CasmState {
@@ -142,8 +147,18 @@ impl PublicData<Var> {
         let safe_call_ids = [*iter.next().unwrap(), *iter.next().unwrap()];
 
         let mut output = vec![];
-        for mut chunk in iter.chunks(PUB_MEMORY_VALUE_LEN).into_iter() {
+        let output_iter = iter.by_ref().take(output_len * PUB_MEMORY_VALUE_LEN);
+        for mut chunk in output_iter.chunks(PUB_MEMORY_VALUE_LEN).into_iter() {
             output.push(PubMemoryValue {
+                id: *chunk.next().unwrap(),
+                value: array::from_fn(|_| *chunk.next().unwrap()),
+            });
+        }
+
+        let mut program = vec![];
+        let program_iter = iter.take(program_len * PUB_MEMORY_VALUE_LEN);
+        for mut chunk in program_iter.chunks(PUB_MEMORY_VALUE_LEN).into_iter() {
+            program.push(PubMemoryValue {
                 id: *chunk.next().unwrap(),
                 value: array::from_fn(|_| *chunk.next().unwrap()),
             });
@@ -151,7 +166,7 @@ impl PublicData<Var> {
         Self {
             initial_state,
             final_state,
-            public_memory: PublicMemory { segement_ranges, safe_call_ids, output },
+            public_memory: PublicMemory { segement_ranges, safe_call_ids, output, program },
         }
     }
 }
@@ -163,7 +178,12 @@ pub struct CairoStatement<Value: IValue> {
 }
 
 impl<Value: IValue> CairoStatement<Value> {
-    pub fn new(context: &mut Context<Value>, public_data: Vec<M31>) -> Self {
+    pub fn new(
+        context: &mut Context<Value>,
+        public_data: Vec<M31>,
+        output_len: usize,
+        program_len: usize,
+    ) -> Self {
         let packed_public_data = pack_into_qm31s(public_data.iter().cloned())
             .into_iter()
             .map(|qm31| Value::from_qm31(qm31).guess(context))
@@ -171,7 +191,8 @@ impl<Value: IValue> CairoStatement<Value> {
         let packed_public_data = Simd::from_packed(packed_public_data, public_data.len());
         let unpacked_simd = Simd::unpack(context, &packed_public_data);
 
-        let public_data = PublicData::<Var>::parse_from_vars(&unpacked_simd[..]);
+        let public_data =
+            PublicData::<Var>::parse_from_vars(&unpacked_simd[..], output_len, program_len);
 
         Self {
             packed_public_data,
@@ -422,6 +443,15 @@ pub fn public_logup_sum(
         public_data.public_memory.segement_ranges[0].start.value,
         &public_data.public_memory.output,
     );
+    sum = eval!(context, (sum) + (output_logup_sum));
 
-    eval!(context, (sum) + (output_logup_sum))
+    let program_logup_sum = memory_segments_logup_sum(
+        context,
+        interaction_elements,
+        public_data.public_memory.segement_ranges[0].start.value,
+        &public_data.public_memory.program,
+    );
+    sum = eval!(context, (sum) + (program_logup_sum));
+
+    sum
 }

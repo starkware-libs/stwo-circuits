@@ -166,8 +166,10 @@ fn test_public_logup_sum() {
 
     // Create empty output vector
     let output: Vec<PubMemoryValue<Var>> = vec![];
+    let program: Vec<PubMemoryValue<Var>> = vec![];
 
-    let public_memory = PublicMemory { segement_ranges: segment_ranges, safe_call_ids, output };
+    let public_memory =
+        PublicMemory { segement_ranges: segment_ranges, safe_call_ids, output, program };
 
     let public_data = PublicData { initial_state, final_state, public_memory };
 
