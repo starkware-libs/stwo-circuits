@@ -11,7 +11,6 @@ use cairo_air::relations::{
     MEMORY_ADDRESS_TO_ID_RELATION_ID, MEMORY_ID_TO_BIG_RELATION_ID, OPCODES_RELATION_ID,
 };
 use itertools::{Itertools, chain, izip};
-use num_traits::Zero;
 use stwo::core::fields::qm31::QM31;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
@@ -45,11 +44,6 @@ const SMALL_VALUE_BITS: u32 = 27;
 pub struct PubMemoryValue<T> {
     pub id: T,
     pub value: [T; MEMORY_VALUES_LIMBS],
-}
-impl Default for PubMemoryValue<M31> {
-    fn default() -> Self {
-        Self { id: M31::zero(), value: [M31::zero(); MEMORY_VALUES_LIMBS] }
-    }
 }
 
 impl PubMemoryValue<Var> {
