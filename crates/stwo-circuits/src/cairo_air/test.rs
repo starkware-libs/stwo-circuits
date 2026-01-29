@@ -21,8 +21,9 @@ fn test_verify() {
     let program_len = 128;
     let flat_claim =
         vec![M31::zero(); PUBLIC_DATA_LEN + output_len * PUB_MEMORY_VALUE_LEN + program_len];
+    let outputs = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; output_len];
     let program = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; program_len];
-    let statement = CairoStatement::new(&mut novalue_context, flat_claim, output_len, program);
+    let statement = CairoStatement::new(&mut novalue_context, flat_claim, outputs, program);
 
     let config = ProofConfig::from_statement(&statement, 20, &pcs_config);
 
