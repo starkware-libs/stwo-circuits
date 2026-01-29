@@ -1,11 +1,10 @@
-use stwo::core::fields::m31::M31;
-
 use crate::cairo_air::statement::{
-    CasmState, MEMORY_VALUES_LIMBS, PubMemoryM31Value, PubMemoryValue, PublicData, PublicMemory,
-    SegmentRange, public_logup_sum,
+    CasmState, MEMORY_VALUES_LIMBS, PubMemoryM31Value, PublicData, PublicMemory, SegmentRange,
+    public_logup_sum,
 };
 use crate::circuits::context::{TraceContext, Var};
 use crate::circuits::ivalue::qm31_from_u32s;
+use crate::circuits::wrappers::M31Wrapper;
 
 #[test]
 fn test_public_logup_sum() {
@@ -167,17 +166,24 @@ fn test_public_logup_sum() {
     let safe_call_ids = [safe_call_id_0, safe_call_id_1];
 
     // Create empty output vector
-    let output: Vec<PubMemoryValue<Var>> = vec![];
-    let program: Vec<[M31; MEMORY_VALUES_LIMBS]> = vec![];
+    let output_ids: Vec<Var> = vec![];
+    let outputs = [];
+    let program: Vec<[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]> = vec![];
     let program_ids = vec![];
 
     let public_memory =
-        PublicMemory { segement_ranges: segment_ranges, safe_call_ids, output, program_ids };
+        PublicMemory { segement_ranges: segment_ranges, safe_call_ids, output_ids, program_ids };
 
     let public_data = PublicData { initial_state, final_state, public_memory };
 
     // Call public_logup_sum
-    let result = public_logup_sum(&mut context, &public_data, &program[..], interaction_elements);
+    let result = public_logup_sum(
+        &mut context,
+        &public_data,
+        &program[..],
+        &outputs[..],
+        interaction_elements,
+    );
 
     // The result should be a valid variable
     let result_value = context.get(result);

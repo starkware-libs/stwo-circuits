@@ -40,7 +40,8 @@ pub fn verify_cairo(proof: &ExtendedCairoProof<Blake2sM31MerkleHasher>) -> Conte
     let flat_claim =
         vec![M31::zero(); PUBLIC_DATA_LEN + output_len * PUB_MEMORY_VALUE_LEN + program_len];
     let program = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; program_len];
-    let statement = CairoStatement::<QM31>::new(&mut context, flat_claim, output_len, program);
+    let outputs = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; output_len];
+    let statement = CairoStatement::<QM31>::new(&mut context, flat_claim, outputs, program);
 
     let (config, proof) = proof_from_cairo_proof(proof, &statement);
 
