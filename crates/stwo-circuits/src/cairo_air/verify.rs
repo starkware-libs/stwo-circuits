@@ -10,7 +10,7 @@ use crate::stark_verifier::verify::verify;
 use cairo_air::air::{CairoClaim, CairoInteractionClaim};
 use cairo_air::combined_claim::CombinedClaim;
 use num_traits::Zero;
-use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
+use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::{QM31, SecureField};
 use stwo::core::proof::ExtendedStarkProof;
 use stwo::core::vcs_lifted::MerkleHasherLifted;
@@ -32,9 +32,8 @@ pub struct ExtendedCairoProof<H: MerkleHasherLifted> {
 // TODO(Gali): Add test.
 pub fn verify_cairo(proof: &ExtendedCairoProof<Blake2sM31MerkleHasher>) -> Context<QM31> {
     let mut context = TraceContext::default();
-    let packed_claim =
-        vec![QM31::zero(); PUBLIC_DATA_LEN.div_ceil(SECURE_EXTENSION_DEGREE)].guess(&mut context);
-    let statement = CairoStatement::<QM31>::new(&mut context, packed_claim, PUBLIC_DATA_LEN);
+    let flat_claim = vec![M31::zero(); PUBLIC_DATA_LEN];
+    let statement = CairoStatement::<QM31>::new(&mut context, flat_claim);
 
     let (config, proof) = proof_from_cairo_proof(proof, &statement);
 
