@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use crate::cairo_air::components;
 use crate::circuits::blake::blake_qm31;
 use crate::circuits::ops::Guess;
+use crate::circuits::wrappers::M31Wrapper;
 use crate::eval;
 use crate::stark_verifier::extract_bits::extract_bits;
 use crate::stark_verifier::logup::logup_use_term;
@@ -37,23 +38,6 @@ pub const PUBLIC_DATA_LEN: usize =
 
 const LIMB_BITS: usize = 9;
 const SMALL_VALUE_BITS: u32 = 27;
-
-#[derive(Clone)]
-pub struct PubMemoryValue<T> {
-    pub id: T,
-    pub value: [T; MEMORY_VALUES_LIMBS],
-}
-
-impl PubMemoryValue<Var> {
-    /// Computes the address to id logup term for the public memory value.
-    pub fn logup_term(
-        &self,
-        context: &mut Context<impl IValue>,
-        interaction_elements: [Var; 2],
-    ) -> Var {
-        id_to_big_logup_term(context, self.id, self.value.iter().copied(), interaction_elements)
-    }
-}
 
 pub struct CasmState<T> {
     pub pc: T,
@@ -110,7 +94,7 @@ pub struct PublicMemory<T> {
     pub segement_ranges: [SegmentRange<T>; N_SEGMENTS],
     pub safe_call_ids: [T; 2],
     /// Output must be the last thing as it is variable length.
-    pub output: Vec<PubMemoryValue<T>>,
+    pub output_ids: Vec<T>,
     pub program_ids: Vec<T>,
 }
 
@@ -143,22 +127,14 @@ impl PublicData<Var> {
 
         let safe_call_ids = [*iter.next().unwrap(), *iter.next().unwrap()];
 
-        let mut output = vec![];
-        let output_iter = iter.by_ref().take(output_len * PUB_MEMORY_VALUE_LEN);
-        for mut chunk in output_iter.chunks(PUB_MEMORY_VALUE_LEN).into_iter() {
-            output.push(PubMemoryValue {
-                id: *chunk.next().unwrap(),
-                value: array::from_fn(|_| *chunk.next().unwrap()),
-            });
-        }
-
+        let output_ids = iter.by_ref().take(output_len).cloned().collect_vec();
         let program_ids = iter.cloned().collect_vec();
         assert_eq!(program_ids.len(), program_len);
 
         Self {
             initial_state,
             final_state,
-            public_memory: PublicMemory { segement_ranges, safe_call_ids, output, program_ids },
+            public_memory: PublicMemory { segement_ranges, safe_call_ids, output_ids, program_ids },
         }
     }
 }
@@ -168,6 +144,7 @@ pub struct CairoStatement<Value: IValue> {
     pub packed_public_data: Vec<Var>,
     pub public_data: PublicData<Var>,
     pub program: Vec<[M31; MEMORY_VALUES_LIMBS]>,
+    pub outputs: Vec<[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]>,
 }
 
 impl<Value: IValue> CairoStatement<Value> {
@@ -187,17 +164,22 @@ impl<Value: IValue> CairoStatement<Value> {
         let unpacked_simd = Simd::unpack(context, &simd_public_data);
 
         let public_data =
-            PublicData::<Var>::parse_from_vars(&unpacked_simd[..], output_len, program.len());
+            PublicData::<Var>::parse_from_vars(&unpacked_simd[..], outputs.len(), program.len());
 
-        let flat_program = pack_into_qm31s(program.iter().flatten().cloned());
-        let program_hash = blake_qm31(&flat_program, flat_program.len() * 16);
-        packed_public_data.push(context.constant(program_hash.0));
-        packed_public_data.push(context.constant(program_hash.1));
+        let outputs = outputs
+            .iter()
+            .map(|value_limbs| {
+                value_limbs.map(|limb| {
+                    M31Wrapper::<Value>::new_unsafe(IValue::from_qm31(limb.into())).guess(context)
+                })
+            })
+            .collect_vec();
 
         Self {
             packed_public_data,
             public_data,
             program,
+            outputs,
             components: vec![
                 Box::new(components::add_ap_opcode::Component {}),
                 Box::new(components::assert_eq_opcode::Component {}),
@@ -228,8 +210,19 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         &self.components
     }
 
-    fn packed_public_data(&self) -> &[Var] {
-        &self.packed_public_data
+    fn claims_to_mix(&self, context: &mut Context<Value>) -> Vec<Vec<Var>> {
+        let packed_program = pack_into_qm31s(self.program.iter().flatten().cloned())
+            .into_iter()
+            .map(|qm31| context.constant(qm31))
+            .collect_vec();
+
+        let packed_outputs =
+            Simd::pack(context, &self.outputs.iter().flatten().cloned().collect_vec());
+        vec![
+            self.packed_public_data.get_packed().to_vec(),
+            packed_outputs.get_packed().to_vec(),
+            packed_program,
+        ]
     }
 
     fn public_logup_sum(
@@ -238,7 +231,13 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         interaction_elements: [Var; 2],
         _claim: &Claim<Var>,
     ) -> Var {
-        public_logup_sum(context, &self.public_data, &self.program[..], interaction_elements)
+        public_logup_sum(
+            context,
+            &self.public_data,
+            &self.program[..],
+            &self.outputs,
+            interaction_elements,
+        )
     }
 
     fn get_preprocessed_column_ids(&self) -> Vec<PreProcessedColumnId> {
@@ -354,21 +353,27 @@ pub fn memory_segments_logup_sum(
     context: &mut Context<impl IValue>,
     interaction_elements: [Var; 2],
     mut start_address: Var,
-    memory_values: &[PubMemoryValue<Var>],
+    ids: &[Var],
+    memory_values: &[[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]],
 ) -> Var {
     let one = context.one();
     let mut sum = context.zero();
 
-    for (i, memory_value) in memory_values.iter().enumerate() {
+    for (i, (&id, value_limbs)) in zip_eq(ids, memory_values).enumerate() {
         if i != 0 {
             start_address = eval!(context, (start_address) + (one));
         }
 
         let address_to_id_logup_term =
-            address_to_id_logup_term(context, start_address, memory_value.id, interaction_elements);
+            address_to_id_logup_term(context, start_address, id, interaction_elements);
         sum = eval!(context, (sum) + (address_to_id_logup_term));
 
-        let id_to_value_logup_term = memory_value.logup_term(context, interaction_elements);
+        let id_to_value_logup_term = id_to_big_logup_term(
+            context,
+            id,
+            value_limbs.iter().map(|limb| *limb.get()),
+            interaction_elements,
+        );
         sum = eval!(context, (sum) + (id_to_value_logup_term));
     }
 
@@ -379,12 +384,13 @@ pub fn public_logup_sum(
     context: &mut Context<impl IValue>,
     public_data: &PublicData<Var>,
     program: &[[M31; MEMORY_VALUES_LIMBS]],
+    outputs: &[[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]],
     interaction_elements: [Var; 2],
 ) -> Var {
     let PublicData {
         initial_state,
         final_state,
-        public_memory: PublicMemory { segement_ranges, safe_call_ids, output, program_ids },
+        public_memory: PublicMemory { segement_ranges, safe_call_ids, output_ids, program_ids },
     } = public_data;
     let initial_ap = initial_state.ap;
     let final_ap = final_state.ap;
@@ -426,14 +432,16 @@ pub fn public_logup_sum(
         context,
         interaction_elements,
         segement_ranges[0].start.value,
-        output,
+        output_ids,
+        outputs,
     );
     sum = eval!(context, (sum) + (output_logup_sum));
 
-    let program_with_ids = zip_eq(program, program_ids)
-        .map(|(program_word, &id)| PubMemoryValue {
-            id,
-            value: program_word.map(|word| context.constant(word.into())),
+    let program = program
+        .iter()
+        .map(|value_limbs| {
+            value_limbs
+                .map(|limb| M31Wrapper::new_unsafe(IValue::from_qm31(limb.into())).guess(context))
         })
         .collect_vec();
 
@@ -441,7 +449,8 @@ pub fn public_logup_sum(
         context,
         interaction_elements,
         initial_state.pc,
-        &program_with_ids,
+        program_ids,
+        &program,
     );
     sum = eval!(context, (sum) + (program_logup_sum));
 
