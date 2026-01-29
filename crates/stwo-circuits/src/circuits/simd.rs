@@ -211,6 +211,12 @@ impl Simd {
     /// Unpacks the `idx`-th [M31] value from the [Simd].
     pub fn unpack_idx(context: &mut Context<impl IValue>, input: &Simd, idx: usize) -> Var {
         let qm31_var = input.data[idx / 4];
+        if input.len == 1 {
+            // Skip `pointwise_mul` if the Simd has only one element.
+            assert_eq!(idx, 0);
+            return qm31_var;
+        }
+
         let coord = idx % 4;
         // To obtain the `coord`-th coordinate, `c`, start with pointwise multiplication
         // by a unit vector. This results in `c * unit_vecs[coord]`.
