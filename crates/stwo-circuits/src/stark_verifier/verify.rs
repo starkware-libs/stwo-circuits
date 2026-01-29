@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use itertools::{Itertools, chain, izip};
+use itertools::{Itertools, chain, izip, zip_eq};
 use stwo::core::circle::CirclePoint;
 use stwo::core::fields::m31::P;
 
@@ -48,10 +48,11 @@ pub fn validate_logup_sum(
     context: &mut Context<impl IValue>,
     public_logup_sum: Var,
     claimed_sums: &[Var],
+    enable_bits: &[Var],
 ) {
     let mut log_up_sum = public_logup_sum;
-    for claimed_sum in claimed_sums {
-        log_up_sum = eval!(context, (log_up_sum) + (*claimed_sum));
+    for (claimed_sum, enable_bit) in zip_eq(claimed_sums, enable_bits) {
+        log_up_sum = eval!(context, (log_up_sum) + ((*claimed_sum) * (*enable_bit)));
     }
     eq(context, log_up_sum, context.zero());
 }
@@ -99,9 +100,13 @@ pub fn verify<Value: IValue>(
     // Pick the interaction elements.
     let [interaction_z, interaction_alpha] = channel.draw_two_qm31s(context);
 
+    let simd_enable_bits =
+        Simd::from_packed(proof.claim.packed_enable_bits.clone(), config.n_components);
+    simd_enable_bits.assert_bits(context);
+    let enable_bits = Simd::unpack(context, &simd_enable_bits);
     let public_logup_sum =
         statement.public_logup_sum(context, [interaction_z, interaction_alpha], &proof.claim);
-    validate_logup_sum(context, public_logup_sum, &proof.claim.claimed_sums);
+    validate_logup_sum(context, public_logup_sum, &proof.claim.claimed_sums, &enable_bits);
 
     channel.mix_qm31s(context, proof.claim.claimed_sums.iter().cloned());
     channel.mix_commitment(context, proof.interaction_root);
@@ -113,11 +118,6 @@ pub fn verify<Value: IValue>(
 
     // Draw a random point for the OODS.
     let oods_point = channel.draw_point(context);
-
-    let simd_enable_bits =
-        Simd::from_packed(proof.claim.packed_enable_bits.clone(), config.n_components);
-    simd_enable_bits.assert_bits(context);
-    let enable_bits = Simd::unpack(context, &simd_enable_bits);
 
     let unpacked_component_sizes = Simd::unpack(context, &component_sizes);
     check_relation_uses(context, statement, &component_sizes_bits);
