@@ -2,7 +2,6 @@ use std::array;
 use std::collections::HashMap;
 
 use crate::cairo_air::components;
-use crate::circuits::blake::blake_qm31;
 use crate::circuits::ops::Guess;
 use crate::eval;
 use crate::stark_verifier::extract_bits::extract_bits;
@@ -165,39 +164,36 @@ impl PublicData<Var> {
 
 pub struct CairoStatement<Value: IValue> {
     pub components: Vec<Box<dyn CircuitEval<Value>>>,
-    pub packed_public_data: Vec<Var>,
+    pub packed_public_data: Simd,
     pub public_data: PublicData<Var>,
     pub program: Vec<[M31; MEMORY_VALUES_LIMBS]>,
+    pub outputs: Vec<[Var; MEMORY_VALUES_LIMBS]>,
 }
 
 impl<Value: IValue> CairoStatement<Value> {
     pub fn new(
         context: &mut Context<Value>,
         public_data: Vec<M31>,
-        output_len: usize,
+        outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
         program: Vec<[M31; MEMORY_VALUES_LIMBS]>,
     ) -> Self {
-        let mut packed_public_data = pack_into_qm31s(public_data.iter().cloned())
+        let packed_public_data = pack_into_qm31s(public_data.iter().cloned())
             .into_iter()
             .map(|qm31| Value::from_qm31(qm31).guess(context))
             .collect_vec();
 
-        let simd_public_data = Simd::from_packed(packed_public_data.clone(), public_data.len());
+        let packed_public_data = Simd::from_packed(packed_public_data.clone(), public_data.len());
         // Note that we don't enforce anything on the padding M31 in packed_public_data.
-        let unpacked_simd = Simd::unpack(context, &simd_public_data);
+        let unpacked_simd = Simd::unpack(context, &packed_public_data);
 
         let public_data =
-            PublicData::<Var>::parse_from_vars(&unpacked_simd[..], output_len, program.len());
-
-        let flat_program = pack_into_qm31s(program.iter().flatten().cloned());
-        let program_hash = blake_qm31(&flat_program, flat_program.len() * 16);
-        packed_public_data.push(context.constant(program_hash.0));
-        packed_public_data.push(context.constant(program_hash.1));
+            PublicData::<Var>::parse_from_vars(&unpacked_simd[..], outputs.len(), program.len());       
 
         Self {
             packed_public_data,
             public_data,
             program,
+            outputs: outputs.iter().map(|output| array::from_fn(|_| context.constant(output[0])).collect_vec()),
             components: vec![
                 Box::new(components::add_ap_opcode::Component {}),
                 Box::new(components::assert_eq_opcode::Component {}),
@@ -228,8 +224,11 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         &self.components
     }
 
-    fn packed_public_data(&self) -> &[Var] {
-        &self.packed_public_data
+    fn claims_to_mix(&self, context: &mut Context<Value>) -> Vec<Vec<Var>> {
+        let packed_program = pack_into_qm31s(self.program.iter().flatten().cloned()).into_iter().map(|qm31| context.constant(qm31)).collect_vec();
+        // TODO(ilya): Consider hashing the program and the outputs.
+        let packed_outputs = Simd::from_packed(self.outputs.iter().flat_map().cloned().collect_vec(), self.public_data.output.len());
+        vec![self.packed_public_data.get_packed().to_vec(), packed_program]
     }
 
     fn public_logup_sum(

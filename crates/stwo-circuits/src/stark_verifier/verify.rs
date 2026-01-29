@@ -87,7 +87,9 @@ pub fn verify<Value: IValue>(
 
     channel.mix_qm31s(context, proof.claim.packed_enable_bits.iter().cloned());
     channel.mix_qm31s(context, proof.claim.packed_component_log_sizes.iter().cloned());
-    channel.mix_qm31s(context, statement.packed_public_data().iter().cloned());
+    for claim_to_mix in statement.claims_to_mix(context) {
+        channel.mix_qm31s(context, claim_to_mix.iter().cloned());
+    }
 
     // Mix the trace commitments into the channel.
     channel.mix_commitment(context, proof.trace_root);
