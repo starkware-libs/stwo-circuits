@@ -10,7 +10,8 @@ use crate::stark_verifier::proof_from_stark_proof::{
 };
 use crate::stark_verifier::verify::verify;
 use cairo_air::CairoProof;
-use cairo_air::combined_claim::CombinedClaim;
+use cairo_air::flat_claims::FlatClaim;
+use cairo_air::flat_claims::flatten_interaction_claim;
 use num_traits::Zero;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::{QM31, SecureField};
@@ -53,12 +54,8 @@ pub fn proof_from_cairo_proof(
         preprocessed_trace_variant: _,
     } = proof;
 
-    let CombinedClaim {
-        component_enable_bits,
-        public_claim: _,
-        component_log_sizes,
-        component_claimed_sums,
-    } = CombinedClaim::from_cairo_claims(claim, interaction_claim);
+    let FlatClaim { component_enable_bits, component_log_sizes, public_data: _ } =
+        FlatClaim::from_cairo_claim(claim);
 
     // TODO(ilya): Create the statment based on the public_claim.
 
@@ -69,6 +66,7 @@ pub fn proof_from_cairo_proof(
         &proof.extended_stark_proof.proof.config,
     );
 
+    let component_claimed_sums = flatten_interaction_claim(interaction_claim);
     let claim = Claim {
         packed_enable_bits: pack_enable_bits(&component_enable_bits),
         packed_component_log_sizes: pack_component_log_sizes(&component_log_sizes),
