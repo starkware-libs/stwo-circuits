@@ -9,10 +9,10 @@ pub const VERIFY_BITWISE_XOR_12_RELATION_ID: u32 = 648362599;
 pub const RELATION_USES_PER_ROW: [RelationUse; 0] = [];
 
 #[allow(unused_variables)]
-pub fn accumulate_constraints(
+pub fn accumulate_constraints<Value: IValue>(
     input: &[Var],
-    context: &mut Context<impl IValue>,
-    component_data: &ComponentData<'_>,
+    context: &mut Context<Value>,
+    component_data: &dyn ComponentDataTrait<Value>,
     acc: &mut CompositionConstraintAccumulator,
 ) {
     let a_low =
@@ -43,10 +43,10 @@ impl<Value: IValue> CircuitEval<Value> for Component {
     fn evaluate(
         &self,
         context: &mut Context<Value>,
-        component_data: &ComponentData<'_>,
+        component_data: &dyn ComponentDataTrait<Value>,
         acc: &mut CompositionConstraintAccumulator,
     ) {
-        accumulate_constraints(component_data.trace_columns, context, component_data, acc);
+        accumulate_constraints(component_data.trace_columns(), context, component_data, acc);
         // Verify this component has 2 ** 20 rows
         let size_bit = component_data.get_n_instances_bit(context, 20);
         eq(context, size_bit, context.one());

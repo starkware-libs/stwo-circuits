@@ -2,7 +2,7 @@ use crate::{
     cairo_air::component_utils::RelationUse,
     circuits::{context::Context, ivalue::IValue},
     stark_verifier::constraint_eval::{
-        CircuitEval, ComponentData, CompositionConstraintAccumulator,
+        CircuitEval, ComponentDataTrait, CompositionConstraintAccumulator,
     },
 };
 
@@ -24,7 +24,7 @@ impl<Value: IValue> CircuitEval<Value> for EmptyComponent {
     fn evaluate(
         &self,
         _context: &mut Context<Value>,
-        _component_data: &ComponentData<'_>,
+        _component_data: &dyn ComponentDataTrait<Value>,
         _acc: &mut CompositionConstraintAccumulator,
     ) {
     }

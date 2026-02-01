@@ -1,9 +1,12 @@
-use std::fs::{File, OpenOptions};
+use itertools::Itertools;
+use num_traits::Zero;
+use stwo::core::fields::m31::M31;
+use stwo::core::fields::qm31::QM31;
+use stwo::core::pcs::PcsConfig;
 
 use cairo_air::utils::{binary_deserialize_from_file, binary_serialize_to_file};
-use num_traits::Zero;
+use std::fs::{File, OpenOptions};
 use std::path::PathBuf;
-use stwo::core::fields::m31::M31;
 
 use crate::cairo_air::statement::{MEMORY_VALUES_LIMBS, PUBLIC_DATA_LEN};
 use crate::cairo_air::verify::verify_cairo;
@@ -18,7 +21,7 @@ use crate::{
 use cairo_air::PreProcessedTraceVariant;
 use dev_utils::utils::get_compiled_cairo_program_path;
 use stwo::core::fri::FriConfig;
-use stwo::core::{pcs::PcsConfig, vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel};
+use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo_cairo_prover::prover::{ChannelHash, ProverParameters, prove_cairo};
 use stwo_cairo_utils::vm_utils::{ProgramType, run_and_adapt};
 
@@ -31,6 +34,84 @@ use stwo_cairo_utils::vm_utils::{ProgramType, run_and_adapt};
 /// E.g. assuming a 100-bit security target, the witness may contain up to
 /// 1 << (24 + INTERACTION_POW_BITS) relation terms.
 pub const INTERACTION_POW_BITS: u32 = 24;
+
+use crate::circuits::context::Var;
+use crate::circuits::ivalue::IValue;
+use crate::stark_verifier::constraint_eval::ComponentDataTrait;
+use crate::stark_verifier::proof::InteractionAtOods;
+
+pub struct TestComponentData {
+    trace: Vec<Var>,
+    interaction_trace: Vec<InteractionAtOods<Var>>,
+    claimed_sum: Var,
+    n_instances_var: Var,
+    n_instances_bits: Vec<Var>,
+}
+
+impl TestComponentData {
+    pub fn from_values(
+        context: &mut Context<QM31>,
+        trace_values: &[QM31],
+        interaction_values: &[QM31],
+        last_row_sum: QM31,
+        claimed_sum: QM31,
+        n_instances: usize,
+    ) -> Self {
+        let trace = trace_values.iter().map(|v| context.new_var(*v)).collect_vec();
+        let mut interaction_trace = interaction_values
+            .iter()
+            .flat_map(|v| v.to_m31_array())
+            .map(|m31| InteractionAtOods { at_oods: context.new_var(m31.into()), at_prev: None })
+            .collect_vec();
+        if !interaction_trace.is_empty() {
+            let last_row_sum_m31s = last_row_sum.to_m31_array();
+            let interaction_trace_len = interaction_trace.len();
+            for i in 0..4 {
+                interaction_trace[interaction_trace_len - 4 + i].at_prev =
+                    Some(context.new_var(last_row_sum_m31s[i].into()));
+            }
+        }
+        let n_instances_bits = (0..31)
+            .map(|bit_pos| {
+                let bit = (n_instances >> bit_pos) & 1;
+                context.new_var(bit.into())
+            })
+            .collect_vec();
+        Self {
+            trace,
+            interaction_trace,
+            claimed_sum: context.new_var(claimed_sum),
+            n_instances_var: context.new_var(n_instances.into()),
+            n_instances_bits,
+        }
+    }
+}
+
+impl<Value: IValue> ComponentDataTrait<Value> for TestComponentData {
+    fn trace_columns(&self) -> &[Var] {
+        &self.trace
+    }
+
+    fn interaction_columns(&self) -> &[InteractionAtOods<Var>] {
+        &self.interaction_trace
+    }
+
+    fn n_instances(&self) -> Var {
+        self.n_instances_var
+    }
+
+    fn claimed_sum(&self) -> Var {
+        self.claimed_sum
+    }
+
+    fn get_n_instances_bit(&self, _context: &mut Context<Value>, bit: usize) -> Var {
+        self.n_instances_bits[bit]
+    }
+
+    fn max_component_size_bits(&self) -> usize {
+        self.n_instances_bits.len()
+    }
+}
 
 #[test]
 fn test_verify() {
