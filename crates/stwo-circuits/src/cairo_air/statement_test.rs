@@ -1,6 +1,5 @@
 use crate::cairo_air::statement::{
-    CasmState, MEMORY_VALUES_LIMBS, PubMemoryM31Value, PublicData, PublicMemory, SegmentRange,
-    public_logup_sum,
+    CasmState, PubMemoryM31Value, PublicData, PublicMemory, SegmentRange, public_logup_sum,
 };
 use crate::circuits::context::{TraceContext, Var};
 use crate::circuits::ivalue::qm31_from_u32s;
@@ -14,7 +13,7 @@ fn test_public_logup_sum() {
     // Matching LookupElementsDummyImpl::dummy() from Cairo1:
     // z = qm31_const<1, 2, 3, 4>(), alpha = One::one()
     let interaction_z = context.constant(qm31_from_u32s(1, 2, 3, 4));
-    let interaction_alpha = context.one(); // One::one() = QM31::one() = qm31_from_u32s(1, 0, 0, 0)
+    let interaction_alpha = context.constant(qm31_from_u32s(4, 3, 2, 1));
     let interaction_elements = [interaction_z, interaction_alpha];
 
     // Create initial state: CasmState uses { pc, ap, fp } order
@@ -168,8 +167,77 @@ fn test_public_logup_sum() {
     // Create empty output vector
     let output_ids: Vec<Var> = vec![];
     let outputs = [];
-    let program: Vec<[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]> = vec![];
-    let program_ids = vec![];
+
+    // The `ret opcode` program split into 9bit limbs.
+    let program = [
+        [
+            511, 447, 511, 47, 0, 60, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0,
+        ],
+        [11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [0, 192, 0, 48, 0, 36, 68, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [
+            511, 447, 511, 47, 0, 60, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0,
+        ],
+        [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        [
+            0, 448, 511, 111, 511, 83, 288, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0,
+        ],
+        [
+            0, 448, 511, 143, 511, 83, 288, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0,
+        ],
+        [
+            0, 448, 511, 175, 511, 83, 288, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0,
+        ],
+        [
+            0, 448, 511, 207, 511, 83, 288, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0,
+        ],
+        [
+            0, 448, 511, 239, 511, 83, 288, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0,
+        ],
+        [
+            0, 448, 511, 271, 511, 83, 288, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0,
+        ],
+        [
+            0, 448, 511, 303, 511, 83, 288, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0,
+        ],
+        [
+            0, 448, 511, 335, 511, 83, 288, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0,
+        ],
+        [
+            0, 448, 511, 367, 511, 83, 288, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0,
+        ],
+        [
+            0, 448, 511, 399, 511, 83, 288, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0,
+        ],
+        [
+            0, 448, 511, 431, 511, 83, 288, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0,
+        ],
+        [
+            510, 447, 511, 495, 511, 91, 130, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0,
+        ],
+    ]
+    .iter()
+    .map(|limbs| limbs.map(|limb| M31Wrapper::new_unsafe(context.constant(limb.into()))))
+    .collect::<Vec<_>>();
+
+    let program_ids = (0..program.len())
+        .map(|id| context.constant(qm31_from_u32s(id as u32, 0, 0, 0)))
+        .collect::<Vec<_>>();
 
     let public_memory =
         PublicMemory { segement_ranges: segment_ranges, safe_call_ids, output_ids, program_ids };
@@ -189,8 +257,7 @@ fn test_public_logup_sum() {
     let result_value = context.get(result);
     context.mark_as_unused(result);
 
-    // Expected from Cairo1: qm31_const<1553510278, 1990190377, 918519607, 1802790922>
-    let expected = qm31_from_u32s(1553510278, 1990190377, 918519607, 1802790922);
+    let expected = qm31_from_u32s(908842852, 42171643, 313383432, 1019452808);
 
     assert_eq!(result_value, expected);
 
