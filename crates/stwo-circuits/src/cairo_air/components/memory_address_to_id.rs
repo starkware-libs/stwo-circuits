@@ -5,10 +5,10 @@ pub const N_TRACE_COLUMNS: usize = MEMORY_ADDRESS_TO_ID_SPLIT * 2;
 pub const N_INTERACTION_COLUMNS: usize = MEMORY_ADDRESS_TO_ID_SPLIT.div_ceil(2) * 4;
 pub const MEMORY_ADDRESS_TO_ID_RELATION_ID: u32 = 1444891767;
 
-pub fn accumulate_constraints(
+pub fn accumulate_constraints<Value: IValue>(
     input: &[Var],
-    context: &mut Context<impl IValue>,
-    component_data: &ComponentData<'_>,
+    context: &mut Context<Value>,
+    component_data: &dyn ComponentDataTrait<Value>,
     acc: &mut CompositionConstraintAccumulator,
 ) {
     // Addresses are offsetted by 1, as 0 address is reserved.
@@ -19,7 +19,7 @@ pub fn accumulate_constraints(
         // We compute the new address here and not at the end of the loop body
         // to avoid computing an unused address at the last iteration.
         if i != 0 {
-            address = eval!(context, (address) + (component_data.n_instances));
+            address = eval!(context, (address) + (component_data.n_instances()));
         }
 
         let id = input[i * 2];
@@ -37,10 +37,10 @@ impl<Value: IValue> CircuitEval<Value> for Component {
     fn evaluate(
         &self,
         context: &mut Context<Value>,
-        component_data: &ComponentData<'_>,
+        component_data: &dyn ComponentDataTrait<Value>,
         acc: &mut CompositionConstraintAccumulator,
     ) {
-        accumulate_constraints(component_data.trace_columns, context, component_data, acc);
+        accumulate_constraints(component_data.trace_columns(), context, component_data, acc);
     }
 
     fn trace_columns(&self) -> usize {

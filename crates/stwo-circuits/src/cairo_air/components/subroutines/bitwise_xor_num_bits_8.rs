@@ -6,10 +6,10 @@ pub const RELATION_USES_PER_ROW: [RelationUse; 1] =
     [RelationUse { relation_id: "VerifyBitwiseXor_8", uses: 1 }];
 
 #[allow(unused_variables)]
-pub fn accumulate_constraints(
+pub fn accumulate_constraints<Value: IValue>(
     input: &[Var],
-    context: &mut Context<impl IValue>,
-    component_data: &ComponentData<'_>,
+    context: &mut Context<Value>,
+    component_data: &dyn ComponentDataTrait<Value>,
     acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
     let [bitwise_xor_num_bits_8_input_limb_0, bitwise_xor_num_bits_8_input_limb_1, xor_col0] =

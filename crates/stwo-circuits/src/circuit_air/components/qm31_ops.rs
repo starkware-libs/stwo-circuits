@@ -5,6 +5,7 @@ pub const N_PREPROCESSED_COLUMNS: usize = 8;
 pub const N_TRACE_COLUMNS: usize = 12;
 pub const N_INTERACTION_COLUMNS: usize = 8;
 use crate::circuit_air::relations::GATE_RELATION_ID;
+use crate::stark_verifier::constraint_eval::ComponentDataTrait;
 
 pub struct Eval {
     pub log_size: u32,
@@ -151,7 +152,7 @@ impl<Value: IValue> CircuitEval<Value> for CircuitQm31OpsComponent {
     fn evaluate(
         &self,
         context: &mut Context<Value>,
-        component_data: &ComponentData<'_>,
+        component_data: &dyn ComponentDataTrait<Value>,
         acc: &mut CompositionConstraintAccumulator,
     ) {
         let gate_relation_id = context.constant(SecureField::from(GATE_RELATION_ID));
@@ -189,7 +190,7 @@ impl<Value: IValue> CircuitEval<Value> for CircuitQm31OpsComponent {
             out_col9,
             out_col10,
             out_col11,
-        ] = *component_data.trace_columns
+        ] = *component_data.trace_columns()
         else {
             panic!("Expected {N_TRACE_COLUMNS} trace columns")
         };

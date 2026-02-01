@@ -6,7 +6,7 @@ pub use crate::circuits::ivalue::IValue;
 pub use crate::circuits::ops::eq;
 pub use crate::eval;
 pub use crate::stark_verifier::constraint_eval::{
-    CircuitEval, ComponentData, CompositionConstraintAccumulator,
+    CircuitEval, ComponentData, ComponentDataTrait, CompositionConstraintAccumulator,
 };
 pub use itertools::chain;
 pub use num_traits::One;

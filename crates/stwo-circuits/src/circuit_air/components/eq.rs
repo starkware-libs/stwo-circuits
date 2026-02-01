@@ -1,6 +1,7 @@
 use crate::{
     cairo_air::component_utils::RelationUse,
     circuit_air::{components::prelude::*, relations::GATE_RELATION_ID},
+    stark_verifier::constraint_eval::ComponentDataTrait,
 };
 
 pub const N_PREPROCESSED_COLUMNS: usize = 2;
@@ -98,7 +99,7 @@ impl<Value: IValue> CircuitEval<Value> for CircuitEqComponent {
     fn evaluate(
         &self,
         context: &mut Context<Value>,
-        component_data: &ComponentData<'_>,
+        component_data: &dyn ComponentDataTrait<Value>,
         acc: &mut CompositionConstraintAccumulator,
     ) {
         let gate_relation_id = context.constant(SecureField::from(GATE_RELATION_ID));
@@ -108,7 +109,7 @@ impl<Value: IValue> CircuitEval<Value> for CircuitEqComponent {
             acc.get_preprocessed_column(&PreProcessedColumnId { id: "eq_in1_address".to_owned() });
 
         let [in0_col0, in0_col1, in0_col2, in0_col3, in1_col4, in1_col5, in1_col6, in1_col7] =
-            *component_data.trace_columns
+            *component_data.trace_columns()
         else {
             panic!("Expected {N_TRACE_COLUMNS} trace columns")
         };

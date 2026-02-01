@@ -1,6 +1,8 @@
+pub use crate::cairo_air::component_utils::*;
 pub use crate::circuit_air::relations;
 pub use crate::circuits::context::{Context, Var};
 pub use crate::circuits::ivalue::IValue;
+pub use crate::circuits::ops::eq;
 pub use crate::eval;
 pub use crate::stark_verifier::constraint_eval::{
     CircuitEval, ComponentData, CompositionConstraintAccumulator,
