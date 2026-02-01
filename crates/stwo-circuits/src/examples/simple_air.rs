@@ -188,6 +188,7 @@ pub fn create_proof() -> (
     PcsConfig,
     ExtendedStarkProof<Blake2sM31MerkleHasher>,
     u64,
+    u32,
 ) {
     let config = PcsConfig::default();
     // Precompute twiddles.
@@ -199,6 +200,10 @@ pub fn create_proof() -> (
 
     // Setup protocol.
     let prover_channel = &mut Blake2sM31Channel::default();
+
+    // Mix channel salt. Note that we first reduce it modulo `M31::P`, then cast it as QM31.
+    let channel_salt = 0_u32;
+    prover_channel.mix_felts(&[channel_salt.into()]);
 
     let mut commitment_scheme =
         CommitmentSchemeProver::<SimdBackend, Blake2sM31MerkleChannel>::new(config, &twiddles);
@@ -327,5 +332,6 @@ pub fn create_proof() -> (
         config,
         proof,
         interaction_pow_nonce,
+        channel_salt,
     )
 }

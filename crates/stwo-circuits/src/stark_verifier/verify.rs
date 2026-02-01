@@ -67,6 +67,9 @@ pub fn verify<Value: IValue>(
 
     let mut channel = Channel::new(context);
 
+    // Mix the channel salt.
+    channel.mix_qm31s(context, [proof.channel_salt]);
+
     // Mix the trace commitments into the channel.
     channel.mix_commitment(context, proof.preprocessed_root);
 

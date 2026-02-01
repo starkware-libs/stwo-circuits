@@ -27,7 +27,7 @@ pub struct ExtendedCairoProof<H: MerkleHasherLifted> {
     pub interaction_claim: CairoInteractionClaim,
     pub stark_proof: ExtendedStarkProof<H>,
     /// Optional salt used in the channel initialization.
-    pub channel_salt: Option<u64>,
+    pub channel_salt: u32,
 }
 
 /// Circuit Verifies an [ExtendedCairoProof].
@@ -63,8 +63,7 @@ pub fn proof_from_cairo_proof(
         interaction_pow_nonce,
         interaction_claim,
         stark_proof,
-        // TODO(Gali): Add channel salt to the config.
-        channel_salt: _,
+        channel_salt,
     } = proof;
 
     let CombinedClaim {
@@ -89,6 +88,7 @@ pub fn proof_from_cairo_proof(
         claimed_sums: component_claimed_sums,
     };
 
-    let proof = proof_from_stark_proof(stark_proof, &config, claim, *interaction_pow_nonce);
+    let proof =
+        proof_from_stark_proof(stark_proof, &config, claim, *interaction_pow_nonce, *channel_salt);
     (config, proof)
 }
