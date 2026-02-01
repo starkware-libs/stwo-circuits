@@ -60,9 +60,10 @@ impl<'a> ComponentData<'a> {
 pub struct CompositionConstraintAccumulator {
     /// The enable bits of the current component.
     enable_bit: Var,
-    /// The OODS samples for the preprocessed columns, trace, and interaction.
+    /// The OODS samples for the preprocessed columns.
     /// Each component will consume a subset of these samples.
     pub preprocessed_columns: HashMap<PreProcessedColumnId, Var>,
+    pub public_params: HashMap<String, Var>,
     /// The random coefficient for the composition polynomial.
     pub composition_polynomial_coeff: Var,
     /// The interaction elements for the logup sums constraint.
@@ -76,12 +77,14 @@ impl CompositionConstraintAccumulator {
     pub fn new(
         context: &mut Context<impl IValue>,
         preprocessed_columns: HashMap<PreProcessedColumnId, Var>,
+        public_params: HashMap<String, Var>,
         composition_polynomial_coeff: Var,
         interaction_elements: [Var; 2],
     ) -> Self {
         Self {
             enable_bit: context.zero(),
             preprocessed_columns,
+            public_params,
             composition_polynomial_coeff,
             interaction_elements,
             accumulation: context.zero(),
@@ -234,9 +237,11 @@ pub fn compute_composition_polynomial<Value: IValue>(
         statement.get_preprocessed_column_ids(),
         oods_samples.preprocessed_columns.iter().cloned(),
     ));
+    let public_params = statement.public_params(context);
     let mut evaluation_accumulator = CompositionConstraintAccumulator::new(
         context,
         preprocessed_columns,
+        public_params,
         composition_polynomial_coeff,
         interaction_elements,
     );
