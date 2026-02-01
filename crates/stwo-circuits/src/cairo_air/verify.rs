@@ -9,30 +9,16 @@ use crate::stark_verifier::proof_from_stark_proof::{
     pack_component_log_sizes, pack_enable_bits, proof_from_stark_proof,
 };
 use crate::stark_verifier::verify::verify;
-use cairo_air::air::{CairoClaim, CairoInteractionClaim};
+use cairo_air::CairoProof;
 use cairo_air::combined_claim::CombinedClaim;
 use num_traits::Zero;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::{QM31, SecureField};
-use stwo::core::proof::ExtendedStarkProof;
-use stwo::core::vcs_lifted::MerkleHasherLifted;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 
-/// [cairo_air::air::CairoProof] with [ExtendedStarkProof] instead of
-/// [stwo::core::proof::StarkProof].
-// TODO(Gali): Move to stwo_cairo.
-pub struct ExtendedCairoProof<H: MerkleHasherLifted> {
-    pub claim: CairoClaim,
-    pub interaction_pow_nonce: u64,
-    pub interaction_claim: CairoInteractionClaim,
-    pub stark_proof: ExtendedStarkProof<H>,
-    /// Optional salt used in the channel initialization.
-    pub channel_salt: u32,
-}
-
-/// Circuit Verifies an [ExtendedCairoProof].
+/// Circuit Verifies a [CairoProof].
 // TODO(Gali): Add test.
-pub fn verify_cairo(proof: &ExtendedCairoProof<Blake2sM31MerkleHasher>) -> Context<QM31> {
+pub fn verify_cairo(proof: &CairoProof<Blake2sM31MerkleHasher>) -> Context<QM31> {
     let mut context = TraceContext::default();
 
     let output_len = 1;
@@ -52,18 +38,19 @@ pub fn verify_cairo(proof: &ExtendedCairoProof<Blake2sM31MerkleHasher>) -> Conte
     context
 }
 
-/// Prepares the input for the circuit verifier by converting the [ExtendedCairoProof] to a
+/// Prepares the input for the circuit verifier by converting the [CairoProof] to a
 /// [ProofConfig] and a [Proof].
 pub fn proof_from_cairo_proof(
-    proof: &ExtendedCairoProof<Blake2sM31MerkleHasher>,
+    proof: &CairoProof<Blake2sM31MerkleHasher>,
     statement: &CairoStatement<QM31>,
 ) -> (ProofConfig, Proof<SecureField>) {
-    let ExtendedCairoProof {
+    let CairoProof {
         claim,
-        interaction_pow_nonce,
+        interaction_pow,
         interaction_claim,
-        stark_proof,
+        extended_stark_proof,
         channel_salt,
+        preprocessed_trace_variant: _,
     } = proof;
 
     let CombinedClaim {
@@ -79,7 +66,7 @@ pub fn proof_from_cairo_proof(
     let config = ProofConfig::from_statement(
         statement,
         *log_trace_size as usize,
-        &proof.stark_proof.proof.config,
+        &proof.extended_stark_proof.proof.config,
     );
 
     let claim = Claim {
@@ -88,7 +75,12 @@ pub fn proof_from_cairo_proof(
         claimed_sums: component_claimed_sums,
     };
 
-    let proof =
-        proof_from_stark_proof(stark_proof, &config, claim, *interaction_pow_nonce, *channel_salt);
+    let proof = proof_from_stark_proof(
+        extended_stark_proof,
+        &config,
+        claim,
+        *interaction_pow,
+        *channel_salt,
+    );
     (config, proof)
 }
