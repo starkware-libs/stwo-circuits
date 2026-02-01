@@ -15,8 +15,13 @@ stwo-air-utils-derive.workspace = true
 stwo-air-utils.workspace = true
 cairo-air.workspace = true
 rayon.workspace = true
+stwo_cairo_prover.workspace = true
+dev_utils.workspace = true
+stwo_cairo_utils.workspace = true
 
 [dev-dependencies]
 indoc.workspace = true
 rstest.workspace = true
 expect-test.workspace = true
+bzip2 = { version = "0.5.0", default-features = false, features = ["libbz2-rs-sys"] }
+bincode = "1.3"

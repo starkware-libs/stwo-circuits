@@ -1,8 +1,12 @@
+use std::fs::{File, OpenOptions};
+
+use cairo_air::utils::{binary_deserialize_from_file, binary_serialize_to_file};
 use num_traits::Zero;
+use std::path::PathBuf;
 use stwo::core::fields::m31::M31;
-use stwo::core::pcs::PcsConfig;
 
 use crate::cairo_air::statement::{MEMORY_VALUES_LIMBS, PUBLIC_DATA_LEN};
+use crate::cairo_air::verify::verify_cairo;
 use crate::{
     cairo_air::statement::CairoStatement,
     circuits::{context::Context, ivalue::NoValue, ops::Guess},
@@ -11,6 +15,12 @@ use crate::{
         verify::verify,
     },
 };
+use cairo_air::PreProcessedTraceVariant;
+use dev_utils::utils::get_compiled_cairo_program_path;
+use stwo::core::fri::FriConfig;
+use stwo::core::{pcs::PcsConfig, vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel};
+use stwo_cairo_prover::prover::{ChannelHash, ProverParameters, prove_cairo};
+use stwo_cairo_utils::vm_utils::{ProgramType, run_and_adapt};
 
 /// Logup security is defined by the `QM31` space (~124 bits) + `INTERACTION_POW_BITS` -
 /// log2(number of relation terms).
@@ -45,4 +55,44 @@ fn test_verify() {
     novalue_context.circuit.check_yields();
 
     println!("Stats: {:?}", novalue_context.stats);
+}
+
+pub fn get_proof_file_path(test_name: &str) -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../test_data/")
+        .join(test_name)
+        .join("proof.bin")
+}
+
+#[test]
+fn test_verify_cairo() {
+    let proof_path = get_proof_file_path("all_opcode_components");
+
+    if std::env::var("FIX_PROOF").is_ok() {
+        let compiled_program =
+            get_compiled_cairo_program_path("test_prove_verify_all_opcode_components");
+        let input = run_and_adapt(&compiled_program, ProgramType::Json, None).unwrap();
+        let prover_params = ProverParameters {
+            channel_hash: ChannelHash::Blake2s,
+            pcs_config: PcsConfig { pow_bits: 26, fri_config: FriConfig::new(0, 1, 70) },
+            preprocessed_trace: PreProcessedTraceVariant::CanonicalWithoutPedersen,
+            channel_salt: 0,
+            store_polynomials_coefficients: false,
+        };
+        let cairo_proof = prove_cairo::<Blake2sM31MerkleChannel>(input, prover_params).unwrap();
+
+        let proof_file =
+            OpenOptions::new().create(true).write(true).truncate(true).open(&proof_path).unwrap();
+        binary_serialize_to_file(&cairo_proof, &proof_file).unwrap();
+    }
+
+    let proof_file = File::open(proof_path).unwrap();
+    let cairo_proof = binary_deserialize_from_file(&proof_file).unwrap();
+
+    let mut context = verify_cairo(&cairo_proof);
+    context.check_vars_used();
+    context.finalize_guessed_vars();
+    context.circuit.check_yields();
+    context.validate_circuit();
+    println!("Stats: {:?}", context.stats);
 }
