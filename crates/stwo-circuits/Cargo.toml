@@ -15,6 +15,9 @@ stwo-air-utils-derive.workspace = true
 stwo-air-utils.workspace = true
 cairo-air.workspace = true
 rayon.workspace = true
+stwo_cairo_prover.workspace = true
+dev_utils.workspace = true
+stwo_cairo_utils.workspace = true
 
 [dev-dependencies]
 indoc.workspace = true

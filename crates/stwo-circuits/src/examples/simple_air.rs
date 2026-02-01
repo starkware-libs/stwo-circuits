@@ -324,6 +324,7 @@ pub fn create_proof() -> (
         &[&component_1, &component_2, &component_3],
         prover_channel,
         commitment_scheme,
+        true,
     )
     .unwrap();
 
