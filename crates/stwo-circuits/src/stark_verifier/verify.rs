@@ -36,10 +36,7 @@ pub const LOG_SIZE_BITS: u32 = 5;
 /// n_uses is bounded by the characteristic of the field = 2^31.
 /// E.g. assuming a 100-bit security target, the witness may contain up to
 /// 1 << (24 + INTERACTION_POW_BITS) relation terms.
-#[cfg(not(test))]
 pub const INTERACTION_POW_BITS: u32 = 24;
-#[cfg(test)]
-pub const INTERACTION_POW_BITS: u32 = 8; // Lower value for faster tests
 
 #[cfg(test)]
 #[path = "verify_test.rs"]

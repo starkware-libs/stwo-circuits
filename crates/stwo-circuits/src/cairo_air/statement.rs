@@ -17,7 +17,7 @@ use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 use crate::cairo_air::preprocessed_columns::PREPROCESSED_COLUMNS_ORDER;
 use crate::circuits::context::{Context, Var};
-use crate::circuits::ivalue::IValue;
+use crate::circuits::ivalue::{IValue, qm31_from_u32s};
 use crate::circuits::simd::Simd;
 use crate::stark_verifier::constraint_eval::CircuitEval;
 use crate::stark_verifier::proof::Claim;
@@ -216,17 +216,23 @@ impl<Value: IValue> CairoStatement<Value> {
                 Box::new(components::verify_bitwise_xor_12::Component {}),
                 Box::new(components::memory_address_to_id::Component {}),
                 Box::new(components::memory_id_to_big::Component { index: 0 }),
-                Box::new(components::memory_id_to_big::Component { index: 1 }),
-                Box::new(components::memory_id_to_big::Component { index: 2 }),
-                Box::new(components::memory_id_to_big::Component { index: 3 }),
+                // Box::new(components::memory_id_to_big::Component { index: 1 }),
+                // Box::new(components::memory_id_to_big::Component { index: 2 }),
+                // Box::new(components::memory_id_to_big::Component { index: 3 }),
                 Box::new(components::memory_id_to_small::Component {}),
+                Box::new(components::range_check_6::Component {}),
+                Box::new(components::range_check_8::Component {}),
                 Box::new(components::range_check_11::Component {}),
+                Box::new(components::range_check_12::Component {}),
                 Box::new(components::range_check_18::Component {}),
                 Box::new(components::range_check_20::Component {}),
                 Box::new(components::range_check_4_3::Component {}),
+                Box::new(components::range_check_4_4::Component {}),
                 Box::new(components::range_check_9_9::Component {}),
                 Box::new(components::range_check_7_2_5::Component {}),
+                Box::new(components::range_check_3_6_6_3::Component {}),
                 Box::new(components::range_check_4_4_4_4::Component {}),
+                Box::new(components::range_check_3_3_3_3_3::Component {}),
                 Box::new(components::verify_bitwise_xor_4::Component {}),
                 Box::new(components::verify_bitwise_xor_7::Component {}),
                 Box::new(components::verify_bitwise_xor_8::Component {}),
@@ -242,12 +248,14 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
     }
 
     fn claims_to_mix(&self, context: &mut Context<Value>) -> Vec<Vec<Var>> {
+        let program_len = context.constant(qm31_from_u32s(self.program.len() as u32, 0, 0, 0));
         let packed_outputs =
             Simd::pack(context, &self.outputs.iter().flatten().cloned().collect_vec());
 
         let packed_program =
             Simd::pack(context, &self.program.iter().flatten().cloned().collect_vec());
         vec![
+            vec![program_len],
             self.packed_public_data.get_packed().to_vec(),
             packed_outputs.get_packed().to_vec(),
             packed_program.get_packed().to_vec(),
