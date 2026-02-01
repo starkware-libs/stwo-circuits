@@ -12,6 +12,7 @@ pub const RELATION_USES_PER_ROW: [RelationUse; 4] = [
     RelationUse { relation_id: "RangeCheck_9_9_D", uses: 1 },
 ];
 
+#[allow(unused_variables)]
 pub fn accumulate_constraints(
     input: &[Var],
     context: &mut Context<impl IValue>,
@@ -19,6 +20,7 @@ pub fn accumulate_constraints(
     acc: &mut CompositionConstraintAccumulator,
 ) {
     let _ = component_data;
+    let _ = acc;
     let [
         memory_id_to_small_output_col0,
         memory_id_to_small_output_col1,

@@ -4,6 +4,7 @@ use crate::cairo_air::components::prelude::*;
 
 pub const RELATION_USES_PER_ROW: [RelationUse; 0] = [];
 
+#[allow(unused_variables)]
 pub fn accumulate_constraints(
     input: &[Var],
     context: &mut Context<impl IValue>,
@@ -11,6 +12,7 @@ pub fn accumulate_constraints(
     acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
     let _ = component_data;
+    let _ = acc;
     let [cond_range_check_2_input_limb_0, cond_range_check_2_input_limb_1, partial_limb_msb_col0] =
         input.try_into().unwrap();
 
