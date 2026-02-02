@@ -7,6 +7,7 @@ pub const N_INTERACTION_COLUMNS: usize = 4;
 
 pub const RELATION_USES_PER_ROW: [RelationUse; 0] = [];
 
+#[allow(unused_variables)]
 pub fn accumulate_constraints(
     input: &[Var],
     context: &mut Context<impl IValue>,
@@ -14,6 +15,7 @@ pub fn accumulate_constraints(
     acc: &mut CompositionConstraintAccumulator,
 ) {
     let _ = component_data;
+    let _ = acc;
     let [multiplicity_0] = input.try_into().unwrap();
     let range_check_4_3_column_0 = acc.get_preprocessed_column(&PreProcessedColumnId {
         id: "range_check_4_3_column_0".to_owned(),

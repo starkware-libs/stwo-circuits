@@ -7,6 +7,7 @@ pub const RELATION_USES_PER_ROW: [RelationUse; 2] = [
     RelationUse { relation_id: "MemoryIdToBig", uses: 1 },
 ];
 
+#[allow(unused_variables)]
 pub fn accumulate_constraints(
     input: &[Var],
     context: &mut Context<impl IValue>,
@@ -14,6 +15,7 @@ pub fn accumulate_constraints(
     acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
     let _ = component_data;
+    let _ = acc;
     let [
         read_positive_num_bits_252_input,
         id_col0,
