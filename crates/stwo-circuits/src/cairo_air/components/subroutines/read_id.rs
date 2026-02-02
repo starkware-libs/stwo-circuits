@@ -5,13 +5,13 @@ use crate::cairo_air::components::prelude::*;
 pub const RELATION_USES_PER_ROW: [RelationUse; 1] =
     [RelationUse { relation_id: "MemoryAddressToId", uses: 1 }];
 
+#[allow(unused_variables)]
 pub fn accumulate_constraints(
     input: &[Var],
     context: &mut Context<impl IValue>,
     component_data: &ComponentData<'_>,
     acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
-    let _ = component_data;
     let [read_id_input, id_col0] = input.try_into().unwrap();
 
     // Use MemoryAddressToId.

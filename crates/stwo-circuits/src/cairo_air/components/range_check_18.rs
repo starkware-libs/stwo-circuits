@@ -7,13 +7,13 @@ pub const N_INTERACTION_COLUMNS: usize = 4;
 
 pub const RELATION_USES_PER_ROW: [RelationUse; 0] = [];
 
+#[allow(unused_variables)]
 pub fn accumulate_constraints(
     input: &[Var],
     context: &mut Context<impl IValue>,
     component_data: &ComponentData<'_>,
     acc: &mut CompositionConstraintAccumulator,
 ) {
-    let _ = component_data;
     let [multiplicity_0, multiplicity_1] = input.try_into().unwrap();
     let seq_18 = acc.get_preprocessed_column(&PreProcessedColumnId { id: "seq_18".to_owned() });
 

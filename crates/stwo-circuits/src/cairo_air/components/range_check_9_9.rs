@@ -14,8 +14,6 @@ pub fn accumulate_constraints(
     component_data: &ComponentData<'_>,
     acc: &mut CompositionConstraintAccumulator,
 ) {
-    let _ = component_data;
-    let _ = acc;
     let [
         multiplicity_0,
         multiplicity_1,
