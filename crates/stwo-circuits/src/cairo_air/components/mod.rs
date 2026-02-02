@@ -15,4 +15,5 @@ pub mod range_check_7_2_5;
 pub mod range_check_9_9;
 pub mod ret_opcode;
 pub mod subroutines;
+pub mod verify_bitwise_xor_12;
 pub mod verify_instruction;
