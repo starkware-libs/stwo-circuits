@@ -15,11 +15,22 @@ pub fn accumulate_constraints(
     acc: &mut CompositionConstraintAccumulator,
 ) {
     let [multiplicity_0] = input.try_into().unwrap();
-    let seq_4 = acc.get_preprocessed_column(&PreProcessedColumnId { id: "seq_4".to_owned() });
     let blake_sigma_0 =
         acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_0".to_owned() });
     let blake_sigma_1 =
         acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_1".to_owned() });
+    let blake_sigma_10 =
+        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_10".to_owned() });
+    let blake_sigma_11 =
+        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_11".to_owned() });
+    let blake_sigma_12 =
+        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_12".to_owned() });
+    let blake_sigma_13 =
+        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_13".to_owned() });
+    let blake_sigma_14 =
+        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_14".to_owned() });
+    let blake_sigma_15 =
+        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_15".to_owned() });
     let blake_sigma_2 =
         acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_2".to_owned() });
     let blake_sigma_3 =
@@ -36,18 +47,7 @@ pub fn accumulate_constraints(
         acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_8".to_owned() });
     let blake_sigma_9 =
         acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_9".to_owned() });
-    let blake_sigma_10 =
-        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_10".to_owned() });
-    let blake_sigma_11 =
-        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_11".to_owned() });
-    let blake_sigma_12 =
-        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_12".to_owned() });
-    let blake_sigma_13 =
-        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_13".to_owned() });
-    let blake_sigma_14 =
-        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_14".to_owned() });
-    let blake_sigma_15 =
-        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_15".to_owned() });
+    let seq_4 = acc.get_preprocessed_column(&PreProcessedColumnId { id: "seq_4".to_owned() });
 
     // Yield BlakeRoundSigma.
     let tuple_0 = &[

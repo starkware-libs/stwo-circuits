@@ -281,16 +281,16 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         let public_params: HashMap<String, Var> = HashMap::from_iter(
             [
                 ("output_start_ptr", &segement_ranges[0]),
-                ("pedersen_start_ptr", &segement_ranges[1]),
-                ("range_check_128_start_ptr", &segement_ranges[2]),
-                ("ecdsa_start_ptr", &segement_ranges[3]),
-                ("bitwise_start_ptr", &segement_ranges[4]),
-                ("ec_op_start_ptr", &segement_ranges[5]),
-                ("keccak_start_ptr", &segement_ranges[6]),
-                ("poseidon_start_ptr", &segement_ranges[7]),
-                ("range_check_96_start_ptr", &segement_ranges[8]),
-                ("add_mod_start_ptr", &segement_ranges[9]),
-                ("mul_mod_start_ptr", &segement_ranges[10]),
+                ("pedersen_builtin_segment_start", &segement_ranges[1]),
+                ("range_check_builtin_segment_start", &segement_ranges[2]),
+                ("ecdsa_builtin_segment_start", &segement_ranges[3]),
+                ("bitwise_builtin_segment_start", &segement_ranges[4]),
+                ("ec_op_builtin_segment_start", &segement_ranges[5]),
+                ("keccak_builtin_segment_start", &segement_ranges[6]),
+                ("poseidon_builtin_segment_start", &segement_ranges[7]),
+                ("range_check96_builtin_segment_start", &segement_ranges[8]),
+                ("add_mod_builtin_segment_start", &segement_ranges[9]),
+                ("mul_mod_builtin_segment_start", &segement_ranges[10]),
             ]
             .into_iter()
             .map(|(k, v)| (k.to_string(), v.start.value)),
