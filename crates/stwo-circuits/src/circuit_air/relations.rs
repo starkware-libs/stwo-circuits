@@ -9,6 +9,7 @@ pub const VERIFY_BITWISE_XOR_4_RELATION_ID: M31 = M31::from_u32_unchecked(2);
 pub const VERIFY_BITWISE_XOR_7_RELATION_ID: M31 = M31::from_u32_unchecked(3);
 pub const VERIFY_BITWISE_XOR_8_RELATION_ID: M31 = M31::from_u32_unchecked(4);
 pub const VERIFY_BITWISE_XOR_9_RELATION_ID: M31 = M31::from_u32_unchecked(5);
+pub const BLAKE_MESSAGE_RELATION_ID: M31 = M31::from_u32_unchecked(1492981981);
 
 // The number of lookup elements computed. These are used by all relations, so the size
 // should be at least the size of the largest relation.

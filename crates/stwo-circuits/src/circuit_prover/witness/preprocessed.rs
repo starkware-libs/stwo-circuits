@@ -1,14 +1,15 @@
 use crate::circuit_prover::witness::components::qm31_ops;
 use crate::circuit_prover::witness::trace::TraceGenerator;
-use crate::circuits::circuit::{Circuit, Permutation};
+use crate::circuits::circuit::{Blake, Circuit, Permutation};
 use crate::circuits::circuit::{Eq, Gate};
-use itertools::{Itertools, zip_eq};
+use itertools::{Itertools, chain, zip_eq};
 use std::collections::HashMap;
 use stwo::core::fields::m31::BaseField;
 use stwo::core::poly::circle::CanonicCoset;
 use stwo::prover::backend::Backend;
 use stwo::prover::backend::Col;
 use stwo::prover::backend::Column;
+use stwo::prover::backend::simd::m31::{N_LANES, PackedM31};
 use stwo::prover::poly::BitReversedOrder;
 use stwo::prover::poly::circle::CircleEvaluation;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
@@ -181,6 +182,70 @@ fn add_eq_to_preprocessed_trace(circuit: &Circuit, pp_trace: &mut PreProcessedTr
     pp_trace.columns.extend(eq_columns);
 }
 
+fn fill_blake_columns(blake: &[Blake], columns: &mut [Vec<usize>; N_BLAKE_PP_COLUMNS]) {
+    // IV should somehow be in state_address 0.
+    let mut state_address = 0;
+    let mut message_length = 0;
+    for gate in blake.iter() {
+        println!("gate: {:?}", gate);
+        for [in0, in1, in2, in3] in gate.input.iter() {
+            // The current message length split to 2 u16.
+            message_length = gate.n_bytes.min(message_length + 16 * 4);
+            columns[0].push(message_length & 0xffff);
+            columns[1].push((message_length >> 16) & 0xffff);
+            // Finalize flag.
+            columns[2].push(0);
+            // State before address.
+            columns[3].push(state_address);
+            // State after address.
+            state_address += 1;
+            columns[4].push(state_address);
+            // Message addresses.
+            columns[5].push(*in0);
+            columns[6].push(*in1);
+            columns[7].push(*in2);
+            columns[8].push(*in3);
+        }
+        // Set the finalize flag to 1 for the last compression of the gate.
+        *columns[2].last_mut().unwrap() = 1;
+
+        // // let [out0, out1] = gate.yields()[..] else { panic!("Expected 2 yields for gate") };
+        // columns[0].push(in0);
+        // columns[1].push(in1);
+    }
+}
+
+const N_BLAKE_PP_COLUMNS: usize = 9;
+fn add_blake_to_preprocessed_trace(circuit: &Circuit, pp_trace: &mut PreProcessedTrace) {
+    let Circuit {
+        n_vars: _,
+        add: _,
+        sub: _,
+        mul: _,
+        pointwise_mul: _,
+        eq: _,
+        blake,
+        permutation: _,
+    } = circuit;
+    let mut blake_columns: [_; N_BLAKE_PP_COLUMNS] = std::array::from_fn(|_| vec![]);
+    fill_blake_columns(blake, &mut blake_columns);
+    println!("blake_columns: {:?}", blake_columns);
+
+    let n_columns = pp_trace.columns.len();
+    pp_trace.column_indices.extend([
+        (PreProcessedColumnId { id: "t0".to_owned() }, n_columns),
+        (PreProcessedColumnId { id: "t1".to_owned() }, n_columns + 1),
+        (PreProcessedColumnId { id: "finalize_flag".to_owned() }, n_columns + 2),
+        (PreProcessedColumnId { id: "state_before_addr".to_owned() }, n_columns + 3),
+        (PreProcessedColumnId { id: "state_after_addr".to_owned() }, n_columns + 4),
+        (PreProcessedColumnId { id: "message0_addr".to_owned() }, n_columns + 5),
+        (PreProcessedColumnId { id: "message1_addr".to_owned() }, n_columns + 6),
+        (PreProcessedColumnId { id: "message2_addr".to_owned() }, n_columns + 7),
+        (PreProcessedColumnId { id: "message3_addr".to_owned() }, n_columns + 8),
+    ]);
+    pp_trace.columns.extend(blake_columns);
+}
+
 /// A collection of preprocessed columns, whose values are publicly acknowledged, and independent of
 /// the proof.
 pub struct PreProcessedTrace {
@@ -208,8 +273,60 @@ impl PreProcessedTrace {
             add_qm31_ops_to_preprocessed_trace(circuit, multiplicities, &mut pp_trace);
 
         // TODO(Gali): Add Blake columns.
+        add_blake_to_preprocessed_trace(circuit, &mut pp_trace);
+        Self::add_non_circuit_preprocessed_columns(&mut pp_trace);
 
         (pp_trace, TraceGenerator { qm31_ops_trace_generator })
+    }
+
+    fn add_non_circuit_preprocessed_columns(pp_trace: &mut PreProcessedTrace) {
+        let seq: [Vec<usize>; 17] =
+            std::array::from_fn(|i| vec![1_usize << (i + 4); 1_usize << (i + 4)]);
+        let bitwise_xor: Vec<Vec<usize>> = [4, 7, 8, 9]
+            .into_iter()
+            .flat_map(|n_bits| gen_xor_columns(n_bits).into_iter())
+            .collect();
+
+        pp_trace.columns.extend(chain!(seq, bitwise_xor));
+        println!(
+            "columnd log sizes: {:?}",
+            pp_trace.columns.iter().map(|c| c.len().ilog2()).collect::<Vec<_>>()
+        );
+        let n_columns = pp_trace.columns.len();
+        pp_trace.column_indices.extend([
+            (PreProcessedColumnId { id: "seq_4".to_owned() }, n_columns),
+            (PreProcessedColumnId { id: "seq_5".to_owned() }, n_columns + 1),
+            (PreProcessedColumnId { id: "seq_6".to_owned() }, n_columns + 2),
+            (PreProcessedColumnId { id: "seq_7".to_owned() }, n_columns + 3),
+            (PreProcessedColumnId { id: "seq_8".to_owned() }, n_columns + 4),
+            (PreProcessedColumnId { id: "seq_9".to_owned() }, n_columns + 5),
+            (PreProcessedColumnId { id: "seq_10".to_owned() }, n_columns + 6),
+            (PreProcessedColumnId { id: "seq_11".to_owned() }, n_columns + 7),
+            (PreProcessedColumnId { id: "seq_12".to_owned() }, n_columns + 8),
+            (PreProcessedColumnId { id: "seq_13".to_owned() }, n_columns + 9),
+            (PreProcessedColumnId { id: "seq_14".to_owned() }, n_columns + 10),
+            (PreProcessedColumnId { id: "seq_15".to_owned() }, n_columns + 11),
+            (PreProcessedColumnId { id: "seq_16".to_owned() }, n_columns + 12),
+            (PreProcessedColumnId { id: "seq_17".to_owned() }, n_columns + 13),
+            (PreProcessedColumnId { id: "seq_18".to_owned() }, n_columns + 14),
+            (PreProcessedColumnId { id: "seq_19".to_owned() }, n_columns + 15),
+            (PreProcessedColumnId { id: "seq_20".to_owned() }, n_columns + 16),
+            (PreProcessedColumnId { id: "bitwise_xor_4_0".to_owned() }, n_columns + 8),
+            (PreProcessedColumnId { id: "bitwise_xor_4_1".to_owned() }, n_columns + 9),
+            (PreProcessedColumnId { id: "bitwise_xor_4_2".to_owned() }, n_columns + 10),
+            (PreProcessedColumnId { id: "bitwise_xor_7_0".to_owned() }, n_columns + 11),
+            (PreProcessedColumnId { id: "bitwise_xor_7_1".to_owned() }, n_columns + 12),
+            (PreProcessedColumnId { id: "bitwise_xor_7_2".to_owned() }, n_columns + 13),
+            (PreProcessedColumnId { id: "bitwise_xor_8_0".to_owned() }, n_columns + 14),
+            (PreProcessedColumnId { id: "bitwise_xor_8_1".to_owned() }, n_columns + 15),
+            (PreProcessedColumnId { id: "bitwise_xor_8_2".to_owned() }, n_columns + 16),
+            (PreProcessedColumnId { id: "bitwise_xor_9_0".to_owned() }, n_columns + 18),
+            (PreProcessedColumnId { id: "bitwise_xor_9_1".to_owned() }, n_columns + 19),
+            (PreProcessedColumnId { id: "bitwise_xor_9_2".to_owned() }, n_columns + 20),
+            (PreProcessedColumnId { id: "bitwise_xor_10_0".to_owned() }, n_columns + 21),
+            (PreProcessedColumnId { id: "bitwise_xor_10_1".to_owned() }, n_columns + 22),
+            (PreProcessedColumnId { id: "bitwise_xor_10_2".to_owned() }, n_columns + 23),
+        ]);
     }
 
     pub fn log_sizes(&self) -> Vec<u32> {
@@ -230,4 +347,107 @@ impl PreProcessedTrace {
             .get(id)
             .unwrap_or_else(|| panic!("Missing preprocessed column {id:?}"))]
     }
+
+    pub fn get_packed_column(&self, id: &PreProcessedColumnId) -> Vec<PackedM31> {
+        let column = self.get_column(id);
+        column
+            .chunks_exact(N_LANES)
+            .map(|c| PackedM31::from_array(std::array::from_fn(|i| BaseField::from(c[i]))))
+            .collect::<Vec<_>>()
+    }
 }
+
+// Generates 3 columns of size 2^(2*n_bits) where the third column is the XOR of the first two.
+fn gen_xor_columns(n_bits: usize) -> [Vec<usize>; 3] {
+    let size = 1_usize << (2 * n_bits);
+    let mask = (1_usize << n_bits) - 1;
+    let mut columns: [Vec<usize>; 3] = std::array::from_fn(|_| vec![0; size]);
+    for i in 0..size {
+        let lhs = i & mask;
+        let rhs = i >> n_bits;
+        columns[0][i] = lhs;
+        columns[1][i] = rhs;
+        columns[2][i] = lhs ^ rhs;
+    }
+    columns
+}
+
+// /// A table of a,b,c, where a,b,c are integers and a ^ b = c.
+// ///
+// /// # Attributes
+// ///
+// /// - `n_bits`: The number of bits in each integer.
+// /// - `col_index`: The column index in the preprocessed table.
+// #[derive(Debug)]
+// pub struct BitwiseXor {
+//     n_bits: u32,
+//     col_index: usize,
+// }
+// impl BitwiseXor {
+//     pub const fn new(n_bits: u32, col_index: usize) -> Self {
+//         assert!(col_index < 3, "col_index must be in range 0..=2");
+//         Self { n_bits, col_index }
+//     }
+// }
+
+// impl PreProcessedColumn for BitwiseXor {
+//     fn log_size(&self) -> u32 {
+//         2 * self.n_bits
+//     }
+
+//     fn packed_at(&self, vec_row: usize) -> PackedM31 {
+//         let lhs = || -> u32x16 {
+//             (SIMD_ENUMERATION_0 + Simd::splat((vec_row * N_LANES) as u32)) >> self.n_bits
+//         };
+//         let rhs = || -> u32x16 {
+//             (SIMD_ENUMERATION_0 + Simd::splat((vec_row * N_LANES) as u32))
+//                 & Simd::splat((1 << self.n_bits) - 1)
+//         };
+//         let simd = match self.col_index {
+//             0 => lhs(),
+//             1 => rhs(),
+//             2 => lhs() ^ rhs(),
+//             _ => unreachable!(),
+//         };
+//         unsafe { PackedM31::from_simd_unchecked(simd) }
+//     }
+
+//     fn gen_column_simd(&self) -> CircleEvaluation<SimdBackend, BaseField, BitReversedOrder> {
+//         CircleEvaluation::new(
+//             CanonicCoset::new(self.log_size()).circle_domain(),
+//             BaseColumn::from_simd(
+//                 (0..(1 << (self.log_size() - LOG_N_LANES)))
+//                     .map(|i| self.packed_at(i))
+//                     .collect(),
+//             ),
+//         )
+//     }
+
+//     fn id(&self) -> PreProcessedColumnId {
+//         PreProcessedColumnId {
+//             id: format!("bitwise_xor_{}_{}", self.n_bits, self.col_index),
+//         }
+//     }
+// }
+
+// use std::simd::Simd;
+
+// use stwo::core::fields::m31::M31;
+
+// const N_LANES: usize = 4;
+
+// // Pads all rows below <padding_offset> with the first row. Uses the <get_m31> function to get
+// the // value in a given row and column.
+// pub fn pad<F>(get_m31: F, padding_offset: usize, col: usize) -> Vec<M31>
+// where
+//     F: Fn(usize, usize) -> M31,
+// {
+//     let n = padding_offset.next_power_of_two();
+//     (0..n)
+//         .map(|i| if i < padding_offset { i } else { 0 })
+//         .map(|i| get_m31(i, col))
+//         .collect()
+// }
+
+// pub const SIMD_ENUMERATION_0: Simd<u32, N_LANES> =
+//     Simd::from_array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);

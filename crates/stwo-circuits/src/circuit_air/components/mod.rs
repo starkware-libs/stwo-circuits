@@ -13,6 +13,9 @@ pub mod verify_bitwise_xor_7;
 pub mod verify_bitwise_xor_8;
 pub mod verify_bitwise_xor_9;
 pub mod verify_bitwise_xor_12;
+pub mod triple_xor_32;
+pub mod blake_round_sigma;
+
 #[cfg(test)]
 pub mod constraints_regression_test_values;
 

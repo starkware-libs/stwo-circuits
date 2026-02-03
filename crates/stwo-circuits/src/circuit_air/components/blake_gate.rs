@@ -182,38 +182,38 @@ impl FrameworkEval for Eval {
         let xor_col51 = eval.next_trace_mask();
         let xor_col52 = eval.next_trace_mask();
         let xor_col53 = eval.next_trace_mask();
-        let limb0_limb_0_col54 = eval.next_trace_mask();
-        let limb0_limb_1_col55 = eval.next_trace_mask();
-        let limb1_limb_0_col56 = eval.next_trace_mask();
-        let limb1_limb_1_col57 = eval.next_trace_mask();
-        let limb2_limb_0_col58 = eval.next_trace_mask();
-        let limb2_limb_1_col59 = eval.next_trace_mask();
-        let limb3_limb_0_col60 = eval.next_trace_mask();
-        let limb3_limb_1_col61 = eval.next_trace_mask();
-        let limb4_limb_0_col62 = eval.next_trace_mask();
-        let limb4_limb_1_col63 = eval.next_trace_mask();
-        let limb5_limb_0_col64 = eval.next_trace_mask();
-        let limb5_limb_1_col65 = eval.next_trace_mask();
-        let limb6_limb_0_col66 = eval.next_trace_mask();
-        let limb6_limb_1_col67 = eval.next_trace_mask();
-        let limb7_limb_0_col68 = eval.next_trace_mask();
-        let limb7_limb_1_col69 = eval.next_trace_mask();
-        let limb8_limb_0_col70 = eval.next_trace_mask();
-        let limb8_limb_1_col71 = eval.next_trace_mask();
-        let limb9_limb_0_col72 = eval.next_trace_mask();
-        let limb9_limb_1_col73 = eval.next_trace_mask();
-        let limb10_limb_0_col74 = eval.next_trace_mask();
-        let limb10_limb_1_col75 = eval.next_trace_mask();
-        let limb11_limb_0_col76 = eval.next_trace_mask();
-        let limb11_limb_1_col77 = eval.next_trace_mask();
-        let limb12_limb_0_col78 = eval.next_trace_mask();
-        let limb12_limb_1_col79 = eval.next_trace_mask();
-        let limb13_limb_0_col80 = eval.next_trace_mask();
-        let limb13_limb_1_col81 = eval.next_trace_mask();
-        let limb14_limb_0_col82 = eval.next_trace_mask();
-        let limb14_limb_1_col83 = eval.next_trace_mask();
-        let limb15_limb_0_col84 = eval.next_trace_mask();
-        let limb15_limb_1_col85 = eval.next_trace_mask();
+        let limbi_low_col54 = eval.next_trace_mask();
+        let limbi_high_col55 = eval.next_trace_mask();
+        let limbi_low_col56 = eval.next_trace_mask();
+        let limbi_high_col57 = eval.next_trace_mask();
+        let limbi_low_col58 = eval.next_trace_mask();
+        let limbi_high_col59 = eval.next_trace_mask();
+        let limbi_low_col60 = eval.next_trace_mask();
+        let limbi_high_col61 = eval.next_trace_mask();
+        let limbi_low_col62 = eval.next_trace_mask();
+        let limbi_high_col63 = eval.next_trace_mask();
+        let limbi_low_col64 = eval.next_trace_mask();
+        let limbi_high_col65 = eval.next_trace_mask();
+        let limbi_low_col66 = eval.next_trace_mask();
+        let limbi_high_col67 = eval.next_trace_mask();
+        let limbi_low_col68 = eval.next_trace_mask();
+        let limbi_high_col69 = eval.next_trace_mask();
+        let limbi_low_col70 = eval.next_trace_mask();
+        let limbi_high_col71 = eval.next_trace_mask();
+        let limbi_low_col72 = eval.next_trace_mask();
+        let limbi_high_col73 = eval.next_trace_mask();
+        let limbi_low_col74 = eval.next_trace_mask();
+        let limbi_high_col75 = eval.next_trace_mask();
+        let limbi_low_col76 = eval.next_trace_mask();
+        let limbi_high_col77 = eval.next_trace_mask();
+        let limbi_low_col78 = eval.next_trace_mask();
+        let limbi_high_col79 = eval.next_trace_mask();
+        let limbi_low_col80 = eval.next_trace_mask();
+        let limbi_high_col81 = eval.next_trace_mask();
+        let limbi_low_col82 = eval.next_trace_mask();
+        let limbi_high_col83 = eval.next_trace_mask();
+        let limbi_low_col84 = eval.next_trace_mask();
+        let limbi_high_col85 = eval.next_trace_mask();
         let blake_round_output_limb_0_col86 = eval.next_trace_mask();
         let blake_round_output_limb_1_col87 = eval.next_trace_mask();
         let blake_round_output_limb_2_col88 = eval.next_trace_mask();
@@ -263,10 +263,9 @@ impl FrameworkEval for Eval {
         let triple_xor_32_output_limb_1_col132 = eval.next_trace_mask();
         let triple_xor_32_output_limb_0_col133 = eval.next_trace_mask();
         let triple_xor_32_output_limb_1_col134 = eval.next_trace_mask();
-        let multiplicity_0 = eval.next_trace_mask();
-        let multiplicity_1 = eval.next_trace_mask();
-        let multiplicity_2 = eval.next_trace_mask();
-        let multiplicity_3 = eval.next_trace_mask();
+        let enabler = eval.next_trace_mask();
+
+        eval.add_constraint(enabler.clone() * enabler.clone() - enabler.clone());
 
         #[allow(clippy::unused_unit)]
         #[allow(unused_variables)]
@@ -322,38 +321,38 @@ impl FrameworkEval for Eval {
                 input_message_limb15_col47.clone(),
                 seq.clone(),
             ],
-            limb0_limb_0_col54.clone(),
-            limb0_limb_1_col55.clone(),
-            limb1_limb_0_col56.clone(),
-            limb1_limb_1_col57.clone(),
-            limb2_limb_0_col58.clone(),
-            limb2_limb_1_col59.clone(),
-            limb3_limb_0_col60.clone(),
-            limb3_limb_1_col61.clone(),
-            limb4_limb_0_col62.clone(),
-            limb4_limb_1_col63.clone(),
-            limb5_limb_0_col64.clone(),
-            limb5_limb_1_col65.clone(),
-            limb6_limb_0_col66.clone(),
-            limb6_limb_1_col67.clone(),
-            limb7_limb_0_col68.clone(),
-            limb7_limb_1_col69.clone(),
-            limb8_limb_0_col70.clone(),
-            limb8_limb_1_col71.clone(),
-            limb9_limb_0_col72.clone(),
-            limb9_limb_1_col73.clone(),
-            limb10_limb_0_col74.clone(),
-            limb10_limb_1_col75.clone(),
-            limb11_limb_0_col76.clone(),
-            limb11_limb_1_col77.clone(),
-            limb12_limb_0_col78.clone(),
-            limb12_limb_1_col79.clone(),
-            limb13_limb_0_col80.clone(),
-            limb13_limb_1_col81.clone(),
-            limb14_limb_0_col82.clone(),
-            limb14_limb_1_col83.clone(),
-            limb15_limb_0_col84.clone(),
-            limb15_limb_1_col85.clone(),
+            limbi_low_col54.clone(),
+            limbi_high_col55.clone(),
+            limbi_low_col56.clone(),
+            limbi_high_col57.clone(),
+            limbi_low_col58.clone(),
+            limbi_high_col59.clone(),
+            limbi_low_col60.clone(),
+            limbi_high_col61.clone(),
+            limbi_low_col62.clone(),
+            limbi_high_col63.clone(),
+            limbi_low_col64.clone(),
+            limbi_high_col65.clone(),
+            limbi_low_col66.clone(),
+            limbi_high_col67.clone(),
+            limbi_low_col68.clone(),
+            limbi_high_col69.clone(),
+            limbi_low_col70.clone(),
+            limbi_high_col71.clone(),
+            limbi_low_col72.clone(),
+            limbi_high_col73.clone(),
+            limbi_low_col74.clone(),
+            limbi_high_col75.clone(),
+            limbi_low_col76.clone(),
+            limbi_high_col77.clone(),
+            limbi_low_col78.clone(),
+            limbi_high_col79.clone(),
+            limbi_low_col80.clone(),
+            limbi_high_col81.clone(),
+            limbi_low_col82.clone(),
+            limbi_high_col83.clone(),
+            limbi_low_col84.clone(),
+            limbi_high_col85.clone(),
             &self.common_lookup_elements,
             &mut eval,
         );
@@ -645,7 +644,7 @@ impl FrameworkEval for Eval {
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            E::EF::from(multiplicity_0),
+            E::EF::from(enabler.clone()),
             &[
                 M31_378353459.clone(),
                 message0_addr.clone(),
@@ -658,7 +657,7 @@ impl FrameworkEval for Eval {
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            E::EF::from(multiplicity_1),
+            E::EF::from(enabler.clone()),
             &[
                 M31_378353459.clone(),
                 message1_addr.clone(),
@@ -671,7 +670,7 @@ impl FrameworkEval for Eval {
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            E::EF::from(multiplicity_2),
+            E::EF::from(enabler.clone()),
             &[
                 M31_378353459.clone(),
                 message2_addr.clone(),
@@ -684,7 +683,7 @@ impl FrameworkEval for Eval {
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            E::EF::from(multiplicity_3),
+            E::EF::from(enabler.clone()),
             &[
                 M31_378353459.clone(),
                 message3_addr.clone(),
@@ -723,7 +722,7 @@ mod tests {
 
         let mut sum = QM31::zero();
         for c in expr_eval.constraints {
-            sum += c.assign(&assignment) * rng.r#gen::<QM31>();
+            sum += c.assign(&assignment) * rng.gen_range(0..QM31::MODULUS);
         }
 
         BLAKE_GATE.assert_debug_eq(&sum);

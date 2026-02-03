@@ -37,7 +37,6 @@ pub fn build_fibonacci_context() -> Context<QM31> {
 
 pub fn build_permutation_context() -> Context<QM31> {
     let mut context = Context::<QM31>::default();
-    context.set_assert_eq_on_eval();
 
     let a = guess(&mut context, qm31_from_u32s(0, 2, 0, 2));
     let b = guess(&mut context, qm31_from_u32s(1, 1, 1, 1));
@@ -50,12 +49,14 @@ pub fn build_permutation_context() -> Context<QM31> {
 
 pub fn build_blake_gate_context() -> Context<QM31> {
     let mut context = Context::<QM31>::default();
+    context.enable_assert_eq_on_eval();
 
     let input1 = guess(&mut context, qm31_from_u32s(0, 1, 2, 3));
     let input2 = guess(&mut context, qm31_from_u32s(4, 5, 6, 7));
     let input3 = guess(&mut context, qm31_from_u32s(8, 9, 10, 11));
-    let input4 = guess(&mut context, qm31_from_u32s(12, 13, 14, 15));
-    let _output = blake(&mut context, &[input1, input2, input3, input4], 50);
+    let input4 = guess(&mut context, qm31_from_u32s(12, 13, 14, 5));
+    let input5 = guess(&mut context, qm31_from_u32s(15, 16, 0, 0));
+    let _output = blake(&mut context, &[input1, input2, input3, input4, input5], 72);
     // let n_bytes = guess(&mut context, QM31::from(16));
     // let output = guess(&mut context, qm31_from_u32s(4, 5, 6, 7));
 

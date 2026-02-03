@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::circuit_air::components::CircuitComponents;
 use crate::circuit_air::{
     CircuitClaim, CircuitInteractionClaim, CircuitInteractionElements, lookup_sum,
@@ -75,8 +77,13 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
 
     // Base trace.
     let mut tree_builder = commitment_scheme.tree_builder();
-    let (claim, interaction_generator) =
-        write_trace(context.values(), &preprocessed_trace, &mut tree_builder, &trace_generator);
+    let preprocessed_trace_arc = Arc::new(preprocessed_trace);
+    let (claim, interaction_generator) = write_trace(
+        context.values(),
+        preprocessed_trace_arc.clone(),
+        &mut tree_builder,
+        &trace_generator,
+    );
     claim.mix_into(channel);
     tree_builder.commit(channel);
 
@@ -104,7 +111,7 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
         &claim,
         &interaction_elements,
         &interaction_claim,
-        &preprocessed_trace.ids(),
+        &preprocessed_trace_arc.ids(),
     );
 
     let components = component_builder.provers();
