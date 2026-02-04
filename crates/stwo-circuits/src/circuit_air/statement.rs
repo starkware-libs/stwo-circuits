@@ -9,6 +9,9 @@ use crate::stark_verifier::proof::Claim;
 use crate::stark_verifier::constraint_eval::CircuitEval;
 use crate::stark_verifier::statement::Statement;
 
+// TODO(ilya): Update this to to correct values.
+pub const INTERACTION_POW_BITS: u32 = 8;
+
 pub struct CircuitStatement<Value: IValue> {
     pub components: Vec<Box<dyn CircuitEval<Value>>>,
 }

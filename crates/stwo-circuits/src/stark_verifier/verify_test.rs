@@ -34,7 +34,7 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
         create_proof();
 
     let statement = &SimpleStatement::default();
-    let config = ProofConfig::from_statement(statement, LOG_SIZE_LONG as usize, &pcs_config);
+    let config = ProofConfig::from_statement(statement, LOG_SIZE_LONG as usize, &pcs_config, 8);
     // Create a NoValue version.
     let novalue_circuit = {
         let empty_proof = empty_proof(&config);
