@@ -71,7 +71,7 @@ pub fn verify<Value: IValue>(
     // Mix the channel salt.
     channel.mix_qm31s(context, [proof.channel_salt]);
     let pcs_config = context.constant(QM31::from_u32_unchecked(
-        config.n_proof_of_work_bits as u32,
+        config.n_proof_of_work_bits,
         config.fri.log_blowup_factor as u32,
         config.fri.n_queries as u32,
         config.fri.log_n_last_layer_coefs as u32,
@@ -107,11 +107,7 @@ pub fn verify<Value: IValue>(
     // Mix the trace commitments into the channel.
     channel.mix_commitment(context, proof.trace_root);
 
-    channel.proof_of_work(
-        context,
-        INTERACTION_POW_BITS.try_into().unwrap(),
-        proof.interaction_pow_nonce,
-    );
+    channel.proof_of_work(context, INTERACTION_POW_BITS, proof.interaction_pow_nonce);
     // Pick the interaction elements.
     let [interaction_z, interaction_alpha] = channel.draw_two_qm31s(context);
 
