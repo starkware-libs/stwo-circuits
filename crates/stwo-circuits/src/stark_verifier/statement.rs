@@ -8,7 +8,6 @@ use crate::circuits::ivalue::IValue;
 use crate::circuits::simd::Simd;
 use crate::stark_verifier::constraint_eval::CircuitEval;
 use crate::stark_verifier::proof::{Claim, InteractionAtOods};
-
 /// Values at the OODS point (and its previous point where applicable).
 pub struct OodsSamples<'a> {
     pub preprocessed_columns: &'a [Var],

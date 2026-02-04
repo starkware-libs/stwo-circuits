@@ -64,6 +64,7 @@ pub fn proof_from_cairo_proof(
         statement,
         *log_trace_size as usize,
         &proof.extended_stark_proof.proof.config,
+        24,
     );
 
     let component_claimed_sums = flatten_interaction_claim(interaction_claim);
