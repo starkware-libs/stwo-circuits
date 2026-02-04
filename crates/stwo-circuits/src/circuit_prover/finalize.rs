@@ -2,11 +2,11 @@ use stwo::prover::backend::simd::m31::N_LANES;
 
 use crate::circuits::blake::{HashValue, blake};
 use crate::circuits::context::{Context, Var};
+use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::output;
 use crate::eval;
-use stwo::core::fields::qm31::QM31;
 
-fn pad_qm31_ops(context: &mut Context<QM31>) {
+fn pad_qm31_ops(context: &mut Context<impl IValue>) {
     let qm31_ops_n_rows = context.circuit.add.len()
         + context.circuit.sub.len()
         + context.circuit.mul.len()
@@ -26,7 +26,7 @@ fn pad_qm31_ops(context: &mut Context<QM31>) {
     }
 }
 
-fn pad_eq(context: &mut Context<QM31>) {
+fn pad_eq(context: &mut Context<impl IValue>) {
     let eq_n_rows = context.circuit.eq.len();
     let eq_padding = std::cmp::max(eq_n_rows.next_power_of_two(), N_LANES) - eq_n_rows;
     let zero = context.zero();
@@ -35,7 +35,7 @@ fn pad_eq(context: &mut Context<QM31>) {
     }
 }
 
-fn hash_constants(context: &mut Context<QM31>) -> HashValue<Var> {
+fn hash_constants(context: &mut Context<impl IValue>) -> HashValue<Var> {
     let constants: Vec<_> = context.constants().values().copied().collect();
     let n_bytes = constants.len() * 16;
     blake(context, &constants, n_bytes)
@@ -46,7 +46,7 @@ fn hash_constants(context: &mut Context<QM31>) -> HashValue<Var> {
 /// - Hashing the outputs.
 /// - Padding the components to a power of two.
 // TODO(Gali): Have it under a trait.
-pub(crate) fn finalize_context(context: &mut Context<QM31>) {
+pub(crate) fn finalize_context(context: &mut Context<impl IValue>) {
     let HashValue(hash0, hash1) = hash_constants(context);
     // Add the hash of the constants to the outputs.
     // TODO(Leo): consider storing these values at a fixed address.
