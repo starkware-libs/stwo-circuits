@@ -16,7 +16,12 @@ impl XorRot32R16 {
     #[allow(unused_variables)]
     #[allow(clippy::too_many_arguments)]
     pub fn evaluate<E: EvalAtRow>(
-        [xor_rot_32_r_16_input_limb_0, xor_rot_32_r_16_input_limb_1, xor_rot_32_r_16_input_limb_2, xor_rot_32_r_16_input_limb_3]: [E::F; 4],
+        [
+            xor_rot_32_r_16_input_limb_0,
+            xor_rot_32_r_16_input_limb_1,
+            xor_rot_32_r_16_input_limb_2,
+            xor_rot_32_r_16_input_limb_3,
+        ]: [E::F; 4],
         ms_8_bits_col0: E::F,
         ms_8_bits_col1: E::F,
         ms_8_bits_col2: E::F,

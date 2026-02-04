@@ -49,15 +49,12 @@ impl FrameworkEval for Eval {
     #[allow(non_snake_case)]
     fn evaluate<E: EvalAtRow>(&self, mut eval: E) -> E {
         let relation_id = E::F::from(relations::VERIFY_BITWISE_XOR_9_RELATION_ID);
-        let bitwise_xor_9_0 = eval.get_preprocessed_column(PreProcessedColumnId {
-            id: "bitwise_xor_9_0".to_owned(),
-        });
-        let bitwise_xor_9_1 = eval.get_preprocessed_column(PreProcessedColumnId {
-            id: "bitwise_xor_9_1".to_owned(),
-        });
-        let bitwise_xor_9_2 = eval.get_preprocessed_column(PreProcessedColumnId {
-            id: "bitwise_xor_9_2".to_owned(),
-        });
+        let bitwise_xor_9_0 =
+            eval.get_preprocessed_column(PreProcessedColumnId { id: "bitwise_xor_9_0".to_owned() });
+        let bitwise_xor_9_1 =
+            eval.get_preprocessed_column(PreProcessedColumnId { id: "bitwise_xor_9_1".to_owned() });
+        let bitwise_xor_9_2 =
+            eval.get_preprocessed_column(PreProcessedColumnId { id: "bitwise_xor_9_2".to_owned() });
         let multiplicity_0 = eval.next_trace_mask();
 
         eval.add_to_relation(RelationEntry::new(

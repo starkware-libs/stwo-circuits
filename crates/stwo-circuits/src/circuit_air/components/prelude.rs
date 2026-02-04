@@ -23,7 +23,7 @@ pub use stwo_constraint_framework::RelationEntry;
 pub use stwo_constraint_framework::TraceLocationAllocator;
 pub use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 // pub use stwo_constraint_framework::preprocessed_columns::PreProcessedColumn;
-pub use serde::{Serialize, Deserialize};
+pub use serde::{Deserialize, Serialize};
 pub use stwo::core::fields::m31::M31;
 
 #[derive(Clone)]
@@ -32,7 +32,6 @@ pub struct RelationUse {
     pub uses: u64,
 }
 // pub use crate::circuit_air::components::RelationUse;
-
 
 /// A column with the numbers [0..(2^log_size)-1].
 #[derive(Debug, Clone)]
@@ -60,14 +59,11 @@ impl PreProcessedColumn for Seq {
         );
         CircleEvaluation::new(CanonicCoset::new(self.log_size).circle_domain(), col)
     }
-    
+
     fn id(&self) -> PreProcessedColumnId {
-        PreProcessedColumnId {
-            id: format!("seq_{}", self.log_size),
-        }
+        PreProcessedColumnId { id: format!("seq_{}", self.log_size) }
     }
 }
-
 
 pub trait PreProcessedColumn: Send + Sync {
     #[cfg(feature = "prover")]

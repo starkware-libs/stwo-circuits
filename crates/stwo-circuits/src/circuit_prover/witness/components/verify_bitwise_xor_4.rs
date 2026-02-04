@@ -20,15 +20,9 @@ impl ClaimGenerator {
     pub fn new(preprocessed_trace: Arc<PreProcessedTrace>) -> Self {
         let mults = from_fn(|_| AtomicMultiplicityColumn::new(1 << LOG_SIZE));
         let column_ids = [
-            PreProcessedColumnId {
-                id: "bitwise_xor_4_0".to_owned(),
-            },
-            PreProcessedColumnId {
-                id: "bitwise_xor_4_1".to_owned(),
-            },
-            PreProcessedColumnId {
-                id: "bitwise_xor_4_2".to_owned(),
-            },
+            PreProcessedColumnId { id: "bitwise_xor_4_0".to_owned() },
+            PreProcessedColumnId { id: "bitwise_xor_4_1".to_owned() },
+            PreProcessedColumnId { id: "bitwise_xor_4_2".to_owned() },
         ];
 
         Self {
@@ -40,16 +34,8 @@ impl ClaimGenerator {
 
     pub fn write_trace(
         self,
-    ) -> (
-        ComponentTrace<N_TRACE_COLUMNS>,
-        Claim,
-        InteractionClaimGenerator,
-    ) {
-        let mults = self
-            .mults
-            .into_iter()
-            .map(|v| v.into_simd_vec())
-            .collect::<Vec<_>>();
+    ) -> (ComponentTrace<N_TRACE_COLUMNS>, Claim, InteractionClaimGenerator) {
+        let mults = self.mults.into_iter().map(|v| v.into_simd_vec()).collect::<Vec<_>>();
 
         let (trace, lookup_data) = write_trace_simd(&self.preprocessed_trace, mults);
 
@@ -87,37 +73,29 @@ fn write_trace_simd(
     };
 
     let relation_id = PackedM31::broadcast(relations::VERIFY_BITWISE_XOR_4_RELATION_ID);
-    let bitwise_xor_4_0 = preprocessed_trace.get_column(&PreProcessedColumnId {
-        id: "bitwise_xor_4_0".to_owned(),
-    });
-    let bitwise_xor_4_1 = preprocessed_trace.get_column(&PreProcessedColumnId {
-        id: "bitwise_xor_4_1".to_owned(),
-    });
-    let bitwise_xor_4_2 = preprocessed_trace.get_column(&PreProcessedColumnId {
-        id: "bitwise_xor_4_2".to_owned(),
-    });
+    let bitwise_xor_4_0 =
+        preprocessed_trace.get_column(&PreProcessedColumnId { id: "bitwise_xor_4_0".to_owned() });
+    let bitwise_xor_4_1 =
+        preprocessed_trace.get_column(&PreProcessedColumnId { id: "bitwise_xor_4_1".to_owned() });
+    let bitwise_xor_4_2 =
+        preprocessed_trace.get_column(&PreProcessedColumnId { id: "bitwise_xor_4_2".to_owned() });
     let bitwise_xor_4_0 = pack_preprocessed_column(bitwise_xor_4_0);
     let bitwise_xor_4_1 = pack_preprocessed_column(bitwise_xor_4_1);
     let bitwise_xor_4_2 = pack_preprocessed_column(bitwise_xor_4_2);
 
-    (trace.par_iter_mut(), lookup_data.par_iter_mut())
-        .into_par_iter()
-        .enumerate()
-        .for_each(|(row_index, (row, lookup_data))| {
+    (trace.par_iter_mut(), lookup_data.par_iter_mut()).into_par_iter().enumerate().for_each(
+        |(row_index, (row, lookup_data))| {
             let bitwise_xor_4_0 = bitwise_xor_4_0[row_index];
             let bitwise_xor_4_1 = bitwise_xor_4_1[row_index];
             let bitwise_xor_4_2 = bitwise_xor_4_2[row_index];
-            *lookup_data.verify_bitwise_xor_4_0 = [
-                relation_id,
-                bitwise_xor_4_0,
-                bitwise_xor_4_1,
-                bitwise_xor_4_2,
-            ];
+            *lookup_data.verify_bitwise_xor_4_0 =
+                [relation_id, bitwise_xor_4_0, bitwise_xor_4_1, bitwise_xor_4_2];
             let mult = &mults[0];
             let mult_at_row = *mult.get(row_index).unwrap_or(&PackedM31::zero());
             *row[0] = mult_at_row;
             *lookup_data.mults_0 = mult_at_row;
-        });
+        },
+    );
 
     (trace, lookup_data)
 }
@@ -135,10 +113,7 @@ impl InteractionClaimGenerator {
     pub fn write_interaction_trace(
         self,
         common_lookup_elements: &relations::CommonLookupElements,
-    ) -> (
-        Vec<CircleEvaluation<SimdBackend, M31, BitReversedOrder>>,
-        InteractionClaim,
-    ) {
+    ) -> (Vec<CircleEvaluation<SimdBackend, M31, BitReversedOrder>>, InteractionClaim) {
         let mut logup_gen = LogupTraceGenerator::new(LOG_SIZE);
 
         // Sum last logup term.

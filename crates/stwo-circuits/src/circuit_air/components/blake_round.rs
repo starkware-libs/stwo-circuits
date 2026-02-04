@@ -4,22 +4,10 @@ use crate::circuit_air::components::prelude::*;
 
 pub const N_TRACE_COLUMNS: usize = 148;
 pub const RELATION_USES_PER_ROW: [RelationUse; 4] = [
-    RelationUse {
-        relation_id: "BlakeG",
-        uses: 8,
-    },
-    RelationUse {
-        relation_id: "BlakeMessage",
-        uses: 16,
-    },
-    RelationUse {
-        relation_id: "BlakeRound",
-        uses: 1,
-    },
-    RelationUse {
-        relation_id: "BlakeRoundSigma",
-        uses: 1,
-    },
+    RelationUse { relation_id: "BlakeG", uses: 8 },
+    RelationUse { relation_id: "BlakeMessage", uses: 16 },
+    RelationUse { relation_id: "BlakeRound", uses: 1 },
+    RelationUse { relation_id: "BlakeRoundSigma", uses: 1 },
 ];
 
 pub struct Eval {

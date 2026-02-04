@@ -33,6 +33,7 @@ enum OpCode {
 fn vec_to_evaluation<B: Backend>(
     vec: Vec<usize>,
 ) -> CircleEvaluation<B, BaseField, BitReversedOrder> {
+    eprintln!("Inside vec_to_evaluation: {}", vec.len());
     let col = Col::<B, BaseField>::from_iter(vec.into_iter().map(BaseField::from));
     CircleEvaluation::new(CanonicCoset::new(col.len().ilog2()).circle_domain(), col)
 }
@@ -182,6 +183,7 @@ fn add_eq_to_preprocessed_trace(circuit: &Circuit, pp_trace: &mut PreProcessedTr
     pp_trace.columns.extend(eq_columns);
 }
 
+/// Currently fills 9 columns.
 fn fill_blake_columns(blake: &[Blake], columns: &mut [Vec<usize>; N_BLAKE_PP_COLUMNS]) {
     // IV should somehow be in state_address 0.
     let mut state_address = 0;
@@ -267,13 +269,16 @@ impl PreProcessedTrace {
 
         // Add Eq columns.
         add_eq_to_preprocessed_trace(circuit, &mut pp_trace);
-
+        eprintln!("After eq: {}", pp_trace.columns.len());
         // Add QM31 operations columns.
         let qm31_ops_trace_generator =
             add_qm31_ops_to_preprocessed_trace(circuit, multiplicities, &mut pp_trace);
+        eprintln!("After ops: {}", pp_trace.columns.len());
 
         // TODO(Gali): Add Blake columns.
         add_blake_to_preprocessed_trace(circuit, &mut pp_trace);
+        eprintln!("After blake: {}", pp_trace.columns.len());
+
         Self::add_non_circuit_preprocessed_columns(&mut pp_trace);
 
         (pp_trace, TraceGenerator { qm31_ops_trace_generator })
@@ -290,7 +295,7 @@ impl PreProcessedTrace {
 
         pp_trace.columns.extend(chain!(seq, bitwise_xor));
         println!(
-            "column log sizes: {:?}",
+            "Non-circuit column log sizes: {:?}",
             pp_trace.columns.iter().map(|c| c.len().ilog2()).collect::<Vec<_>>()
         );
         pp_trace.column_indices.extend([

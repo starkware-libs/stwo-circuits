@@ -7,34 +7,13 @@ use crate::circuit_air::components::subroutines::qm_31_into_u_32::Qm31IntoU32;
 
 pub const N_TRACE_COLUMNS: usize = 136;
 pub const RELATION_USES_PER_ROW: [RelationUse; 7] = [
-    RelationUse {
-        relation_id: "BlakeOutput",
-        uses: 1,
-    },
-    RelationUse {
-        relation_id: "BlakeRound",
-        uses: 1,
-    },
-    RelationUse {
-        relation_id: "Gate",
-        uses: 4,
-    },
-    RelationUse {
-        relation_id: "RangeCheck_15",
-        uses: 16,
-    },
-    RelationUse {
-        relation_id: "RangeCheck_16",
-        uses: 16,
-    },
-    RelationUse {
-        relation_id: "TripleXor32",
-        uses: 8,
-    },
-    RelationUse {
-        relation_id: "VerifyBitwiseXor_8",
-        uses: 4,
-    },
+    RelationUse { relation_id: "BlakeOutput", uses: 1 },
+    RelationUse { relation_id: "BlakeRound", uses: 1 },
+    RelationUse { relation_id: "Gate", uses: 4 },
+    RelationUse { relation_id: "RangeCheck_15", uses: 16 },
+    RelationUse { relation_id: "RangeCheck_16", uses: 16 },
+    RelationUse { relation_id: "TripleXor32", uses: 8 },
+    RelationUse { relation_id: "VerifyBitwiseXor_8", uses: 4 },
 ];
 
 pub struct Eval {
@@ -100,34 +79,23 @@ impl FrameworkEval for Eval {
         let M31_58983 = E::F::from(M31::from(58983));
         let M31_62322 = E::F::from(M31::from(62322));
         let M31_62778 = E::F::from(M31::from(62778));
-        let t0 = eval.get_preprocessed_column(PreProcessedColumnId {
-            id: "t0".to_owned(),
-        });
-        let t1 = eval.get_preprocessed_column(PreProcessedColumnId {
-            id: "t1".to_owned(),
-        });
-        let finalize_flag = eval.get_preprocessed_column(PreProcessedColumnId {
-            id: "finalize_flag".to_owned(),
-        });
+        let t0 = eval.get_preprocessed_column(PreProcessedColumnId { id: "t0".to_owned() });
+        let t1 = eval.get_preprocessed_column(PreProcessedColumnId { id: "t1".to_owned() });
+        let finalize_flag =
+            eval.get_preprocessed_column(PreProcessedColumnId { id: "finalize_flag".to_owned() });
         let seq = eval.get_preprocessed_column(Seq::new(self.log_size()).id());
-        let state_before_addr = eval.get_preprocessed_column(PreProcessedColumnId {
-            id: "state_before_addr".to_owned(),
-        });
-        let state_after_addr = eval.get_preprocessed_column(PreProcessedColumnId {
-            id: "state_after_addr".to_owned(),
-        });
-        let message0_addr = eval.get_preprocessed_column(PreProcessedColumnId {
-            id: "message0_addr".to_owned(),
-        });
-        let message1_addr = eval.get_preprocessed_column(PreProcessedColumnId {
-            id: "message1_addr".to_owned(),
-        });
-        let message2_addr = eval.get_preprocessed_column(PreProcessedColumnId {
-            id: "message2_addr".to_owned(),
-        });
-        let message3_addr = eval.get_preprocessed_column(PreProcessedColumnId {
-            id: "message3_addr".to_owned(),
-        });
+        let state_before_addr = eval
+            .get_preprocessed_column(PreProcessedColumnId { id: "state_before_addr".to_owned() });
+        let state_after_addr = eval
+            .get_preprocessed_column(PreProcessedColumnId { id: "state_after_addr".to_owned() });
+        let message0_addr =
+            eval.get_preprocessed_column(PreProcessedColumnId { id: "message0_addr".to_owned() });
+        let message1_addr =
+            eval.get_preprocessed_column(PreProcessedColumnId { id: "message1_addr".to_owned() });
+        let message2_addr =
+            eval.get_preprocessed_column(PreProcessedColumnId { id: "message2_addr".to_owned() });
+        let message3_addr =
+            eval.get_preprocessed_column(PreProcessedColumnId { id: "message3_addr".to_owned() });
         let input_state_before_limb0_limb_0_col0 = eval.next_trace_mask();
         let input_state_before_limb0_limb_1_col1 = eval.next_trace_mask();
         let input_state_before_limb1_limb_0_col2 = eval.next_trace_mask();
@@ -269,38 +237,58 @@ impl FrameworkEval for Eval {
 
         #[allow(clippy::unused_unit)]
         #[allow(unused_variables)]
-        let [create_blake_round_input_output_tmp_8e0ec_12_limb_0, create_blake_round_input_output_tmp_8e0ec_12_limb_1, create_blake_round_input_output_tmp_8e0ec_12_limb_2, create_blake_round_input_output_tmp_8e0ec_12_limb_3, create_blake_round_input_output_tmp_8e0ec_12_limb_4, create_blake_round_input_output_tmp_8e0ec_12_limb_5, create_blake_round_input_output_tmp_8e0ec_12_limb_6, create_blake_round_input_output_tmp_8e0ec_12_limb_7, create_blake_round_input_output_tmp_8e0ec_12_limb_8, create_blake_round_input_output_tmp_8e0ec_12_limb_9, create_blake_round_input_output_tmp_8e0ec_12_limb_10, create_blake_round_input_output_tmp_8e0ec_12_limb_11, create_blake_round_input_output_tmp_8e0ec_12_limb_12, create_blake_round_input_output_tmp_8e0ec_12_limb_13, create_blake_round_input_output_tmp_8e0ec_12_limb_14, create_blake_round_input_output_tmp_8e0ec_12_limb_15, create_blake_round_input_output_tmp_8e0ec_12_limb_24, create_blake_round_input_output_tmp_8e0ec_12_limb_25, create_blake_round_input_output_tmp_8e0ec_12_limb_28, create_blake_round_input_output_tmp_8e0ec_12_limb_29] =
-            CreateBlakeRoundInput::evaluate(
-                [
-                    input_state_before_limb0_limb_0_col0.clone(),
-                    input_state_before_limb0_limb_1_col1.clone(),
-                    input_state_before_limb1_limb_0_col2.clone(),
-                    input_state_before_limb1_limb_1_col3.clone(),
-                    input_state_before_limb2_limb_0_col4.clone(),
-                    input_state_before_limb2_limb_1_col5.clone(),
-                    input_state_before_limb3_limb_0_col6.clone(),
-                    input_state_before_limb3_limb_1_col7.clone(),
-                    input_state_before_limb4_limb_0_col8.clone(),
-                    input_state_before_limb4_limb_1_col9.clone(),
-                    input_state_before_limb5_limb_0_col10.clone(),
-                    input_state_before_limb5_limb_1_col11.clone(),
-                    input_state_before_limb6_limb_0_col12.clone(),
-                    input_state_before_limb6_limb_1_col13.clone(),
-                    input_state_before_limb7_limb_0_col14.clone(),
-                    input_state_before_limb7_limb_1_col15.clone(),
-                    finalize_flag.clone(),
-                ],
-                ms_8_bits_col48.clone(),
-                ms_8_bits_col49.clone(),
-                xor_col50.clone(),
-                xor_col51.clone(),
-                xor_col52.clone(),
-                xor_col53.clone(),
-                &self.common_lookup_elements,
-                t0.clone(),
-                t1.clone(),
-                &mut eval,
-            );
+        let [
+            create_blake_round_input_output_tmp_8e0ec_12_limb_0,
+            create_blake_round_input_output_tmp_8e0ec_12_limb_1,
+            create_blake_round_input_output_tmp_8e0ec_12_limb_2,
+            create_blake_round_input_output_tmp_8e0ec_12_limb_3,
+            create_blake_round_input_output_tmp_8e0ec_12_limb_4,
+            create_blake_round_input_output_tmp_8e0ec_12_limb_5,
+            create_blake_round_input_output_tmp_8e0ec_12_limb_6,
+            create_blake_round_input_output_tmp_8e0ec_12_limb_7,
+            create_blake_round_input_output_tmp_8e0ec_12_limb_8,
+            create_blake_round_input_output_tmp_8e0ec_12_limb_9,
+            create_blake_round_input_output_tmp_8e0ec_12_limb_10,
+            create_blake_round_input_output_tmp_8e0ec_12_limb_11,
+            create_blake_round_input_output_tmp_8e0ec_12_limb_12,
+            create_blake_round_input_output_tmp_8e0ec_12_limb_13,
+            create_blake_round_input_output_tmp_8e0ec_12_limb_14,
+            create_blake_round_input_output_tmp_8e0ec_12_limb_15,
+            create_blake_round_input_output_tmp_8e0ec_12_limb_24,
+            create_blake_round_input_output_tmp_8e0ec_12_limb_25,
+            create_blake_round_input_output_tmp_8e0ec_12_limb_28,
+            create_blake_round_input_output_tmp_8e0ec_12_limb_29,
+        ] = CreateBlakeRoundInput::evaluate(
+            [
+                input_state_before_limb0_limb_0_col0.clone(),
+                input_state_before_limb0_limb_1_col1.clone(),
+                input_state_before_limb1_limb_0_col2.clone(),
+                input_state_before_limb1_limb_1_col3.clone(),
+                input_state_before_limb2_limb_0_col4.clone(),
+                input_state_before_limb2_limb_1_col5.clone(),
+                input_state_before_limb3_limb_0_col6.clone(),
+                input_state_before_limb3_limb_1_col7.clone(),
+                input_state_before_limb4_limb_0_col8.clone(),
+                input_state_before_limb4_limb_1_col9.clone(),
+                input_state_before_limb5_limb_0_col10.clone(),
+                input_state_before_limb5_limb_1_col11.clone(),
+                input_state_before_limb6_limb_0_col12.clone(),
+                input_state_before_limb6_limb_1_col13.clone(),
+                input_state_before_limb7_limb_0_col14.clone(),
+                input_state_before_limb7_limb_1_col15.clone(),
+                finalize_flag.clone(),
+            ],
+            ms_8_bits_col48.clone(),
+            ms_8_bits_col49.clone(),
+            xor_col50.clone(),
+            xor_col51.clone(),
+            xor_col52.clone(),
+            xor_col53.clone(),
+            &self.common_lookup_elements,
+            t0.clone(),
+            t1.clone(),
+            &mut eval,
+        );
         Qm31IntoU32::evaluate(
             [
                 input_message_limb0_col32.clone(),

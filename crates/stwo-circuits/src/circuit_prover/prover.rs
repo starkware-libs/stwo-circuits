@@ -41,8 +41,8 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     finalize_context(context);
     let pcs_config = PcsConfig::default();
     // Blake gate preprocessed trace.
-    // After creating this preprocessed trace and the next one, we need to sort the columns by size and then commit to them. 
-    // Generate preprocessed trace.
+    // After creating this preprocessed trace and the next one, we need to sort the columns by size
+    // and then commit to them. Generate preprocessed trace.
     let (preprocessed_trace, trace_generator) =
         PreProcessedTrace::generate_preprocessed_trace(&context.circuit);
 
@@ -64,7 +64,6 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
         .circle_domain()
         .half_coset,
     );
-
     // Setup protocol.
     let channel = &mut Blake2sM31Channel::default();
     let mut commitment_scheme =
@@ -75,6 +74,7 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     tree_builder.extend_evals(preprocessed_trace.get_trace::<SimdBackend>());
     tree_builder.commit(channel);
 
+    eprintln!("Here");
     // Base trace.
     let mut tree_builder = commitment_scheme.tree_builder();
     let preprocessed_trace_arc = Arc::new(preprocessed_trace);

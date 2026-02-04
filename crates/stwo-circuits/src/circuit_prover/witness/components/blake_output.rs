@@ -17,10 +17,7 @@ impl ClaimGenerator {
         packed_inputs: Vec<PackedInputType>,
         preprocessed_trace: Arc<PreProcessedTrace>,
     ) -> Self {
-        Self {
-            packed_inputs,
-            preprocessed_trace,
-        }
+        Self { packed_inputs, preprocessed_trace }
     }
 
     pub fn write_trace(
@@ -31,19 +28,11 @@ impl ClaimGenerator {
         let n_rows = n_vec_rows * N_LANES;
         let packed_size = n_vec_rows.next_power_of_two();
         let log_size = packed_size.ilog2() + LOG_N_LANES;
-        self.packed_inputs
-            .resize(packed_size, *self.packed_inputs.first().unwrap());
+        self.packed_inputs.resize(packed_size, *self.packed_inputs.first().unwrap());
 
         let (trace, lookup_data) = write_trace_simd(self.packed_inputs, &self.preprocessed_trace);
 
-        (
-            trace,
-            Claim { log_size },
-            InteractionClaimGenerator {
-                log_size,
-                lookup_data,
-            },
-        )
+        (trace, Claim { log_size }, InteractionClaimGenerator { log_size, lookup_data })
     }
 }
 
@@ -67,27 +56,18 @@ fn write_trace_simd(
     let M31_1061955672 = PackedM31::broadcast(M31::from(1061955672));
     let M31_378353459 = PackedM31::broadcast(M31::from(378353459));
     let M31_65536 = PackedM31::broadcast(M31::from(65536));
-    let final_state_addr = preprocessed_trace.get_packed_column(&PreProcessedColumnId {
-        id: "final_state_addr".to_owned(),
-    });
-    let blake_output0_addr = preprocessed_trace.get_packed_column(&PreProcessedColumnId {
-        id: "blake_output0_addr".to_owned(),
-    });
-    let blake_output1_addr = preprocessed_trace.get_packed_column(&PreProcessedColumnId {
-        id: "blake_output1_addr".to_owned(),
-    });
-    let mults0 = preprocessed_trace.get_packed_column(&PreProcessedColumnId {
-        id: "blake_output0_mults".to_owned(),
-    });
-    let mults1 = preprocessed_trace.get_packed_column(&PreProcessedColumnId {
-        id: "blake_output1_mults".to_owned(),
-    });
+    let final_state_addr = preprocessed_trace
+        .get_packed_column(&PreProcessedColumnId { id: "final_state_addr".to_owned() });
+    let blake_output0_addr = preprocessed_trace
+        .get_packed_column(&PreProcessedColumnId { id: "blake_output0_addr".to_owned() });
+    let blake_output1_addr = preprocessed_trace
+        .get_packed_column(&PreProcessedColumnId { id: "blake_output1_addr".to_owned() });
+    let mults0 = preprocessed_trace
+        .get_packed_column(&PreProcessedColumnId { id: "blake_output0_mults".to_owned() });
+    let mults1 = preprocessed_trace
+        .get_packed_column(&PreProcessedColumnId { id: "blake_output1_mults".to_owned() });
 
-    (
-        trace.par_iter_mut(),
-        lookup_data.par_iter_mut(),
-        packed_inputs.into_par_iter(),
-    )
+    (trace.par_iter_mut(), lookup_data.par_iter_mut(), packed_inputs.into_par_iter())
         .into_par_iter()
         .enumerate()
         .for_each(|(row_index, (row, lookup_data, blake_output_input))| {
@@ -215,11 +195,7 @@ impl InteractionClaimGenerator {
 
         // Sum logup terms in pairs.
         let mut col_gen = logup_gen.new_col();
-        (
-            col_gen.par_iter_mut(),
-            &self.lookup_data.blake_output_0,
-            &self.lookup_data.gate_0,
-        )
+        (col_gen.par_iter_mut(), &self.lookup_data.blake_output_0, &self.lookup_data.gate_0)
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
@@ -230,12 +206,12 @@ impl InteractionClaimGenerator {
 
         // Sum last logup term.
         let mut col_gen = logup_gen.new_col();
-        (col_gen.par_iter_mut(), &self.lookup_data.gate_1)
-            .into_par_iter()
-            .for_each(|(writer, values)| {
+        (col_gen.par_iter_mut(), &self.lookup_data.gate_1).into_par_iter().for_each(
+            |(writer, values)| {
                 let denom = common_lookup_elements.combine(values);
                 writer.write_frac(-PackedQM31::one(), denom);
-            });
+            },
+        );
         col_gen.finalize_col();
 
         let (trace, claimed_sum) = logup_gen.finalize_last();

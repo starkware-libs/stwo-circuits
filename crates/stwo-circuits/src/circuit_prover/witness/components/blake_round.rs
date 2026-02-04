@@ -3,8 +3,8 @@
 #![allow(unused_parens)]
 use cairo_air::components::blake_round::{Claim, InteractionClaim, N_TRACE_COLUMNS};
 
-use crate::circuit_prover::witness::components::{blake_g, blake_message, blake_round_sigma};
 use crate::circuit_prover::witness::components::prelude::*;
+use crate::circuit_prover::witness::components::{blake_g, blake_message, blake_round_sigma};
 
 pub type PackedInputType = (PackedM31, PackedM31, ([PackedUInt32; 16], PackedM31));
 use blake_message::ClaimGenerator as BlakeMessage;
@@ -12,15 +12,11 @@ use blake_message::ClaimGenerator as BlakeMessage;
 #[derive(Default)]
 pub struct ClaimGenerator {
     pub packed_inputs: Vec<PackedInputType>,
-    blake_message: BlakeMessage,
-     
+    pub blake_message: BlakeMessage,
 }
 impl ClaimGenerator {
     pub fn new(blake_message: BlakeMessage) -> Self {
-        Self {
-            packed_inputs: Vec::new(),
-            blake_message,
-        }
+        Self { packed_inputs: Vec::new(), blake_message }
     }
 
     pub fn is_empty(&self) -> bool {
@@ -38,8 +34,7 @@ impl ClaimGenerator {
         let n_rows = n_vec_rows * N_LANES;
         let packed_size = n_vec_rows.next_power_of_two();
         let log_size = packed_size.ilog2() + LOG_N_LANES;
-        self.packed_inputs
-            .resize(packed_size, *self.packed_inputs.first().unwrap());
+        self.packed_inputs.resize(packed_size, *self.packed_inputs.first().unwrap());
 
         let (trace, lookup_data, sub_component_inputs) = write_trace_simd(
             self.packed_inputs,
@@ -55,15 +50,7 @@ impl ClaimGenerator {
             blake_g_state.add_packed_inputs(&inputs, 0);
         }
 
-        (
-            trace,
-            Claim { log_size },
-            InteractionClaimGenerator {
-                n_rows,
-                log_size,
-                lookup_data,
-            },
-        )
+        (trace, Claim { log_size }, InteractionClaimGenerator { n_rows, log_size, lookup_data })
     }
 
     pub fn add_packed_inputs(&mut self, inputs: &[PackedInputType], _relation_index: usize) {
@@ -72,7 +59,11 @@ impl ClaimGenerator {
 
     pub fn deduce_output(
         &self,
-        (chain, round, (state, message_id)): (PackedM31, PackedM31, ([PackedUInt32; 16], PackedM31)),
+        (chain, round, (state, message_id)): (
+            PackedM31,
+            PackedM31,
+            ([PackedUInt32; 16], PackedM31),
+        ),
     ) -> (PackedM31, PackedM31, ([PackedUInt32; 16], PackedM31)) {
         let (chain, round, (state, message_id)) = self.blake_round(
             chain.into_simd(),
@@ -138,11 +129,7 @@ fn write_trace_simd(
     blake_round_sigma_state: &blake_round_sigma::ClaimGenerator,
     blake_message_state: &blake_message::ClaimGenerator,
     blake_g_state: &mut blake_g::ClaimGenerator,
-) -> (
-    ComponentTrace<N_TRACE_COLUMNS>,
-    LookupData,
-    SubComponentInputs,
-) {
+) -> (ComponentTrace<N_TRACE_COLUMNS>, LookupData, SubComponentInputs) {
     let log_n_packed_rows = inputs.len().ilog2();
     let log_size = log_n_packed_rows + LOG_N_LANES;
     let (mut trace, mut lookup_data, mut sub_component_inputs) = unsafe {
@@ -176,71 +163,71 @@ fn write_trace_simd(
                 *row[0] = input_limb_0_col0;
                 let input_limb_1_col1 = blake_round_input.1;
                 *row[1] = input_limb_1_col1;
-                let input_limb_2_col2 = blake_round_input.2 .0[0].low().as_m31();
+                let input_limb_2_col2 = blake_round_input.2.0[0].low().as_m31();
                 *row[2] = input_limb_2_col2;
-                let input_limb_3_col3 = blake_round_input.2 .0[0].high().as_m31();
+                let input_limb_3_col3 = blake_round_input.2.0[0].high().as_m31();
                 *row[3] = input_limb_3_col3;
-                let input_limb_4_col4 = blake_round_input.2 .0[1].low().as_m31();
+                let input_limb_4_col4 = blake_round_input.2.0[1].low().as_m31();
                 *row[4] = input_limb_4_col4;
-                let input_limb_5_col5 = blake_round_input.2 .0[1].high().as_m31();
+                let input_limb_5_col5 = blake_round_input.2.0[1].high().as_m31();
                 *row[5] = input_limb_5_col5;
-                let input_limb_6_col6 = blake_round_input.2 .0[2].low().as_m31();
+                let input_limb_6_col6 = blake_round_input.2.0[2].low().as_m31();
                 *row[6] = input_limb_6_col6;
-                let input_limb_7_col7 = blake_round_input.2 .0[2].high().as_m31();
+                let input_limb_7_col7 = blake_round_input.2.0[2].high().as_m31();
                 *row[7] = input_limb_7_col7;
-                let input_limb_8_col8 = blake_round_input.2 .0[3].low().as_m31();
+                let input_limb_8_col8 = blake_round_input.2.0[3].low().as_m31();
                 *row[8] = input_limb_8_col8;
-                let input_limb_9_col9 = blake_round_input.2 .0[3].high().as_m31();
+                let input_limb_9_col9 = blake_round_input.2.0[3].high().as_m31();
                 *row[9] = input_limb_9_col9;
-                let input_limb_10_col10 = blake_round_input.2 .0[4].low().as_m31();
+                let input_limb_10_col10 = blake_round_input.2.0[4].low().as_m31();
                 *row[10] = input_limb_10_col10;
-                let input_limb_11_col11 = blake_round_input.2 .0[4].high().as_m31();
+                let input_limb_11_col11 = blake_round_input.2.0[4].high().as_m31();
                 *row[11] = input_limb_11_col11;
-                let input_limb_12_col12 = blake_round_input.2 .0[5].low().as_m31();
+                let input_limb_12_col12 = blake_round_input.2.0[5].low().as_m31();
                 *row[12] = input_limb_12_col12;
-                let input_limb_13_col13 = blake_round_input.2 .0[5].high().as_m31();
+                let input_limb_13_col13 = blake_round_input.2.0[5].high().as_m31();
                 *row[13] = input_limb_13_col13;
-                let input_limb_14_col14 = blake_round_input.2 .0[6].low().as_m31();
+                let input_limb_14_col14 = blake_round_input.2.0[6].low().as_m31();
                 *row[14] = input_limb_14_col14;
-                let input_limb_15_col15 = blake_round_input.2 .0[6].high().as_m31();
+                let input_limb_15_col15 = blake_round_input.2.0[6].high().as_m31();
                 *row[15] = input_limb_15_col15;
-                let input_limb_16_col16 = blake_round_input.2 .0[7].low().as_m31();
+                let input_limb_16_col16 = blake_round_input.2.0[7].low().as_m31();
                 *row[16] = input_limb_16_col16;
-                let input_limb_17_col17 = blake_round_input.2 .0[7].high().as_m31();
+                let input_limb_17_col17 = blake_round_input.2.0[7].high().as_m31();
                 *row[17] = input_limb_17_col17;
-                let input_limb_18_col18 = blake_round_input.2 .0[8].low().as_m31();
+                let input_limb_18_col18 = blake_round_input.2.0[8].low().as_m31();
                 *row[18] = input_limb_18_col18;
-                let input_limb_19_col19 = blake_round_input.2 .0[8].high().as_m31();
+                let input_limb_19_col19 = blake_round_input.2.0[8].high().as_m31();
                 *row[19] = input_limb_19_col19;
-                let input_limb_20_col20 = blake_round_input.2 .0[9].low().as_m31();
+                let input_limb_20_col20 = blake_round_input.2.0[9].low().as_m31();
                 *row[20] = input_limb_20_col20;
-                let input_limb_21_col21 = blake_round_input.2 .0[9].high().as_m31();
+                let input_limb_21_col21 = blake_round_input.2.0[9].high().as_m31();
                 *row[21] = input_limb_21_col21;
-                let input_limb_22_col22 = blake_round_input.2 .0[10].low().as_m31();
+                let input_limb_22_col22 = blake_round_input.2.0[10].low().as_m31();
                 *row[22] = input_limb_22_col22;
-                let input_limb_23_col23 = blake_round_input.2 .0[10].high().as_m31();
+                let input_limb_23_col23 = blake_round_input.2.0[10].high().as_m31();
                 *row[23] = input_limb_23_col23;
-                let input_limb_24_col24 = blake_round_input.2 .0[11].low().as_m31();
+                let input_limb_24_col24 = blake_round_input.2.0[11].low().as_m31();
                 *row[24] = input_limb_24_col24;
-                let input_limb_25_col25 = blake_round_input.2 .0[11].high().as_m31();
+                let input_limb_25_col25 = blake_round_input.2.0[11].high().as_m31();
                 *row[25] = input_limb_25_col25;
-                let input_limb_26_col26 = blake_round_input.2 .0[12].low().as_m31();
+                let input_limb_26_col26 = blake_round_input.2.0[12].low().as_m31();
                 *row[26] = input_limb_26_col26;
-                let input_limb_27_col27 = blake_round_input.2 .0[12].high().as_m31();
+                let input_limb_27_col27 = blake_round_input.2.0[12].high().as_m31();
                 *row[27] = input_limb_27_col27;
-                let input_limb_28_col28 = blake_round_input.2 .0[13].low().as_m31();
+                let input_limb_28_col28 = blake_round_input.2.0[13].low().as_m31();
                 *row[28] = input_limb_28_col28;
-                let input_limb_29_col29 = blake_round_input.2 .0[13].high().as_m31();
+                let input_limb_29_col29 = blake_round_input.2.0[13].high().as_m31();
                 *row[29] = input_limb_29_col29;
-                let input_limb_30_col30 = blake_round_input.2 .0[14].low().as_m31();
+                let input_limb_30_col30 = blake_round_input.2.0[14].low().as_m31();
                 *row[30] = input_limb_30_col30;
-                let input_limb_31_col31 = blake_round_input.2 .0[14].high().as_m31();
+                let input_limb_31_col31 = blake_round_input.2.0[14].high().as_m31();
                 *row[31] = input_limb_31_col31;
-                let input_limb_32_col32 = blake_round_input.2 .0[15].low().as_m31();
+                let input_limb_32_col32 = blake_round_input.2.0[15].low().as_m31();
                 *row[32] = input_limb_32_col32;
-                let input_limb_33_col33 = blake_round_input.2 .0[15].high().as_m31();
+                let input_limb_33_col33 = blake_round_input.2.0[15].high().as_m31();
                 *row[33] = input_limb_33_col33;
-                let input_limb_34_col34 = blake_round_input.2 .1;
+                let input_limb_34_col34 = blake_round_input.2.1;
                 *row[34] = input_limb_34_col34;
                 *sub_component_inputs.blake_round_sigma[0] = [input_limb_1_col1];
                 let blake_round_sigma_output_tmp_39a7a_0 =
@@ -303,10 +290,8 @@ fn write_trace_simd(
                     blake_round_sigma_output_limb_14_col49,
                     blake_round_sigma_output_limb_15_col50,
                 ];
-                let blake_message_output_tmp_39a7a_1 = blake_message_state.deduce_output([
-                    input_limb_34_col34,
-                    blake_round_sigma_output_limb_0_col35,
-                ]);
+                let blake_message_output_tmp_39a7a_1 = blake_message_state
+                    .deduce_output([input_limb_34_col34, blake_round_sigma_output_limb_0_col35]);
                 let blake_message_output_message_limb_limb_0_col51 =
                     blake_message_output_tmp_39a7a_1.low().as_m31();
                 *row[51] = blake_message_output_message_limb_limb_0_col51;
@@ -320,10 +305,8 @@ fn write_trace_simd(
                     blake_message_output_message_limb_limb_0_col51,
                     blake_message_output_message_limb_limb_1_col52,
                 ];
-                let blake_message_output_tmp_39a7a_2 = blake_message_state.deduce_output([
-                    input_limb_34_col34,
-                    blake_round_sigma_output_limb_1_col36,
-                ]);
+                let blake_message_output_tmp_39a7a_2 = blake_message_state
+                    .deduce_output([input_limb_34_col34, blake_round_sigma_output_limb_1_col36]);
                 let blake_message_output_message_limb_limb_0_col53 =
                     blake_message_output_tmp_39a7a_2.low().as_m31();
                 *row[53] = blake_message_output_message_limb_limb_0_col53;
@@ -337,10 +320,8 @@ fn write_trace_simd(
                     blake_message_output_message_limb_limb_0_col53,
                     blake_message_output_message_limb_limb_1_col54,
                 ];
-                let blake_message_output_tmp_39a7a_3 = blake_message_state.deduce_output([
-                    input_limb_34_col34,
-                    blake_round_sigma_output_limb_2_col37,
-                ]);
+                let blake_message_output_tmp_39a7a_3 = blake_message_state
+                    .deduce_output([input_limb_34_col34, blake_round_sigma_output_limb_2_col37]);
                 let blake_message_output_message_limb_limb_0_col55 =
                     blake_message_output_tmp_39a7a_3.low().as_m31();
                 *row[55] = blake_message_output_message_limb_limb_0_col55;
@@ -354,10 +335,8 @@ fn write_trace_simd(
                     blake_message_output_message_limb_limb_0_col55,
                     blake_message_output_message_limb_limb_1_col56,
                 ];
-                let blake_message_output_tmp_39a7a_4 = blake_message_state.deduce_output([
-                    input_limb_34_col34,
-                    blake_round_sigma_output_limb_3_col38,
-                ]);
+                let blake_message_output_tmp_39a7a_4 = blake_message_state
+                    .deduce_output([input_limb_34_col34, blake_round_sigma_output_limb_3_col38]);
                 let blake_message_output_message_limb_limb_0_col57 =
                     blake_message_output_tmp_39a7a_4.low().as_m31();
                 *row[57] = blake_message_output_message_limb_limb_0_col57;
@@ -371,10 +350,8 @@ fn write_trace_simd(
                     blake_message_output_message_limb_limb_0_col57,
                     blake_message_output_message_limb_limb_1_col58,
                 ];
-                let blake_message_output_tmp_39a7a_5 = blake_message_state.deduce_output([
-                    input_limb_34_col34,
-                    blake_round_sigma_output_limb_4_col39,
-                ]);
+                let blake_message_output_tmp_39a7a_5 = blake_message_state
+                    .deduce_output([input_limb_34_col34, blake_round_sigma_output_limb_4_col39]);
                 let blake_message_output_message_limb_limb_0_col59 =
                     blake_message_output_tmp_39a7a_5.low().as_m31();
                 *row[59] = blake_message_output_message_limb_limb_0_col59;
@@ -388,10 +365,8 @@ fn write_trace_simd(
                     blake_message_output_message_limb_limb_0_col59,
                     blake_message_output_message_limb_limb_1_col60,
                 ];
-                let blake_message_output_tmp_39a7a_6 = blake_message_state.deduce_output([
-                    input_limb_34_col34,
-                    blake_round_sigma_output_limb_5_col40,
-                ]);
+                let blake_message_output_tmp_39a7a_6 = blake_message_state
+                    .deduce_output([input_limb_34_col34, blake_round_sigma_output_limb_5_col40]);
                 let blake_message_output_message_limb_limb_0_col61 =
                     blake_message_output_tmp_39a7a_6.low().as_m31();
                 *row[61] = blake_message_output_message_limb_limb_0_col61;
@@ -405,10 +380,8 @@ fn write_trace_simd(
                     blake_message_output_message_limb_limb_0_col61,
                     blake_message_output_message_limb_limb_1_col62,
                 ];
-                let blake_message_output_tmp_39a7a_7 = blake_message_state.deduce_output([
-                    input_limb_34_col34,
-                    blake_round_sigma_output_limb_6_col41,
-                ]);
+                let blake_message_output_tmp_39a7a_7 = blake_message_state
+                    .deduce_output([input_limb_34_col34, blake_round_sigma_output_limb_6_col41]);
                 let blake_message_output_message_limb_limb_0_col63 =
                     blake_message_output_tmp_39a7a_7.low().as_m31();
                 *row[63] = blake_message_output_message_limb_limb_0_col63;
@@ -422,10 +395,8 @@ fn write_trace_simd(
                     blake_message_output_message_limb_limb_0_col63,
                     blake_message_output_message_limb_limb_1_col64,
                 ];
-                let blake_message_output_tmp_39a7a_8 = blake_message_state.deduce_output([
-                    input_limb_34_col34,
-                    blake_round_sigma_output_limb_7_col42,
-                ]);
+                let blake_message_output_tmp_39a7a_8 = blake_message_state
+                    .deduce_output([input_limb_34_col34, blake_round_sigma_output_limb_7_col42]);
                 let blake_message_output_message_limb_limb_0_col65 =
                     blake_message_output_tmp_39a7a_8.low().as_m31();
                 *row[65] = blake_message_output_message_limb_limb_0_col65;
@@ -439,10 +410,8 @@ fn write_trace_simd(
                     blake_message_output_message_limb_limb_0_col65,
                     blake_message_output_message_limb_limb_1_col66,
                 ];
-                let blake_message_output_tmp_39a7a_9 = blake_message_state.deduce_output([
-                    input_limb_34_col34,
-                    blake_round_sigma_output_limb_8_col43,
-                ]);
+                let blake_message_output_tmp_39a7a_9 = blake_message_state
+                    .deduce_output([input_limb_34_col34, blake_round_sigma_output_limb_8_col43]);
                 let blake_message_output_message_limb_limb_0_col67 =
                     blake_message_output_tmp_39a7a_9.low().as_m31();
                 *row[67] = blake_message_output_message_limb_limb_0_col67;
@@ -456,10 +425,8 @@ fn write_trace_simd(
                     blake_message_output_message_limb_limb_0_col67,
                     blake_message_output_message_limb_limb_1_col68,
                 ];
-                let blake_message_output_tmp_39a7a_10 = blake_message_state.deduce_output([
-                    input_limb_34_col34,
-                    blake_round_sigma_output_limb_9_col44,
-                ]);
+                let blake_message_output_tmp_39a7a_10 = blake_message_state
+                    .deduce_output([input_limb_34_col34, blake_round_sigma_output_limb_9_col44]);
                 let blake_message_output_message_limb_limb_0_col69 =
                     blake_message_output_tmp_39a7a_10.low().as_m31();
                 *row[69] = blake_message_output_message_limb_limb_0_col69;
@@ -473,10 +440,8 @@ fn write_trace_simd(
                     blake_message_output_message_limb_limb_0_col69,
                     blake_message_output_message_limb_limb_1_col70,
                 ];
-                let blake_message_output_tmp_39a7a_11 = blake_message_state.deduce_output([
-                    input_limb_34_col34,
-                    blake_round_sigma_output_limb_10_col45,
-                ]);
+                let blake_message_output_tmp_39a7a_11 = blake_message_state
+                    .deduce_output([input_limb_34_col34, blake_round_sigma_output_limb_10_col45]);
                 let blake_message_output_message_limb_limb_0_col71 =
                     blake_message_output_tmp_39a7a_11.low().as_m31();
                 *row[71] = blake_message_output_message_limb_limb_0_col71;
@@ -490,10 +455,8 @@ fn write_trace_simd(
                     blake_message_output_message_limb_limb_0_col71,
                     blake_message_output_message_limb_limb_1_col72,
                 ];
-                let blake_message_output_tmp_39a7a_12 = blake_message_state.deduce_output([
-                    input_limb_34_col34,
-                    blake_round_sigma_output_limb_11_col46,
-                ]);
+                let blake_message_output_tmp_39a7a_12 = blake_message_state
+                    .deduce_output([input_limb_34_col34, blake_round_sigma_output_limb_11_col46]);
                 let blake_message_output_message_limb_limb_0_col73 =
                     blake_message_output_tmp_39a7a_12.low().as_m31();
                 *row[73] = blake_message_output_message_limb_limb_0_col73;
@@ -507,10 +470,8 @@ fn write_trace_simd(
                     blake_message_output_message_limb_limb_0_col73,
                     blake_message_output_message_limb_limb_1_col74,
                 ];
-                let blake_message_output_tmp_39a7a_13 = blake_message_state.deduce_output([
-                    input_limb_34_col34,
-                    blake_round_sigma_output_limb_12_col47,
-                ]);
+                let blake_message_output_tmp_39a7a_13 = blake_message_state
+                    .deduce_output([input_limb_34_col34, blake_round_sigma_output_limb_12_col47]);
                 let blake_message_output_message_limb_limb_0_col75 =
                     blake_message_output_tmp_39a7a_13.low().as_m31();
                 *row[75] = blake_message_output_message_limb_limb_0_col75;
@@ -524,10 +485,8 @@ fn write_trace_simd(
                     blake_message_output_message_limb_limb_0_col75,
                     blake_message_output_message_limb_limb_1_col76,
                 ];
-                let blake_message_output_tmp_39a7a_14 = blake_message_state.deduce_output([
-                    input_limb_34_col34,
-                    blake_round_sigma_output_limb_13_col48,
-                ]);
+                let blake_message_output_tmp_39a7a_14 = blake_message_state
+                    .deduce_output([input_limb_34_col34, blake_round_sigma_output_limb_13_col48]);
                 let blake_message_output_message_limb_limb_0_col77 =
                     blake_message_output_tmp_39a7a_14.low().as_m31();
                 *row[77] = blake_message_output_message_limb_limb_0_col77;
@@ -541,10 +500,8 @@ fn write_trace_simd(
                     blake_message_output_message_limb_limb_0_col77,
                     blake_message_output_message_limb_limb_1_col78,
                 ];
-                let blake_message_output_tmp_39a7a_15 = blake_message_state.deduce_output([
-                    input_limb_34_col34,
-                    blake_round_sigma_output_limb_14_col49,
-                ]);
+                let blake_message_output_tmp_39a7a_15 = blake_message_state
+                    .deduce_output([input_limb_34_col34, blake_round_sigma_output_limb_14_col49]);
                 let blake_message_output_message_limb_limb_0_col79 =
                     blake_message_output_tmp_39a7a_15.low().as_m31();
                 *row[79] = blake_message_output_message_limb_limb_0_col79;
@@ -558,10 +515,8 @@ fn write_trace_simd(
                     blake_message_output_message_limb_limb_0_col79,
                     blake_message_output_message_limb_limb_1_col80,
                 ];
-                let blake_message_output_tmp_39a7a_16 = blake_message_state.deduce_output([
-                    input_limb_34_col34,
-                    blake_round_sigma_output_limb_15_col50,
-                ]);
+                let blake_message_output_tmp_39a7a_16 = blake_message_state
+                    .deduce_output([input_limb_34_col34, blake_round_sigma_output_limb_15_col50]);
                 let blake_message_output_message_limb_limb_0_col81 =
                     blake_message_output_tmp_39a7a_16.low().as_m31();
                 *row[81] = blake_message_output_message_limb_limb_0_col81;
@@ -576,18 +531,18 @@ fn write_trace_simd(
                     blake_message_output_message_limb_limb_1_col82,
                 ];
                 *sub_component_inputs.blake_g[0] = [
-                    blake_round_input.2 .0[0],
-                    blake_round_input.2 .0[4],
-                    blake_round_input.2 .0[8],
-                    blake_round_input.2 .0[12],
+                    blake_round_input.2.0[0],
+                    blake_round_input.2.0[4],
+                    blake_round_input.2.0[8],
+                    blake_round_input.2.0[12],
                     blake_message_output_tmp_39a7a_1,
                     blake_message_output_tmp_39a7a_2,
                 ];
                 let blake_g_output_tmp_39a7a_17 = PackedBlakeG::deduce_output([
-                    blake_round_input.2 .0[0],
-                    blake_round_input.2 .0[4],
-                    blake_round_input.2 .0[8],
-                    blake_round_input.2 .0[12],
+                    blake_round_input.2.0[0],
+                    blake_round_input.2.0[4],
+                    blake_round_input.2.0[8],
+                    blake_round_input.2.0[12],
                     blake_message_output_tmp_39a7a_1,
                     blake_message_output_tmp_39a7a_2,
                 ]);
@@ -631,18 +586,18 @@ fn write_trace_simd(
                     blake_g_output_limb_7_col90,
                 ];
                 *sub_component_inputs.blake_g[1] = [
-                    blake_round_input.2 .0[1],
-                    blake_round_input.2 .0[5],
-                    blake_round_input.2 .0[9],
-                    blake_round_input.2 .0[13],
+                    blake_round_input.2.0[1],
+                    blake_round_input.2.0[5],
+                    blake_round_input.2.0[9],
+                    blake_round_input.2.0[13],
                     blake_message_output_tmp_39a7a_3,
                     blake_message_output_tmp_39a7a_4,
                 ];
                 let blake_g_output_tmp_39a7a_18 = PackedBlakeG::deduce_output([
-                    blake_round_input.2 .0[1],
-                    blake_round_input.2 .0[5],
-                    blake_round_input.2 .0[9],
-                    blake_round_input.2 .0[13],
+                    blake_round_input.2.0[1],
+                    blake_round_input.2.0[5],
+                    blake_round_input.2.0[9],
+                    blake_round_input.2.0[13],
                     blake_message_output_tmp_39a7a_3,
                     blake_message_output_tmp_39a7a_4,
                 ]);
@@ -686,18 +641,18 @@ fn write_trace_simd(
                     blake_g_output_limb_7_col98,
                 ];
                 *sub_component_inputs.blake_g[2] = [
-                    blake_round_input.2 .0[2],
-                    blake_round_input.2 .0[6],
-                    blake_round_input.2 .0[10],
-                    blake_round_input.2 .0[14],
+                    blake_round_input.2.0[2],
+                    blake_round_input.2.0[6],
+                    blake_round_input.2.0[10],
+                    blake_round_input.2.0[14],
                     blake_message_output_tmp_39a7a_5,
                     blake_message_output_tmp_39a7a_6,
                 ];
                 let blake_g_output_tmp_39a7a_19 = PackedBlakeG::deduce_output([
-                    blake_round_input.2 .0[2],
-                    blake_round_input.2 .0[6],
-                    blake_round_input.2 .0[10],
-                    blake_round_input.2 .0[14],
+                    blake_round_input.2.0[2],
+                    blake_round_input.2.0[6],
+                    blake_round_input.2.0[10],
+                    blake_round_input.2.0[14],
                     blake_message_output_tmp_39a7a_5,
                     blake_message_output_tmp_39a7a_6,
                 ]);
@@ -741,18 +696,18 @@ fn write_trace_simd(
                     blake_g_output_limb_7_col106,
                 ];
                 *sub_component_inputs.blake_g[3] = [
-                    blake_round_input.2 .0[3],
-                    blake_round_input.2 .0[7],
-                    blake_round_input.2 .0[11],
-                    blake_round_input.2 .0[15],
+                    blake_round_input.2.0[3],
+                    blake_round_input.2.0[7],
+                    blake_round_input.2.0[11],
+                    blake_round_input.2.0[15],
                     blake_message_output_tmp_39a7a_7,
                     blake_message_output_tmp_39a7a_8,
                 ];
                 let blake_g_output_tmp_39a7a_20 = PackedBlakeG::deduce_output([
-                    blake_round_input.2 .0[3],
-                    blake_round_input.2 .0[7],
-                    blake_round_input.2 .0[11],
-                    blake_round_input.2 .0[15],
+                    blake_round_input.2.0[3],
+                    blake_round_input.2.0[7],
+                    blake_round_input.2.0[11],
+                    blake_round_input.2.0[15],
                     blake_message_output_tmp_39a7a_7,
                     blake_message_output_tmp_39a7a_8,
                 ]);
@@ -1256,11 +1211,7 @@ impl InteractionClaimGenerator {
         col_gen.finalize_col();
 
         let mut col_gen = logup_gen.new_col();
-        (
-            col_gen.par_iter_mut(),
-            &self.lookup_data.blake_message_15,
-            &self.lookup_data.blake_g_0,
-        )
+        (col_gen.par_iter_mut(), &self.lookup_data.blake_message_15, &self.lookup_data.blake_g_0)
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
@@ -1270,11 +1221,7 @@ impl InteractionClaimGenerator {
         col_gen.finalize_col();
 
         let mut col_gen = logup_gen.new_col();
-        (
-            col_gen.par_iter_mut(),
-            &self.lookup_data.blake_g_1,
-            &self.lookup_data.blake_g_2,
-        )
+        (col_gen.par_iter_mut(), &self.lookup_data.blake_g_1, &self.lookup_data.blake_g_2)
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
@@ -1284,11 +1231,7 @@ impl InteractionClaimGenerator {
         col_gen.finalize_col();
 
         let mut col_gen = logup_gen.new_col();
-        (
-            col_gen.par_iter_mut(),
-            &self.lookup_data.blake_g_3,
-            &self.lookup_data.blake_g_4,
-        )
+        (col_gen.par_iter_mut(), &self.lookup_data.blake_g_3, &self.lookup_data.blake_g_4)
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
@@ -1298,11 +1241,7 @@ impl InteractionClaimGenerator {
         col_gen.finalize_col();
 
         let mut col_gen = logup_gen.new_col();
-        (
-            col_gen.par_iter_mut(),
-            &self.lookup_data.blake_g_5,
-            &self.lookup_data.blake_g_6,
-        )
+        (col_gen.par_iter_mut(), &self.lookup_data.blake_g_5, &self.lookup_data.blake_g_6)
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
@@ -1312,11 +1251,7 @@ impl InteractionClaimGenerator {
         col_gen.finalize_col();
 
         let mut col_gen = logup_gen.new_col();
-        (
-            col_gen.par_iter_mut(),
-            &self.lookup_data.blake_g_7,
-            &self.lookup_data.blake_round_0,
-        )
+        (col_gen.par_iter_mut(), &self.lookup_data.blake_g_7, &self.lookup_data.blake_round_0)
             .into_par_iter()
             .enumerate()
             .for_each(|(i, (writer, values0, values1))| {

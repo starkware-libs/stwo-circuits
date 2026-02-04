@@ -69,7 +69,8 @@ fn write_trace_simd(
     };
 
     let M31_1805967942 = PackedM31::broadcast(M31::from(1805967942));
-    let seq_4 = preprocessed_trace.get_packed_column(&PreProcessedColumnId { id: "seq_4".to_owned() });
+    let seq_4 =
+        preprocessed_trace.get_packed_column(&PreProcessedColumnId { id: "seq_4".to_owned() });
     let blake_sigma_0 = preprocessed_trace
         .get_packed_column(&PreProcessedColumnId { id: "blake_sigma_0".to_owned() });
     let blake_sigma_1 = preprocessed_trace

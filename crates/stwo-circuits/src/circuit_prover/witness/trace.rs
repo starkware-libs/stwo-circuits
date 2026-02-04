@@ -35,7 +35,6 @@ pub fn write_trace(
         eq::write_trace(context_values, preprocessed_trace_ref);
     tree_builder.extend_evals(eq_trace.to_evals());
 
-
     let (qm31_ops_trace, qm31_ops_log_size, qm31_ops_lookup_data) = qm31_ops::write_trace(
         context_values,
         preprocessed_trace_ref,
@@ -43,15 +42,13 @@ pub fn write_trace(
     );
     tree_builder.extend_evals(qm31_ops_trace.to_evals());
 
-
     let blake_gate_claim_generator = blake_gate::ClaimGenerator::new(preprocessed_trace.clone());
     let verify_bitwise_xor_8_state =
         verify_bitwise_xor_8::ClaimGenerator::new(preprocessed_trace.clone());
     let range_check_16_state = range_check_16::ClaimGenerator::new(preprocessed_trace.clone());
     let range_check_15_state = range_check_15::ClaimGenerator::new(preprocessed_trace.clone());
     let mut triple_xor_32_state = triple_xor_32::ClaimGenerator::new();
-    let mut blake_round_state =
-        blake_round::ClaimGenerator::default();
+    let mut blake_round_state = blake_round::ClaimGenerator::default();
     let (blake_gate_trace, _blake_gate_log_size, blake_gate_lookup_data, blake_message_state) =
         blake_gate_claim_generator.write_trace(
             context_values,
@@ -65,19 +62,23 @@ pub fn write_trace(
     tree_builder.extend_evals(blake_gate_trace.to_evals());
 
     // create blake round sigma state and blake_G
-    let blake_round_sigma_state = blake_round_sigma::ClaimGenerator::new(preprocessed_trace.clone());
+    let blake_round_sigma_state =
+        blake_round_sigma::ClaimGenerator::new(preprocessed_trace.clone());
     let mut blake_g_state = blake_g::ClaimGenerator::new();
     // now blake_round write trace
-    blake_round_state.write_trace(&blake_round_sigma_state, &blake_message_state, &mut blake_g_state);
-
-
-
-    
-    
+    blake_round_state.write_trace(
+        &blake_round_sigma_state,
+        &blake_message_state,
+        &mut blake_g_state,
+    );
 
     (
         CircuitClaim { log_sizes: [eq_log_size, qm31_ops_log_size] },
-        CircuitInteractionClaimGenerator { eq_lookup_data, qm31_ops_lookup_data, blake_gate_lookup_data },
+        CircuitInteractionClaimGenerator {
+            eq_lookup_data,
+            qm31_ops_lookup_data,
+            blake_gate_lookup_data,
+        },
     )
 }
 

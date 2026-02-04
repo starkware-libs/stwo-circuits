@@ -15,7 +15,25 @@ impl CreateBlakeRoundInput {
     #[allow(unused_variables)]
     #[allow(clippy::too_many_arguments)]
     pub fn evaluate<E: EvalAtRow>(
-        [create_blake_round_input_input_limb_0, create_blake_round_input_input_limb_1, create_blake_round_input_input_limb_2, create_blake_round_input_input_limb_3, create_blake_round_input_input_limb_4, create_blake_round_input_input_limb_5, create_blake_round_input_input_limb_6, create_blake_round_input_input_limb_7, create_blake_round_input_input_limb_8, create_blake_round_input_input_limb_9, create_blake_round_input_input_limb_10, create_blake_round_input_input_limb_11, create_blake_round_input_input_limb_12, create_blake_round_input_input_limb_13, create_blake_round_input_input_limb_14, create_blake_round_input_input_limb_15, create_blake_round_input_input_limb_16]: [E::F; 17],
+        [
+            create_blake_round_input_input_limb_0,
+            create_blake_round_input_input_limb_1,
+            create_blake_round_input_input_limb_2,
+            create_blake_round_input_input_limb_3,
+            create_blake_round_input_input_limb_4,
+            create_blake_round_input_input_limb_5,
+            create_blake_round_input_input_limb_6,
+            create_blake_round_input_input_limb_7,
+            create_blake_round_input_input_limb_8,
+            create_blake_round_input_input_limb_9,
+            create_blake_round_input_input_limb_10,
+            create_blake_round_input_input_limb_11,
+            create_blake_round_input_input_limb_12,
+            create_blake_round_input_input_limb_13,
+            create_blake_round_input_input_limb_14,
+            create_blake_round_input_input_limb_15,
+            create_blake_round_input_input_limb_16,
+        ]: [E::F; 17],
         ms_8_bits_col0: E::F,
         ms_8_bits_col1: E::F,
         xor_col2: E::F,
@@ -51,10 +69,7 @@ impl CreateBlakeRoundInput {
             eval,
         );
         BitwiseXorNumBits8::evaluate(
-            [
-                split_16_low_part_size_8_output_tmp_4d188_1_limb_0.clone(),
-                M31_127.clone(),
-            ],
+            [split_16_low_part_size_8_output_tmp_4d188_1_limb_0.clone(), M31_127.clone()],
             xor_col2.clone(),
             common_lookup_elements,
             eval,
@@ -66,10 +81,7 @@ impl CreateBlakeRoundInput {
             eval,
         );
         BitwiseXorNumBits8::evaluate(
-            [
-                split_16_low_part_size_8_output_tmp_4d188_3_limb_0.clone(),
-                M31_14.clone(),
-            ],
+            [split_16_low_part_size_8_output_tmp_4d188_3_limb_0.clone(), M31_14.clone()],
             xor_col4.clone(),
             common_lookup_elements,
             eval,

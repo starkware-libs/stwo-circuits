@@ -1,7 +1,9 @@
 // This file was created by the AIR team.
 
 #![allow(unused_parens)]
-use crate::circuit_air::components::range_check_15::{Claim, InteractionClaim, LOG_SIZE, N_TRACE_COLUMNS};
+use crate::circuit_air::components::range_check_15::{
+    Claim, InteractionClaim, LOG_SIZE, N_TRACE_COLUMNS,
+};
 
 use crate::circuit_prover::witness::components::prelude::*;
 
@@ -17,9 +19,7 @@ pub struct ClaimGenerator {
 impl ClaimGenerator {
     pub fn new(preprocessed_trace: Arc<PreProcessedTrace>) -> Self {
         let mults = from_fn(|_| AtomicMultiplicityColumn::new(1 << LOG_SIZE));
-        let column_ids = [PreProcessedColumnId {
-            id: "seq_15".to_owned(),
-        }];
+        let column_ids = [PreProcessedColumnId { id: "seq_15".to_owned() }];
 
         Self {
             mults,
@@ -31,11 +31,7 @@ impl ClaimGenerator {
     pub fn write_trace(
         self,
     ) -> (ComponentTrace<N_TRACE_COLUMNS>, Claim, InteractionClaimGenerator) {
-        let mults = self
-            .mults
-            .into_iter()
-            .map(|v| v.into_simd_vec())
-            .collect::<Vec<_>>();
+        let mults = self.mults.into_iter().map(|v| v.into_simd_vec()).collect::<Vec<_>>();
 
         let (trace, lookup_data) = write_trace_simd(&self.preprocessed_trace, mults);
 
@@ -73,21 +69,19 @@ fn write_trace_simd(
     };
 
     let M31_1058718565 = PackedM31::broadcast(M31::from(1058718565));
-    let seq_15 = preprocessed_trace.get_packed_column(&PreProcessedColumnId {
-        id: "seq_15".to_owned(),
-    });
+    let seq_15 =
+        preprocessed_trace.get_packed_column(&PreProcessedColumnId { id: "seq_15".to_owned() });
 
-    (trace.par_iter_mut(), lookup_data.par_iter_mut())
-        .into_par_iter()
-        .enumerate()
-        .for_each(|(row_index, (row, lookup_data))| {
+    (trace.par_iter_mut(), lookup_data.par_iter_mut()).into_par_iter().enumerate().for_each(
+        |(row_index, (row, lookup_data))| {
             let seq_15 = seq_15[row_index];
             *lookup_data.range_check_15_0 = [M31_1058718565, seq_15];
             let mult = &mults[0];
             let mult_at_row = *mult.get(row_index).unwrap_or(&PackedM31::zero());
             *row[0] = mult_at_row;
             *lookup_data.mults_0 = mult_at_row;
-        });
+        },
+    );
 
     (trace, lookup_data)
 }
@@ -110,11 +104,7 @@ impl InteractionClaimGenerator {
 
         // Sum last logup term.
         let mut col_gen = logup_gen.new_col();
-        (
-            col_gen.par_iter_mut(),
-            &self.lookup_data.range_check_15_0,
-            self.lookup_data.mults_0,
-        )
+        (col_gen.par_iter_mut(), &self.lookup_data.range_check_15_0, self.lookup_data.mults_0)
             .into_par_iter()
             .for_each(|(writer, values, mults_0)| {
                 let denom = common_lookup_elements.combine(values);

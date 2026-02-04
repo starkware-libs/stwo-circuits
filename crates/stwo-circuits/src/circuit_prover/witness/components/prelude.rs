@@ -12,6 +12,11 @@ pub use rayon::iter::IntoParallelIterator;
 pub use rayon::iter::IntoParallelRefIterator;
 pub use rayon::iter::IntoParallelRefMutIterator;
 pub use rayon::iter::ParallelIterator;
+pub use std::array::from_fn;
+pub use std::simd::num::SimdInt;
+pub use std::simd::num::SimdUint;
+pub use std::simd::u32x16;
+pub use std::sync::Arc;
 use stwo::core::fields::m31::BaseField;
 pub use stwo::core::fields::m31::M31;
 pub use stwo::core::fields::qm31::QM31;
@@ -26,18 +31,13 @@ pub use stwo::prover::backend::simd::m31::{LOG_N_LANES, N_LANES, PackedM31};
 pub use stwo::prover::backend::simd::qm31::PackedQM31;
 pub use stwo::prover::poly::BitReversedOrder;
 pub use stwo::prover::poly::circle::CircleEvaluation;
-pub use std::simd::num::SimdInt;
-pub use std::simd::u32x16;
-pub use std::simd::num::SimdUint;
-pub use std::sync::Arc;
-pub use std::array::from_fn;
 pub use stwo_air_utils::trace::component_trace::ComponentTrace;
 pub use stwo_air_utils_derive::{IterMut, ParIterMut, Uninitialized};
 pub use stwo_constraint_framework::LogupTraceGenerator;
 pub use stwo_constraint_framework::Relation;
 pub use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
-pub use serde::{Serialize, Deserialize};
+pub use serde::{Deserialize, Serialize};
 pub use std::mem::transmute;
 pub use std::ops::{Add, BitAnd, BitOr, BitXor, Rem, Shl, Shr, Sub};
 pub use std::simd::Simd;
@@ -52,31 +52,22 @@ pub struct UInt16 {
 
 impl UInt16 {
     pub fn from_m31(felt: M31) -> Self {
-        assert!(
-            felt < M31::from_u32_unchecked(2_u32.pow(16)),
-            "M31 value is not a u16"
-        );
-        Self {
-            value: felt.0 as u16,
-        }
+        assert!(felt < M31::from_u32_unchecked(2_u32.pow(16)), "M31 value is not a u16");
+        Self { value: felt.0 as u16 }
     }
 }
 
 impl Add for UInt16 {
     type Output = UInt16;
     fn add(self, other: UInt16) -> UInt16 {
-        UInt16 {
-            value: self.value.wrapping_add(other.value),
-        }
+        UInt16 { value: self.value.wrapping_add(other.value) }
     }
 }
 
 impl Sub for UInt16 {
     type Output = UInt16;
     fn sub(self, rhs: UInt16) -> UInt16 {
-        UInt16 {
-            value: self.value.wrapping_sub(rhs.value),
-        }
+        UInt16 { value: self.value.wrapping_sub(rhs.value) }
     }
 }
 
@@ -89,49 +80,37 @@ impl From<u16> for UInt16 {
 impl Rem for UInt16 {
     type Output = UInt16;
     fn rem(self, other: UInt16) -> UInt16 {
-        UInt16 {
-            value: self.value % other.value,
-        }
+        UInt16 { value: self.value % other.value }
     }
 }
 impl Shl for UInt16 {
     type Output = UInt16;
     fn shl(self, other: UInt16) -> UInt16 {
-        UInt16 {
-            value: self.value << other.value,
-        }
+        UInt16 { value: self.value << other.value }
     }
 }
 impl Shr for UInt16 {
     type Output = UInt16;
     fn shr(self, other: UInt16) -> UInt16 {
-        UInt16 {
-            value: self.value >> other.value,
-        }
+        UInt16 { value: self.value >> other.value }
     }
 }
 impl BitAnd for UInt16 {
     type Output = UInt16;
     fn bitand(self, other: UInt16) -> UInt16 {
-        UInt16 {
-            value: self.value & other.value,
-        }
+        UInt16 { value: self.value & other.value }
     }
 }
 impl BitOr for UInt16 {
     type Output = UInt16;
     fn bitor(self, other: UInt16) -> UInt16 {
-        UInt16 {
-            value: self.value | other.value,
-        }
+        UInt16 { value: self.value | other.value }
     }
 }
 impl BitXor for UInt16 {
     type Output = UInt16;
     fn bitxor(self, other: UInt16) -> UInt16 {
-        UInt16 {
-            value: self.value ^ other.value,
-        }
+        UInt16 { value: self.value ^ other.value }
     }
 }
 
@@ -142,15 +121,11 @@ pub struct UInt32 {
 
 impl UInt32 {
     pub fn low(&self) -> UInt16 {
-        UInt16 {
-            value: (self.value & 0xFFFF) as u16,
-        }
+        UInt16 { value: (self.value & 0xFFFF) as u16 }
     }
 
     pub fn high(&self) -> UInt16 {
-        UInt16 {
-            value: (self.value >> 16) as u16,
-        }
+        UInt16 { value: (self.value >> 16) as u16 }
     }
 
     pub fn from_m31(felt: M31) -> Self {
@@ -158,9 +133,7 @@ impl UInt32 {
     }
 
     pub fn from_limbs(low: M31, high: M31) -> Self {
-        Self {
-            value: (low.0 & 0xFFFF) | ((high.0 & 0xFFFF) << 16),
-        }
+        Self { value: (low.0 & 0xFFFF) | ((high.0 & 0xFFFF) << 16) }
     }
 }
 
@@ -173,57 +146,43 @@ impl From<u32> for UInt32 {
 impl Add for UInt32 {
     type Output = UInt32;
     fn add(self, other: UInt32) -> UInt32 {
-        UInt32 {
-            value: self.value.wrapping_add(other.value),
-        }
+        UInt32 { value: self.value.wrapping_add(other.value) }
     }
 }
 impl Rem for UInt32 {
     type Output = UInt32;
     fn rem(self, other: UInt32) -> UInt32 {
-        UInt32 {
-            value: self.value % other.value,
-        }
+        UInt32 { value: self.value % other.value }
     }
 }
 impl Shl for UInt32 {
     type Output = UInt32;
     fn shl(self, other: UInt32) -> UInt32 {
-        UInt32 {
-            value: self.value << other.value,
-        }
+        UInt32 { value: self.value << other.value }
     }
 }
 impl Shr for UInt32 {
     type Output = UInt32;
     fn shr(self, other: UInt32) -> UInt32 {
-        UInt32 {
-            value: self.value >> other.value,
-        }
+        UInt32 { value: self.value >> other.value }
     }
 }
 impl BitAnd for UInt32 {
     type Output = UInt32;
     fn bitand(self, other: UInt32) -> UInt32 {
-        UInt32 {
-            value: self.value & other.value,
-        }
+        UInt32 { value: self.value & other.value }
     }
 }
 impl BitOr for UInt32 {
     type Output = UInt32;
     fn bitor(self, other: UInt32) -> UInt32 {
-        UInt32 {
-            value: self.value | other.value,
-        }
+        UInt32 { value: self.value | other.value }
     }
 }
 impl BitXor for UInt32 {
     type Output = UInt32;
     fn bitxor(self, other: UInt32) -> UInt32 {
-        UInt32 {
-            value: self.value ^ other.value,
-        }
+        UInt32 { value: self.value ^ other.value }
     }
 }
 
@@ -237,9 +196,7 @@ pub struct PackedBool {
 }
 impl PackedBool {
     pub fn from_m31(value: PackedM31) -> Self {
-        Self {
-            value: value.into_simd().cast().bitand(Simd::splat(1)),
-        }
+        Self { value: value.into_simd().cast().bitand(Simd::splat(1)) }
     }
 }
 
@@ -254,9 +211,7 @@ impl BitAnd for PackedBool {
     type Output = Self;
 
     fn bitand(self, rhs: Self) -> Self::Output {
-        Self {
-            value: self.value & rhs.value,
-        }
+        Self { value: self.value & rhs.value }
     }
 }
 
@@ -267,26 +222,18 @@ pub struct PackedUInt16 {
 
 impl PackedUInt16 {
     pub fn broadcast(value: UInt16) -> Self {
-        Self {
-            value: Simd::splat(value.value),
-        }
+        Self { value: Simd::splat(value.value) }
     }
     pub fn from_array(arr: [UInt16; N_LANES]) -> Self {
         // Safe because UInt16 is u16.
-        unsafe {
-            Self {
-                value: Simd::from_array(transmute::<[UInt16; 16], [u16; 16]>(arr)),
-            }
-        }
+        unsafe { Self { value: Simd::from_array(transmute::<[UInt16; 16], [u16; 16]>(arr)) } }
     }
     pub fn as_array(&self) -> [UInt16; N_LANES] {
         // Safe because UInt16 is u16.
         unsafe { transmute(self.value.to_array()) }
     }
     pub fn from_m31(val: PackedM31) -> Self {
-        Self {
-            value: val.into_simd().cast(),
-        }
+        Self { value: val.into_simd().cast() }
     }
 }
 
@@ -301,9 +248,7 @@ impl Add for PackedUInt16 {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
-        Self {
-            value: self.value + rhs.value,
-        }
+        Self { value: self.value + rhs.value }
     }
 }
 
@@ -311,54 +256,42 @@ impl Rem for PackedUInt16 {
     type Output = Self;
 
     fn rem(self, rhs: Self) -> Self::Output {
-        Self {
-            value: self.value % rhs.value,
-        }
+        Self { value: self.value % rhs.value }
     }
 }
 impl Shl for PackedUInt16 {
     type Output = Self;
 
     fn shl(self, rhs: Self) -> Self::Output {
-        Self {
-            value: self.value << rhs.value,
-        }
+        Self { value: self.value << rhs.value }
     }
 }
 impl Shr for PackedUInt16 {
     type Output = Self;
 
     fn shr(self, rhs: Self) -> Self::Output {
-        Self {
-            value: self.value >> rhs.value,
-        }
+        Self { value: self.value >> rhs.value }
     }
 }
 impl BitAnd for PackedUInt16 {
     type Output = Self;
 
     fn bitand(self, rhs: Self) -> Self::Output {
-        Self {
-            value: self.value & rhs.value,
-        }
+        Self { value: self.value & rhs.value }
     }
 }
 impl BitOr for PackedUInt16 {
     type Output = Self;
 
     fn bitor(self, rhs: Self) -> Self::Output {
-        Self {
-            value: self.value | rhs.value,
-        }
+        Self { value: self.value | rhs.value }
     }
 }
 impl BitXor for PackedUInt16 {
     type Output = Self;
 
     fn bitxor(self, rhs: Self) -> Self::Output {
-        Self {
-            value: self.value ^ rhs.value,
-        }
+        Self { value: self.value ^ rhs.value }
     }
 }
 
@@ -369,17 +302,11 @@ pub struct PackedUInt32 {
 
 impl PackedUInt32 {
     pub fn broadcast(value: UInt32) -> Self {
-        Self {
-            simd: Simd::splat(value.value),
-        }
+        Self { simd: Simd::splat(value.value) }
     }
     pub fn from_array(arr: [UInt32; N_LANES]) -> Self {
         // Safe because UInt32 is u32.
-        unsafe {
-            Self {
-                simd: Simd::from_array(transmute::<[UInt32; 16], [u32; 16]>(arr)),
-            }
-        }
+        unsafe { Self { simd: Simd::from_array(transmute::<[UInt32; 16], [u32; 16]>(arr)) } }
     }
 
     pub fn from_simd(value: Simd<u32, N_LANES>) -> Self {
@@ -392,28 +319,20 @@ impl PackedUInt32 {
     }
 
     pub fn from_m31(val: PackedM31) -> Self {
-        Self {
-            simd: val.into_simd(),
-        }
+        Self { simd: val.into_simd() }
     }
 
     pub fn low(&self) -> PackedUInt16 {
-        PackedUInt16 {
-            value: (self.simd & Simd::splat(0xFFFF)).cast(),
-        }
+        PackedUInt16 { value: (self.simd & Simd::splat(0xFFFF)).cast() }
     }
 
     pub fn high(&self) -> PackedUInt16 {
-        PackedUInt16 {
-            value: (self.simd >> 16).cast(),
-        }
+        PackedUInt16 { value: (self.simd >> 16).cast() }
     }
 
     pub fn from_limbs([low, high]: [PackedM31; 2]) -> Self {
         let [low, high] = [low, high].map(PackedM31::into_simd);
-        Self {
-            simd: low + (high << 16),
-        }
+        Self { simd: low + (high << 16) }
     }
 }
 
@@ -421,63 +340,49 @@ impl Rem for PackedUInt32 {
     type Output = Self;
 
     fn rem(self, rhs: Self) -> Self::Output {
-        Self {
-            simd: self.simd % rhs.simd,
-        }
+        Self { simd: self.simd % rhs.simd }
     }
 }
 impl Shl for PackedUInt32 {
     type Output = Self;
 
     fn shl(self, rhs: Self) -> Self::Output {
-        Self {
-            simd: self.simd << rhs.simd,
-        }
+        Self { simd: self.simd << rhs.simd }
     }
 }
 impl Shr for PackedUInt32 {
     type Output = Self;
 
     fn shr(self, rhs: Self) -> Self::Output {
-        Self {
-            simd: self.simd >> rhs.simd,
-        }
+        Self { simd: self.simd >> rhs.simd }
     }
 }
 impl BitAnd for PackedUInt32 {
     type Output = Self;
 
     fn bitand(self, rhs: Self) -> Self::Output {
-        Self {
-            simd: self.simd & rhs.simd,
-        }
+        Self { simd: self.simd & rhs.simd }
     }
 }
 impl BitOr for PackedUInt32 {
     type Output = Self;
 
     fn bitor(self, rhs: Self) -> Self::Output {
-        Self {
-            simd: self.simd | rhs.simd,
-        }
+        Self { simd: self.simd | rhs.simd }
     }
 }
 impl BitXor for PackedUInt32 {
     type Output = Self;
 
     fn bitxor(self, rhs: Self) -> Self::Output {
-        Self {
-            simd: self.simd ^ rhs.simd,
-        }
+        Self { simd: self.simd ^ rhs.simd }
     }
 }
 impl Add for PackedUInt32 {
     type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
-        Self {
-            simd: self.simd + rhs.simd,
-        }
+        Self { simd: self.simd + rhs.simd }
     }
 }
 
@@ -505,13 +410,11 @@ impl Unpack for PackedUInt32 {
     }
 }
 
-
 #[derive(Clone)]
 pub struct RelationUse {
     pub relation_id: &'static str,
     pub uses: u64,
 }
-
 
 /// The enabler column is a column of length `padding_offset.next_power_of_two()` where
 /// 1. The first `padding_offset` elements are set to 1;
@@ -552,9 +455,7 @@ impl AtomicMultiplicityColumn {
     /// Creates a new `AtomicMultiplicityColumn` with the given size. The elements are initialized
     /// to 0.
     pub fn new(size: usize) -> Self {
-        Self {
-            data: (0..size as u32).map(|_| AtomicU32::new(0)).collect(),
-        }
+        Self { data: (0..size as u32).map(|_| AtomicU32::new(0)).collect() }
     }
 
     pub fn increase_at(&self, address: u32) {
@@ -567,18 +468,11 @@ impl AtomicMultiplicityColumn {
     pub fn into_simd_vec(self) -> Vec<PackedM31> {
         // Safe because the data is aligned to the size of PackedM31 and the size of the data is a
         // multiple of N_LANES.
-        BaseColumn::from_iter(
-            self.data
-                .into_iter()
-                .map(|a| M31(a.load(Ordering::Relaxed))),
-        )
-        .data
+        BaseColumn::from_iter(self.data.into_iter().map(|a| M31(a.load(Ordering::Relaxed)))).data
     }
 }
 
 pub use std::collections::HashMap;
-
-
 
 /// Create the input_to_row map used in const-size components.
 ///
@@ -593,10 +487,7 @@ pub fn make_input_to_row<const N: usize>(
 ) -> HashMap<[M31; N], usize> {
     let mut result: HashMap<[M31; N], usize> = HashMap::new();
 
-    let columns = column_ids
-        .iter()
-        .map(|id| preprocessed_trace.get_column(id))
-        .collect_vec();
+    let columns = column_ids.iter().map(|id| preprocessed_trace.get_column(id)).collect_vec();
     let log_size = columns[0].len().ilog2();
     assert!(
         columns.iter().all(|c| c.len().ilog2() == log_size),
@@ -623,7 +514,6 @@ pub fn pack_preprocessed_column(column: &[usize]) -> Vec<PackedM31> {
     let values = column.iter().map(|&v| M31::from(v)).collect_vec();
     pack_values(&values)
 }
-
 
 const NUM_INPUT_WORDS_G: usize = 6;
 const NUM_OUTPUT_WORDS_G: usize = 4;
@@ -686,7 +576,6 @@ impl PackedTripleXor32 {
     }
 }
 
-
 pub const N_BLAKE_ROUNDS: usize = 10;
 pub const N_BLAKE_SIGMA_COLS: usize = 16;
 
@@ -733,10 +622,7 @@ where
     F: Fn(usize, usize) -> M31,
 {
     let n = padding_offset.next_power_of_two();
-    (0..n)
-        .map(|i| if i < padding_offset { i } else { 0 })
-        .map(|i| get_m31(i, col))
-        .collect()
+    (0..n).map(|i| if i < padding_offset { i } else { 0 }).map(|i| get_m31(i, col)).collect()
 }
 
 impl PreProcessedColumn for BlakeSigma {
@@ -746,10 +632,7 @@ impl PreProcessedColumn for BlakeSigma {
 
     // #[cfg(feature = "prover")]
     fn packed_at(&self, vec_row: usize) -> PackedM31 {
-        assert!(
-            vec_row == 0,
-            "Accessing BlakeSigma out of bounds row {vec_row}"
-        );
+        assert!(vec_row == 0, "Accessing BlakeSigma out of bounds row {vec_row}");
         PackedM31::from_array(pad(sigma_m31, N_BLAKE_ROUNDS, self.col).try_into().unwrap())
     }
 
@@ -762,12 +645,9 @@ impl PreProcessedColumn for BlakeSigma {
     }
 
     fn id(&self) -> PreProcessedColumnId {
-        PreProcessedColumnId {
-            id: format!("{}_{}", BLAKE_SIGMA_TABLE, self.col),
-        }
+        PreProcessedColumnId { id: format!("{}_{}", BLAKE_SIGMA_TABLE, self.col) }
     }
 }
-
 
 #[derive(Debug)]
 pub struct PackedBlakeRoundSigma {}
@@ -871,14 +751,11 @@ impl PreProcessedColumn for Seq {
         );
         CircleEvaluation::new(CanonicCoset::new(self.log_size).circle_domain(), col)
     }
-    
+
     fn id(&self) -> PreProcessedColumnId {
-        PreProcessedColumnId {
-            id: format!("seq_{}", self.log_size),
-        }
+        PreProcessedColumnId { id: format!("seq_{}", self.log_size) }
     }
 }
-
 
 pub trait PreProcessedColumn: Send + Sync {
     // #[cfg(feature = "prover")]
@@ -888,7 +765,6 @@ pub trait PreProcessedColumn: Send + Sync {
     // #[cfg(feature = "prover")]
     fn gen_column_simd(&self) -> CircleEvaluation<SimdBackend, BaseField, BitReversedOrder>;
 }
-
 
 // #[derive(Debug)]
 // pub struct PackedBlakeG {}

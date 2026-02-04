@@ -3,10 +3,8 @@
 use crate::circuit_air::components::prelude::*;
 
 pub const N_TRACE_COLUMNS: usize = 25;
-pub const RELATION_USES_PER_ROW: [RelationUse; 1] = [RelationUse {
-    relation_id: "BlakeOutput",
-    uses: 1,
-}];
+pub const RELATION_USES_PER_ROW: [RelationUse; 1] =
+    [RelationUse { relation_id: "BlakeOutput", uses: 1 }];
 
 pub struct Eval {
     pub claim: Claim,
@@ -56,15 +54,12 @@ impl FrameworkEval for Eval {
     fn evaluate<E: EvalAtRow>(&self, mut eval: E) -> E {
         let M31_1061955672 = E::F::from(M31::from(1061955672));
         let M31_378353459 = E::F::from(M31::from(378353459));
-        let final_state_addr = eval.get_preprocessed_column(PreProcessedColumnId {
-            id: "final_state_addr".to_owned(),
-        });
-        let blake_output0_addr = eval.get_preprocessed_column(PreProcessedColumnId {
-            id: "blake_output0_addr".to_owned(),
-        });
-        let blake_output1_addr = eval.get_preprocessed_column(PreProcessedColumnId {
-            id: "blake_output1_addr".to_owned(),
-        });
+        let final_state_addr = eval
+            .get_preprocessed_column(PreProcessedColumnId { id: "final_state_addr".to_owned() });
+        let blake_output0_addr = eval
+            .get_preprocessed_column(PreProcessedColumnId { id: "blake_output0_addr".to_owned() });
+        let blake_output1_addr = eval
+            .get_preprocessed_column(PreProcessedColumnId { id: "blake_output1_addr".to_owned() });
         let input_final_state_limb0_limb_0_col0 = eval.next_trace_mask();
         let input_final_state_limb0_limb_1_col1 = eval.next_trace_mask();
         let input_final_state_limb1_limb_0_col2 = eval.next_trace_mask();
