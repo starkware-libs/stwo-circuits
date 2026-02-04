@@ -1,7 +1,7 @@
 // This file was created by the AIR team.
 
 #![allow(unused_parens)]
-use cairo_air::components::blake_round::{InteractionClaim, N_TRACE_COLUMNS};
+use crate::circuit_air::components::blake_gate::{InteractionClaim, N_TRACE_COLUMNS};
 
 use crate::circuit_prover::witness::components::prelude::*;
 use crate::circuit_prover::witness::components::{
@@ -1860,9 +1860,9 @@ pub struct LookupData {
 }
 
 pub struct InteractionClaimGenerator {
-    n_rows: usize,
-    log_size: u32,
-    lookup_data: LookupData,
+    pub n_rows: usize,
+    pub log_size: u32,
+    pub lookup_data: LookupData,
 }
 impl InteractionClaimGenerator {
     pub fn write_interaction_trace(

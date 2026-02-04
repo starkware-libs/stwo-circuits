@@ -49,7 +49,7 @@ pub fn write_trace(
     let range_check_15_state = range_check_15::ClaimGenerator::new(preprocessed_trace.clone());
     let mut triple_xor_32_state = triple_xor_32::ClaimGenerator::new();
     let mut blake_round_state = blake_round::ClaimGenerator::default();
-    let (blake_gate_trace, _blake_gate_log_size, blake_gate_lookup_data, blake_message_state) =
+    let (blake_gate_trace, blake_gate_log_size, blake_gate_lookup_data, blake_message_state) =
         blake_gate_claim_generator.write_trace(
             context_values,
             preprocessed_trace_ref,
@@ -73,7 +73,7 @@ pub fn write_trace(
     );
 
     (
-        CircuitClaim { log_sizes: [eq_log_size, qm31_ops_log_size] },
+        CircuitClaim { log_sizes: [eq_log_size, qm31_ops_log_size, blake_gate_log_size] },
         CircuitInteractionClaimGenerator {
             eq_lookup_data,
             qm31_ops_lookup_data,
@@ -109,6 +109,23 @@ pub fn write_interaction_trace(
         &interaction_elements.common_lookup_elements,
     );
     tree_builder.extend_evals(qm31_ops_trace);
-    //
-    CircuitInteractionClaim { claimed_sums: [eq_claimed_sum, qm31_ops_claimed_sum] }
+
+    let blake_gate_log_size = *component_log_size_iter.next().unwrap();
+    let blake_gate_n_rows = 1 << blake_gate_log_size;
+    let blake_gate_interaction_generator = blake_gate::InteractionClaimGenerator {
+        n_rows: blake_gate_n_rows,
+        log_size: blake_gate_log_size,
+        lookup_data: circuit_interaction_claim_generator.blake_gate_lookup_data,
+    };
+    let (blake_gate_trace, blake_gate_interaction_claim) = blake_gate_interaction_generator
+        .write_interaction_trace(&interaction_elements.common_lookup_elements);
+    tree_builder.extend_evals(blake_gate_trace);
+
+    CircuitInteractionClaim {
+        claimed_sums: [
+            eq_claimed_sum,
+            qm31_ops_claimed_sum,
+            blake_gate_interaction_claim.claimed_sum,
+        ],
+    }
 }

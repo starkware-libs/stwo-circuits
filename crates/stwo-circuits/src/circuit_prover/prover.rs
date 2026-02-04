@@ -74,7 +74,6 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     tree_builder.extend_evals(preprocessed_trace.get_trace::<SimdBackend>());
     tree_builder.commit(channel);
 
-    eprintln!("Here");
     // Base trace.
     let mut tree_builder = commitment_scheme.tree_builder();
     let preprocessed_trace_arc = Arc::new(preprocessed_trace);

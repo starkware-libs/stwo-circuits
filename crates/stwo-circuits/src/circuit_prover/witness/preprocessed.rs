@@ -33,7 +33,6 @@ enum OpCode {
 fn vec_to_evaluation<B: Backend>(
     vec: Vec<usize>,
 ) -> CircleEvaluation<B, BaseField, BitReversedOrder> {
-    eprintln!("Inside vec_to_evaluation: {}", vec.len());
     let col = Col::<B, BaseField>::from_iter(vec.into_iter().map(BaseField::from));
     CircleEvaluation::new(CanonicCoset::new(col.len().ilog2()).circle_domain(), col)
 }
@@ -269,15 +268,12 @@ impl PreProcessedTrace {
 
         // Add Eq columns.
         add_eq_to_preprocessed_trace(circuit, &mut pp_trace);
-        eprintln!("After eq: {}", pp_trace.columns.len());
         // Add QM31 operations columns.
         let qm31_ops_trace_generator =
             add_qm31_ops_to_preprocessed_trace(circuit, multiplicities, &mut pp_trace);
-        eprintln!("After ops: {}", pp_trace.columns.len());
 
         // TODO(Gali): Add Blake columns.
         add_blake_to_preprocessed_trace(circuit, &mut pp_trace);
-        eprintln!("After blake: {}", pp_trace.columns.len());
 
         Self::add_non_circuit_preprocessed_columns(&mut pp_trace);
 
@@ -286,8 +282,7 @@ impl PreProcessedTrace {
 
     fn add_non_circuit_preprocessed_columns(pp_trace: &mut PreProcessedTrace) {
         let n_columns = pp_trace.columns.len();
-        let seq: [Vec<usize>; 17] =
-            std::array::from_fn(|i| (0..1_usize << (i + 4)).collect());
+        let seq: [Vec<usize>; 17] = std::array::from_fn(|i| (0..1_usize << (i + 4)).collect());
         let bitwise_xor: Vec<Vec<usize>> = [4, 7, 8, 9, 10]
             .into_iter()
             .flat_map(|n_bits| gen_xor_columns(n_bits).into_iter())

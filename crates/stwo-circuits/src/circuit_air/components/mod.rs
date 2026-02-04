@@ -30,12 +30,14 @@ use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 pub enum ComponentList {
     Eq,
     Qm31Ops,
+    BlakeGate,
 }
 pub const N_COMPONENTS: usize = std::mem::variant_count::<ComponentList>();
 
 pub struct CircuitComponents {
     pub eq: eq::Component,
     pub qm31_ops: qm31_ops::Component,
+    pub blake_gate: blake_gate::Component,
 }
 impl CircuitComponents {
     pub fn new(
@@ -64,18 +66,33 @@ impl CircuitComponents {
             },
             interaction_claim.claimed_sums[ComponentList::Qm31Ops as usize],
         );
-        Self { eq: eq_component, qm31_ops: qm31_ops_component }
+        let blake_gate_component = blake_gate::Component::new(
+            tree_span_provider,
+            blake_gate::Eval {
+                claim: blake_gate::Claim {
+                    log_size: circuit_claim.log_sizes[ComponentList::BlakeGate as usize],
+                },
+                common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
+            },
+            interaction_claim.claimed_sums[ComponentList::BlakeGate as usize],
+        );
+        Self { eq: eq_component, qm31_ops: qm31_ops_component, blake_gate: blake_gate_component }
     }
 
     pub fn provers(&self) -> Vec<&dyn ComponentProver<SimdBackend>> {
         chain!([
             &self.eq as &dyn ComponentProver<SimdBackend>,
             &self.qm31_ops as &dyn ComponentProver<SimdBackend>,
+            &self.blake_gate as &dyn ComponentProver<SimdBackend>,
         ])
         .collect()
     }
 
     pub fn components(self) -> Vec<Box<dyn Component>> {
-        vec![Box::new(self.eq) as Box<dyn Component>, Box::new(self.qm31_ops) as Box<dyn Component>]
+        vec![
+            Box::new(self.eq) as Box<dyn Component>,
+            Box::new(self.qm31_ops) as Box<dyn Component>,
+            Box::new(self.blake_gate) as Box<dyn Component>,
+        ]
     }
 }
