@@ -36,12 +36,14 @@ pub struct ProofConfig {
     pub n_components: usize,
 
     pub fri: FriConfig,
+    pub interaction_pow_bits: u32,
 }
 impl ProofConfig {
     pub fn from_statement<Value: IValue>(
         statement: &impl Statement<Value>,
         log_trace_size: usize,
         pcs_config: &PcsConfig,
+        interaction_pow_bits: u32,
     ) -> Self {
         let components = statement.get_components();
         let n_preprocessed_columns = statement.get_preprocessed_column_ids().len();
@@ -57,6 +59,7 @@ impl ProofConfig {
             n_preprocessed_columns,
             log_trace_size,
             pcs_config,
+            interaction_pow_bits,
         )
     }
 
@@ -67,6 +70,7 @@ impl ProofConfig {
         n_preprocessed_columns: usize,
         log_trace_size: usize,
         pcs_config: &PcsConfig,
+        interaction_pow_bits: u32,
     ) -> Self {
         let n_interaction_columns = interaction_columns_per_component.iter().sum();
         let mut cumulative_sum_columns = Vec::with_capacity(n_interaction_columns);
@@ -106,6 +110,7 @@ impl ProofConfig {
                 n_queries: *n_queries,
                 log_n_last_layer_coefs: *log_last_layer_degree_bound as usize,
             },
+            interaction_pow_bits,
         }
     }
 

@@ -28,19 +28,6 @@ use crate::stark_verifier::statement::{EvaluateArgs, OodsSamples, Statement};
 
 pub const LOG_SIZE_BITS: u32 = 5;
 
-/// Logup security is defined by the `QM31` space (~124 bits) + `INTERACTION_POW_BITS` -
-/// log2(number of relation terms).
-/// The number of relation terms is defined as n_terms * n_relations * n_uses, where:
-/// n_terms = number of terms in each relation (the size of the relation entry) < 2^7,
-/// n_relations = number of different relations ids < 2^6,
-/// n_uses is bounded by the characteristic of the field = 2^31.
-/// E.g. assuming a 100-bit security target, the witness may contain up to
-/// 1 << (24 + INTERACTION_POW_BITS) relation terms.
-#[cfg(not(test))]
-pub const INTERACTION_POW_BITS: u32 = 24;
-#[cfg(test)]
-pub const INTERACTION_POW_BITS: u32 = 8; // Lower value for faster tests
-
 #[cfg(test)]
 #[path = "verify_test.rs"]
 pub mod test;
@@ -107,7 +94,7 @@ pub fn verify<Value: IValue>(
     // Mix the trace commitments into the channel.
     channel.mix_commitment(context, proof.trace_root);
 
-    channel.proof_of_work(context, INTERACTION_POW_BITS, proof.interaction_pow_nonce);
+    channel.proof_of_work(context, config.interaction_pow_bits, proof.interaction_pow_nonce);
     // Pick the interaction elements.
     let [interaction_z, interaction_alpha] = channel.draw_two_qm31s(context);
 

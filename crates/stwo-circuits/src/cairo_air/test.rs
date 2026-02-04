@@ -12,6 +12,16 @@ use crate::{
     },
 };
 
+/// Logup security is defined by the `QM31` space (~124 bits) + `INTERACTION_POW_BITS` -
+/// log2(number of relation terms).
+/// The number of relation terms is defined as n_terms * n_relations * n_uses, where:
+/// n_terms = number of terms in each relation (the size of the relation entry) < 2^7,
+/// n_relations = number of different relations ids < 2^6,
+/// n_uses is bounded by the characteristic of the field = 2^31.
+/// E.g. assuming a 100-bit security target, the witness may contain up to
+/// 1 << (24 + INTERACTION_POW_BITS) relation terms.
+pub const INTERACTION_POW_BITS: u32 = 24;
+
 #[test]
 fn test_verify() {
     let pcs_config = PcsConfig::default();
@@ -24,7 +34,7 @@ fn test_verify() {
     let program = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; program_len];
     let statement = CairoStatement::new(&mut novalue_context, flat_claim, outputs, program);
 
-    let config = ProofConfig::from_statement(&statement, 20, &pcs_config);
+    let config = ProofConfig::from_statement(&statement, 20, &pcs_config, INTERACTION_POW_BITS);
 
     let empty_proof = empty_proof(&config);
 
