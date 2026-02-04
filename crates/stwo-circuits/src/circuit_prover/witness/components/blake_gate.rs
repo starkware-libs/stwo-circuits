@@ -323,6 +323,16 @@ fn write_trace_simd(
         blake_message_inputs.set_len(n_packed_rows);
     }
 
+    // Pre-populate blake_round_state.blake_message before the parallel loop
+    // so that deduce_output can look up message data.
+    for packed_input in &inputs {
+        let message = &packed_input.1; // [PackedM31; 16]
+        for lane in 0..N_LANES {
+            let msg: [u32; 16] = from_fn(|i| message[i].into_simd().to_array()[lane]);
+            blake_round_state.blake_message.msg_per_id.push(msg);
+        }
+    }
+
     (
         trace.par_iter_mut(),
         lookup_data.par_iter_mut(),
