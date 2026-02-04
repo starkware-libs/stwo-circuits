@@ -4,6 +4,7 @@ use stwo::core::pcs::{CommitmentSchemeVerifier, TreeVec};
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::core::verifier::verify;
 
+use crate::circuits::ivalue::qm31_from_u32s;
 use crate::examples::simple_air::{LOG_SIZE_LONG, LOG_SIZE_SHORT, create_proof};
 use crate::stark_verifier::proof::Claim;
 use crate::stark_verifier::verify::INTERACTION_POW_BITS;
@@ -34,6 +35,8 @@ fn verify_simple_proof() {
         &preprocessed_column_sizes,
         verifier_channel,
     );
+
+    verifier_channel.mix_felts(&[qm31_from_u32s(components.len() as u32, 0, 0, 0)]);
     verifier_channel.mix_felts(&packed_enable_bits);
     verifier_channel.mix_felts(&packed_component_log_sizes);
     verifier_channel.mix_felts(&[]);

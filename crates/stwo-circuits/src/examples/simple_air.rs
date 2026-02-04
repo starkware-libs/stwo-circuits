@@ -1,3 +1,4 @@
+use crate::circuits::ivalue::qm31_from_u32s;
 use crate::stark_verifier::proof::Claim;
 use crate::stark_verifier::proof_from_stark_proof::{pack_component_log_sizes, pack_public_claim};
 use crate::stark_verifier::verify::INTERACTION_POW_BITS;
@@ -218,9 +219,11 @@ pub fn create_proof() -> (
     ]);
     tree_builder.commit(prover_channel);
 
-    let packed_enable_bits = pack_enable_bits(&[true, true, false]);
+    let n_components = 3;
+    prover_channel.mix_felts(&[qm31_from_u32s(n_components, 0, 0, 0)]);
 
     // Mix the enable bits into the channel.
+    let packed_enable_bits = pack_enable_bits(&[true, true, false]);
     prover_channel.mix_felts(&packed_enable_bits);
 
     // Mix the component log sizes into the channel.
