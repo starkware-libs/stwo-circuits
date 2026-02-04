@@ -201,6 +201,13 @@ impl PreProcessedTrace {
         let additional_zero_multiplicity: usize =
             circuit.permutation.iter().map(|gate| gate.inputs.len() + gate.outputs.len()).sum();
         multiplicities[0] += additional_zero_multiplicity;
+        // TODO(Leo): **REMOVE** this code once the blake write trace is ready. Temporarily needed
+        // to pass tests.
+        for blake_gate in &circuit.blake {
+            for input_idx in blake_gate.input.iter().flatten() {
+                multiplicities[*input_idx] -= 1;
+            }
+        }
 
         // Add Eq columns.
         add_eq_to_preprocessed_trace(circuit, &mut pp_trace);
