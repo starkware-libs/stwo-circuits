@@ -1,7 +1,7 @@
 use itertools::Itertools;
 use stwo::core::circle::CirclePoint;
 
-use crate::circuits::circuit::{Add, Eq, Mul, Permutation, PointwiseMul, Sub};
+use crate::circuits::circuit::{Add, Eq, Mul, Output, Permutation, PointwiseMul, Sub};
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::{IValue, qm31_from_u32s};
 
@@ -121,6 +121,12 @@ pub fn permute<Value: IValue>(
         outputs: outputs.iter().map(|var| var.idx).collect(),
     });
     outputs
+}
+
+/// Adds an output gate to the circuit.
+pub fn output<Value: IValue>(context: &mut Context<Value>, a: Var) {
+    context.stats.outputs += 1;
+    context.circuit.output.push(Output { in0: a.idx });
 }
 
 /// Returns `(a, b)` if `selector` is 0, and `(b, a)` if `selector` is 1.
