@@ -6,7 +6,7 @@ use stwo::core::fields::m31::P;
 use stwo::core::fields::qm31::QM31;
 
 use crate::circuits::context::{Context, Var};
-use crate::circuits::ivalue::IValue;
+use crate::circuits::ivalue::{IValue, qm31_from_u32s};
 use crate::circuits::ops::eq;
 use crate::circuits::simd::Simd;
 use crate::circuits::wrappers::M31Wrapper;
@@ -96,6 +96,8 @@ pub fn verify<Value: IValue>(
     let component_sizes_bits =
         extract_bits(context, &component_sizes, config.log_trace_size() as u32 + 1);
 
+    let n_components = context.constant(qm31_from_u32s(config.n_components as u32, 0, 0, 0));
+    channel.mix_qm31s(context, [n_components]);
     channel.mix_qm31s(context, proof.claim.packed_enable_bits.iter().cloned());
     channel.mix_qm31s(context, proof.claim.packed_component_log_sizes.iter().cloned());
     for claim_to_mix in statement.claims_to_mix(context) {
