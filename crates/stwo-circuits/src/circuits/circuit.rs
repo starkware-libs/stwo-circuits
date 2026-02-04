@@ -248,6 +248,31 @@ impl std::fmt::Debug for Permutation {
     }
 }
 
+/// Represents a gate that receives an input wire and "marks" it as output.
+#[derive(PartialEq, Eq)]
+pub struct Output {
+    pub in0: usize,
+}
+impl Gate for Output {
+    fn check(&self, _values: &[QM31]) -> Result<(), String> {
+        Ok(())
+    }
+
+    fn uses(&self) -> Vec<usize> {
+        vec![self.in0]
+    }
+
+    fn yields(&self) -> Vec<usize> {
+        vec![]
+    }
+}
+
+impl std::fmt::Debug for Output {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "output [{}]", self.in0)
+    }
+}
+
 /// Represents a circuit.
 #[derive(Default, PartialEq, Eq)]
 pub struct Circuit {
@@ -259,12 +284,14 @@ pub struct Circuit {
     pub eq: Vec<Eq>,
     pub blake: Vec<Blake>,
     pub permutation: Vec<Permutation>,
+    pub output: Vec<Output>,
 }
 
 impl Circuit {
     /// Returns an iterator over all the gates in the circuit.
     pub fn all_gates(&self) -> impl Iterator<Item = &dyn Gate> {
-        let Circuit { n_vars: _, add, sub, mul, pointwise_mul, eq, blake, permutation } = self;
+        let Circuit { n_vars: _, add, sub, mul, pointwise_mul, eq, blake, permutation, output } =
+            self;
         chain!(
             add.iter().map(|g| g as &dyn Gate),
             sub.iter().map(|g| g as &dyn Gate),
@@ -273,6 +300,7 @@ impl Circuit {
             eq.iter().map(|g| g as &dyn Gate),
             blake.iter().map(|g| g as &dyn Gate),
             permutation.iter().map(|g| g as &dyn Gate),
+            output.iter().map(|g| g as &dyn Gate),
         )
     }
 
