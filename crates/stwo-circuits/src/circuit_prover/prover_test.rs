@@ -1,4 +1,4 @@
-use crate::circuit_air::statement::CircuitStatement;
+use crate::circuit_air::statement::{CircuitStatement, INTERACTION_POW_BITS};
 use crate::circuit_prover::prover::{CircuitProof, finalize_context, prove_circuit};
 use crate::circuits::context::TraceContext;
 use crate::circuits::ivalue::{IValue, qm31_from_u32s};
@@ -9,7 +9,7 @@ use crate::stark_verifier::proof::{Claim, ProofConfig};
 use crate::stark_verifier::proof_from_stark_proof::{
     pack_component_log_sizes, pack_enable_bits, proof_from_stark_proof,
 };
-use crate::stark_verifier::verify::INTERACTION_POW_BITS;
+
 use expect_test::expect;
 use num_traits::{One, Zero};
 use stwo::core::air::Component;
@@ -166,7 +166,12 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
         packed_component_log_sizes: pack_component_log_sizes(&claim.log_sizes),
         claimed_sums: interaction_claim.claimed_sums.to_vec(),
     };
-    let config = ProofConfig::from_statement(&statement, *log_trace_size as usize, &pcs_config);
+    let config = ProofConfig::from_statement(
+        &statement,
+        *log_trace_size as usize,
+        &pcs_config,
+        INTERACTION_POW_BITS,
+    );
 
     let mut context = TraceContext::default();
     let proof = proof_from_stark_proof(&proof, &config, claim, interaction_pow_nonce, channel_salt);

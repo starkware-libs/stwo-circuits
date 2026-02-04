@@ -1,4 +1,5 @@
 use crate::circuit_air::components::CircuitComponents;
+use crate::circuit_air::statement::INTERACTION_POW_BITS;
 use crate::circuit_air::{
     CircuitClaim, CircuitInteractionClaim, CircuitInteractionElements, lookup_sum,
 };
@@ -7,7 +8,6 @@ use crate::circuit_prover::witness::preprocessed::PreProcessedTrace;
 use crate::circuit_prover::witness::trace::write_interaction_trace;
 use crate::circuit_prover::witness::trace::write_trace;
 use crate::circuits::context::Context;
-use crate::stark_verifier::verify::INTERACTION_POW_BITS;
 use num_traits::Zero;
 use stwo::core::air::Component;
 use stwo::core::channel::Blake2sM31Channel;

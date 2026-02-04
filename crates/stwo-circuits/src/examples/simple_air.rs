@@ -1,7 +1,7 @@
 use crate::circuits::ivalue::qm31_from_u32s;
 use crate::stark_verifier::proof::Claim;
 use crate::stark_verifier::proof_from_stark_proof::{pack_component_log_sizes, pack_public_claim};
-use crate::stark_verifier::verify::INTERACTION_POW_BITS;
+
 use itertools::{Itertools, zip_eq};
 use num_traits::{One, Zero};
 use stwo::core::ColumnVec;
@@ -34,6 +34,8 @@ use stwo_constraint_framework::{
 use crate::examples::simple_statement::COMPONENT_LOG_SIZES;
 
 use crate::stark_verifier::proof_from_stark_proof::pack_enable_bits;
+
+pub const INTERACTION_POW_BITS: u32 = 8;
 
 #[cfg(test)]
 #[path = "simple_air_test.rs"]
