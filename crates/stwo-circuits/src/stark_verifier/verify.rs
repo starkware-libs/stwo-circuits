@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use itertools::{Itertools, chain, izip, zip_eq};
 use stwo::core::circle::CirclePoint;
 use stwo::core::fields::m31::P;
+use stwo::core::fields::qm31::QM31;
 
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
@@ -69,6 +70,13 @@ pub fn verify<Value: IValue>(
 
     // Mix the channel salt.
     channel.mix_qm31s(context, [proof.channel_salt]);
+    let pcs_config = context.constant(QM31::from_u32_unchecked(
+        config.n_proof_of_work_bits as u32,
+        config.fri.log_blowup_factor as u32,
+        config.fri.n_queries as u32,
+        config.fri.log_n_last_layer_coefs as u32,
+    ));
+    channel.mix_qm31s(context, [pcs_config]);
 
     // Mix the trace commitments into the channel.
     channel.mix_commitment(context, proof.preprocessed_root);

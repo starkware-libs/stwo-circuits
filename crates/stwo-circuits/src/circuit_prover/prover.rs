@@ -73,6 +73,7 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     // Mix channel salt. Note that we first reduce it modulo `M31::P`, then cast it as QM31.
     let channel_salt = 0_u32;
     channel.mix_felts(&[channel_salt.into()]);
+    pcs_config.mix_into(channel);
     let mut commitment_scheme =
         CommitmentSchemeProver::<SimdBackend, Blake2sM31MerkleChannel>::new(pcs_config, &twiddles);
 
