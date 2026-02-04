@@ -30,7 +30,7 @@ impl ClaimGenerator {
                 id: "bitwise_xor_8_2".to_owned(),
             },
         ];
-
+        println!("column_ids: {:?}", column_ids);
         Self {
             mults,
             input_to_row: make_input_to_row(&preprocessed_trace, column_ids),
