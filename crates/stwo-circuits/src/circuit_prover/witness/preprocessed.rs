@@ -287,7 +287,7 @@ impl PreProcessedTrace {
     fn add_non_circuit_preprocessed_columns(pp_trace: &mut PreProcessedTrace) {
         let n_columns = pp_trace.columns.len();
         let seq: [Vec<usize>; 17] =
-            std::array::from_fn(|i| vec![1_usize << (i + 4); 1_usize << (i + 4)]);
+            std::array::from_fn(|i| (0..1_usize << (i + 4)).collect());
         let bitwise_xor: Vec<Vec<usize>> = [4, 7, 8, 9, 10]
             .into_iter()
             .flat_map(|n_bits| gen_xor_columns(n_bits).into_iter())
