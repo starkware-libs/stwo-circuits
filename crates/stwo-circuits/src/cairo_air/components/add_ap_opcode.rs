@@ -14,13 +14,13 @@ pub const RELATION_USES_PER_ROW: [RelationUse; 6] = [
     RelationUse { relation_id: "VerifyInstruction", uses: 1 },
 ];
 
+#[allow(unused_variables)]
 pub fn accumulate_constraints(
     input: &[Var],
     context: &mut Context<impl IValue>,
     component_data: &ComponentData<'_>,
     acc: &mut CompositionConstraintAccumulator,
 ) {
-    let _ = component_data;
     let [
         input_pc_col0,
         input_ap_col1,

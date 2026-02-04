@@ -5,13 +5,13 @@ use crate::cairo_air::components::prelude::*;
 pub const RELATION_USES_PER_ROW: [RelationUse; 1] =
     [RelationUse { relation_id: "VerifyInstruction", uses: 1 }];
 
+#[allow(unused_variables)]
 pub fn accumulate_constraints(
     input: &[Var],
     context: &mut Context<impl IValue>,
     component_data: &ComponentData<'_>,
     acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
-    let _ = component_data;
     let [decode_instruction_d2a10_input_pc, offset2_col0, op1_imm_col1, op1_base_fp_col2] =
         input.try_into().unwrap();
 

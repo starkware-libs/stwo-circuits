@@ -19,8 +19,6 @@ pub fn accumulate_constraints(
     component_data: &ComponentData<'_>,
     acc: &mut CompositionConstraintAccumulator,
 ) {
-    let _ = component_data;
-    let _ = acc;
     let [
         input_pc_col0,
         input_ap_col1,
