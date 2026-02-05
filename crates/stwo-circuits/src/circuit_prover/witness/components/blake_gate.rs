@@ -863,6 +863,7 @@ fn write_trace_simd(
                         seq,
                     ),
                 );
+                
                 let blake_round_output_round_0_tmp_8e0ec_47 = blake_round_state.deduce_output((
                     seq,
                     M31_0,
