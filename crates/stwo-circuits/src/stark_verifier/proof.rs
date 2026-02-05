@@ -75,6 +75,9 @@ impl ProofConfig {
         let n_interaction_columns = interaction_columns_per_component.iter().sum();
         let mut cumulative_sum_columns = Vec::with_capacity(n_interaction_columns);
         for n_interaction_columns_in_component in &interaction_columns_per_component {
+            if *n_interaction_columns_in_component == 0 {
+                continue;
+            }
             // The last SECURE_EXTENSION_DEGREE interaction columns of every component are
             // cumulative sum columns.
             assert!(
