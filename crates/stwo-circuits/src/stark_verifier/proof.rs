@@ -41,7 +41,6 @@ pub struct ProofConfig {
 impl ProofConfig {
     pub fn from_statement<Value: IValue>(
         statement: &impl Statement<Value>,
-        log_trace_size: usize,
         pcs_config: &PcsConfig,
         interaction_pow_bits: u32,
     ) -> Self {
@@ -57,7 +56,6 @@ impl ProofConfig {
             trace_columns_per_component,
             interaction_columns_per_component,
             n_preprocessed_columns,
-            log_trace_size,
             pcs_config,
             interaction_pow_bits,
         )
@@ -68,7 +66,6 @@ impl ProofConfig {
         trace_columns_per_component: Vec<usize>,
         interaction_columns_per_component: Vec<usize>,
         n_preprocessed_columns: usize,
-        log_trace_size: usize,
         pcs_config: &PcsConfig,
         interaction_pow_bits: u32,
     ) -> Self {
@@ -96,7 +93,13 @@ impl ProofConfig {
             pow_bits,
             fri_config:
                 stwo::core::fri::FriConfig { log_blowup_factor, n_queries, log_last_layer_degree_bound },
-        } = pcs_config;
+            lifting_log_size: Some(lifting_log_size),
+        } = pcs_config
+        else {
+            panic!("Lifting log size must be set");
+        };
+
+        let log_trace_size = (*lifting_log_size - log_blowup_factor) as usize;
 
         Self {
             n_proof_of_work_bits: *pow_bits,
