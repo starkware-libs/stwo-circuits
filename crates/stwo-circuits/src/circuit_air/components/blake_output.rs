@@ -1,8 +1,8 @@
 // This file was created by the AIR team.
 
-use crate::circuit_air::components::prelude::*;
+use crate::circuit_air::{components::prelude::*, relations::GATE_RELATION_ID};
 
-pub const N_TRACE_COLUMNS: usize = 25;
+pub const N_TRACE_COLUMNS: usize = 24;
 pub const RELATION_USES_PER_ROW: [RelationUse; 1] =
     [RelationUse { relation_id: "BlakeOutput", uses: 1 }];
 
@@ -53,13 +53,16 @@ impl FrameworkEval for Eval {
     #[allow(non_snake_case)]
     fn evaluate<E: EvalAtRow>(&self, mut eval: E) -> E {
         let M31_1061955672 = E::F::from(M31::from(1061955672));
-        let M31_378353459 = E::F::from(M31::from(378353459));
         let final_state_addr = eval
             .get_preprocessed_column(PreProcessedColumnId { id: "final_state_addr".to_owned() });
         let blake_output0_addr = eval
             .get_preprocessed_column(PreProcessedColumnId { id: "blake_output0_addr".to_owned() });
         let blake_output1_addr = eval
             .get_preprocessed_column(PreProcessedColumnId { id: "blake_output1_addr".to_owned() });
+        let blake_output0_mults = eval
+            .get_preprocessed_column(PreProcessedColumnId { id: "blake_output0_mults".to_owned() });
+        let blake_output1_mults = eval
+            .get_preprocessed_column(PreProcessedColumnId { id: "blake_output1_mults".to_owned() });
         let input_final_state_limb0_limb_0_col0 = eval.next_trace_mask();
         let input_final_state_limb0_limb_1_col1 = eval.next_trace_mask();
         let input_final_state_limb1_limb_0_col2 = eval.next_trace_mask();
@@ -84,11 +87,10 @@ impl FrameworkEval for Eval {
         let output_limb5_col21 = eval.next_trace_mask();
         let output_limb6_col22 = eval.next_trace_mask();
         let output_limb7_col23 = eval.next_trace_mask();
-        let multiplicity_0 = eval.next_trace_mask();
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            E::EF::from(multiplicity_0),
+            E::EF::one(),
             &[
                 M31_1061955672.clone(),
                 final_state_addr.clone(),
@@ -113,9 +115,9 @@ impl FrameworkEval for Eval {
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            -E::EF::one(),
+            -E::EF::from(blake_output0_mults),
             &[
-                M31_378353459.clone(),
+                E::F::from(GATE_RELATION_ID),
                 blake_output0_addr.clone(),
                 output_limb0_col16.clone(),
                 output_limb1_col17.clone(),
@@ -126,9 +128,9 @@ impl FrameworkEval for Eval {
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            -E::EF::one(),
+            -E::EF::from(blake_output1_mults),
             &[
-                M31_378353459.clone(),
+                E::F::from(GATE_RELATION_ID),
                 blake_output1_addr.clone(),
                 output_limb4_col20.clone(),
                 output_limb5_col21.clone(),

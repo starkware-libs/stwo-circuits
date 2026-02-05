@@ -48,13 +48,13 @@ pub fn write_trace(
 
     let verify_bitwise_xor_8_state =
         verify_bitwise_xor_8::ClaimGenerator::new(preprocessed_trace.clone());
-        let verify_bitwise_xor_12_state =
+    let verify_bitwise_xor_12_state =
         verify_bitwise_xor_12::ClaimGenerator::new(preprocessed_trace.clone());
-            let verify_bitwise_xor_4_state =
+    let verify_bitwise_xor_4_state =
         verify_bitwise_xor_4::ClaimGenerator::new(preprocessed_trace.clone());
-            let verify_bitwise_xor_7_state =
+    let verify_bitwise_xor_7_state =
         verify_bitwise_xor_7::ClaimGenerator::new(preprocessed_trace.clone());
-            let verify_bitwise_xor_9_state =
+    let verify_bitwise_xor_9_state =
         verify_bitwise_xor_9::ClaimGenerator::new(preprocessed_trace.clone());
 
     let range_check_16_state = range_check_16::ClaimGenerator::new(preprocessed_trace.clone());
@@ -95,8 +95,14 @@ pub fn write_trace(
     tree_builder.extend_evals(blake_round_sigma_trace.to_evals());
 
     // Write blake g.
-    let (blake_g_trace, blake_g_claim, blake_g_interaction_claim_gen) =
-        blake_g_generator.write_trace(&verify_bitwise_xor_8_state, &verify_bitwise_xor_12_state, &verify_bitwise_xor_4_state, &verify_bitwise_xor_7_state, &verify_bitwise_xor_9_state);
+    let (blake_g_trace, blake_g_claim, blake_g_interaction_claim_gen) = blake_g_generator
+        .write_trace(
+            &verify_bitwise_xor_8_state,
+            &verify_bitwise_xor_12_state,
+            &verify_bitwise_xor_4_state,
+            &verify_bitwise_xor_7_state,
+            &verify_bitwise_xor_9_state,
+        );
     tree_builder.extend_evals(blake_g_trace.to_evals());
 
     (
@@ -107,7 +113,7 @@ pub fn write_trace(
                 blake_gate_interaction_claim_gen.log_size,
                 blake_round_log_size.log_size,
                 crate::circuit_air::components::blake_round_sigma::LOG_SIZE,
-                blake_g_claim.log_size
+                blake_g_claim.log_size,
             ],
         },
         CircuitInteractionClaimGenerator {
@@ -116,7 +122,7 @@ pub fn write_trace(
             blake_gate: blake_gate_interaction_claim_gen,
             blake_round: blake_round_interaction_claim_gen,
             blake_round_sigma: blake_round_sigma_interaction_claim_gen,
-            blake_g: blake_g_interaction_claim_gen
+            blake_g: blake_g_interaction_claim_gen,
         },
     )
 }
@@ -127,7 +133,7 @@ pub struct CircuitInteractionClaimGenerator {
     pub blake_gate: blake_gate::InteractionClaimGenerator,
     pub blake_round: blake_round::InteractionClaimGenerator,
     pub blake_round_sigma: blake_round_sigma::InteractionClaimGenerator,
-    pub blake_g: blake_g::InteractionClaimGenerator
+    pub blake_g: blake_g::InteractionClaimGenerator,
 }
 
 pub fn write_interaction_trace(
@@ -165,17 +171,18 @@ pub fn write_interaction_trace(
     tree_builder.extend_evals(blake_round_trace);
 
     // Blake round sigma interaction trace.
-    let (blake_round_sigma_trace, blake_round_sigma_interaction_claim) = circuit_interaction_claim_generator
-        .blake_round_sigma
-        .write_interaction_trace(&interaction_elements.common_lookup_elements);
+    let (blake_round_sigma_trace, blake_round_sigma_interaction_claim) =
+        circuit_interaction_claim_generator
+            .blake_round_sigma
+            .write_interaction_trace(&interaction_elements.common_lookup_elements);
     tree_builder.extend_evals(blake_round_sigma_trace);
 
     // Blake g interaction trace.
     let (blake_g_trace, blake_g_interaction_claim) = circuit_interaction_claim_generator
         .blake_g
         .write_interaction_trace(&interaction_elements.common_lookup_elements);
-
     tree_builder.extend_evals(blake_g_trace);
+
     CircuitInteractionClaim {
         claimed_sums: [
             eq_claimed_sum,
@@ -183,7 +190,7 @@ pub fn write_interaction_trace(
             blake_gate_interaction_claim.claimed_sum,
             blake_round_interaction_claim.claimed_sum,
             blake_round_sigma_interaction_claim.claimed_sum,
-            blake_g_interaction_claim.claimed_sum
+            blake_g_interaction_claim.claimed_sum,
         ],
     }
 }

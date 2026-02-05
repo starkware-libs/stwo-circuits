@@ -51,8 +51,8 @@ fn write_trace_simd(
         )
     };
 
+    let M31_0 = PackedM31::broadcast(M31::from(0));
     let M31_1061955672 = PackedM31::broadcast(M31::from(1061955672));
-    let M31_378353459 = PackedM31::broadcast(M31::from(378353459));
     let M31_65536 = PackedM31::broadcast(M31::from(65536));
     let final_state_addr = preprocessed_trace
         .get_packed_column(&PreProcessedColumnId { id: "final_state_addr".to_owned() });
@@ -149,7 +149,7 @@ fn write_trace_simd(
                 input_final_state_limb7_limb_1_col15,
             ];
             *lookup_data.gate_0 = [
-                M31_378353459,
+                M31_0,
                 blake_output0_addr,
                 output_limb0_col16,
                 output_limb1_col17,
@@ -157,15 +157,13 @@ fn write_trace_simd(
                 output_limb3_col19,
             ];
             *lookup_data.gate_1 = [
-                M31_378353459,
+                M31_0,
                 blake_output1_addr,
                 output_limb4_col20,
                 output_limb5_col21,
                 output_limb6_col22,
                 output_limb7_col23,
             ];
-            *lookup_data.mults_0 = mults0[row_index];
-            *lookup_data.mults_1 = mults1[row_index];
         });
 
     (trace, lookup_data)
@@ -193,23 +191,28 @@ impl InteractionClaimGenerator {
 
         // Sum logup terms in pairs.
         let mut col_gen = logup_gen.new_col();
-        (col_gen.par_iter_mut(), &self.lookup_data.blake_output_0, &self.lookup_data.gate_0)
+        (
+            col_gen.par_iter_mut(),
+            &self.lookup_data.blake_output_0,
+            &self.lookup_data.gate_0,
+            self.lookup_data.mults_0,
+        )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .for_each(|(writer, values0, values1, mult)| {
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom1 - denom0, denom0 * denom1);
+                writer.write_frac(denom1 - (denom0 * mult), denom0 * denom1);
             });
         col_gen.finalize_col();
 
         // Sum last logup term.
         let mut col_gen = logup_gen.new_col();
-        (col_gen.par_iter_mut(), &self.lookup_data.gate_1).into_par_iter().for_each(
-            |(writer, values)| {
+        (col_gen.par_iter_mut(), &self.lookup_data.gate_1, self.lookup_data.mults_1)
+            .into_par_iter()
+            .for_each(|(writer, values, mult)| {
                 let denom = common_lookup_elements.combine(values);
-                writer.write_frac(-PackedQM31::one(), denom);
-            },
-        );
+                writer.write_frac(-PackedQM31::one() * mult, denom);
+            });
         col_gen.finalize_col();
 
         let (trace, claimed_sum) = logup_gen.finalize_last();
