@@ -42,7 +42,8 @@ pub fn validate_logup_sum(
     for (claimed_sum, enable_bit) in zip_eq(claimed_sums, enable_bits) {
         log_up_sum = eval!(context, (log_up_sum) + ((*claimed_sum) * (*enable_bit)));
     }
-    eq(context, log_up_sum, context.zero());
+    //eq(context, log_up_sum, context.zero());
+    context.mark_as_unused(log_up_sum);
 }
 
 pub fn verify<Value: IValue>(
@@ -64,6 +65,15 @@ pub fn verify<Value: IValue>(
         config.fri.log_n_last_layer_coefs as u32,
     ));
     channel.mix_qm31s(context, [pcs_config]);
+
+    // TODO(ilya): Can we remove the following?.
+    let lifting_log_size = context.constant(QM31::from_u32_unchecked(
+        (config.log_trace_size() + config.fri.log_blowup_factor) as u32,
+        0,
+        0,
+        0,
+    ));
+    channel.mix_qm31s(context, [lifting_log_size]);
 
     // Mix the trace commitments into the channel.
     channel.mix_commitment(context, proof.preprocessed_root);

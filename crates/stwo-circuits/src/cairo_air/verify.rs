@@ -1,4 +1,4 @@
-use crate::cairo_air::statement::{CairoStatement, MEMORY_VALUES_LIMBS, all_opcode_components};
+use crate::cairo_air::statement::{CairoStatement, MEMORY_VALUES_LIMBS, all_components};
 use crate::circuits::context::{Context, TraceContext};
 use crate::circuits::ops::Guess;
 use crate::stark_verifier::empty_component::EmptyComponent;
@@ -19,6 +19,7 @@ use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 /// Circuit Verifies a [CairoProof].
 pub fn verify_cairo(proof: &CairoProof<Blake2sM31MerkleHasher>) -> Context<QM31> {
     let mut context = TraceContext::default();
+    context.assert_eq_on_eval = true;
     let CairoProof {
         claim,
         interaction_pow,
@@ -46,7 +47,7 @@ pub fn verify_cairo(proof: &CairoProof<Blake2sM31MerkleHasher>) -> Context<QM31>
         .map(|chunk| array::from_fn(|i| M31::from_u32_unchecked(chunk[i])))
         .collect_vec();
 
-    let components = zip_eq(all_opcode_components(), &component_enable_bits)
+    let components = zip_eq(all_components(), &component_enable_bits)
         .map(
             |(component, enable_bit)| {
                 if *enable_bit { component } else { Box::new(EmptyComponent {}) }
@@ -56,13 +57,8 @@ pub fn verify_cairo(proof: &CairoProof<Blake2sM31MerkleHasher>) -> Context<QM31>
 
     let statement =
         CairoStatement::<QM31>::new_ex(&mut context, public_claim, outputs, program, components);
-    let log_trace_size = component_log_sizes.iter().max().unwrap();
-    let config = ProofConfig::from_statement(
-        &statement,
-        *log_trace_size as usize,
-        &proof.extended_stark_proof.proof.config,
-        24,
-    );
+    let config =
+        ProofConfig::from_statement(&statement, &proof.extended_stark_proof.proof.config, 24);
     assert_eq!(component_enable_bits.len(), config.n_components);
     let component_claimed_sums = flatten_interaction_claim(interaction_claim);
     assert_eq!(component_claimed_sums.len(), config.n_components);
