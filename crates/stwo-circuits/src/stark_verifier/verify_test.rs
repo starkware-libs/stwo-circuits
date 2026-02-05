@@ -6,7 +6,6 @@ use stwo::core::vcs::blake2_hash::Blake2sHash;
 use crate::circuits::context::{Context, TraceContext};
 use crate::circuits::ivalue::NoValue;
 use crate::circuits::ops::Guess;
-use crate::examples::simple_air::LOG_SIZE_LONG;
 use crate::examples::simple_air::create_proof;
 use crate::examples::simple_statement::SimpleStatement;
 use crate::stark_verifier::proof::{ProofConfig, empty_proof};
@@ -34,7 +33,7 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
         create_proof();
 
     let statement = &SimpleStatement::default();
-    let config = ProofConfig::from_statement(statement, LOG_SIZE_LONG as usize, &pcs_config, 8);
+    let config = ProofConfig::from_statement(statement, &pcs_config, 8);
     // Create a NoValue version.
     let novalue_circuit = {
         let empty_proof = empty_proof(&config);

@@ -17,20 +17,20 @@ itertools = { version = "0.12", default-features = false, features = [
     "use_alloc",
 ] }
 num-traits = { version = "0.2.19", default-features = false }
-stwo = { git = "https://github.com/starkware-libs/stwo", rev = "a8fcf4bd", features = [
+stwo = { git = "https://github.com/starkware-libs/stwo", rev = "0414d20c", features = [
     "parallel",
     "prover",
 ], default-features = false }
-stwo-constraint-framework = { git = "https://github.com/starkware-libs/stwo", rev = "a8fcf4bd", features = [
+stwo-constraint-framework = { git = "https://github.com/starkware-libs/stwo", rev = "0414d20c", features = [
     "parallel",
     "prover",
 ] }
-stwo-air-utils-derive = { git = "https://github.com/starkware-libs/stwo", rev = "a8fcf4bd" }
-stwo-air-utils = { git = "https://github.com/starkware-libs/stwo", rev = "a8fcf4bd" }
-cairo-air = { git = "https://github.com/starkware-libs/stwo-cairo", rev = "9e197b3c" }
-stwo_cairo_prover = { package = "stwo-cairo-prover", git = "https://github.com/starkware-libs/stwo-cairo", rev = "9e197b3c" }
-dev_utils = { package = "stwo-cairo-dev-utils", git = "https://github.com/starkware-libs/stwo-cairo", rev = "9e197b3c" }
-stwo_cairo_utils = { package = "stwo-cairo-utils", git = "https://github.com/starkware-libs/stwo-cairo", rev = "9e197b3c" }
+stwo-air-utils-derive = { git = "https://github.com/starkware-libs/stwo", rev = "0414d20c" }
+stwo-air-utils = { git = "https://github.com/starkware-libs/stwo", rev = "0414d20c" }
+cairo-air = { git = "https://github.com/starkware-libs/stwo-cairo", rev = "9a0fd535" }
+stwo_cairo_prover = { package = "stwo-cairo-prover", git = "https://github.com/starkware-libs/stwo-cairo", rev = "9a0fd535" }
+dev_utils = { package = "stwo-cairo-dev-utils", git = "https://github.com/starkware-libs/stwo-cairo", rev = "9a0fd535" }
+stwo_cairo_utils = { package = "stwo-cairo-utils", git = "https://github.com/starkware-libs/stwo-cairo", rev = "9a0fd535" }
 rstest = "0.26.1"
 expect-test = "1.5.1"
 rayon = "1.10.0"

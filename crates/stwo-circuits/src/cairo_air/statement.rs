@@ -441,7 +441,7 @@ pub fn public_logup_sum(
     sum
 }
 
-pub fn all_opcode_components<Value: IValue>() -> Vec<Box<dyn CircuitEval<Value>>> {
+pub fn all_components<Value: IValue>() -> Vec<Box<dyn CircuitEval<Value>>> {
     vec![
         Box::new(components::add_opcode::Component {}),
         Box::new(components::add_opcode_small::Component {}),
@@ -469,27 +469,39 @@ pub fn all_opcode_components<Value: IValue>() -> Vec<Box<dyn CircuitEval<Value>>
         Box::new(components::blake_round_sigma::Component {}),
         Box::new(components::triple_xor_32::Component {}),
         Box::new(components::verify_bitwise_xor_12::Component {}),
-        // Box::new(components::add_mod_builtin::Component {}),
-        // Box::new(components::bitwise_builtin::Component {}),
-        // Box::new(components::mul_mod_builtin::Component {}),
-        // Box::new(components::pedersen_builtin::Component {}),
-        // Box::new(components::poseidon_builtin::Component {}),
-        // Box::new(components::range_check96_builtin::Component {}),
-        // Box::new(components::range_check_builtin::Component {}),
-        // Box::new(components::pedersen_aggregator_window_bits_9::Component {}),
-        // Box::new(components::partial_ec_mul_window_bits_9::Component {}),
-        // Box::new(components::pedersen_points_table_window_bits_9::Component {}),
-        // Box::new(components::poseidon_aggregator::Component {}),
-        // Box::new(components::poseidon_3_partial_rounds_chain::Component {}),
-        // Box::new(components::poseidon_full_round_chain::Component {}),
-        // Box::new(components::cube_252::Component {}),
-        // Box::new(components::poseidon_round_keys::Component {}),
-        // Box::new(components::range_check_252_width_27::Component {}),
+        Box::new(components::add_mod_builtin::Component {}),
+        Box::new(components::bitwise_builtin::Component {}),
+        Box::new(components::mul_mod_builtin::Component {}),
+        Box::new(components::pedersen_builtin::Component {}),
+        Box::new(components::poseidon_builtin::Component {}),
+        Box::new(components::range_check96_builtin::Component {}),
+        Box::new(components::range_check_builtin::Component {}),
+        Box::new(components::pedersen_aggregator_window_bits_9::Component {}),
+        Box::new(components::partial_ec_mul_window_bits_9::Component {}),
+        Box::new(components::pedersen_points_table_window_bits_9::Component {}),
+        Box::new(components::poseidon_aggregator::Component {}),
+        Box::new(components::poseidon_3_partial_rounds_chain::Component {}),
+        Box::new(components::poseidon_full_round_chain::Component {}),
+        Box::new(components::cube_252::Component {}),
+        Box::new(components::poseidon_round_keys::Component {}),
+        Box::new(components::range_check_252_width_27::Component {}),
         Box::new(components::memory_address_to_id::Component {}),
         Box::new(components::memory_id_to_big::Component { index: 0 }),
-        // Box::new(components::memory_id_to_big::Component { index: 1 }),
-        // Box::new(components::memory_id_to_big::Component { index: 2 }),
-        // Box::new(components::memory_id_to_big::Component { index: 3 }),
+        Box::new(components::memory_id_to_big::Component { index: 1 }),
+        Box::new(components::memory_id_to_big::Component { index: 2 }),
+        Box::new(components::memory_id_to_big::Component { index: 3 }),
+        Box::new(components::memory_id_to_big::Component { index: 4 }),
+        Box::new(components::memory_id_to_big::Component { index: 5 }),
+        Box::new(components::memory_id_to_big::Component { index: 6 }),
+        Box::new(components::memory_id_to_big::Component { index: 7 }),
+        Box::new(components::memory_id_to_big::Component { index: 8 }),
+        Box::new(components::memory_id_to_big::Component { index: 9 }),
+        Box::new(components::memory_id_to_big::Component { index: 10 }),
+        Box::new(components::memory_id_to_big::Component { index: 11 }),
+        Box::new(components::memory_id_to_big::Component { index: 12 }),
+        Box::new(components::memory_id_to_big::Component { index: 13 }),
+        Box::new(components::memory_id_to_big::Component { index: 14 }),
+        Box::new(components::memory_id_to_big::Component { index: 15 }),
         Box::new(components::memory_id_to_small::Component {}),
         Box::new(components::range_check_6::Component {}),
         Box::new(components::range_check_8::Component {}),
@@ -509,10 +521,4 @@ pub fn all_opcode_components<Value: IValue>() -> Vec<Box<dyn CircuitEval<Value>>
         Box::new(components::verify_bitwise_xor_8::Component {}),
         Box::new(components::verify_bitwise_xor_9::Component {}),
     ]
-}
-
-pub fn all_components<Value: IValue>() -> Vec<Box<dyn CircuitEval<Value>>> {
-    // TODO(ilya): Fix this to include the builtin components once we have all the
-    // preprocessed columns.
-    all_opcode_components()
 }

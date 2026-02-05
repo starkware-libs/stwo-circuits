@@ -42,8 +42,6 @@ pub mod test;
 
 pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     finalize_context(context);
-    let pcs_config = PcsConfig::default();
-
     // Generate preprocessed trace.
     let (preprocessed_trace, trace_generator) =
         PreProcessedTrace::generate_preprocessed_trace(&context.circuit);
@@ -51,6 +49,11 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     // The trace size is the size of the largest column in the preprocessed trace (since all
     // components have preprocessed columns).
     let trace_log_size = preprocessed_trace.log_sizes().into_iter().max().unwrap();
+
+    let mut pcs_config = PcsConfig::default();
+    let lifting_log_size = trace_log_size + pcs_config.fri_config.log_blowup_factor;
+
+    pcs_config.lifting_log_size = Some(lifting_log_size);
 
     // Precompute twiddles.
     // Account for blowup factor and for composition polynomial calculation (taking the max since
