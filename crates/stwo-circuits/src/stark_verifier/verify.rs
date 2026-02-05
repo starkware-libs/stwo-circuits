@@ -204,7 +204,7 @@ pub fn verify<Value: IValue>(
 
     let column_log_sizes_by_trace = column_log_sizes_by_trace(context, config, component_log_sizes);
     let periodicity_sample_points_per_column =
-        column_periodicity_sample_points(config, &periodicity_sample_points_per_component);
+        column_periodicity_sample_points(context, config, &periodicity_sample_points_per_component);
 
     decommit_eval_domain_samples(
         context,
@@ -318,6 +318,10 @@ fn column_log_sizes_by_trace(
         &config.interaction_columns_per_component,
         Simd::unpack(context, &component_log_sizes)
     ) {
+        if *n_trace_columns_in_component == 0 {
+            context.mark_as_unused(log_size);
+            continue;
+        }
         column_log_sizes[0].extend(vec![log_size; *n_trace_columns_in_component]);
         column_log_sizes[1].extend(vec![log_size; *n_interaction_columns_in_component]);
     }
@@ -328,6 +332,7 @@ fn column_log_sizes_by_trace(
 /// for each column in the interaction trace.
 /// The periodicity sample points are the sample points used for the periodicity check.
 fn column_periodicity_sample_points(
+    context: &mut Context<impl IValue>,
     config: &ProofConfig,
     sample_points_per_component: &[CirclePoint<Var>],
 ) -> Vec<CirclePoint<Var>> {
@@ -335,6 +340,11 @@ fn column_periodicity_sample_points(
     for (n_interaction_columns_in_component, sample_point) in
         izip!(&config.interaction_columns_per_component, sample_points_per_component)
     {
+        if *n_interaction_columns_in_component == 0 {
+            context.mark_as_unused(sample_point.x);
+            context.mark_as_unused(sample_point.y);
+            continue;
+        }
         periodicity_sample_points_per_column
             .extend(vec![sample_point; *n_interaction_columns_in_component]);
     }
