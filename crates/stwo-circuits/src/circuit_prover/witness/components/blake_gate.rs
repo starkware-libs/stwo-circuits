@@ -5,7 +5,8 @@ use crate::circuit_air::components::blake_gate::{InteractionClaim, N_TRACE_COLUM
 
 use crate::circuit_prover::witness::components::prelude::*;
 use crate::circuit_prover::witness::components::{
-    blake_message, blake_round, range_check_15, range_check_16, triple_xor_32, verify_bitwise_xor_8,
+    blake_message, blake_output, blake_round, range_check_15, range_check_16, triple_xor_32,
+    verify_bitwise_xor_8,
 };
 
 pub type InputType = ([[UInt32; 8]; 2], [M31; 16]);
@@ -104,7 +105,6 @@ fn extract_component_inputs(
         preprocessed_trace.get_column(&PreProcessedColumnId { id: "message3_addr".to_owned() });
 
     let n_rows = message0_addr.len();
-    eprintln!("Number of rows in preprocessed: {n_rows}");
     assert_eq!(n_rows, message1_addr.len());
     assert_eq!(n_rows, message2_addr.len());
     assert_eq!(n_rows, message3_addr.len());
@@ -158,7 +158,11 @@ impl ClaimGenerator {
         range_check_15_state: &range_check_15::ClaimGenerator,
         blake_round_state: &mut blake_round::ClaimGenerator,
         triple_xor_32_state: &mut triple_xor_32::ClaimGenerator,
-    ) -> (ComponentTrace<N_TRACE_COLUMNS>, u32, LookupData, blake_message::ClaimGenerator) {
+    ) -> (
+        ComponentTrace<N_TRACE_COLUMNS>,
+        InteractionClaimGenerator,
+        blake_message::ClaimGenerator,
+    ) {
         // let n_rows = self.inputs.len();
         // assert_ne!(n_rows, 0);
         // let size = std::cmp::max(n_rows.next_power_of_two(), N_LANES);
@@ -176,7 +180,7 @@ impl ClaimGenerator {
         let packed_inputs = pack_values(&inputs);
 
         let mut blake_message_state = blake_message::ClaimGenerator::default();
-        let (trace, lookup_data, sub_component_inputs) = write_trace_simd(
+        let (trace, interaction_claim_generator, sub_component_inputs) = write_trace_simd(
             packed_inputs,
             &self.preprocessed_trace,
             n_rows,
@@ -203,7 +207,7 @@ impl ClaimGenerator {
             triple_xor_32_state.add_packed_inputs(&inputs, 0);
         }
 
-        (trace, log_size, lookup_data, blake_message_state)
+        (trace, interaction_claim_generator, blake_message_state)
     }
 }
 
@@ -217,7 +221,6 @@ struct SubComponentInputs {
 }
 
 #[allow(clippy::useless_conversion)]
-#[allow(unused_variables)]
 #[allow(clippy::double_parens)]
 #[allow(non_snake_case)]
 fn write_trace_simd(
@@ -230,7 +233,7 @@ fn write_trace_simd(
     blake_round_state: &mut blake_round::ClaimGenerator,
     triple_xor_32_state: &mut triple_xor_32::ClaimGenerator,
     blake_message_state: &mut blake_message::ClaimGenerator,
-) -> (ComponentTrace<N_TRACE_COLUMNS>, LookupData, SubComponentInputs) {
+) -> (ComponentTrace<N_TRACE_COLUMNS>, InteractionClaimGenerator, SubComponentInputs) {
     let n_packed_rows = inputs.len();
     let log_n_packed_rows = n_packed_rows.ilog2();
     let log_size = log_n_packed_rows + LOG_N_LANES;
@@ -1783,8 +1786,13 @@ fn write_trace_simd(
     for (id, messages) in blake_message_inputs {
         blake_message_state.add_packed_inputs(id, messages);
     }
+    let interaction_claim_generator = InteractionClaimGenerator {
+        n_rows,
+        log_size,
+        lookup_data
+};
 
-    (trace, lookup_data, sub_component_inputs)
+    (trace, interaction_claim_generator, sub_component_inputs)
 }
 
 #[derive(Uninitialized, IterMut, ParIterMut)]

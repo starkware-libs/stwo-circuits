@@ -1,7 +1,7 @@
 // This file was created by the AIR team.
 
 #![allow(unused_parens)]
-use cairo_air::components::blake_round::{Claim, InteractionClaim, N_TRACE_COLUMNS};
+use crate::circuit_air::components::blake_round::{Claim, InteractionClaim, N_TRACE_COLUMNS};
 
 use crate::circuit_prover::witness::components::prelude::*;
 use crate::circuit_prover::witness::components::{blake_g, blake_message, blake_round_sigma};
@@ -120,7 +120,6 @@ struct SubComponentInputs {
 }
 
 #[allow(clippy::useless_conversion)]
-#[allow(unused_variables)]
 #[allow(clippy::double_parens)]
 #[allow(non_snake_case)]
 fn write_trace_simd(
@@ -1054,7 +1053,7 @@ fn write_trace_simd(
 }
 
 #[derive(Uninitialized, IterMut, ParIterMut)]
-struct LookupData {
+pub struct LookupData {
     blake_g_0: Vec<[PackedM31; 21]>,
     blake_g_1: Vec<[PackedM31; 21]>,
     blake_g_2: Vec<[PackedM31; 21]>,
@@ -1085,9 +1084,9 @@ struct LookupData {
 }
 
 pub struct InteractionClaimGenerator {
-    n_rows: usize,
-    log_size: u32,
-    lookup_data: LookupData,
+    pub n_rows: usize,
+    pub log_size: u32,
+    pub lookup_data: LookupData,
 }
 impl InteractionClaimGenerator {
     pub fn write_interaction_trace(

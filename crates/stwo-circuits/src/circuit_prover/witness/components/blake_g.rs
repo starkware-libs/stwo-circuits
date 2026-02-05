@@ -87,7 +87,6 @@ struct SubComponentInputs {
 }
 
 #[allow(clippy::useless_conversion)]
-#[allow(unused_variables)]
 #[allow(clippy::double_parens)]
 #[allow(non_snake_case)]
 fn write_trace_simd(

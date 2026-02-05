@@ -72,7 +72,7 @@ fn test_prove_and_stark_verify_blake_gate_context() {
 
     let CircuitProof { components: _, claim: _, interaction_claim: _, pcs_config: _, stark_proof } =
         prove_circuit(&mut blake_gate_context);
-    assert!(stark_proof.is_ok());
+    assert!(stark_proof.is_ok(), "Got error: {}", stark_proof.err().unwrap());
 }
 
 #[test]

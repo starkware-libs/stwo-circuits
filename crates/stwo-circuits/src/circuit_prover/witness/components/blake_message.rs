@@ -1,6 +1,3 @@
-#![allow(unused_parens)]
-use crate::circuit_air::components::blake_gate::{Claim, InteractionClaim, N_TRACE_COLUMNS};
-
 use crate::circuit_prover::witness::components::prelude::*;
 
 pub type PackedInputType = ([[PackedUInt32; 8]; 2], [PackedM31; 16]);

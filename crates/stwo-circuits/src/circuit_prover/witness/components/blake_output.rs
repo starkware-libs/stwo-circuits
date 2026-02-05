@@ -25,7 +25,6 @@ impl ClaimGenerator {
     ) -> (ComponentTrace<N_TRACE_COLUMNS>, Claim, InteractionClaimGenerator) {
         assert!(!self.packed_inputs.is_empty());
         let n_vec_rows = self.packed_inputs.len();
-        let n_rows = n_vec_rows * N_LANES;
         let packed_size = n_vec_rows.next_power_of_two();
         let log_size = packed_size.ilog2() + LOG_N_LANES;
         self.packed_inputs.resize(packed_size, *self.packed_inputs.first().unwrap());
@@ -37,7 +36,6 @@ impl ClaimGenerator {
 }
 
 #[allow(clippy::useless_conversion)]
-#[allow(unused_variables)]
 #[allow(clippy::double_parens)]
 #[allow(non_snake_case)]
 fn write_trace_simd(
