@@ -1,0 +1,901 @@
+// This file was created by the AIR team.
+
+use crate::cairo_air::components::prelude::*;
+
+pub const N_TRACE_COLUMNS: usize = 267;
+pub const N_INTERACTION_COLUMNS: usize = 108;
+
+pub const RELATION_USES_PER_ROW: [RelationUse; 2] = [
+    RelationUse { relation_id: "MemoryAddressToId", uses: 29 },
+    RelationUse { relation_id: "MemoryIdToBig", uses: 24 },
+];
+
+#[allow(unused_variables)]
+pub fn accumulate_constraints(
+    input: &[Var],
+    context: &mut Context<impl IValue>,
+    component_data: &ComponentData<'_>,
+    acc: &mut CompositionConstraintAccumulator,
+) {
+    let [
+        is_instance_0_col0,
+        p0_id_col1,
+        p0_limb_0_col2,
+        p0_limb_1_col3,
+        p0_limb_2_col4,
+        p0_limb_3_col5,
+        p0_limb_4_col6,
+        p0_limb_5_col7,
+        p0_limb_6_col8,
+        p0_limb_7_col9,
+        p0_limb_8_col10,
+        p0_limb_9_col11,
+        p0_limb_10_col12,
+        p1_id_col13,
+        p1_limb_0_col14,
+        p1_limb_1_col15,
+        p1_limb_2_col16,
+        p1_limb_3_col17,
+        p1_limb_4_col18,
+        p1_limb_5_col19,
+        p1_limb_6_col20,
+        p1_limb_7_col21,
+        p1_limb_8_col22,
+        p1_limb_9_col23,
+        p1_limb_10_col24,
+        p2_id_col25,
+        p2_limb_0_col26,
+        p2_limb_1_col27,
+        p2_limb_2_col28,
+        p2_limb_3_col29,
+        p2_limb_4_col30,
+        p2_limb_5_col31,
+        p2_limb_6_col32,
+        p2_limb_7_col33,
+        p2_limb_8_col34,
+        p2_limb_9_col35,
+        p2_limb_10_col36,
+        p3_id_col37,
+        p3_limb_0_col38,
+        p3_limb_1_col39,
+        p3_limb_2_col40,
+        p3_limb_3_col41,
+        p3_limb_4_col42,
+        p3_limb_5_col43,
+        p3_limb_6_col44,
+        p3_limb_7_col45,
+        p3_limb_8_col46,
+        p3_limb_9_col47,
+        p3_limb_10_col48,
+        values_ptr_id_col49,
+        values_ptr_limb_0_col50,
+        values_ptr_limb_1_col51,
+        values_ptr_limb_2_col52,
+        values_ptr_limb_3_col53,
+        partial_limb_msb_col54,
+        offsets_ptr_id_col55,
+        offsets_ptr_limb_0_col56,
+        offsets_ptr_limb_1_col57,
+        offsets_ptr_limb_2_col58,
+        offsets_ptr_limb_3_col59,
+        partial_limb_msb_col60,
+        offsets_ptr_prev_id_col61,
+        offsets_ptr_prev_limb_0_col62,
+        offsets_ptr_prev_limb_1_col63,
+        offsets_ptr_prev_limb_2_col64,
+        offsets_ptr_prev_limb_3_col65,
+        partial_limb_msb_col66,
+        n_id_col67,
+        n_limb_0_col68,
+        n_limb_1_col69,
+        n_limb_2_col70,
+        n_limb_3_col71,
+        partial_limb_msb_col72,
+        n_prev_id_col73,
+        n_prev_limb_0_col74,
+        n_prev_limb_1_col75,
+        n_prev_limb_2_col76,
+        n_prev_limb_3_col77,
+        partial_limb_msb_col78,
+        values_ptr_prev_id_col79,
+        p_prev0_id_col80,
+        p_prev1_id_col81,
+        p_prev2_id_col82,
+        p_prev3_id_col83,
+        offsets_a_id_col84,
+        msb_col85,
+        mid_limbs_set_col86,
+        offsets_a_limb_0_col87,
+        offsets_a_limb_1_col88,
+        offsets_a_limb_2_col89,
+        remainder_bits_col90,
+        partial_limb_msb_col91,
+        offsets_b_id_col92,
+        msb_col93,
+        mid_limbs_set_col94,
+        offsets_b_limb_0_col95,
+        offsets_b_limb_1_col96,
+        offsets_b_limb_2_col97,
+        remainder_bits_col98,
+        partial_limb_msb_col99,
+        offsets_c_id_col100,
+        msb_col101,
+        mid_limbs_set_col102,
+        offsets_c_limb_0_col103,
+        offsets_c_limb_1_col104,
+        offsets_c_limb_2_col105,
+        remainder_bits_col106,
+        partial_limb_msb_col107,
+        a0_id_col108,
+        a0_limb_0_col109,
+        a0_limb_1_col110,
+        a0_limb_2_col111,
+        a0_limb_3_col112,
+        a0_limb_4_col113,
+        a0_limb_5_col114,
+        a0_limb_6_col115,
+        a0_limb_7_col116,
+        a0_limb_8_col117,
+        a0_limb_9_col118,
+        a0_limb_10_col119,
+        a1_id_col120,
+        a1_limb_0_col121,
+        a1_limb_1_col122,
+        a1_limb_2_col123,
+        a1_limb_3_col124,
+        a1_limb_4_col125,
+        a1_limb_5_col126,
+        a1_limb_6_col127,
+        a1_limb_7_col128,
+        a1_limb_8_col129,
+        a1_limb_9_col130,
+        a1_limb_10_col131,
+        a2_id_col132,
+        a2_limb_0_col133,
+        a2_limb_1_col134,
+        a2_limb_2_col135,
+        a2_limb_3_col136,
+        a2_limb_4_col137,
+        a2_limb_5_col138,
+        a2_limb_6_col139,
+        a2_limb_7_col140,
+        a2_limb_8_col141,
+        a2_limb_9_col142,
+        a2_limb_10_col143,
+        a3_id_col144,
+        a3_limb_0_col145,
+        a3_limb_1_col146,
+        a3_limb_2_col147,
+        a3_limb_3_col148,
+        a3_limb_4_col149,
+        a3_limb_5_col150,
+        a3_limb_6_col151,
+        a3_limb_7_col152,
+        a3_limb_8_col153,
+        a3_limb_9_col154,
+        a3_limb_10_col155,
+        b0_id_col156,
+        b0_limb_0_col157,
+        b0_limb_1_col158,
+        b0_limb_2_col159,
+        b0_limb_3_col160,
+        b0_limb_4_col161,
+        b0_limb_5_col162,
+        b0_limb_6_col163,
+        b0_limb_7_col164,
+        b0_limb_8_col165,
+        b0_limb_9_col166,
+        b0_limb_10_col167,
+        b1_id_col168,
+        b1_limb_0_col169,
+        b1_limb_1_col170,
+        b1_limb_2_col171,
+        b1_limb_3_col172,
+        b1_limb_4_col173,
+        b1_limb_5_col174,
+        b1_limb_6_col175,
+        b1_limb_7_col176,
+        b1_limb_8_col177,
+        b1_limb_9_col178,
+        b1_limb_10_col179,
+        b2_id_col180,
+        b2_limb_0_col181,
+        b2_limb_1_col182,
+        b2_limb_2_col183,
+        b2_limb_3_col184,
+        b2_limb_4_col185,
+        b2_limb_5_col186,
+        b2_limb_6_col187,
+        b2_limb_7_col188,
+        b2_limb_8_col189,
+        b2_limb_9_col190,
+        b2_limb_10_col191,
+        b3_id_col192,
+        b3_limb_0_col193,
+        b3_limb_1_col194,
+        b3_limb_2_col195,
+        b3_limb_3_col196,
+        b3_limb_4_col197,
+        b3_limb_5_col198,
+        b3_limb_6_col199,
+        b3_limb_7_col200,
+        b3_limb_8_col201,
+        b3_limb_9_col202,
+        b3_limb_10_col203,
+        c0_id_col204,
+        c0_limb_0_col205,
+        c0_limb_1_col206,
+        c0_limb_2_col207,
+        c0_limb_3_col208,
+        c0_limb_4_col209,
+        c0_limb_5_col210,
+        c0_limb_6_col211,
+        c0_limb_7_col212,
+        c0_limb_8_col213,
+        c0_limb_9_col214,
+        c0_limb_10_col215,
+        c1_id_col216,
+        c1_limb_0_col217,
+        c1_limb_1_col218,
+        c1_limb_2_col219,
+        c1_limb_3_col220,
+        c1_limb_4_col221,
+        c1_limb_5_col222,
+        c1_limb_6_col223,
+        c1_limb_7_col224,
+        c1_limb_8_col225,
+        c1_limb_9_col226,
+        c1_limb_10_col227,
+        c2_id_col228,
+        c2_limb_0_col229,
+        c2_limb_1_col230,
+        c2_limb_2_col231,
+        c2_limb_3_col232,
+        c2_limb_4_col233,
+        c2_limb_5_col234,
+        c2_limb_6_col235,
+        c2_limb_7_col236,
+        c2_limb_8_col237,
+        c2_limb_9_col238,
+        c2_limb_10_col239,
+        c3_id_col240,
+        c3_limb_0_col241,
+        c3_limb_1_col242,
+        c3_limb_2_col243,
+        c3_limb_3_col244,
+        c3_limb_4_col245,
+        c3_limb_5_col246,
+        c3_limb_6_col247,
+        c3_limb_7_col248,
+        c3_limb_8_col249,
+        c3_limb_9_col250,
+        c3_limb_10_col251,
+        sub_p_bit_col252,
+        carry_0_col253,
+        carry_1_col254,
+        carry_2_col255,
+        carry_3_col256,
+        carry_4_col257,
+        carry_5_col258,
+        carry_6_col259,
+        carry_7_col260,
+        carry_8_col261,
+        carry_9_col262,
+        carry_10_col263,
+        carry_11_col264,
+        carry_12_col265,
+        carry_13_col266,
+    ] = input.try_into().unwrap();
+    let seq = seq_of_component_size(context, component_data, acc);
+    let add_mod_builtin_segment_start =
+        *acc.public_params.get("add_mod_builtin_segment_start").unwrap();
+
+    mod_utils::accumulate_constraints(
+        &[
+            eval!(context, add_mod_builtin_segment_start),
+            eval!(context, seq),
+            eval!(context, is_instance_0_col0),
+            eval!(context, p0_id_col1),
+            eval!(context, p0_limb_0_col2),
+            eval!(context, p0_limb_1_col3),
+            eval!(context, p0_limb_2_col4),
+            eval!(context, p0_limb_3_col5),
+            eval!(context, p0_limb_4_col6),
+            eval!(context, p0_limb_5_col7),
+            eval!(context, p0_limb_6_col8),
+            eval!(context, p0_limb_7_col9),
+            eval!(context, p0_limb_8_col10),
+            eval!(context, p0_limb_9_col11),
+            eval!(context, p0_limb_10_col12),
+            eval!(context, p1_id_col13),
+            eval!(context, p1_limb_0_col14),
+            eval!(context, p1_limb_1_col15),
+            eval!(context, p1_limb_2_col16),
+            eval!(context, p1_limb_3_col17),
+            eval!(context, p1_limb_4_col18),
+            eval!(context, p1_limb_5_col19),
+            eval!(context, p1_limb_6_col20),
+            eval!(context, p1_limb_7_col21),
+            eval!(context, p1_limb_8_col22),
+            eval!(context, p1_limb_9_col23),
+            eval!(context, p1_limb_10_col24),
+            eval!(context, p2_id_col25),
+            eval!(context, p2_limb_0_col26),
+            eval!(context, p2_limb_1_col27),
+            eval!(context, p2_limb_2_col28),
+            eval!(context, p2_limb_3_col29),
+            eval!(context, p2_limb_4_col30),
+            eval!(context, p2_limb_5_col31),
+            eval!(context, p2_limb_6_col32),
+            eval!(context, p2_limb_7_col33),
+            eval!(context, p2_limb_8_col34),
+            eval!(context, p2_limb_9_col35),
+            eval!(context, p2_limb_10_col36),
+            eval!(context, p3_id_col37),
+            eval!(context, p3_limb_0_col38),
+            eval!(context, p3_limb_1_col39),
+            eval!(context, p3_limb_2_col40),
+            eval!(context, p3_limb_3_col41),
+            eval!(context, p3_limb_4_col42),
+            eval!(context, p3_limb_5_col43),
+            eval!(context, p3_limb_6_col44),
+            eval!(context, p3_limb_7_col45),
+            eval!(context, p3_limb_8_col46),
+            eval!(context, p3_limb_9_col47),
+            eval!(context, p3_limb_10_col48),
+            eval!(context, values_ptr_id_col49),
+            eval!(context, values_ptr_limb_0_col50),
+            eval!(context, values_ptr_limb_1_col51),
+            eval!(context, values_ptr_limb_2_col52),
+            eval!(context, values_ptr_limb_3_col53),
+            eval!(context, partial_limb_msb_col54),
+            eval!(context, offsets_ptr_id_col55),
+            eval!(context, offsets_ptr_limb_0_col56),
+            eval!(context, offsets_ptr_limb_1_col57),
+            eval!(context, offsets_ptr_limb_2_col58),
+            eval!(context, offsets_ptr_limb_3_col59),
+            eval!(context, partial_limb_msb_col60),
+            eval!(context, offsets_ptr_prev_id_col61),
+            eval!(context, offsets_ptr_prev_limb_0_col62),
+            eval!(context, offsets_ptr_prev_limb_1_col63),
+            eval!(context, offsets_ptr_prev_limb_2_col64),
+            eval!(context, offsets_ptr_prev_limb_3_col65),
+            eval!(context, partial_limb_msb_col66),
+            eval!(context, n_id_col67),
+            eval!(context, n_limb_0_col68),
+            eval!(context, n_limb_1_col69),
+            eval!(context, n_limb_2_col70),
+            eval!(context, n_limb_3_col71),
+            eval!(context, partial_limb_msb_col72),
+            eval!(context, n_prev_id_col73),
+            eval!(context, n_prev_limb_0_col74),
+            eval!(context, n_prev_limb_1_col75),
+            eval!(context, n_prev_limb_2_col76),
+            eval!(context, n_prev_limb_3_col77),
+            eval!(context, partial_limb_msb_col78),
+            eval!(context, values_ptr_prev_id_col79),
+            eval!(context, p_prev0_id_col80),
+            eval!(context, p_prev1_id_col81),
+            eval!(context, p_prev2_id_col82),
+            eval!(context, p_prev3_id_col83),
+            eval!(context, offsets_a_id_col84),
+            eval!(context, msb_col85),
+            eval!(context, mid_limbs_set_col86),
+            eval!(context, offsets_a_limb_0_col87),
+            eval!(context, offsets_a_limb_1_col88),
+            eval!(context, offsets_a_limb_2_col89),
+            eval!(context, remainder_bits_col90),
+            eval!(context, partial_limb_msb_col91),
+            eval!(context, offsets_b_id_col92),
+            eval!(context, msb_col93),
+            eval!(context, mid_limbs_set_col94),
+            eval!(context, offsets_b_limb_0_col95),
+            eval!(context, offsets_b_limb_1_col96),
+            eval!(context, offsets_b_limb_2_col97),
+            eval!(context, remainder_bits_col98),
+            eval!(context, partial_limb_msb_col99),
+            eval!(context, offsets_c_id_col100),
+            eval!(context, msb_col101),
+            eval!(context, mid_limbs_set_col102),
+            eval!(context, offsets_c_limb_0_col103),
+            eval!(context, offsets_c_limb_1_col104),
+            eval!(context, offsets_c_limb_2_col105),
+            eval!(context, remainder_bits_col106),
+            eval!(context, partial_limb_msb_col107),
+            eval!(context, a0_id_col108),
+            eval!(context, a0_limb_0_col109),
+            eval!(context, a0_limb_1_col110),
+            eval!(context, a0_limb_2_col111),
+            eval!(context, a0_limb_3_col112),
+            eval!(context, a0_limb_4_col113),
+            eval!(context, a0_limb_5_col114),
+            eval!(context, a0_limb_6_col115),
+            eval!(context, a0_limb_7_col116),
+            eval!(context, a0_limb_8_col117),
+            eval!(context, a0_limb_9_col118),
+            eval!(context, a0_limb_10_col119),
+            eval!(context, a1_id_col120),
+            eval!(context, a1_limb_0_col121),
+            eval!(context, a1_limb_1_col122),
+            eval!(context, a1_limb_2_col123),
+            eval!(context, a1_limb_3_col124),
+            eval!(context, a1_limb_4_col125),
+            eval!(context, a1_limb_5_col126),
+            eval!(context, a1_limb_6_col127),
+            eval!(context, a1_limb_7_col128),
+            eval!(context, a1_limb_8_col129),
+            eval!(context, a1_limb_9_col130),
+            eval!(context, a1_limb_10_col131),
+            eval!(context, a2_id_col132),
+            eval!(context, a2_limb_0_col133),
+            eval!(context, a2_limb_1_col134),
+            eval!(context, a2_limb_2_col135),
+            eval!(context, a2_limb_3_col136),
+            eval!(context, a2_limb_4_col137),
+            eval!(context, a2_limb_5_col138),
+            eval!(context, a2_limb_6_col139),
+            eval!(context, a2_limb_7_col140),
+            eval!(context, a2_limb_8_col141),
+            eval!(context, a2_limb_9_col142),
+            eval!(context, a2_limb_10_col143),
+            eval!(context, a3_id_col144),
+            eval!(context, a3_limb_0_col145),
+            eval!(context, a3_limb_1_col146),
+            eval!(context, a3_limb_2_col147),
+            eval!(context, a3_limb_3_col148),
+            eval!(context, a3_limb_4_col149),
+            eval!(context, a3_limb_5_col150),
+            eval!(context, a3_limb_6_col151),
+            eval!(context, a3_limb_7_col152),
+            eval!(context, a3_limb_8_col153),
+            eval!(context, a3_limb_9_col154),
+            eval!(context, a3_limb_10_col155),
+            eval!(context, b0_id_col156),
+            eval!(context, b0_limb_0_col157),
+            eval!(context, b0_limb_1_col158),
+            eval!(context, b0_limb_2_col159),
+            eval!(context, b0_limb_3_col160),
+            eval!(context, b0_limb_4_col161),
+            eval!(context, b0_limb_5_col162),
+            eval!(context, b0_limb_6_col163),
+            eval!(context, b0_limb_7_col164),
+            eval!(context, b0_limb_8_col165),
+            eval!(context, b0_limb_9_col166),
+            eval!(context, b0_limb_10_col167),
+            eval!(context, b1_id_col168),
+            eval!(context, b1_limb_0_col169),
+            eval!(context, b1_limb_1_col170),
+            eval!(context, b1_limb_2_col171),
+            eval!(context, b1_limb_3_col172),
+            eval!(context, b1_limb_4_col173),
+            eval!(context, b1_limb_5_col174),
+            eval!(context, b1_limb_6_col175),
+            eval!(context, b1_limb_7_col176),
+            eval!(context, b1_limb_8_col177),
+            eval!(context, b1_limb_9_col178),
+            eval!(context, b1_limb_10_col179),
+            eval!(context, b2_id_col180),
+            eval!(context, b2_limb_0_col181),
+            eval!(context, b2_limb_1_col182),
+            eval!(context, b2_limb_2_col183),
+            eval!(context, b2_limb_3_col184),
+            eval!(context, b2_limb_4_col185),
+            eval!(context, b2_limb_5_col186),
+            eval!(context, b2_limb_6_col187),
+            eval!(context, b2_limb_7_col188),
+            eval!(context, b2_limb_8_col189),
+            eval!(context, b2_limb_9_col190),
+            eval!(context, b2_limb_10_col191),
+            eval!(context, b3_id_col192),
+            eval!(context, b3_limb_0_col193),
+            eval!(context, b3_limb_1_col194),
+            eval!(context, b3_limb_2_col195),
+            eval!(context, b3_limb_3_col196),
+            eval!(context, b3_limb_4_col197),
+            eval!(context, b3_limb_5_col198),
+            eval!(context, b3_limb_6_col199),
+            eval!(context, b3_limb_7_col200),
+            eval!(context, b3_limb_8_col201),
+            eval!(context, b3_limb_9_col202),
+            eval!(context, b3_limb_10_col203),
+            eval!(context, c0_id_col204),
+            eval!(context, c0_limb_0_col205),
+            eval!(context, c0_limb_1_col206),
+            eval!(context, c0_limb_2_col207),
+            eval!(context, c0_limb_3_col208),
+            eval!(context, c0_limb_4_col209),
+            eval!(context, c0_limb_5_col210),
+            eval!(context, c0_limb_6_col211),
+            eval!(context, c0_limb_7_col212),
+            eval!(context, c0_limb_8_col213),
+            eval!(context, c0_limb_9_col214),
+            eval!(context, c0_limb_10_col215),
+            eval!(context, c1_id_col216),
+            eval!(context, c1_limb_0_col217),
+            eval!(context, c1_limb_1_col218),
+            eval!(context, c1_limb_2_col219),
+            eval!(context, c1_limb_3_col220),
+            eval!(context, c1_limb_4_col221),
+            eval!(context, c1_limb_5_col222),
+            eval!(context, c1_limb_6_col223),
+            eval!(context, c1_limb_7_col224),
+            eval!(context, c1_limb_8_col225),
+            eval!(context, c1_limb_9_col226),
+            eval!(context, c1_limb_10_col227),
+            eval!(context, c2_id_col228),
+            eval!(context, c2_limb_0_col229),
+            eval!(context, c2_limb_1_col230),
+            eval!(context, c2_limb_2_col231),
+            eval!(context, c2_limb_3_col232),
+            eval!(context, c2_limb_4_col233),
+            eval!(context, c2_limb_5_col234),
+            eval!(context, c2_limb_6_col235),
+            eval!(context, c2_limb_7_col236),
+            eval!(context, c2_limb_8_col237),
+            eval!(context, c2_limb_9_col238),
+            eval!(context, c2_limb_10_col239),
+            eval!(context, c3_id_col240),
+            eval!(context, c3_limb_0_col241),
+            eval!(context, c3_limb_1_col242),
+            eval!(context, c3_limb_2_col243),
+            eval!(context, c3_limb_3_col244),
+            eval!(context, c3_limb_4_col245),
+            eval!(context, c3_limb_5_col246),
+            eval!(context, c3_limb_6_col247),
+            eval!(context, c3_limb_7_col248),
+            eval!(context, c3_limb_8_col249),
+            eval!(context, c3_limb_9_col250),
+            eval!(context, c3_limb_10_col251),
+        ],
+        context,
+        component_data,
+        acc,
+    );
+
+    //make sure sub_p_bit is 0 or 1..
+    let constraint_1_value = eval!(context, ((sub_p_bit_col252) - (1)) * (sub_p_bit_col252));
+    acc.add_constraint(context, constraint_1_value);
+
+    //carry_0.
+    let constraint_2_value = eval!(
+        context,
+        (carry_0_col253)
+            - (((((((a0_limb_0_col109) + (b0_limb_0_col157)) - (c0_limb_0_col205))
+                - ((p0_limb_0_col2) * (sub_p_bit_col252)))
+                + ((512)
+                    * ((((a0_limb_1_col110) + (b0_limb_1_col158)) - (c0_limb_1_col206))
+                        - ((p0_limb_1_col3) * (sub_p_bit_col252)))))
+                + ((262144)
+                    * ((((a0_limb_2_col111) + (b0_limb_2_col159)) - (c0_limb_2_col207))
+                        - ((p0_limb_2_col4) * (sub_p_bit_col252)))))
+                * (16))
+    );
+    acc.add_constraint(context, constraint_2_value);
+
+    //carry is 0 or 1 or -1..
+    let constraint_3_value =
+        eval!(context, (carry_0_col253) * (((carry_0_col253) * (carry_0_col253)) - (1)));
+    acc.add_constraint(context, constraint_3_value);
+
+    //carry_1.
+    let constraint_4_value = eval!(
+        context,
+        (carry_1_col254)
+            - (((((carry_0_col253)
+                + ((((a0_limb_3_col112) + (b0_limb_3_col160)) - (c0_limb_3_col208))
+                    - ((p0_limb_3_col5) * (sub_p_bit_col252))))
+                + ((512)
+                    * ((((a0_limb_4_col113) + (b0_limb_4_col161)) - (c0_limb_4_col209))
+                        - ((p0_limb_4_col6) * (sub_p_bit_col252)))))
+                + ((262144)
+                    * ((((a0_limb_5_col114) + (b0_limb_5_col162)) - (c0_limb_5_col210))
+                        - ((p0_limb_5_col7) * (sub_p_bit_col252)))))
+                * (16))
+    );
+    acc.add_constraint(context, constraint_4_value);
+
+    //carry is 0 or 1 or -1..
+    let constraint_5_value =
+        eval!(context, (carry_1_col254) * (((carry_1_col254) * (carry_1_col254)) - (1)));
+    acc.add_constraint(context, constraint_5_value);
+
+    //carry_2.
+    let constraint_6_value = eval!(
+        context,
+        (carry_2_col255)
+            - (((((carry_1_col254)
+                + ((((a0_limb_6_col115) + (b0_limb_6_col163)) - (c0_limb_6_col211))
+                    - ((p0_limb_6_col8) * (sub_p_bit_col252))))
+                + ((512)
+                    * ((((a0_limb_7_col116) + (b0_limb_7_col164)) - (c0_limb_7_col212))
+                        - ((p0_limb_7_col9) * (sub_p_bit_col252)))))
+                + ((262144)
+                    * ((((a0_limb_8_col117) + (b0_limb_8_col165)) - (c0_limb_8_col213))
+                        - ((p0_limb_8_col10) * (sub_p_bit_col252)))))
+                * (16))
+    );
+    acc.add_constraint(context, constraint_6_value);
+
+    //carry is 0 or 1 or -1..
+    let constraint_7_value =
+        eval!(context, (carry_2_col255) * (((carry_2_col255) * (carry_2_col255)) - (1)));
+    acc.add_constraint(context, constraint_7_value);
+
+    //carry_3.
+    let constraint_8_value = eval!(
+        context,
+        (carry_3_col256)
+            - (((((carry_2_col255)
+                + ((((a0_limb_9_col118) + (b0_limb_9_col166)) - (c0_limb_9_col214))
+                    - ((p0_limb_9_col11) * (sub_p_bit_col252))))
+                + ((512)
+                    * ((((a0_limb_10_col119) + (b0_limb_10_col167)) - (c0_limb_10_col215))
+                        - ((p0_limb_10_col12) * (sub_p_bit_col252)))))
+                + ((32768)
+                    * ((((a1_limb_0_col121) + (b1_limb_0_col169)) - (c1_limb_0_col217))
+                        - ((p1_limb_0_col14) * (sub_p_bit_col252)))))
+                * (128))
+    );
+    acc.add_constraint(context, constraint_8_value);
+
+    //carry is 0 or 1 or -1..
+    let constraint_9_value =
+        eval!(context, (carry_3_col256) * (((carry_3_col256) * (carry_3_col256)) - (1)));
+    acc.add_constraint(context, constraint_9_value);
+
+    //carry_4.
+    let constraint_10_value = eval!(
+        context,
+        (carry_4_col257)
+            - (((((carry_3_col256)
+                + ((((a1_limb_1_col122) + (b1_limb_1_col170)) - (c1_limb_1_col218))
+                    - ((p1_limb_1_col15) * (sub_p_bit_col252))))
+                + ((512)
+                    * ((((a1_limb_2_col123) + (b1_limb_2_col171)) - (c1_limb_2_col219))
+                        - ((p1_limb_2_col16) * (sub_p_bit_col252)))))
+                + ((262144)
+                    * ((((a1_limb_3_col124) + (b1_limb_3_col172)) - (c1_limb_3_col220))
+                        - ((p1_limb_3_col17) * (sub_p_bit_col252)))))
+                * (16))
+    );
+    acc.add_constraint(context, constraint_10_value);
+
+    //carry is 0 or 1 or -1..
+    let constraint_11_value =
+        eval!(context, (carry_4_col257) * (((carry_4_col257) * (carry_4_col257)) - (1)));
+    acc.add_constraint(context, constraint_11_value);
+
+    //carry_5.
+    let constraint_12_value = eval!(
+        context,
+        (carry_5_col258)
+            - (((((carry_4_col257)
+                + ((((a1_limb_4_col125) + (b1_limb_4_col173)) - (c1_limb_4_col221))
+                    - ((p1_limb_4_col18) * (sub_p_bit_col252))))
+                + ((512)
+                    * ((((a1_limb_5_col126) + (b1_limb_5_col174)) - (c1_limb_5_col222))
+                        - ((p1_limb_5_col19) * (sub_p_bit_col252)))))
+                + ((262144)
+                    * ((((a1_limb_6_col127) + (b1_limb_6_col175)) - (c1_limb_6_col223))
+                        - ((p1_limb_6_col20) * (sub_p_bit_col252)))))
+                * (16))
+    );
+    acc.add_constraint(context, constraint_12_value);
+
+    //carry is 0 or 1 or -1..
+    let constraint_13_value =
+        eval!(context, (carry_5_col258) * (((carry_5_col258) * (carry_5_col258)) - (1)));
+    acc.add_constraint(context, constraint_13_value);
+
+    //carry_6.
+    let constraint_14_value = eval!(
+        context,
+        (carry_6_col259)
+            - (((((carry_5_col258)
+                + ((((a1_limb_7_col128) + (b1_limb_7_col176)) - (c1_limb_7_col224))
+                    - ((p1_limb_7_col21) * (sub_p_bit_col252))))
+                + ((512)
+                    * ((((a1_limb_8_col129) + (b1_limb_8_col177)) - (c1_limb_8_col225))
+                        - ((p1_limb_8_col22) * (sub_p_bit_col252)))))
+                + ((262144)
+                    * ((((a1_limb_9_col130) + (b1_limb_9_col178)) - (c1_limb_9_col226))
+                        - ((p1_limb_9_col23) * (sub_p_bit_col252)))))
+                * (16))
+    );
+    acc.add_constraint(context, constraint_14_value);
+
+    //carry is 0 or 1 or -1..
+    let constraint_15_value =
+        eval!(context, (carry_6_col259) * (((carry_6_col259) * (carry_6_col259)) - (1)));
+    acc.add_constraint(context, constraint_15_value);
+
+    //carry_7.
+    let constraint_16_value = eval!(
+        context,
+        (carry_7_col260)
+            - (((((carry_6_col259)
+                + ((((a1_limb_10_col131) + (b1_limb_10_col179)) - (c1_limb_10_col227))
+                    - ((p1_limb_10_col24) * (sub_p_bit_col252))))
+                + ((64)
+                    * ((((a2_limb_0_col133) + (b2_limb_0_col181)) - (c2_limb_0_col229))
+                        - ((p2_limb_0_col26) * (sub_p_bit_col252)))))
+                + ((32768)
+                    * ((((a2_limb_1_col134) + (b2_limb_1_col182)) - (c2_limb_1_col230))
+                        - ((p2_limb_1_col27) * (sub_p_bit_col252)))))
+                * (128))
+    );
+    acc.add_constraint(context, constraint_16_value);
+
+    //carry is 0 or 1 or -1..
+    let constraint_17_value =
+        eval!(context, (carry_7_col260) * (((carry_7_col260) * (carry_7_col260)) - (1)));
+    acc.add_constraint(context, constraint_17_value);
+
+    //carry_8.
+    let constraint_18_value = eval!(
+        context,
+        (carry_8_col261)
+            - (((((carry_7_col260)
+                + ((((a2_limb_2_col135) + (b2_limb_2_col183)) - (c2_limb_2_col231))
+                    - ((p2_limb_2_col28) * (sub_p_bit_col252))))
+                + ((512)
+                    * ((((a2_limb_3_col136) + (b2_limb_3_col184)) - (c2_limb_3_col232))
+                        - ((p2_limb_3_col29) * (sub_p_bit_col252)))))
+                + ((262144)
+                    * ((((a2_limb_4_col137) + (b2_limb_4_col185)) - (c2_limb_4_col233))
+                        - ((p2_limb_4_col30) * (sub_p_bit_col252)))))
+                * (16))
+    );
+    acc.add_constraint(context, constraint_18_value);
+
+    //carry is 0 or 1 or -1..
+    let constraint_19_value =
+        eval!(context, (carry_8_col261) * (((carry_8_col261) * (carry_8_col261)) - (1)));
+    acc.add_constraint(context, constraint_19_value);
+
+    //carry_9.
+    let constraint_20_value = eval!(
+        context,
+        (carry_9_col262)
+            - (((((carry_8_col261)
+                + ((((a2_limb_5_col138) + (b2_limb_5_col186)) - (c2_limb_5_col234))
+                    - ((p2_limb_5_col31) * (sub_p_bit_col252))))
+                + ((512)
+                    * ((((a2_limb_6_col139) + (b2_limb_6_col187)) - (c2_limb_6_col235))
+                        - ((p2_limb_6_col32) * (sub_p_bit_col252)))))
+                + ((262144)
+                    * ((((a2_limb_7_col140) + (b2_limb_7_col188)) - (c2_limb_7_col236))
+                        - ((p2_limb_7_col33) * (sub_p_bit_col252)))))
+                * (16))
+    );
+    acc.add_constraint(context, constraint_20_value);
+
+    //carry is 0 or 1 or -1..
+    let constraint_21_value =
+        eval!(context, (carry_9_col262) * (((carry_9_col262) * (carry_9_col262)) - (1)));
+    acc.add_constraint(context, constraint_21_value);
+
+    //carry_10.
+    let constraint_22_value = eval!(
+        context,
+        (carry_10_col263)
+            - (((((carry_9_col262)
+                + ((((a2_limb_8_col141) + (b2_limb_8_col189)) - (c2_limb_8_col237))
+                    - ((p2_limb_8_col34) * (sub_p_bit_col252))))
+                + ((512)
+                    * ((((a2_limb_9_col142) + (b2_limb_9_col190)) - (c2_limb_9_col238))
+                        - ((p2_limb_9_col35) * (sub_p_bit_col252)))))
+                + ((262144)
+                    * ((((a2_limb_10_col143) + (b2_limb_10_col191)) - (c2_limb_10_col239))
+                        - ((p2_limb_10_col36) * (sub_p_bit_col252)))))
+                * (128))
+    );
+    acc.add_constraint(context, constraint_22_value);
+
+    //carry is 0 or 1 or -1..
+    let constraint_23_value =
+        eval!(context, (carry_10_col263) * (((carry_10_col263) * (carry_10_col263)) - (1)));
+    acc.add_constraint(context, constraint_23_value);
+
+    //carry_11.
+    let constraint_24_value = eval!(
+        context,
+        (carry_11_col264)
+            - (((((carry_10_col263)
+                + ((((a3_limb_0_col145) + (b3_limb_0_col193)) - (c3_limb_0_col241))
+                    - ((p3_limb_0_col38) * (sub_p_bit_col252))))
+                + ((512)
+                    * ((((a3_limb_1_col146) + (b3_limb_1_col194)) - (c3_limb_1_col242))
+                        - ((p3_limb_1_col39) * (sub_p_bit_col252)))))
+                + ((262144)
+                    * ((((a3_limb_2_col147) + (b3_limb_2_col195)) - (c3_limb_2_col243))
+                        - ((p3_limb_2_col40) * (sub_p_bit_col252)))))
+                * (16))
+    );
+    acc.add_constraint(context, constraint_24_value);
+
+    //carry is 0 or 1 or -1..
+    let constraint_25_value =
+        eval!(context, (carry_11_col264) * (((carry_11_col264) * (carry_11_col264)) - (1)));
+    acc.add_constraint(context, constraint_25_value);
+
+    //carry_12.
+    let constraint_26_value = eval!(
+        context,
+        (carry_12_col265)
+            - (((((carry_11_col264)
+                + ((((a3_limb_3_col148) + (b3_limb_3_col196)) - (c3_limb_3_col244))
+                    - ((p3_limb_3_col41) * (sub_p_bit_col252))))
+                + ((512)
+                    * ((((a3_limb_4_col149) + (b3_limb_4_col197)) - (c3_limb_4_col245))
+                        - ((p3_limb_4_col42) * (sub_p_bit_col252)))))
+                + ((262144)
+                    * ((((a3_limb_5_col150) + (b3_limb_5_col198)) - (c3_limb_5_col246))
+                        - ((p3_limb_5_col43) * (sub_p_bit_col252)))))
+                * (16))
+    );
+    acc.add_constraint(context, constraint_26_value);
+
+    //carry is 0 or 1 or -1..
+    let constraint_27_value =
+        eval!(context, (carry_12_col265) * (((carry_12_col265) * (carry_12_col265)) - (1)));
+    acc.add_constraint(context, constraint_27_value);
+
+    //carry_13.
+    let constraint_28_value = eval!(
+        context,
+        (carry_13_col266)
+            - (((((carry_12_col265)
+                + ((((a3_limb_6_col151) + (b3_limb_6_col199)) - (c3_limb_6_col247))
+                    - ((p3_limb_6_col44) * (sub_p_bit_col252))))
+                + ((512)
+                    * ((((a3_limb_7_col152) + (b3_limb_7_col200)) - (c3_limb_7_col248))
+                        - ((p3_limb_7_col45) * (sub_p_bit_col252)))))
+                + ((262144)
+                    * ((((a3_limb_8_col153) + (b3_limb_8_col201)) - (c3_limb_8_col249))
+                        - ((p3_limb_8_col46) * (sub_p_bit_col252)))))
+                * (16))
+    );
+    acc.add_constraint(context, constraint_28_value);
+
+    //carry is 0 or 1 or -1..
+    let constraint_29_value =
+        eval!(context, (carry_13_col266) * (((carry_13_col266) * (carry_13_col266)) - (1)));
+    acc.add_constraint(context, constraint_29_value);
+
+    //last carry needs to be 0..
+    let constraint_30_value = eval!(
+        context,
+        ((carry_13_col266)
+            + ((((a3_limb_9_col154) + (b3_limb_9_col202)) - (c3_limb_9_col250))
+                - ((p3_limb_9_col47) * (sub_p_bit_col252))))
+            + ((512)
+                * ((((a3_limb_10_col155) + (b3_limb_10_col203)) - (c3_limb_10_col251))
+                    - ((p3_limb_10_col48) * (sub_p_bit_col252))))
+    );
+    acc.add_constraint(context, constraint_30_value);
+}
+
+pub struct Component {}
+impl<Value: IValue> CircuitEval<Value> for Component {
+    fn evaluate(
+        &self,
+        context: &mut Context<Value>,
+        component_data: &ComponentData<'_>,
+        acc: &mut CompositionConstraintAccumulator,
+    ) {
+        accumulate_constraints(component_data.trace_columns, context, component_data, acc);
+    }
+
+    fn trace_columns(&self) -> usize {
+        N_TRACE_COLUMNS
+    }
+
+    fn interaction_columns(&self) -> usize {
+        N_INTERACTION_COLUMNS
+    }
+
+    fn relation_uses_per_row(&self) -> &[RelationUse] {
+        &RELATION_USES_PER_ROW
+    }
+}
