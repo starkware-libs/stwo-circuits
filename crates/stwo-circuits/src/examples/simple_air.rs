@@ -193,12 +193,12 @@ pub fn create_proof() -> (
     u64,
     u32,
 ) {
-    let config = PcsConfig::default();
+    let mut config = PcsConfig::default();
+    let lifting_log_size = LOG_SIZE_LONG + config.fri_config.log_blowup_factor;
+    config.lifting_log_size = Some(lifting_log_size);
     // Precompute twiddles.
     let twiddles = SimdBackend::precompute_twiddles(
-        CanonicCoset::new(LOG_SIZE_LONG + 1 + config.fri_config.log_blowup_factor)
-            .circle_domain()
-            .half_coset,
+        CanonicCoset::new(lifting_log_size).circle_domain().half_coset,
     );
 
     // Setup protocol.
