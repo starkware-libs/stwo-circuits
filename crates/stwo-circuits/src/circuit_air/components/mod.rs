@@ -31,7 +31,9 @@ pub enum ComponentList {
     Eq,
     Qm31Ops,
     BlakeGate,
-    BlakeRound
+    BlakeRound,
+    BlakeRoundSigma,
+    BlakeG
 }
 pub const N_COMPONENTS: usize = std::mem::variant_count::<ComponentList>();
 
@@ -39,7 +41,10 @@ pub struct CircuitComponents {
     pub eq: eq::Component,
     pub qm31_ops: qm31_ops::Component,
     pub blake_gate: blake_gate::Component,
-    pub blake_round: blake_round::Component
+    pub blake_round: blake_round::Component,
+    pub blake_round_sigma: blake_round_sigma::Component,
+    pub blake_g: blake_g::Component,
+
 }
 impl CircuitComponents {
     pub fn new(
@@ -88,7 +93,32 @@ impl CircuitComponents {
             },
             interaction_claim.claimed_sums[ComponentList::BlakeRound as usize],
         );
-        Self { eq: eq_component, qm31_ops: qm31_ops_component, blake_gate: blake_gate_component, blake_round: blake_round_component }
+        let blake_round_sigma_component = blake_round_sigma::Component::new(
+            tree_span_provider,
+            blake_round_sigma::Eval {
+                claim: blake_round_sigma::Claim {},
+                common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
+            },
+            interaction_claim.claimed_sums[ComponentList::BlakeRoundSigma as usize],
+        );
+        let blake_g_component = blake_g::Component::new(
+            tree_span_provider,
+            blake_g::Eval {
+                claim: blake_g::Claim {
+                    log_size: circuit_claim.log_sizes[ComponentList::BlakeG as usize],
+                },
+                common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
+            },
+            interaction_claim.claimed_sums[ComponentList::BlakeG as usize],
+        );
+        Self {
+            eq: eq_component,
+            qm31_ops: qm31_ops_component,
+            blake_gate: blake_gate_component,
+            blake_round: blake_round_component,
+            blake_round_sigma: blake_round_sigma_component,
+            blake_g: blake_g_component
+        }
     }
 
     pub fn provers(&self) -> Vec<&dyn ComponentProver<SimdBackend>> {
@@ -97,6 +127,8 @@ impl CircuitComponents {
             &self.qm31_ops as &dyn ComponentProver<SimdBackend>,
             &self.blake_gate as &dyn ComponentProver<SimdBackend>,
             &self.blake_round as &dyn ComponentProver<SimdBackend>,
+            &self.blake_round_sigma as &dyn ComponentProver<SimdBackend>,
+            &self.blake_g as &dyn ComponentProver<SimdBackend>,
         ])
         .collect()
     }
@@ -107,6 +139,8 @@ impl CircuitComponents {
             Box::new(self.qm31_ops) as Box<dyn Component>,
             Box::new(self.blake_gate) as Box<dyn Component>,
             Box::new(self.blake_round) as Box<dyn Component>,
+            Box::new(self.blake_round_sigma) as Box<dyn Component>,
+            Box::new(self.blake_g) as Box<dyn Component>,
         ]
     }
 }

@@ -216,6 +216,36 @@ fn fill_blake_columns(blake: &[Blake], columns: &mut [Vec<usize>; N_BLAKE_PP_COL
     }
 }
 
+const BLAKE2S_SIGMA: [[usize; 16]; 10] = [
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    [14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3],
+    [11, 8, 12, 0, 5, 2, 15, 13, 10, 14, 3, 6, 7, 1, 9, 4],
+    [7, 9, 3, 1, 13, 12, 11, 14, 2, 6, 5, 10, 4, 0, 15, 8],
+    [9, 0, 5, 7, 2, 4, 10, 15, 14, 1, 11, 12, 6, 8, 3, 13],
+    [2, 12, 6, 10, 0, 11, 8, 3, 4, 13, 7, 5, 15, 14, 1, 9],
+    [12, 5, 1, 15, 14, 13, 4, 10, 0, 7, 6, 3, 9, 2, 8, 11],
+    [13, 11, 7, 14, 12, 1, 3, 9, 5, 0, 15, 4, 8, 6, 2, 10],
+    [6, 15, 14, 9, 11, 3, 0, 8, 12, 2, 13, 7, 1, 4, 10, 5],
+    [10, 2, 8, 4, 7, 6, 1, 5, 15, 11, 9, 14, 3, 12, 13, 0],
+];
+
+/// Generates 16 columns of size 16 (LOG_SIZE=4) for the blake round sigma permutation table.
+/// Column i contains BLAKE2S_SIGMA[round][i] for rounds 0..9, padded with round 0 values for
+/// rows 10..15.
+fn gen_blake_sigma_columns() -> [Vec<usize>; 16] {
+    std::array::from_fn(|i| {
+        let mut col = Vec::with_capacity(16);
+        for round in 0..10 {
+            col.push(BLAKE2S_SIGMA[round][i]);
+        }
+        // Pad rows 10..15 with round 0 values.
+        for _ in 10..16 {
+            col.push(BLAKE2S_SIGMA[0][i]);
+        }
+        col
+    })
+}
+
 const N_BLAKE_PP_COLUMNS: usize = 9;
 fn add_blake_to_preprocessed_trace(circuit: &Circuit, pp_trace: &mut PreProcessedTrace) {
     let Circuit {
@@ -245,6 +275,29 @@ fn add_blake_to_preprocessed_trace(circuit: &Circuit, pp_trace: &mut PreProcesse
         (PreProcessedColumnId { id: "message3_addr".to_owned() }, n_columns + 8),
     ]);
     pp_trace.columns.extend(blake_columns);
+
+    // Add blake sigma columns (16 columns of 16 rows each).
+    let blake_sigma = gen_blake_sigma_columns();
+    let n_columns = pp_trace.columns.len();
+    pp_trace.column_indices.extend([
+        (PreProcessedColumnId { id: "blake_sigma_0".to_owned() }, n_columns),
+        (PreProcessedColumnId { id: "blake_sigma_1".to_owned() }, n_columns + 1),
+        (PreProcessedColumnId { id: "blake_sigma_2".to_owned() }, n_columns + 2),
+        (PreProcessedColumnId { id: "blake_sigma_3".to_owned() }, n_columns + 3),
+        (PreProcessedColumnId { id: "blake_sigma_4".to_owned() }, n_columns + 4),
+        (PreProcessedColumnId { id: "blake_sigma_5".to_owned() }, n_columns + 5),
+        (PreProcessedColumnId { id: "blake_sigma_6".to_owned() }, n_columns + 6),
+        (PreProcessedColumnId { id: "blake_sigma_7".to_owned() }, n_columns + 7),
+        (PreProcessedColumnId { id: "blake_sigma_8".to_owned() }, n_columns + 8),
+        (PreProcessedColumnId { id: "blake_sigma_9".to_owned() }, n_columns + 9),
+        (PreProcessedColumnId { id: "blake_sigma_10".to_owned() }, n_columns + 10),
+        (PreProcessedColumnId { id: "blake_sigma_11".to_owned() }, n_columns + 11),
+        (PreProcessedColumnId { id: "blake_sigma_12".to_owned() }, n_columns + 12),
+        (PreProcessedColumnId { id: "blake_sigma_13".to_owned() }, n_columns + 13),
+        (PreProcessedColumnId { id: "blake_sigma_14".to_owned() }, n_columns + 14),
+        (PreProcessedColumnId { id: "blake_sigma_15".to_owned() }, n_columns + 15),
+    ]);
+    pp_trace.columns.extend(blake_sigma);
 }
 
 /// A collection of preprocessed columns, whose values are publicly acknowledged, and independent of
@@ -287,8 +340,9 @@ impl PreProcessedTrace {
             .into_iter()
             .flat_map(|n_bits| gen_xor_columns(n_bits).into_iter())
             .collect();
+        let blake_sigma = gen_blake_sigma_columns();
 
-        pp_trace.columns.extend(chain!(seq, bitwise_xor));
+        pp_trace.columns.extend(chain!(seq, bitwise_xor, blake_sigma));
         println!(
             "Non-circuit column log sizes: {:?}",
             pp_trace.columns.iter().map(|c| c.len().ilog2()).collect::<Vec<_>>()

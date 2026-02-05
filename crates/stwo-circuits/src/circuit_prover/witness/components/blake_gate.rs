@@ -158,11 +158,8 @@ impl ClaimGenerator {
         range_check_15_state: &range_check_15::ClaimGenerator,
         blake_round_state: &mut blake_round::ClaimGenerator,
         triple_xor_32_state: &mut triple_xor_32::ClaimGenerator,
-    ) -> (
-        ComponentTrace<N_TRACE_COLUMNS>,
-        InteractionClaimGenerator,
-        blake_message::ClaimGenerator,
-    ) {
+    ) -> (ComponentTrace<N_TRACE_COLUMNS>, InteractionClaimGenerator, blake_message::ClaimGenerator)
+    {
         // let n_rows = self.inputs.len();
         // assert_ne!(n_rows, 0);
         // let size = std::cmp::max(n_rows.next_power_of_two(), N_LANES);
@@ -1786,11 +1783,7 @@ fn write_trace_simd(
     for (id, messages) in blake_message_inputs {
         blake_message_state.add_packed_inputs(id, messages);
     }
-    let interaction_claim_generator = InteractionClaimGenerator {
-        n_rows,
-        log_size,
-        lookup_data
-};
+    let interaction_claim_generator = InteractionClaimGenerator { n_rows, log_size, lookup_data };
 
     (trace, interaction_claim_generator, sub_component_inputs)
 }

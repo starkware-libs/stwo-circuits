@@ -13,7 +13,11 @@ use crate::circuit_prover::witness::components::qm31_ops;
 use crate::circuit_prover::witness::components::range_check_15;
 use crate::circuit_prover::witness::components::range_check_16;
 use crate::circuit_prover::witness::components::triple_xor_32;
+use crate::circuit_prover::witness::components::verify_bitwise_xor_4;
+use crate::circuit_prover::witness::components::verify_bitwise_xor_7;
 use crate::circuit_prover::witness::components::verify_bitwise_xor_8;
+use crate::circuit_prover::witness::components::verify_bitwise_xor_9;
+use crate::circuit_prover::witness::components::verify_bitwise_xor_12;
 use crate::circuit_prover::witness::preprocessed::PreProcessedTrace;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
@@ -44,6 +48,15 @@ pub fn write_trace(
 
     let verify_bitwise_xor_8_state =
         verify_bitwise_xor_8::ClaimGenerator::new(preprocessed_trace.clone());
+        let verify_bitwise_xor_12_state =
+        verify_bitwise_xor_12::ClaimGenerator::new(preprocessed_trace.clone());
+            let verify_bitwise_xor_4_state =
+        verify_bitwise_xor_4::ClaimGenerator::new(preprocessed_trace.clone());
+            let verify_bitwise_xor_7_state =
+        verify_bitwise_xor_7::ClaimGenerator::new(preprocessed_trace.clone());
+            let verify_bitwise_xor_9_state =
+        verify_bitwise_xor_9::ClaimGenerator::new(preprocessed_trace.clone());
+
     let range_check_16_state = range_check_16::ClaimGenerator::new(preprocessed_trace.clone());
     let range_check_15_state = range_check_15::ClaimGenerator::new(preprocessed_trace.clone());
     let mut triple_xor_32_state = triple_xor_32::ClaimGenerator::new();
@@ -52,54 +65,58 @@ pub fn write_trace(
     let mut blake_round_generator = blake_round::ClaimGenerator::default();
     let blake_round_sigma_generator =
         blake_round_sigma::ClaimGenerator::new(preprocessed_trace.clone());
-    let mut blake_g_state = blake_g::ClaimGenerator::new();
+    let mut blake_g_generator = blake_g::ClaimGenerator::new();
 
     // Write blake gate trace.
-    let (
-        blake_gate_trace,
-        blake_gate_interaction_claim_gen,
-        blake_message_state,
-    ) = blake_gate_claim_generator.write_trace(
-        context_values,
-        preprocessed_trace_ref,
-        &verify_bitwise_xor_8_state,
-        &range_check_16_state,
-        &range_check_15_state,
-        &mut blake_round_generator,
-        &mut triple_xor_32_state,
-    );
+    let (blake_gate_trace, blake_gate_interaction_claim_gen, blake_message_state) =
+        blake_gate_claim_generator.write_trace(
+            context_values,
+            preprocessed_trace_ref,
+            &verify_bitwise_xor_8_state,
+            &range_check_16_state,
+            &range_check_15_state,
+            &mut blake_round_generator,
+            &mut triple_xor_32_state,
+        );
     tree_builder.extend_evals(blake_gate_trace.to_evals());
 
     // Write blake round trace.
-    let (blake_round_trace, blake_round_log_size, blake_round_interaction_claim_gen) =  blake_round_generator.write_trace(
-        &blake_round_sigma_generator,
-        &blake_message_state,
-        &mut blake_g_state,
-    );
+    let (blake_round_trace, blake_round_log_size, blake_round_interaction_claim_gen) =
+        blake_round_generator.write_trace(
+            &blake_round_sigma_generator,
+            &blake_message_state,
+            &mut blake_g_generator,
+        );
     tree_builder.extend_evals(blake_round_trace.to_evals());
 
     // Write blake round sigma.
-    let (blake_round_sigma_trace, blake_round_sigma_log_size, blake_round_sigma_lookup_data) = blake_round_sigma_generator.write_trace();
+    let (blake_round_sigma_trace, blake_round_sigma_claim, blake_round_sigma_interaction_claim_gen) =
+        blake_round_sigma_generator.write_trace();
+    tree_builder.extend_evals(blake_round_sigma_trace.to_evals());
 
-
-    // Write blake_output trace
-
-
-    // let blake_output_claim_generator =
-    //     blake_output::ClaimGenerator::new(blake_output_inputs, preprocessed_trace.clone());
-    // let (blake_output_trace, _blake_output_claim, _blake_output_interaction_generator) =
-    //     blake_output_claim_generator.write_trace();
-    // tree_builder.extend_evals(blake_output_trace.to_evals());
-
-
+    // Write blake g.
+    let (blake_g_trace, blake_g_claim, blake_g_interaction_claim_gen) =
+        blake_g_generator.write_trace(&verify_bitwise_xor_8_state, &verify_bitwise_xor_12_state, &verify_bitwise_xor_4_state, &verify_bitwise_xor_7_state, &verify_bitwise_xor_9_state);
+    tree_builder.extend_evals(blake_g_trace.to_evals());
 
     (
-        CircuitClaim { log_sizes: [eq_log_size, qm31_ops_log_size, blake_gate_interaction_claim_gen.log_size, blake_round_log_size.log_size] },
+        CircuitClaim {
+            log_sizes: [
+                eq_log_size,
+                qm31_ops_log_size,
+                blake_gate_interaction_claim_gen.log_size,
+                blake_round_log_size.log_size,
+                crate::circuit_air::components::blake_round_sigma::LOG_SIZE,
+                blake_g_claim.log_size
+            ],
+        },
         CircuitInteractionClaimGenerator {
             eq_lookup_data,
             qm31_ops_lookup_data,
             blake_gate: blake_gate_interaction_claim_gen,
-            blake_round: blake_round_interaction_claim_gen
+            blake_round: blake_round_interaction_claim_gen,
+            blake_round_sigma: blake_round_sigma_interaction_claim_gen,
+            blake_g: blake_g_interaction_claim_gen
         },
     )
 }
@@ -109,6 +126,8 @@ pub struct CircuitInteractionClaimGenerator {
     pub qm31_ops_lookup_data: qm31_ops::LookupData,
     pub blake_gate: blake_gate::InteractionClaimGenerator,
     pub blake_round: blake_round::InteractionClaimGenerator,
+    pub blake_round_sigma: blake_round_sigma::InteractionClaimGenerator,
+    pub blake_g: blake_g::InteractionClaimGenerator
 }
 
 pub fn write_interaction_trace(
@@ -134,21 +153,37 @@ pub fn write_interaction_trace(
     tree_builder.extend_evals(qm31_ops_trace);
 
     // Blake gate interaction trace.
-    let (blake_gate_trace, blake_gate_interaction_claim) = circuit_interaction_claim_generator.blake_gate
+    let (blake_gate_trace, blake_gate_interaction_claim) = circuit_interaction_claim_generator
+        .blake_gate
         .write_interaction_trace(&interaction_elements.common_lookup_elements);
     tree_builder.extend_evals(blake_gate_trace);
 
     // Blake round interaction trace.
-    let (blake_round_trace, blake_round_interaction_claim) = circuit_interaction_claim_generator.blake_round
+    let (blake_round_trace, blake_round_interaction_claim) = circuit_interaction_claim_generator
+        .blake_round
         .write_interaction_trace(&interaction_elements.common_lookup_elements);
     tree_builder.extend_evals(blake_round_trace);
 
+    // Blake round sigma interaction trace.
+    let (blake_round_sigma_trace, blake_round_sigma_interaction_claim) = circuit_interaction_claim_generator
+        .blake_round_sigma
+        .write_interaction_trace(&interaction_elements.common_lookup_elements);
+    tree_builder.extend_evals(blake_round_sigma_trace);
+
+    // Blake g interaction trace.
+    let (blake_g_trace, blake_g_interaction_claim) = circuit_interaction_claim_generator
+        .blake_g
+        .write_interaction_trace(&interaction_elements.common_lookup_elements);
+
+    tree_builder.extend_evals(blake_g_trace);
     CircuitInteractionClaim {
         claimed_sums: [
             eq_claimed_sum,
             qm31_ops_claimed_sum,
             blake_gate_interaction_claim.claimed_sum,
-            blake_round_interaction_claim.claimed_sum
+            blake_round_interaction_claim.claimed_sum,
+            blake_round_sigma_interaction_claim.claimed_sum,
+            blake_g_interaction_claim.claimed_sum
         ],
     }
 }

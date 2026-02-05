@@ -1,7 +1,7 @@
 // This file was created by the AIR team.
 
 #![allow(unused_parens)]
-use cairo_air::components::blake_round_sigma::{
+use crate::circuit_air::components::blake_round_sigma::{
     Claim, InteractionClaim, LOG_SIZE, N_TRACE_COLUMNS,
 };
 
