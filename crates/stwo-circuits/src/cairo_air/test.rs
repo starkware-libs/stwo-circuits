@@ -5,6 +5,7 @@ use num_traits::Zero;
 use std::path::PathBuf;
 use stwo::core::fields::m31::M31;
 
+use crate::cairo_air::preprocessed_columns::MAX_SEQUENCE_LOG_SIZE;
 use crate::cairo_air::statement::{MEMORY_VALUES_LIMBS, PUBLIC_DATA_LEN};
 use crate::cairo_air::verify::verify_cairo;
 use crate::{
@@ -34,7 +35,9 @@ pub const INTERACTION_POW_BITS: u32 = 24;
 
 #[test]
 fn test_verify() {
-    let pcs_config = PcsConfig::default();
+    let mut pcs_config = PcsConfig::default();
+    pcs_config.lifting_log_size =
+        Some(MAX_SEQUENCE_LOG_SIZE as u32 + pcs_config.fri_config.log_blowup_factor);
 
     let mut novalue_context = Context::<NoValue>::default();
     let output_len = 1;
@@ -44,7 +47,7 @@ fn test_verify() {
     let program = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; program_len];
     let statement = CairoStatement::new(&mut novalue_context, flat_claim, outputs, program);
 
-    let config = ProofConfig::from_statement(&statement, 20, &pcs_config, INTERACTION_POW_BITS);
+    let config = ProofConfig::from_statement(&statement, &pcs_config, INTERACTION_POW_BITS);
 
     let empty_proof = empty_proof(&config);
 
@@ -67,6 +70,7 @@ pub fn get_proof_file_path(test_name: &str) -> PathBuf {
 #[test]
 fn test_verify_cairo() {
     let proof_path = get_proof_file_path("all_opcode_components");
+    let low_blowup_factor = 1;
 
     if std::env::var("FIX_PROOF").is_ok() {
         let compiled_program =
@@ -74,8 +78,12 @@ fn test_verify_cairo() {
         let input = run_and_adapt(&compiled_program, ProgramType::Json, None).unwrap();
         let prover_params = ProverParameters {
             channel_hash: ChannelHash::Blake2s,
-            pcs_config: PcsConfig { pow_bits: 26, fri_config: FriConfig::new(0, 1, 70) },
-            preprocessed_trace: PreProcessedTraceVariant::CanonicalWithoutPedersen,
+            pcs_config: PcsConfig {
+                pow_bits: 26,
+                fri_config: FriConfig::new(0, low_blowup_factor, 70),
+                lifting_log_size: Some(MAX_SEQUENCE_LOG_SIZE as u32 + low_blowup_factor),
+            },
+            preprocessed_trace: PreProcessedTraceVariant::Canonical,
             channel_salt: 0,
             store_polynomials_coefficients: false,
         };
