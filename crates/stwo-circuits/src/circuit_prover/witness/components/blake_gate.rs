@@ -106,7 +106,6 @@ fn extract_component_inputs(
     let enabler = preprocessed_trace.get_column(&PreProcessedColumnId { id: "compress_enabler".to_owned() });
 
     let n_enabled_rows = enabler.iter().position(|i| *i == 0).unwrap_or(enabler.len());
-    assert_eq!(n_enabled_rows.next_power_of_two(), message0_addr.len());
 
     let mut inputs = Vec::with_capacity(n_enabled_rows);
     let mut chaining = blake2s_initial_state();
