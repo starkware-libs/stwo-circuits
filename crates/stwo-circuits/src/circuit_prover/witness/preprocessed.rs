@@ -210,19 +210,32 @@ fn fill_blake_columns(
             columns[6].push(*in1);
             columns[7].push(*in2);
             columns[8].push(*in3);
+
+            // Enable
+            columns[9].push(1);
         }
         // Set the finalize flag to 1 for the last compression of the gate.
         *columns[2].last_mut().unwrap() = 1;
         // Fill the preprocessed column needed by the blake_output component.
         // Set final state address.
-        columns[9].push(state_address);
+        columns[10].push(state_address);
 
         let [out0, out1] = gate.yields()[..] else { panic!("Expected 2 yields for gate") };
-        columns[10].push(out0);
-        columns[11].push(out1);
-        columns[12].push(multiplicities[out0]);
-        columns[13].push(multiplicities[out1]);
+        columns[11].push(out0);
+        columns[12].push(out1);
+        columns[13].push(multiplicities[out0]);
+        columns[14].push(multiplicities[out1]);
     }
+    // Pad the preprocessed columns used in blake compress.
+    let n_blake_compress = columns[0].len();
+    // Pad with the first element.
+    (0..9).for_each(|i| columns[i].resize(n_blake_compress.next_power_of_two(), *columns[i].first().unwrap()));
+    columns[9].resize(n_blake_compress.next_power_of_two(), 0); // Enabler columns.
+
+    // Pad the preprocessed columns used in blake output
+    let n_blake_output = columns[10].len();
+    (10..13).for_each(|i| columns[i].resize(n_blake_output.next_power_of_two(), *columns[i].first().unwrap()));
+    (13..15).for_each(|i| columns[i].resize(n_blake_output.next_power_of_two(), 0)); // Multiplicity columns.
 }
 
 const BLAKE2S_SIGMA: [[usize; 16]; 10] = [
@@ -255,7 +268,7 @@ fn gen_blake_sigma_columns() -> [Vec<usize>; 16] {
     })
 }
 
-const N_BLAKE_PP_COLUMNS: usize = 9 + 5;
+const N_BLAKE_PP_COLUMNS: usize = 9 + 1 + 5;
 
 fn add_blake_to_preprocessed_trace(
     circuit: &Circuit,
@@ -287,11 +300,12 @@ fn add_blake_to_preprocessed_trace(
         (PreProcessedColumnId { id: "message1_addr".to_owned() }, n_columns + 6),
         (PreProcessedColumnId { id: "message2_addr".to_owned() }, n_columns + 7),
         (PreProcessedColumnId { id: "message3_addr".to_owned() }, n_columns + 8),
-        (PreProcessedColumnId { id: "final_state_addr".to_owned() }, n_columns + 9),
-        (PreProcessedColumnId { id: "blake_output0_addr".to_owned() }, n_columns + 10),
-        (PreProcessedColumnId { id: "blake_output1_addr".to_owned() }, n_columns + 11),
-        (PreProcessedColumnId { id: "blake_output0_mults".to_owned() }, n_columns + 12),
-        (PreProcessedColumnId { id: "blake_output1_mults".to_owned() }, n_columns + 13),
+        (PreProcessedColumnId { id: "compress_enabler".to_owned() }, n_columns + 9),
+        (PreProcessedColumnId { id: "final_state_addr".to_owned() }, n_columns + 10),
+        (PreProcessedColumnId { id: "blake_output0_addr".to_owned() }, n_columns + 11),
+        (PreProcessedColumnId { id: "blake_output1_addr".to_owned() }, n_columns + 12),
+        (PreProcessedColumnId { id: "blake_output0_mults".to_owned() }, n_columns + 13),
+        (PreProcessedColumnId { id: "blake_output1_mults".to_owned() }, n_columns + 14),
     ]);
     pp_trace.columns.extend(blake_columns);
 
