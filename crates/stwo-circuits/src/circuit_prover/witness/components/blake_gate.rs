@@ -106,16 +106,7 @@ fn extract_component_inputs(
     let enabler = preprocessed_trace.get_column(&PreProcessedColumnId { id: "compress_enabler".to_owned() });
 
     let n_enabled_rows = enabler.iter().position(|i| *i == 0).unwrap_or(enabler.len());
-    eprintln!("Enabled rows {n_enabled_rows}");
-    let n_rows = message0_addr.len();
-    assert_eq!(n_enabled_rows.next_power_of_two(), n_rows);
-    
-    // assert_eq!(n_rows, message1_addr.len());
-    // assert_eq!(n_rows, message2_addr.len());
-    // assert_eq!(n_rows, message3_addr.len());
-    // assert_eq!(n_rows, t0_low.len());
-    // assert_eq!(n_rows, t0_high.len());
-    // assert_eq!(n_rows, finalize_flag.len());
+    assert_eq!(n_enabled_rows.next_power_of_two(), message0_addr.len());
 
     let mut inputs = Vec::with_capacity(n_enabled_rows);
     let mut chaining = blake2s_initial_state();
@@ -146,7 +137,6 @@ fn extract_component_inputs(
         inputs.push(([state_before, state_after], message_m31));
     }
 
-    // inputs.resize(n_rows, *inputs.last().unwrap());
     inputs
 }
 
@@ -170,23 +160,15 @@ impl ClaimGenerator {
         blake_message::ClaimGenerator,
         Vec<blake_output::PackedInputType>,
     ) {
-        // let n_rows = self.inputs.len();
-        // assert_ne!(n_rows, 0);
-        // let size = std::cmp::max(n_rows.next_power_of_two(), N_LANES);
-        // let log_size = size.ilog2();
-        // self.inputs.resize(size, *self.inputs.first().unwrap());
-        // TODO(alon blake): Generate inputs like in qm31 ops, instead of types.
-        // let packed_inputs = pack_values(&self.inputs);
-
+        // Extract inputs from the context and resize them to a power of 2.
         let mut inputs = extract_component_inputs(preprocessed_trace, context_values);
         let n_rows = inputs.len();
-        // assert_ne!(n_rows, 0);
-        // assert!(n_rows >= N_LANES, "n_rows is {n_rows}");
-        // assert!(n_rows.is_power_of_two());
+        assert_ne!(n_rows, 0);
         let size = std::cmp::max(n_rows.next_power_of_two(), N_LANES);
         inputs.resize(size, *inputs.first().unwrap());
         let packed_inputs = pack_values(&inputs);
 
+        // Write trace.
         let mut blake_message_state = blake_message::ClaimGenerator::default();
         let (
             trace,
@@ -231,7 +213,6 @@ struct SubComponentInputs {
     range_check_15: [Vec<range_check_15::PackedInputType>; 16],
     blake_round: [Vec<blake_round::PackedInputType>; 10],
     triple_xor_32: [Vec<triple_xor_32::PackedInputType>; 8],
-    blake_output_component_input: Vec<blake_output::PackedInputType>,
 }
 
 #[allow(clippy::useless_conversion)]
@@ -371,7 +352,6 @@ fn write_trace_simd(
     // Pack them.
     let padding = (16 - (blake_output_component_inputs.len() % 16)) % 16;
     blake_output_component_inputs.extend(std::iter::repeat_n([UInt32::default(); 8], padding));
-
     let blake_output_component_inputs_packed: Vec<[PackedUInt32; 8]> =
         blake_output_component_inputs
             .chunks_exact(N_LANES)
@@ -1834,7 +1814,6 @@ fn write_trace_simd(
         blake_message_state.add_packed_inputs(id, messages);
     }
     let interaction_claim_generator = InteractionClaimGenerator { n_rows, log_size, lookup_data };
-    eprintln!("Blake output component input packed len: {}",blake_output_component_inputs_packed.len());
     (trace, interaction_claim_generator, sub_component_inputs, blake_output_component_inputs_packed)
 }
 

@@ -45,12 +45,6 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     // and then commit to them. Generate preprocessed trace.
     let (preprocessed_trace, trace_generator) =
         PreProcessedTrace::generate_preprocessed_trace(&context.circuit);
-
-    for (i, col) in preprocessed_trace.columns.iter().enumerate() {
-
-        eprintln!("Preprocessed col index: {}, size {}, is power of two: {}", i, col.len(), col.len().is_power_of_two());
-
-    }
     
     // The trace size is the size of the largest column in the preprocessed trace (since all
     // components have preprocessed columns).

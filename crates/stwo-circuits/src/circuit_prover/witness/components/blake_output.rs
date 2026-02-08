@@ -64,7 +64,6 @@ fn write_trace_simd(
         .get_packed_column(&PreProcessedColumnId { id: "blake_output0_mults".to_owned() });
     let mults1 = preprocessed_trace
         .get_packed_column(&PreProcessedColumnId { id: "blake_output1_mults".to_owned() });
-    eprintln!("Multiplicites {:?},{:?}", mults0, mults1);
 
     (trace.par_iter_mut(), lookup_data.par_iter_mut(), packed_inputs.into_par_iter())
         .into_par_iter()
@@ -166,7 +165,6 @@ fn write_trace_simd(
                 output_limb7_col23,
             ];
         });
-    eprintln!("Trace blake output len: {}", trace.log_size());
     lookup_data.mults_0 = mults0;
     lookup_data.mults_1 = mults1;
     (trace, lookup_data)

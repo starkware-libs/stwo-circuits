@@ -192,7 +192,6 @@ fn fill_blake_columns(
     let mut state_address = 0;
     let mut message_length = 0;
     for gate in blake.iter() {
-        println!("gate: {:?}", gate);
         for [in0, in1, in2, in3] in gate.input.iter() {
             // The current message length split to 2 u16.
             message_length = gate.n_bytes.min(message_length + 16 * 4);
@@ -229,7 +228,6 @@ fn fill_blake_columns(
     // Pad the preprocessed columns used in blake compress.
     let n_blake_compress = columns[0].len();
     let blake_compress_padding = std::cmp::max(n_blake_compress.next_power_of_two(), N_LANES);
-    eprintln!("blake_compress_padding: {:?}", blake_compress_padding);
     // Pad with the first element.
     (0..9).for_each(|i| columns[i].resize(blake_compress_padding, *columns[i].first().unwrap()));
     columns[9].resize(blake_compress_padding, 0); // Enabler columns.
@@ -238,7 +236,6 @@ fn fill_blake_columns(
     // Pad the preprocessed columns used in blake output
     let n_blake_output = columns[10].len();
     let blake_output_padding = std::cmp::max(n_blake_output.next_power_of_two(), N_LANES);
-    eprintln!("blake_output_padding: {:?}", blake_output_padding);
     (10..13).for_each(|i| columns[i].resize(blake_output_padding, *columns[i].first().unwrap()));
     (13..15).for_each(|i| columns[i].resize(blake_output_padding, 0)); // Multiplicity columns.
 }
@@ -292,10 +289,8 @@ fn add_blake_to_preprocessed_trace(
     } = circuit;
     let mut blake_columns: [_; N_BLAKE_PP_COLUMNS] = std::array::from_fn(|_| vec![]);
     fill_blake_columns(blake, multiplicities, &mut blake_columns);
-    // println!("blake_columns: {:?}", blake_columns);
 
     let n_columns = pp_trace.columns.len();
-    eprintln!("{n_columns}");
     pp_trace.column_indices.extend([
         (PreProcessedColumnId { id: "t0".to_owned() }, n_columns),
         (PreProcessedColumnId { id: "t1".to_owned() }, n_columns + 1),
@@ -382,10 +377,6 @@ impl PreProcessedTrace {
         let blake_sigma = gen_blake_sigma_columns();
 
         pp_trace.columns.extend(chain!(seq, bitwise_xor, blake_sigma));
-        println!(
-            "Non-circuit column log sizes: {:?}",
-            pp_trace.columns.iter().map(|c| c.len().ilog2()).collect::<Vec<_>>()
-        );
         pp_trace.column_indices.extend([
             (PreProcessedColumnId { id: "seq_4".to_owned() }, n_columns),
             (PreProcessedColumnId { id: "seq_5".to_owned() }, n_columns + 1),
