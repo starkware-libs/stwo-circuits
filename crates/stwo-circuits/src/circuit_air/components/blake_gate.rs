@@ -69,7 +69,6 @@ impl FrameworkEval for Eval {
         let M31_23520 = E::F::from(M31::from(23520));
         let M31_26764 = E::F::from(M31::from(26764));
         let M31_27145 = E::F::from(M31::from(27145));
-        let M31_378353459 = E::F::from(M31::from(378353459));
         let M31_39685 = E::F::from(M31::from(39685));
         let M31_40528774 = E::F::from(M31::from(40528774));
         let M31_42319 = E::F::from(M31::from(42319));
@@ -233,8 +232,6 @@ impl FrameworkEval for Eval {
         let triple_xor_32_output_limb_1_col132 = eval.next_trace_mask();
         let triple_xor_32_output_limb_0_col133 = eval.next_trace_mask();
         let triple_xor_32_output_limb_1_col134 = eval.next_trace_mask();
-
-        eval.add_constraint(pp_enabler.clone() * pp_enabler.clone() - pp_enabler.clone());
 
         #[allow(clippy::unused_unit)]
         #[allow(unused_variables)]
