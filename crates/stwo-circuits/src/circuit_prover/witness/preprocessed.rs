@@ -210,8 +210,6 @@ fn fill_blake_columns(
             columns[6].push(*in1);
             columns[7].push(*in2);
             columns[8].push(*in3);
-
-            // 9 final addr, 10 output0_addr 11 output1_addr, 12 mult0, 13 mult1
         }
         // Set the finalize flag to 1 for the last compression of the gate.
         *columns[2].last_mut().unwrap() = 1;
@@ -276,7 +274,7 @@ fn add_blake_to_preprocessed_trace(
     } = circuit;
     let mut blake_columns: [_; N_BLAKE_PP_COLUMNS] = std::array::from_fn(|_| vec![]);
     fill_blake_columns(blake, multiplicities, &mut blake_columns);
-    println!("blake_columns: {:?}", blake_columns);
+    // println!("blake_columns: {:?}", blake_columns);
 
     let n_columns = pp_trace.columns.len();
     pp_trace.column_indices.extend([
@@ -324,7 +322,7 @@ fn add_blake_to_preprocessed_trace(
 /// A collection of preprocessed columns, whose values are publicly acknowledged, and independent of
 /// the proof.
 pub struct PreProcessedTrace {
-    columns: Vec<Vec<usize>>,
+    pub columns: Vec<Vec<usize>>,
     column_indices: HashMap<PreProcessedColumnId, usize>,
 }
 

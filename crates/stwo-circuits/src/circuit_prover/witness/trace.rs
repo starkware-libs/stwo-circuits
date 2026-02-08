@@ -35,10 +35,13 @@ pub fn write_trace(
     trace_generator: &TraceGenerator,
 ) -> (CircuitClaim, CircuitInteractionClaimGenerator) {
     let preprocessed_trace_ref = preprocessed_trace.as_ref();
+
+    // Write eq component.
     let (eq_trace, eq_log_size, eq_lookup_data) =
         eq::write_trace(context_values, preprocessed_trace_ref);
     tree_builder.extend_evals(eq_trace.to_evals());
 
+    // Write qm31_ops component.
     let (qm31_ops_trace, qm31_ops_log_size, qm31_ops_lookup_data) = qm31_ops::write_trace(
         context_values,
         preprocessed_trace_ref,
@@ -56,18 +59,16 @@ pub fn write_trace(
         verify_bitwise_xor_7::ClaimGenerator::new(preprocessed_trace.clone());
     let verify_bitwise_xor_9_state =
         verify_bitwise_xor_9::ClaimGenerator::new(preprocessed_trace.clone());
-
     let range_check_16_state = range_check_16::ClaimGenerator::new(preprocessed_trace.clone());
     let range_check_15_state = range_check_15::ClaimGenerator::new(preprocessed_trace.clone());
     let mut triple_xor_32_state = triple_xor_32::ClaimGenerator::new();
-    // Create blake components generators.
     let blake_gate_claim_generator = blake_gate::ClaimGenerator::new(preprocessed_trace.clone());
     let mut blake_round_generator = blake_round::ClaimGenerator::default();
     let blake_round_sigma_generator =
         blake_round_sigma::ClaimGenerator::new(preprocessed_trace.clone());
     let mut blake_g_generator = blake_g::ClaimGenerator::new();
 
-    // Write blake gate trace.
+    // Write blake gate component.
     let (
         blake_gate_trace,
         blake_gate_interaction_claim_gen,
@@ -84,7 +85,7 @@ pub fn write_trace(
     );
     tree_builder.extend_evals(blake_gate_trace.to_evals());
 
-    // Write blake round trace.
+    // Write blake round component.
     let (blake_round_trace, blake_round_log_size, blake_round_interaction_claim_gen) =
         blake_round_generator.write_trace(
             &blake_round_sigma_generator,
@@ -93,12 +94,12 @@ pub fn write_trace(
         );
     tree_builder.extend_evals(blake_round_trace.to_evals());
 
-    // Write blake round sigma.
+    // Write blake round sigma component.
     let (blake_round_sigma_trace, _blake_round_sigma_claim, blake_round_sigma_interaction_claim_gen) =
         blake_round_sigma_generator.write_trace();
     tree_builder.extend_evals(blake_round_sigma_trace.to_evals());
 
-    // Write blake g.
+    // Write blake g component.
     let (blake_g_trace, blake_g_claim, blake_g_interaction_claim_gen) = blake_g_generator
         .write_trace(
             &verify_bitwise_xor_8_state,
@@ -109,7 +110,7 @@ pub fn write_trace(
         );
     tree_builder.extend_evals(blake_g_trace.to_evals());
 
-    // Write blake output.
+    // Write blake output component.
     let blake_output_generator =
         blake_output::ClaimGenerator::new(blake_output_component_input, preprocessed_trace);
     let (blake_output_trace, blake_output_claim, blake_output_interaction_claim_gen) =
@@ -172,32 +173,32 @@ pub fn write_interaction_trace(
     );
     tree_builder.extend_evals(qm31_ops_trace);
 
-    // Blake gate interaction trace.
+    // Write blake gate interaction trace.
     let (blake_gate_trace, blake_gate_interaction_claim) = circuit_interaction_claim_generator
         .blake_gate
         .write_interaction_trace(&interaction_elements.common_lookup_elements);
     tree_builder.extend_evals(blake_gate_trace);
 
-    // Blake round interaction trace.
+    // Write blake round interaction trace.
     let (blake_round_trace, blake_round_interaction_claim) = circuit_interaction_claim_generator
         .blake_round
         .write_interaction_trace(&interaction_elements.common_lookup_elements);
     tree_builder.extend_evals(blake_round_trace);
 
-    // Blake round sigma interaction trace.
+    // Write blake round sigma interaction trace.
     let (blake_round_sigma_trace, blake_round_sigma_interaction_claim) =
         circuit_interaction_claim_generator
             .blake_round_sigma
             .write_interaction_trace(&interaction_elements.common_lookup_elements);
     tree_builder.extend_evals(blake_round_sigma_trace);
 
-    // Blake g interaction trace.
+    // Write blake g interaction trace.
     let (blake_g_trace, blake_g_interaction_claim) = circuit_interaction_claim_generator
         .blake_g
         .write_interaction_trace(&interaction_elements.common_lookup_elements);
     tree_builder.extend_evals(blake_g_trace);
 
-    // Blake output interaction trace.
+    // Write blake output interaction trace.
     let (blake_output_trace, blake_output_interaction_claim) = circuit_interaction_claim_generator
         .blake_output
         .write_interaction_trace(&interaction_elements.common_lookup_elements);

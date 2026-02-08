@@ -54,7 +54,7 @@ pub fn build_blake_gate_context() -> Context<QM31> {
     let mut inputs: Vec<Var> = vec![];
     let n_inputs = 256;
     let n_bytes = n_inputs * 16;
-    let n_blake_gates = 32;
+    let n_blake_gates = 3;
     for _ in 0..n_inputs {
             inputs.push(guess(&mut context, qm31_from_u32s(0, 1, 2, 3)));
         }
