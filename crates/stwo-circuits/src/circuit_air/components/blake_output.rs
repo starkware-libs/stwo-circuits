@@ -89,8 +89,8 @@ impl FrameworkEval for Eval {
         let output_limb5_col21 = eval.next_trace_mask();
         let output_limb6_col22 = eval.next_trace_mask();
         let output_limb7_col23 = eval.next_trace_mask();
-        
-         // output_limb0.
+
+        // output_limb0.
         eval.add_constraint(
             (output_limb0_col16.clone()
                 - (input_final_state_limb0_limb_0_col0.clone()

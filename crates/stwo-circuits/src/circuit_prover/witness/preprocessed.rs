@@ -123,7 +123,7 @@ fn fill_eq_columns(eq_gates: &[Eq], columns: &mut [Vec<usize>; N_EQ_PP_COLUMNS])
 /// | add_flag | sub_flag | mul_flag | pointwise_mul_flag | in0_address | in1_address | out_address | mults |
 fn add_qm31_ops_to_preprocessed_trace(
     circuit: &Circuit,
-    multiplicities: Vec<usize>,
+    multiplicities: &[usize],
     pp_trace: &mut PreProcessedTrace,
 ) -> qm31_ops::TraceGenerator {
     let Circuit { n_vars, add, sub, mul, pointwise_mul, eq: _, blake: _, permutation } = circuit;
@@ -183,7 +183,11 @@ fn add_eq_to_preprocessed_trace(circuit: &Circuit, pp_trace: &mut PreProcessedTr
 }
 
 /// Currently fills 9 columns.
-fn fill_blake_columns(blake: &[Blake], columns: &mut [Vec<usize>; N_BLAKE_PP_COLUMNS]) {
+fn fill_blake_columns(
+    blake: &[Blake],
+    multiplicities: &[usize],
+    columns: &mut [Vec<usize>; N_BLAKE_PP_COLUMNS],
+) {
     // IV should somehow be in state_address 0.
     let mut state_address = 0;
     let mut message_length = 0;
@@ -206,13 +210,20 @@ fn fill_blake_columns(blake: &[Blake], columns: &mut [Vec<usize>; N_BLAKE_PP_COL
             columns[6].push(*in1);
             columns[7].push(*in2);
             columns[8].push(*in3);
+
+            // 9 final addr, 10 output0_addr 11 output1_addr, 12 mult0, 13 mult1
         }
         // Set the finalize flag to 1 for the last compression of the gate.
         *columns[2].last_mut().unwrap() = 1;
+        // Fill the preprocessed column needed by the blake_output component.
+        // Set final state address.
+        columns[9].push(state_address);
 
-        // // let [out0, out1] = gate.yields()[..] else { panic!("Expected 2 yields for gate") };
-        // columns[0].push(in0);
-        // columns[1].push(in1);
+        let [out0, out1] = gate.yields()[..] else { panic!("Expected 2 yields for gate") };
+        columns[10].push(out0);
+        columns[11].push(out1);
+        columns[12].push(multiplicities[out0]);
+        columns[13].push(multiplicities[out1]);
     }
 }
 
@@ -246,8 +257,13 @@ fn gen_blake_sigma_columns() -> [Vec<usize>; 16] {
     })
 }
 
-const N_BLAKE_PP_COLUMNS: usize = 9;
-fn add_blake_to_preprocessed_trace(circuit: &Circuit, pp_trace: &mut PreProcessedTrace) {
+const N_BLAKE_PP_COLUMNS: usize = 9 + 5;
+
+fn add_blake_to_preprocessed_trace(
+    circuit: &Circuit,
+    multiplicities: &[usize],
+    pp_trace: &mut PreProcessedTrace,
+) {
     let Circuit {
         n_vars: _,
         add: _,
@@ -259,7 +275,7 @@ fn add_blake_to_preprocessed_trace(circuit: &Circuit, pp_trace: &mut PreProcesse
         permutation: _,
     } = circuit;
     let mut blake_columns: [_; N_BLAKE_PP_COLUMNS] = std::array::from_fn(|_| vec![]);
-    fill_blake_columns(blake, &mut blake_columns);
+    fill_blake_columns(blake, multiplicities, &mut blake_columns);
     println!("blake_columns: {:?}", blake_columns);
 
     let n_columns = pp_trace.columns.len();
@@ -273,6 +289,11 @@ fn add_blake_to_preprocessed_trace(circuit: &Circuit, pp_trace: &mut PreProcesse
         (PreProcessedColumnId { id: "message1_addr".to_owned() }, n_columns + 6),
         (PreProcessedColumnId { id: "message2_addr".to_owned() }, n_columns + 7),
         (PreProcessedColumnId { id: "message3_addr".to_owned() }, n_columns + 8),
+        (PreProcessedColumnId { id: "final_state_addr".to_owned() }, n_columns + 9),
+        (PreProcessedColumnId { id: "blake_output0_addr".to_owned() }, n_columns + 10),
+        (PreProcessedColumnId { id: "blake_output1_addr".to_owned() }, n_columns + 11),
+        (PreProcessedColumnId { id: "blake_output0_mults".to_owned() }, n_columns + 12),
+        (PreProcessedColumnId { id: "blake_output1_mults".to_owned() }, n_columns + 13),
     ]);
     pp_trace.columns.extend(blake_columns);
 
@@ -323,10 +344,10 @@ impl PreProcessedTrace {
         add_eq_to_preprocessed_trace(circuit, &mut pp_trace);
         // Add QM31 operations columns.
         let qm31_ops_trace_generator =
-            add_qm31_ops_to_preprocessed_trace(circuit, multiplicities, &mut pp_trace);
+            add_qm31_ops_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
 
         // TODO(Gali): Add Blake columns.
-        add_blake_to_preprocessed_trace(circuit, &mut pp_trace);
+        add_blake_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
 
         Self::add_non_circuit_preprocessed_columns(&mut pp_trace);
 

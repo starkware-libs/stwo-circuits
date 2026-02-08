@@ -68,16 +68,20 @@ pub fn write_trace(
     let mut blake_g_generator = blake_g::ClaimGenerator::new();
 
     // Write blake gate trace.
-    let (blake_gate_trace, blake_gate_interaction_claim_gen, blake_message_state, blake_output_component_input) =
-        blake_gate_claim_generator.write_trace(
-            context_values,
-            preprocessed_trace_ref,
-            &verify_bitwise_xor_8_state,
-            &range_check_16_state,
-            &range_check_15_state,
-            &mut blake_round_generator,
-            &mut triple_xor_32_state,
-        );
+    let (
+        blake_gate_trace,
+        blake_gate_interaction_claim_gen,
+        blake_message_state,
+        blake_output_component_input,
+    ) = blake_gate_claim_generator.write_trace(
+        context_values,
+        preprocessed_trace_ref,
+        &verify_bitwise_xor_8_state,
+        &range_check_16_state,
+        &range_check_15_state,
+        &mut blake_round_generator,
+        &mut triple_xor_32_state,
+    );
     tree_builder.extend_evals(blake_gate_trace.to_evals());
 
     // Write blake round trace.
@@ -106,8 +110,10 @@ pub fn write_trace(
     tree_builder.extend_evals(blake_g_trace.to_evals());
 
     // Write blake output.
-    let blake_output_generator = blake_output::ClaimGenerator::new(blake_output_component_input, preprocessed_trace);
-    let (blake_output_trace, blake_output_claim, blake_output_interaction_claim_gen) = blake_output_generator.write_trace();
+    let blake_output_generator =
+        blake_output::ClaimGenerator::new(blake_output_component_input, preprocessed_trace);
+    let (blake_output_trace, blake_output_claim, blake_output_interaction_claim_gen) =
+        blake_output_generator.write_trace();
 
     (
         CircuitClaim {

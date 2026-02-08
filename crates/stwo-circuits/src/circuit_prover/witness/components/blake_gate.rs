@@ -158,8 +158,12 @@ impl ClaimGenerator {
         range_check_15_state: &range_check_15::ClaimGenerator,
         blake_round_state: &mut blake_round::ClaimGenerator,
         triple_xor_32_state: &mut triple_xor_32::ClaimGenerator,
-    ) -> (ComponentTrace<N_TRACE_COLUMNS>, InteractionClaimGenerator, blake_message::ClaimGenerator, Vec<blake_output::PackedInputType>)
-    {
+    ) -> (
+        ComponentTrace<N_TRACE_COLUMNS>,
+        InteractionClaimGenerator,
+        blake_message::ClaimGenerator,
+        Vec<blake_output::PackedInputType>,
+    ) {
         // let n_rows = self.inputs.len();
         // assert_ne!(n_rows, 0);
         // let size = std::cmp::max(n_rows.next_power_of_two(), N_LANES);
@@ -177,7 +181,12 @@ impl ClaimGenerator {
         let packed_inputs = pack_values(&inputs);
 
         let mut blake_message_state = blake_message::ClaimGenerator::default();
-        let (trace, interaction_claim_generator, sub_component_inputs, blake_output_component_input) = write_trace_simd(
+        let (
+            trace,
+            interaction_claim_generator,
+            sub_component_inputs,
+            blake_output_component_input,
+        ) = write_trace_simd(
             packed_inputs,
             &self.preprocessed_trace,
             n_rows,
@@ -231,7 +240,12 @@ fn write_trace_simd(
     blake_round_state: &mut blake_round::ClaimGenerator,
     triple_xor_32_state: &mut triple_xor_32::ClaimGenerator,
     blake_message_state: &mut blake_message::ClaimGenerator,
-) -> (ComponentTrace<N_TRACE_COLUMNS>, InteractionClaimGenerator, SubComponentInputs, Vec<blake_output::PackedInputType>) {
+) -> (
+    ComponentTrace<N_TRACE_COLUMNS>,
+    InteractionClaimGenerator,
+    SubComponentInputs,
+    Vec<blake_output::PackedInputType>,
+) {
     let n_packed_rows = inputs.len();
     let log_n_packed_rows = n_packed_rows.ilog2();
     let log_size = log_n_packed_rows + LOG_N_LANES;
@@ -346,7 +360,6 @@ fn write_trace_simd(
         }
     }
 
-
     // Pack them.
     let padding = (16 - (blake_output_component_inputs.len() % 16)) % 16;
     blake_output_component_inputs.extend(std::iter::repeat_n([UInt32::default(); 8], padding));
@@ -360,9 +373,9 @@ fn write_trace_simd(
                 })
             })
             .collect();
-    // TODO(Leo): resize with non-junk elements. 
-    // blake_output_component_inputs_packed.resize(1 << log_n_packed_rows, [PackedUInt32::default(); 8]);
-   
+    // TODO(Leo): resize with non-junk elements.
+    // blake_output_component_inputs_packed.resize(1 << log_n_packed_rows, [PackedUInt32::default();
+    // 8]);
 
     (
         trace.par_iter_mut(),
