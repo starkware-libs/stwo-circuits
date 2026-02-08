@@ -228,14 +228,19 @@ fn fill_blake_columns(
     }
     // Pad the preprocessed columns used in blake compress.
     let n_blake_compress = columns[0].len();
+    let blake_compress_padding = std::cmp::max(n_blake_compress.next_power_of_two(), N_LANES);
+    eprintln!("blake_compress_padding: {:?}", blake_compress_padding);
     // Pad with the first element.
-    (0..9).for_each(|i| columns[i].resize(n_blake_compress.next_power_of_two(), *columns[i].first().unwrap()));
-    columns[9].resize(n_blake_compress.next_power_of_two(), 0); // Enabler columns.
+    (0..9).for_each(|i| columns[i].resize(blake_compress_padding, *columns[i].first().unwrap()));
+    columns[9].resize(blake_compress_padding, 0); // Enabler columns.
+
 
     // Pad the preprocessed columns used in blake output
     let n_blake_output = columns[10].len();
-    (10..13).for_each(|i| columns[i].resize(n_blake_output.next_power_of_two(), *columns[i].first().unwrap()));
-    (13..15).for_each(|i| columns[i].resize(n_blake_output.next_power_of_two(), 0)); // Multiplicity columns.
+    let blake_output_padding = std::cmp::max(n_blake_output.next_power_of_two(), N_LANES);
+    eprintln!("blake_output_padding: {:?}", blake_output_padding);
+    (10..13).for_each(|i| columns[i].resize(blake_output_padding, *columns[i].first().unwrap()));
+    (13..15).for_each(|i| columns[i].resize(blake_output_padding, 0)); // Multiplicity columns.
 }
 
 const BLAKE2S_SIGMA: [[usize; 16]; 10] = [
@@ -290,6 +295,7 @@ fn add_blake_to_preprocessed_trace(
     // println!("blake_columns: {:?}", blake_columns);
 
     let n_columns = pp_trace.columns.len();
+    eprintln!("{n_columns}");
     pp_trace.column_indices.extend([
         (PreProcessedColumnId { id: "t0".to_owned() }, n_columns),
         (PreProcessedColumnId { id: "t1".to_owned() }, n_columns + 1),

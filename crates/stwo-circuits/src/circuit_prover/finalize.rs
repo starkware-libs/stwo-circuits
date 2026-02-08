@@ -63,6 +63,6 @@ pub(crate) fn finalize_context(context: &mut Context<QM31>) {
     // Padding the components to a power of two.
     pad_eq(context);
     pad_qm31_ops(context);
-    pad_blake(context);
+    // pad_blake(context);
     // TODO(Gali): Pad blake gates.
 }

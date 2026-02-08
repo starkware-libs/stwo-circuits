@@ -48,7 +48,7 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
 
     for (i, col) in preprocessed_trace.columns.iter().enumerate() {
 
-        eprintln!("Preprocessed col index: {}, log size {}, is power of two: {}", i, col.len(), col.len().is_power_of_two());
+        eprintln!("Preprocessed col index: {}, size {}, is power of two: {}", i, col.len(), col.len().is_power_of_two());
 
     }
     
