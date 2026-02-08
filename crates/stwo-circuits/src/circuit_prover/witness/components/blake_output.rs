@@ -165,7 +165,9 @@ fn write_trace_simd(
                 output_limb7_col23,
             ];
         });
-
+    
+    lookup_data.mults_0 = mults0;
+    lookup_data.mults_1 = mults1;
     (trace, lookup_data)
 }
 

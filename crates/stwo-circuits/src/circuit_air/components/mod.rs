@@ -34,6 +34,7 @@ pub enum ComponentList {
     BlakeRound,
     BlakeRoundSigma,
     BlakeG,
+    BlakeOutput
 }
 pub const N_COMPONENTS: usize = std::mem::variant_count::<ComponentList>();
 
@@ -44,6 +45,7 @@ pub struct CircuitComponents {
     pub blake_round: blake_round::Component,
     pub blake_round_sigma: blake_round_sigma::Component,
     pub blake_g: blake_g::Component,
+    pub blake_output: blake_output::Component
 }
 impl CircuitComponents {
     pub fn new(
@@ -110,6 +112,16 @@ impl CircuitComponents {
             },
             interaction_claim.claimed_sums[ComponentList::BlakeG as usize],
         );
+        let blake_output_component = blake_output::Component::new(
+            tree_span_provider,
+            blake_output::Eval {
+                claim: blake_output::Claim {
+                    log_size: circuit_claim.log_sizes[ComponentList::BlakeOutput as usize],
+                },
+                common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
+            },
+            interaction_claim.claimed_sums[ComponentList::BlakeOutput as usize],
+        );
         Self {
             eq: eq_component,
             qm31_ops: qm31_ops_component,
@@ -117,6 +129,7 @@ impl CircuitComponents {
             blake_round: blake_round_component,
             blake_round_sigma: blake_round_sigma_component,
             blake_g: blake_g_component,
+            blake_output: blake_output_component
         }
     }
 
@@ -128,6 +141,7 @@ impl CircuitComponents {
             &self.blake_round as &dyn ComponentProver<SimdBackend>,
             &self.blake_round_sigma as &dyn ComponentProver<SimdBackend>,
             &self.blake_g as &dyn ComponentProver<SimdBackend>,
+            &self.blake_output as &dyn ComponentProver<SimdBackend>,
         ])
         .collect()
     }
@@ -140,6 +154,7 @@ impl CircuitComponents {
             Box::new(self.blake_round) as Box<dyn Component>,
             Box::new(self.blake_round_sigma) as Box<dyn Component>,
             Box::new(self.blake_g) as Box<dyn Component>,
+            Box::new(self.blake_output) as Box<dyn Component>,
         ]
     }
 }
