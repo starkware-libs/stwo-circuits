@@ -215,6 +215,7 @@ struct SubComponentInputs {
     range_check_15: [Vec<range_check_15::PackedInputType>; 16],
     blake_round: [Vec<blake_round::PackedInputType>; 10],
     triple_xor_32: [Vec<triple_xor_32::PackedInputType>; 8],
+    blake_output_component_input: Vec<blake_output::PackedInputType>,
 }
 
 #[allow(clippy::useless_conversion)]
@@ -263,7 +264,6 @@ fn write_trace_simd(
     let M31_26764 = PackedM31::broadcast(M31::from(26764));
     let M31_27145 = PackedM31::broadcast(M31::from(27145));
     let M31_3 = PackedM31::broadcast(M31::from(3));
-    let M31_378353459 = PackedM31::broadcast(M31::from(378353459));
     let M31_39685 = PackedM31::broadcast(M31::from(39685));
     let M31_4 = PackedM31::broadcast(M31::from(4));
     let M31_40528774 = PackedM31::broadcast(M31::from(40528774));
@@ -332,6 +332,33 @@ fn write_trace_simd(
             blake_round_state.blake_message.msg_per_id.push(msg);
         }
     }
+
+    // Build the inputs for the blake_output component.
+    let mut blake_output_component_inputs: Vec<[UInt32; 8]> = Vec::with_capacity(log_size as usize);
+
+    for (blake_input, flag) in inputs.iter().zip_eq(finalize_flag.iter()) {
+        let state_after = blake_input.0[1];
+        for (flag_idx_in_simd, flag_value) in flag.to_array().iter().enumerate() {
+            if *flag_value == M31::one() {
+                let res = std::array::from_fn(|i| state_after[i].as_array()[flag_idx_in_simd]);
+                blake_output_component_inputs.push(res);
+            }
+        }
+    }
+
+    // Pack them.
+    let padding = (16 - (blake_output_component_inputs[0].len() % 16)) % 16;
+    blake_output_component_inputs.extend(std::iter::repeat_n([UInt32::default(); 8], padding));
+    let blake_output_component_inputs_packed: Vec<[PackedUInt32; 8]> =
+        blake_output_component_inputs
+            .chunks_exact(N_LANES)
+            .map(|chunk| {
+                std::array::from_fn(|i| {
+                    PackedUInt32::from_array(std::array::from_fn(|j| chunk[j][i]))
+                })
+            })
+            .collect();
+    sub_component_inputs.blake_output_component_input = blake_output_component_inputs_packed;
 
     (
         trace.par_iter_mut(),
@@ -1746,7 +1773,7 @@ fn write_trace_simd(
                     input_state_after_limb7_limb_1_col31,
                 ];
                 *lookup_data.gate_0 = [
-                    M31_378353459,
+                    M31_0,
                     message0_addr,
                     input_message_limb0_col32,
                     input_message_limb1_col33,
@@ -1754,7 +1781,7 @@ fn write_trace_simd(
                     input_message_limb3_col35,
                 ];
                 *lookup_data.gate_1 = [
-                    M31_378353459,
+                    M31_0,
                     message1_addr,
                     input_message_limb4_col36,
                     input_message_limb5_col37,
@@ -1762,7 +1789,7 @@ fn write_trace_simd(
                     input_message_limb7_col39,
                 ];
                 *lookup_data.gate_2 = [
-                    M31_378353459,
+                    M31_0,
                     message2_addr,
                     input_message_limb8_col40,
                     input_message_limb9_col41,
@@ -1770,7 +1797,7 @@ fn write_trace_simd(
                     input_message_limb11_col43,
                 ];
                 *lookup_data.gate_3 = [
-                    M31_378353459,
+                    M31_0,
                     message3_addr,
                     input_message_limb12_col44,
                     input_message_limb13_col45,

@@ -53,6 +53,7 @@ impl FrameworkEval for Eval {
     #[allow(non_snake_case)]
     fn evaluate<E: EvalAtRow>(&self, mut eval: E) -> E {
         let M31_1061955672 = E::F::from(M31::from(1061955672));
+        let M31_65536 = E::F::from(M31::from(65536));
         let final_state_addr = eval
             .get_preprocessed_column(PreProcessedColumnId { id: "final_state_addr".to_owned() });
         let blake_output0_addr = eval
@@ -63,6 +64,7 @@ impl FrameworkEval for Eval {
             .get_preprocessed_column(PreProcessedColumnId { id: "blake_output0_mults".to_owned() });
         let blake_output1_mults = eval
             .get_preprocessed_column(PreProcessedColumnId { id: "blake_output1_mults".to_owned() });
+
         let input_final_state_limb0_limb_0_col0 = eval.next_trace_mask();
         let input_final_state_limb0_limb_1_col1 = eval.next_trace_mask();
         let input_final_state_limb1_limb_0_col2 = eval.next_trace_mask();
@@ -87,6 +89,55 @@ impl FrameworkEval for Eval {
         let output_limb5_col21 = eval.next_trace_mask();
         let output_limb6_col22 = eval.next_trace_mask();
         let output_limb7_col23 = eval.next_trace_mask();
+        
+         // output_limb0.
+        eval.add_constraint(
+            (output_limb0_col16.clone()
+                - (input_final_state_limb0_limb_0_col0.clone()
+                    + (input_final_state_limb0_limb_1_col1.clone() * M31_65536.clone()))),
+        );
+        // output_limb1.
+        eval.add_constraint(
+            (output_limb1_col17.clone()
+                - (input_final_state_limb1_limb_0_col2.clone()
+                    + (input_final_state_limb1_limb_1_col3.clone() * M31_65536.clone()))),
+        );
+        // output_limb2.
+        eval.add_constraint(
+            (output_limb2_col18.clone()
+                - (input_final_state_limb2_limb_0_col4.clone()
+                    + (input_final_state_limb2_limb_1_col5.clone() * M31_65536.clone()))),
+        );
+        // output_limb3.
+        eval.add_constraint(
+            (output_limb3_col19.clone()
+                - (input_final_state_limb3_limb_0_col6.clone()
+                    + (input_final_state_limb3_limb_1_col7.clone() * M31_65536.clone()))),
+        );
+        // output_limb4.
+        eval.add_constraint(
+            (output_limb4_col20.clone()
+                - (input_final_state_limb4_limb_0_col8.clone()
+                    + (input_final_state_limb4_limb_1_col9.clone() * M31_65536.clone()))),
+        );
+        // output_limb5.
+        eval.add_constraint(
+            (output_limb5_col21.clone()
+                - (input_final_state_limb5_limb_0_col10.clone()
+                    + (input_final_state_limb5_limb_1_col11.clone() * M31_65536.clone()))),
+        );
+        // output_limb6.
+        eval.add_constraint(
+            (output_limb6_col22.clone()
+                - (input_final_state_limb6_limb_0_col12.clone()
+                    + (input_final_state_limb6_limb_1_col13.clone() * M31_65536.clone()))),
+        );
+        // output_limb7.
+        eval.add_constraint(
+            (output_limb7_col23.clone()
+                - (input_final_state_limb7_limb_0_col14.clone()
+                    + (input_final_state_limb7_limb_1_col15.clone() * M31_65536.clone()))),
+        );
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
