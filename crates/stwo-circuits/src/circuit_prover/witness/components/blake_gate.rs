@@ -1806,7 +1806,6 @@ fn write_trace_simd(
                     input_message_limb14_col46,
                     input_message_limb15_col47,
                 ];
-                *row[135] = enabler_col.packed_at(row_index);
             },
         );
 

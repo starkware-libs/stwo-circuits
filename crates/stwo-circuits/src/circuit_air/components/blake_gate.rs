@@ -5,7 +5,7 @@ use crate::circuit_air::components::subroutines::create_blake_output::CreateBlak
 use crate::circuit_air::components::subroutines::create_blake_round_input::CreateBlakeRoundInput;
 use crate::circuit_air::components::subroutines::qm_31_into_u_32::Qm31IntoU32;
 
-pub const N_TRACE_COLUMNS: usize = 136;
+pub const N_TRACE_COLUMNS: usize = 135;
 pub const RELATION_USES_PER_ROW: [RelationUse; 7] = [
     RelationUse { relation_id: "BlakeOutput", uses: 1 },
     RelationUse { relation_id: "BlakeRound", uses: 1 },
@@ -96,6 +96,8 @@ impl FrameworkEval for Eval {
             eval.get_preprocessed_column(PreProcessedColumnId { id: "message2_addr".to_owned() });
         let message3_addr =
             eval.get_preprocessed_column(PreProcessedColumnId { id: "message3_addr".to_owned() });
+        let pp_enabler =
+            eval.get_preprocessed_column(PreProcessedColumnId { id: "compress_enabler".to_owned() });
         let input_state_before_limb0_limb_0_col0 = eval.next_trace_mask();
         let input_state_before_limb0_limb_1_col1 = eval.next_trace_mask();
         let input_state_before_limb1_limb_0_col2 = eval.next_trace_mask();
@@ -231,9 +233,8 @@ impl FrameworkEval for Eval {
         let triple_xor_32_output_limb_1_col132 = eval.next_trace_mask();
         let triple_xor_32_output_limb_0_col133 = eval.next_trace_mask();
         let triple_xor_32_output_limb_1_col134 = eval.next_trace_mask();
-        let enabler = eval.next_trace_mask();
 
-        eval.add_constraint(enabler.clone() * enabler.clone() - enabler.clone());
+        eval.add_constraint(pp_enabler.clone() * pp_enabler.clone() - pp_enabler.clone());
 
         #[allow(clippy::unused_unit)]
         #[allow(unused_variables)]
@@ -632,7 +633,7 @@ impl FrameworkEval for Eval {
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            E::EF::from(enabler.clone()),
+            E::EF::from(pp_enabler.clone()),
             &[
                 M31_0.clone(),
                 message0_addr.clone(),
@@ -645,7 +646,7 @@ impl FrameworkEval for Eval {
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            E::EF::from(enabler.clone()),
+            E::EF::from(pp_enabler.clone()),
             &[
                 M31_0.clone(),
                 message1_addr.clone(),
@@ -658,7 +659,7 @@ impl FrameworkEval for Eval {
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            E::EF::from(enabler.clone()),
+            E::EF::from(pp_enabler.clone()),
             &[
                 M31_0.clone(),
                 message2_addr.clone(),
@@ -671,7 +672,7 @@ impl FrameworkEval for Eval {
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            E::EF::from(enabler.clone()),
+            E::EF::from(pp_enabler.clone()),
             &[
                 M31_0.clone(),
                 message3_addr.clone(),
