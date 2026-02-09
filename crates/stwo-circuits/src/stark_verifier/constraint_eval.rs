@@ -268,6 +268,11 @@ pub fn compute_composition_polynomial<Value: IValue>(
     {
         evaluation_accumulator.set_enable_bit(enable_bit);
         let trace_columns = get_n_columns(&mut oods_samples.trace, *n_trace_columns_in_component);
+        if trace_columns.is_empty() {
+            context.mark_as_unused(component_size);
+            continue;
+        }
+
         let interaction_columns =
             get_n_columns(&mut oods_samples.interaction, *n_interaction_columns_in_component);
 
