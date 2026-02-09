@@ -108,7 +108,8 @@ fn write_trace_simd(
         )
     };
 
-    let M31_112558620 = PackedM31::broadcast(M31::from(112558620));
+    // let M31_112558620 = PackedM31::broadcast(M31::from(112558620));
+    let M31_4 = PackedM31::broadcast(M31::from(4)); // Leo: Subsitutes the above.
     let M31_1139985212 = PackedM31::broadcast(M31::from(1139985212));
     let M31_128 = PackedM31::broadcast(M31::from(128));
     let M31_16 = PackedM31::broadcast(M31::from(16));
@@ -119,7 +120,7 @@ fn write_trace_simd(
     let M31_521092554 = PackedM31::broadcast(M31::from(521092554));
     let M31_62225763 = PackedM31::broadcast(M31::from(62225763));
     // let M31_648362599 = PackedM31::broadcast(M31::from(648362599));
-    let M31_1 =  PackedM31::broadcast(M31::from(1));
+    let M31_1 =  PackedM31::broadcast(M31::from(1)); // Leo: Subsitutes the above.
     let M31_95781001 = PackedM31::broadcast(M31::from(95781001));
     let UInt16_12 = PackedUInt16::broadcast(UInt16::from(12));
     let UInt16_7 = PackedUInt16::broadcast(UInt16::from(7));
@@ -222,7 +223,7 @@ fn write_trace_simd(
                 xor_col18,
             ];
             *lookup_data.verify_bitwise_xor_8_0 = [
-                M31_112558620,
+                M31_4,
                 split_16_low_part_size_8_output_tmp_f72c8_5[0],
                 split_16_low_part_size_8_output_tmp_f72c8_9[0],
                 xor_col18,
@@ -237,7 +238,7 @@ fn write_trace_simd(
             *sub_component_inputs.verify_bitwise_xor_8[1] =
                 [ms_8_bits_col14, ms_8_bits_col16, xor_col19];
             *lookup_data.verify_bitwise_xor_8_1 =
-                [M31_112558620, ms_8_bits_col14, ms_8_bits_col16, xor_col19];
+                [M31_4, ms_8_bits_col14, ms_8_bits_col16, xor_col19];
 
             // Bitwise Xor Num Bits 8 B.
 
@@ -459,7 +460,7 @@ fn write_trace_simd(
                 xor_col38,
             ];
             *lookup_data.verify_bitwise_xor_8_2 = [
-                M31_112558620,
+                M31_4,
                 split_16_low_part_size_8_output_tmp_f72c8_49[0],
                 split_16_low_part_size_8_output_tmp_f72c8_53[0],
                 xor_col38,
@@ -474,7 +475,7 @@ fn write_trace_simd(
             *sub_component_inputs.verify_bitwise_xor_8[3] =
                 [ms_8_bits_col34, ms_8_bits_col36, xor_col39];
             *lookup_data.verify_bitwise_xor_8_3 =
-                [M31_112558620, ms_8_bits_col34, ms_8_bits_col36, xor_col39];
+                [M31_4, ms_8_bits_col34, ms_8_bits_col36, xor_col39];
 
             // Bitwise Xor Num Bits 8 B.
 

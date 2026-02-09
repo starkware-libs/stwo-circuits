@@ -254,7 +254,8 @@ fn write_trace_simd(
     let M31_1058718565 = PackedM31::broadcast(M31::from(1058718565));
     let M31_1061955672 = PackedM31::broadcast(M31::from(1061955672));
     let M31_11 = PackedM31::broadcast(M31::from(11));
-    let M31_112558620 = PackedM31::broadcast(M31::from(112558620));
+    // let M31_112558620 = PackedM31::broadcast(M31::from(112558620));
+    let M31_4 = PackedM31::broadcast(M31::from(4)); // Leo: Subsitutes the above.
     let M31_12 = PackedM31::broadcast(M31::from(12));
     let M31_127 = PackedM31::broadcast(M31::from(127));
     let M31_13 = PackedM31::broadcast(M31::from(13));
@@ -516,7 +517,7 @@ fn write_trace_simd(
                 *sub_component_inputs.verify_bitwise_xor_8[0] =
                     [split_16_low_part_size_8_output_tmp_8e0ec_1[0], M31_127, xor_col50];
                 *lookup_data.verify_bitwise_xor_8_0 = [
-                    M31_112558620,
+                    M31_4,
                     split_16_low_part_size_8_output_tmp_8e0ec_1[0],
                     M31_127,
                     xor_col50,
@@ -530,7 +531,7 @@ fn write_trace_simd(
                 *sub_component_inputs.verify_bitwise_xor_8[1] =
                     [ms_8_bits_col48, M31_82, xor_col51];
                 *lookup_data.verify_bitwise_xor_8_1 =
-                    [M31_112558620, ms_8_bits_col48, M31_82, xor_col51];
+                    [M31_4, ms_8_bits_col48, M31_82, xor_col51];
 
                 // Bitwise Xor Num Bits 8.
 
@@ -542,7 +543,7 @@ fn write_trace_simd(
                 *sub_component_inputs.verify_bitwise_xor_8[2] =
                     [split_16_low_part_size_8_output_tmp_8e0ec_3[0], M31_14, xor_col52];
                 *lookup_data.verify_bitwise_xor_8_2 = [
-                    M31_112558620,
+                    M31_4,
                     split_16_low_part_size_8_output_tmp_8e0ec_3[0],
                     M31_14,
                     xor_col52,
@@ -556,7 +557,7 @@ fn write_trace_simd(
                 *sub_component_inputs.verify_bitwise_xor_8[3] =
                     [ms_8_bits_col49, M31_81, xor_col53];
                 *lookup_data.verify_bitwise_xor_8_3 =
-                    [M31_112558620, ms_8_bits_col49, M31_81, xor_col53];
+                    [M31_4, ms_8_bits_col49, M31_81, xor_col53];
 
                 let create_blake_round_input_output_tmp_8e0ec_12 = [
                     blake_gate_input.0[0][0],

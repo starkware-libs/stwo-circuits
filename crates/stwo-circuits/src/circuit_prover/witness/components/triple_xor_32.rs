@@ -75,7 +75,8 @@ fn write_trace_simd(
         )
     };
 
-    let M31_112558620 = PackedM31::broadcast(M31::from(112558620));
+    // let M31_112558620 = PackedM31::broadcast(M31::from(112558620));
+    let M31_4 = PackedM31::broadcast(M31::from(4)); // Leo: Subsitutes the above.
     let M31_256 = PackedM31::broadcast(M31::from(256));
     let M31_521092554 = PackedM31::broadcast(M31::from(521092554));
     let M31_990559919 = PackedM31::broadcast(M31::from(990559919));
@@ -166,7 +167,7 @@ fn write_trace_simd(
                     xor_col12,
                 ];
                 *lookup_data.verify_bitwise_xor_8_0 = [
-                    M31_112558620,
+                    M31_4,
                     split_16_low_part_size_8_output_tmp_298db_1[0],
                     split_16_low_part_size_8_output_tmp_298db_5[0],
                     xor_col12,
@@ -181,7 +182,7 @@ fn write_trace_simd(
                 *sub_component_inputs.verify_bitwise_xor_8[1] =
                     [xor_col12, split_16_low_part_size_8_output_tmp_298db_9[0], xor_col13];
                 *lookup_data.verify_bitwise_xor_8_1 = [
-                    M31_112558620,
+                    M31_4,
                     xor_col12,
                     split_16_low_part_size_8_output_tmp_298db_9[0],
                     xor_col13,
@@ -196,7 +197,7 @@ fn write_trace_simd(
                 *sub_component_inputs.verify_bitwise_xor_8[2] =
                     [ms_8_bits_col6, ms_8_bits_col8, xor_col14];
                 *lookup_data.verify_bitwise_xor_8_2 =
-                    [M31_112558620, ms_8_bits_col6, ms_8_bits_col8, xor_col14];
+                    [M31_4, ms_8_bits_col6, ms_8_bits_col8, xor_col14];
 
                 // Bitwise Xor Num Bits 8.
 
@@ -207,7 +208,7 @@ fn write_trace_simd(
                 *sub_component_inputs.verify_bitwise_xor_8[3] =
                     [xor_col14, ms_8_bits_col10, xor_col15];
                 *lookup_data.verify_bitwise_xor_8_3 =
-                    [M31_112558620, xor_col14, ms_8_bits_col10, xor_col15];
+                    [M31_4, xor_col14, ms_8_bits_col10, xor_col15];
 
                 // Bitwise Xor Num Bits 8 B.
 
