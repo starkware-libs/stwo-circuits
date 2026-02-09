@@ -147,7 +147,7 @@ pub struct CairoStatement<Value: IValue> {
     pub components: Vec<Box<dyn CircuitEval<Value>>>,
     pub packed_public_data: Simd,
     pub public_data: PublicData<Var>,
-    pub program: Vec<[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]>,
+    pub program: Vec<[M31; MEMORY_VALUES_LIMBS]>,
     pub outputs: Vec<[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]>,
 }
 
@@ -306,14 +306,6 @@ impl<Value: IValue> CairoStatement<Value> {
         let public_data =
             PublicData::<Var>::parse_from_vars(&unpacked_simd[..], outputs.len(), program.len());
 
-        // Note that we are using the constant values for the program.
-        let program = program
-            .iter()
-            .map(|value_limbs| {
-                value_limbs.map(|limb| M31Wrapper::new_unsafe(context.constant(limb.into())))
-            })
-            .collect_vec();
-
         let outputs = outputs
             .iter()
             .map(|value_limbs| {
@@ -347,13 +339,13 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         output(context, output_hash.0);
         output(context, output_hash.1);
 
-        let packed_program =
-            Simd::pack(context, &self.program.iter().flatten().cloned().collect_vec());
+        let flat_program = pack_into_qm31s(self.program.iter().flatten().cloned());
+        let program_hash = IValue::blake(&flat_program, flat_program.len() * 16);
         vec![
             vec![program_len],
             self.packed_public_data.get_packed().to_vec(),
-            packed_outputs.get_packed().to_vec(),
-            packed_program.get_packed().to_vec(),
+            vec![output_hash.0, output_hash.1],
+            vec![context.constant(program_hash.0), context.constant(program_hash.1)],
         ]
     }
 
@@ -363,10 +355,18 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         interaction_elements: [Var; 2],
         _claim: &Claim<Var>,
     ) -> Var {
+        let program_as_constants = self
+            .program
+            .iter()
+            .map(|value_limbs| {
+                value_limbs.map(|limb| M31Wrapper::new_unsafe(context.constant(limb.into())))
+            })
+            .collect_vec();
+
         public_logup_sum(
             context,
             &self.public_data,
-            &self.program[..],
+            &program_as_constants,
             &self.outputs,
             interaction_elements,
         )
