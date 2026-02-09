@@ -1,4 +1,4 @@
-use num_traits::{One, Zero};
+use num_traits::One;
 use rstest::rstest;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
@@ -9,8 +9,8 @@ use crate::circuits::ivalue::qm31_from_u32s;
 use crate::circuits::ops::Guess;
 use crate::circuits::wrappers::M31Wrapper;
 use crate::stark_verifier::merkle::{
-    AuthPath, AuthPaths, LEAF_PREFIX, NODE_PREFIX, decommit_eval_domain_samples, hash_leaf_m31s,
-    hash_leaf_qm31, hash_node, verify_merkle_path,
+    AuthPath, AuthPaths, decommit_eval_domain_samples, hash_leaf_m31s, hash_leaf_qm31, hash_node,
+    verify_merkle_path,
 };
 use crate::stark_verifier::oods::EvalDomainSamples;
 
@@ -22,8 +22,8 @@ fn hash_leaf_m31s_regression() {
 
     let hash = hash_leaf_m31s(&mut context, &values);
 
-    assert_eq!(context.get(hash.0), qm31_from_u32s(268251613, 660344597, 1395766214, 1277826589));
-    assert_eq!(context.get(hash.1), qm31_from_u32s(1447949022, 1496147392, 1638488896, 1977465263));
+    assert_eq!(context.get(hash.0), qm31_from_u32s(1763208116, 1774406625, 1336068069, 373311810));
+    assert_eq!(context.get(hash.1), qm31_from_u32s(1118127454, 2086392865, 1278012663, 1611750530));
 
     let values = [1, 1641251221, 1176667027, 568581975]
         .map(|v: u32| M31Wrapper::from(M31::from(v)))
@@ -31,8 +31,8 @@ fn hash_leaf_m31s_regression() {
 
     let hash = hash_leaf_m31s(&mut context, &values);
 
-    assert_eq!(context.get(hash.0), qm31_from_u32s(483650195, 1143215778, 1399105963, 121243225));
-    assert_eq!(context.get(hash.1), qm31_from_u32s(1343116297, 264974384, 1201369425, 1524730384));
+    assert_eq!(context.get(hash.0), qm31_from_u32s(181015110, 1959144033, 1304935871, 355199825));
+    assert_eq!(context.get(hash.1), qm31_from_u32s(2146552944, 1626387857, 1235174401, 2030212627));
 
     context.validate_circuit();
 }
@@ -45,8 +45,8 @@ fn hash_leaf_qm31_regression() {
 
     let hash = hash_leaf_qm31(&mut context, value);
 
-    assert_eq!(context.get(hash.0), qm31_from_u32s(213309292, 1259059296, 2015672417, 84940378));
-    assert_eq!(context.get(hash.1), qm31_from_u32s(1355777445, 165748642, 250675744, 1548784467));
+    assert_eq!(context.get(hash.0), qm31_from_u32s(78597555, 2084880944, 445883625, 1079411638));
+    assert_eq!(context.get(hash.1), qm31_from_u32s(380666281, 278000547, 348716377, 469685670));
 
     context.validate_circuit();
 }
@@ -68,31 +68,25 @@ fn hash_node_regression() {
 
     let hash = hash_node(&mut context, left, right);
 
-    assert_eq!(context.get(hash.0), qm31_from_u32s(1290083578, 670256590, 203247471, 492011214));
-    assert_eq!(context.get(hash.1), qm31_from_u32s(353269841, 1619070080, 770215254, 1663098736));
+    assert_eq!(context.get(hash.0), qm31_from_u32s(450130627, 1497612920, 983682843, 197153269));
+    assert_eq!(context.get(hash.1), qm31_from_u32s(627331459, 1812913354, 171180653, 1839567716));
 
     context.validate_circuit();
 }
 
 /// Similar to `hash_node`, but for `QM31` values rather than `Var`s.
 fn hash_node_qm31(left: HashValue<QM31>, right: HashValue<QM31>) -> HashValue<QM31> {
-    let node_prefix = QM31::from(NODE_PREFIX);
-    let zero = QM31::zero();
-    blake_qm31(&[node_prefix, zero, zero, zero, left.0, left.1, right.0, right.1], 128)
+    blake_qm31(&[left.0, left.1, right.0, right.1], 64)
 }
 
 /// Similar to `hash_leaf_m31s` for an empty leaf.
 fn hash_empty_leaf() -> HashValue<QM31> {
-    let zero = QM31::zero();
-    let data: Vec<QM31> = vec![LEAF_PREFIX.into(), zero, zero, zero];
-    blake_qm31(&data, 64)
+    blake_qm31(&[], 0)
 }
 
 /// Similar to `hash_leaf_m31s`, but for one `M31` rather than `Var`s.
 fn hash_leaf(value: M31) -> HashValue<QM31> {
-    let zero = QM31::zero();
-    let data: Vec<QM31> = vec![LEAF_PREFIX.into(), zero, zero, zero, value.into()];
-    blake_qm31(&data, 68)
+    blake_qm31(&[value.into()], 4)
 }
 
 #[rstest]
