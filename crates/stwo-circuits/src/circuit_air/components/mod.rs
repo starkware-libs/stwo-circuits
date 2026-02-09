@@ -34,7 +34,7 @@ pub enum ComponentList {
     BlakeRound,
     BlakeRoundSigma,
     BlakeG,
-    BlakeOutput
+    BlakeOutput,
 }
 pub const N_COMPONENTS: usize = std::mem::variant_count::<ComponentList>();
 
@@ -45,7 +45,7 @@ pub struct CircuitComponents {
     pub blake_round: blake_round::Component,
     pub blake_round_sigma: blake_round_sigma::Component,
     pub blake_g: blake_g::Component,
-    pub blake_output: blake_output::Component
+    pub blake_output: blake_output::Component,
 }
 impl CircuitComponents {
     pub fn new(
@@ -129,7 +129,7 @@ impl CircuitComponents {
             blake_round: blake_round_component,
             blake_round_sigma: blake_round_sigma_component,
             blake_g: blake_g_component,
-            blake_output: blake_output_component
+            blake_output: blake_output_component,
         }
     }
 

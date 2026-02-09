@@ -201,9 +201,11 @@ fn fill_blake_columns(
             columns[2].push(0);
             // State before address.
             columns[3].push(state_address);
+            eprintln!("{state_address}");
             // State after address.
             state_address += 1;
             columns[4].push(state_address);
+            eprintln!("{state_address}");
             // Message addresses.
             columns[5].push(*in0);
             columns[6].push(*in1);
@@ -218,6 +220,7 @@ fn fill_blake_columns(
         // Fill the preprocessed column needed by the blake_output component.
         // Set final state address.
         columns[10].push(state_address);
+        eprintln!("{state_address}");
 
         let [out0, out1] = gate.yields()[..] else { panic!("Expected 2 yields for gate") };
         columns[11].push(out0);
@@ -231,7 +234,6 @@ fn fill_blake_columns(
     // Pad with the first element.
     (0..9).for_each(|i| columns[i].resize(blake_compress_padding, *columns[i].first().unwrap()));
     columns[9].resize(blake_compress_padding, 0); // Enabler columns.
-
 
     // Pad the preprocessed columns used in blake output
     let n_blake_output = columns[10].len();

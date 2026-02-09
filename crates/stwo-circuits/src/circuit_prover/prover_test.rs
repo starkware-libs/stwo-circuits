@@ -1,5 +1,7 @@
+use crate::circuit_air::CircuitInteractionElements;
 use crate::circuit_air::statement::CircuitStatement;
 use crate::circuit_prover::prover::{CircuitProof, finalize_context, prove_circuit};
+use crate::circuit_prover::witness::components::blake_gate::blake2s_initial_state;
 use crate::circuits::blake::blake;
 use crate::circuits::context::{TraceContext, Var};
 use crate::circuits::ivalue::{IValue, qm31_from_u32s};
@@ -12,9 +14,12 @@ use expect_test::expect;
 use num_traits::{One, Zero};
 use stwo::core::air::Component;
 use stwo::core::channel::Blake2sM31Channel;
+use stwo::core::fields::FieldExpOps;
+use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::{CommitmentSchemeVerifier, TreeVec};
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
+use stwo_constraint_framework::Relation;
 
 // Not a power of 2 so that we can test component padding.
 const N: usize = 1030;
@@ -56,8 +61,8 @@ pub fn build_blake_gate_context() -> Context<QM31> {
     let n_bytes = n_inputs * 16;
     let n_blake_gates = 3;
     for _ in 0..n_inputs {
-            inputs.push(guess(&mut context, qm31_from_u32s(0, 1, 2, 3)));
-        }
+        inputs.push(guess(&mut context, qm31_from_u32s(0, 1, 2, 3)));
+    }
     for _ in 0..n_blake_gates {
         let _output = blake(&mut context, &inputs, n_bytes);
     }
@@ -71,9 +76,69 @@ fn test_prove_and_stark_verify_blake_gate_context() {
     blake_gate_context.finalize_guessed_vars();
     blake_gate_context.validate_circuit();
 
-    let CircuitProof { components: _, claim: _, interaction_claim: _, pcs_config: _, stark_proof } =
+    let CircuitProof { components, claim, interaction_claim, pcs_config, stark_proof } =
         prove_circuit(&mut blake_gate_context);
     assert!(stark_proof.is_ok(), "Got error: {}", stark_proof.err().unwrap());
+    let stark_proof = stark_proof.unwrap();
+
+    // Compute the expected logup term. In this case it's only the terms corresponding to blake's
+    // IV.
+    let verifier_channel = &mut Blake2sM31Channel::default();
+    let commitment_scheme =
+        &mut CommitmentSchemeVerifier::<Blake2sM31MerkleChannel>::new(pcs_config);
+
+    // Retrieve the expected column sizes in each commitment interaction, from the AIR.
+    let sizes = TreeVec::concat_cols(components.iter().map(|c| c.trace_log_degree_bounds()));
+
+    commitment_scheme.commit(stark_proof.proof.commitments[0], &sizes[0], verifier_channel);
+    claim.mix_into(verifier_channel);
+    commitment_scheme.commit(stark_proof.proof.commitments[1], &sizes[1], verifier_channel);
+    let CircuitInteractionElements { common_lookup_elements } =
+        CircuitInteractionElements::draw(verifier_channel);
+
+    let mut yield_sum: QM31 = QM31::zero();
+    let limbs = compute_initial_state_limbs();
+    for limb in limbs {
+        let denom: QM31 = common_lookup_elements.combine(&limb);
+        yield_sum += denom.inverse();
+    }
+
+    let total_claim_sum: QM31 = interaction_claim.claimed_sums.iter().sum();
+    println!("{:?}", total_claim_sum);
+    println!("{:?}", yield_sum);
+    println!("{:?}", total_claim_sum - yield_sum);
+}
+
+fn compute_initial_state_limbs() -> Vec<[M31; 18]> {
+    let state_id = M31::from(1061955672);
+    let initial_state = blake2s_initial_state();
+    let initial_state_limbs = [
+        M31::from(initial_state[0] & 0xffff),
+        M31::from((initial_state[0] >> 16) & 0xffff),
+        M31::from(initial_state[1] & 0xffff),
+        M31::from((initial_state[1] >> 16) & 0xffff),
+        M31::from(initial_state[2] & 0xffff),
+        M31::from((initial_state[2] >> 16) & 0xffff),
+        M31::from(initial_state[3] & 0xffff),
+        M31::from((initial_state[3] >> 16) & 0xffff),
+        M31::from(initial_state[4] & 0xffff),
+        M31::from((initial_state[4] >> 16) & 0xffff),
+        M31::from(initial_state[5] & 0xffff),
+        M31::from((initial_state[5] >> 16) & 0xffff),
+        M31::from(initial_state[6] & 0xffff),
+        M31::from((initial_state[6] >> 16) & 0xffff),
+        M31::from(initial_state[7] & 0xffff),
+        M31::from((initial_state[7] >> 16) & 0xffff),
+    ];
+    let mut res = vec![];
+    for i in 0..3 {
+        let mut tmp = vec![];
+        tmp.push(state_id);
+        tmp.push(M31::from(i));
+        tmp.extend_from_slice(&initial_state_limbs);
+        res.push(tmp.try_into().unwrap());
+    }
+    res
 }
 
 #[test]

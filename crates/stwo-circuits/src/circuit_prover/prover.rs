@@ -45,7 +45,7 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     // and then commit to them. Generate preprocessed trace.
     let (preprocessed_trace, trace_generator) =
         PreProcessedTrace::generate_preprocessed_trace(&context.circuit);
-    
+
     // The trace size is the size of the largest column in the preprocessed trace (since all
     // components have preprocessed columns).
     let trace_log_size = preprocessed_trace.log_sizes().into_iter().max().unwrap();

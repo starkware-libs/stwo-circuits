@@ -95,8 +95,8 @@ impl FrameworkEval for Eval {
             eval.get_preprocessed_column(PreProcessedColumnId { id: "message2_addr".to_owned() });
         let message3_addr =
             eval.get_preprocessed_column(PreProcessedColumnId { id: "message3_addr".to_owned() });
-        let pp_enabler =
-            eval.get_preprocessed_column(PreProcessedColumnId { id: "compress_enabler".to_owned() });
+        let pp_enabler = eval
+            .get_preprocessed_column(PreProcessedColumnId { id: "compress_enabler".to_owned() });
         let input_state_before_limb0_limb_0_col0 = eval.next_trace_mask();
         let input_state_before_limb0_limb_1_col1 = eval.next_trace_mask();
         let input_state_before_limb1_limb_0_col2 = eval.next_trace_mask();

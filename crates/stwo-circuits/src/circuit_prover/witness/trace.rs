@@ -95,8 +95,11 @@ pub fn write_trace(
     tree_builder.extend_evals(blake_round_trace.to_evals());
 
     // Write blake round sigma component.
-    let (blake_round_sigma_trace, _blake_round_sigma_claim, blake_round_sigma_interaction_claim_gen) =
-        blake_round_sigma_generator.write_trace();
+    let (
+        blake_round_sigma_trace,
+        _blake_round_sigma_claim,
+        blake_round_sigma_interaction_claim_gen,
+    ) = blake_round_sigma_generator.write_trace();
     tree_builder.extend_evals(blake_round_sigma_trace.to_evals());
 
     // Write blake g component.
@@ -115,7 +118,7 @@ pub fn write_trace(
         blake_output::ClaimGenerator::new(blake_output_component_input, preprocessed_trace);
     let (blake_output_trace, blake_output_claim, blake_output_interaction_claim_gen) =
         blake_output_generator.write_trace();
-     tree_builder.extend_evals(blake_output_trace.to_evals());
+    tree_builder.extend_evals(blake_output_trace.to_evals());
 
     (
         CircuitClaim {
@@ -126,7 +129,7 @@ pub fn write_trace(
                 blake_round_log_size.log_size,
                 crate::circuit_air::components::blake_round_sigma::LOG_SIZE,
                 blake_g_claim.log_size,
-                blake_output_claim.log_size
+                blake_output_claim.log_size,
             ],
         },
         CircuitInteractionClaimGenerator {
@@ -212,7 +215,7 @@ pub fn write_interaction_trace(
             blake_round_interaction_claim.claimed_sum,
             blake_round_sigma_interaction_claim.claimed_sum,
             blake_g_interaction_claim.claimed_sum,
-            blake_output_interaction_claim.claimed_sum
+            blake_output_interaction_claim.claimed_sum,
         ],
     }
 }
