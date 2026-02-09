@@ -238,7 +238,7 @@ fn fill_blake_columns(
 
     // Pad the preprocessed columns used in blake output
     let n_blake_output = columns[10].len();
-        eprintln!("Output: {n_blake_output}");
+    eprintln!("Output: {n_blake_output}");
 
     let blake_output_padding = std::cmp::max(n_blake_output.next_power_of_two(), N_LANES);
     (10..13).for_each(|i| columns[i].resize(blake_output_padding, *columns[i].first().unwrap()));
@@ -379,9 +379,8 @@ impl PreProcessedTrace {
             .into_iter()
             .flat_map(|n_bits| gen_xor_columns(n_bits).into_iter())
             .collect();
-        let blake_sigma = gen_blake_sigma_columns();
 
-        pp_trace.columns.extend(chain!(seq, bitwise_xor, blake_sigma));
+        pp_trace.columns.extend(chain!(seq, bitwise_xor));
         pp_trace.column_indices.extend([
             (PreProcessedColumnId { id: "seq_4".to_owned() }, n_columns),
             (PreProcessedColumnId { id: "seq_5".to_owned() }, n_columns + 1),

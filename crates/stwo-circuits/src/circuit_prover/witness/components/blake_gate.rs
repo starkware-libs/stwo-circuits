@@ -2343,7 +2343,10 @@ impl InteractionClaimGenerator {
             .for_each(|(i, (writer, values0, values1))| {
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom1 * enabler_col.packed_at(i) - denom0 * enabler_col.packed_at(i), denom0 * denom1);
+                writer.write_frac(
+                    denom1 * enabler_col.packed_at(i) - denom0 * enabler_col.packed_at(i),
+                    denom0 * denom1,
+                );
             });
         col_gen.finalize_col();
 

@@ -104,9 +104,8 @@ fn test_prove_and_stark_verify_blake_gate_context() {
     }
 
     let total_claim_sum: QM31 = interaction_claim.claimed_sums.iter().sum();
-    // This should be zero.    
+    // This should be zero.
     println!("{:?}", total_claim_sum - yield_sum);
-
 }
 
 fn compute_initial_state_limbs() -> Vec<[M31; 18]> {

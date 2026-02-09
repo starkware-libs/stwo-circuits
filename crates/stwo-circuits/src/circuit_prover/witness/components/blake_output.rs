@@ -212,7 +212,7 @@ impl InteractionClaimGenerator {
         (col_gen.par_iter_mut(), &self.lookup_data.gate_1, self.lookup_data.mults_1)
             .into_par_iter()
             .for_each(|(writer, values, mult)| {
-                               eprintln!("Mult 1: {:?}", mult);
+                eprintln!("Mult 1: {:?}", mult);
 
                 let denom = common_lookup_elements.combine(values);
                 writer.write_frac(-PackedQM31::one() * mult, denom);
