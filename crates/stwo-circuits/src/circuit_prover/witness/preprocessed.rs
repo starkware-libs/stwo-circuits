@@ -454,8 +454,8 @@ fn gen_xor_columns(n_bits: usize) -> [Vec<usize>; 3] {
     for i in 0..size {
         let lhs = i & mask;
         let rhs = i >> n_bits;
-        columns[0][i] = lhs;
-        columns[1][i] = rhs;
+        columns[0][i] = rhs;
+        columns[1][i] = lhs;
         columns[2][i] = lhs ^ rhs;
     }
     columns
