@@ -14,9 +14,6 @@ use crate::stark_verifier::sort_queries::{QuerySorter, generate_column_indices};
 #[path = "merkle_test.rs"]
 pub mod test;
 
-const LEAF_PREFIX: u32 = 0x6661656c; // 'leaf'.
-const NODE_PREFIX: u32 = 0x65646f6e; // 'node'.
-
 /// Represents an authentication path in a Merkle tree.
 #[derive(Clone, Debug)]
 pub struct AuthPath<T>(pub Vec<HashValue<T>>);
@@ -60,24 +57,12 @@ fn hash_leaf_m31s(
     values: &[M31Wrapper<Var>],
 ) -> HashValue<Var> {
     let leaf_packed = Simd::pack(context, values);
-    let mut data =
-        vec![context.constant(LEAF_PREFIX.into()), context.zero(), context.zero(), context.zero()];
-    data.extend_from_slice(leaf_packed.get_packed());
-
-    blake(context, &data, 64 + values.len() * 4)
+    blake(context, leaf_packed.get_packed(), values.len() * 4)
 }
 
 /// Computes the hash of a Merkle leaf with a single `QM31` value.
 pub fn hash_leaf_qm31(context: &mut Context<impl IValue>, value: Var) -> HashValue<Var> {
-    let data = [
-        context.constant(LEAF_PREFIX.into()),
-        context.zero(),
-        context.zero(),
-        context.zero(),
-        value,
-    ];
-
-    blake(context, &data, 80)
+    blake(context, &[value], 16)
 }
 
 /// Computes the hash of an internal node in the Merkle tree.
@@ -86,18 +71,9 @@ fn hash_node(
     left: HashValue<Var>,
     right: HashValue<Var>,
 ) -> HashValue<Var> {
-    let data = [
-        context.constant(NODE_PREFIX.into()),
-        context.zero(),
-        context.zero(),
-        context.zero(),
-        left.0,
-        left.1,
-        right.0,
-        right.1,
-    ];
+    let data = [left.0, left.1, right.0, right.1];
 
-    blake(context, &data, 128)
+    blake(context, &data, 64)
 }
 
 /// Validates that the leaf at the index given by `bits` has the value `leaf` in a Merkle tree
