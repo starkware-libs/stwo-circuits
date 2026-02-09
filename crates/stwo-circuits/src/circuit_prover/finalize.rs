@@ -33,6 +33,21 @@ fn pad_eq(context: &mut Context<QM31>) {
     }
 }
 
+fn pad_blake(context: &mut Context<QM31>) {
+    let n_blake_gates = context.circuit.blake.len();
+    assert_ne!(!std::cmp::max(n_blake_gates.next_power_of_two(), N_LANES), n_blake_gates, "We want padding.");
+    // The number of rows in blake output component is equal to the number of blake gates in the circuit.
+    let blake_output_padding = std::cmp::max(n_blake_gates.next_power_of_two(), N_LANES) - n_blake_gates;
+    let zero = context.zero();
+    for _ in 0..blake_output_padding - 1 {
+        crate::circuits::blake::blake(context, &[zero], 1);
+    }
+    let n_blake_compress: usize = context.circuit.blake.iter().map(|gate| gate.input.len()).sum();
+    let blake_compress_padding = std::cmp::max(n_blake_compress.next_power_of_two(), N_LANES) - n_blake_compress;
+    let n_last = blake_compress_padding * 4;
+    crate::circuits::blake::blake(context, &vec![zero; n_last], n_last * 16);
+}
+
 /// Finalizes the context by appending gates to the context for:
 /// - Hashing the constants.
 /// - Hashing the outputs.
@@ -46,4 +61,6 @@ pub(crate) fn finalize_context(context: &mut Context<QM31>) {
     // Padding the components to a power of two.
     pad_eq(context);
     pad_qm31_ops(context);
+    pad_blake(context);
+
 }
