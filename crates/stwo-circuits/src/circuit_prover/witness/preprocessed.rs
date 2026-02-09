@@ -227,6 +227,9 @@ fn fill_blake_columns(
         columns[12].push(out1);
         columns[13].push(multiplicities[out0]);
         columns[14].push(multiplicities[out1]);
+
+        // Start a new blake chain.
+        state_address += 1;
     }
     // Pad the preprocessed columns used in blake compress.
     let n_blake_compress = columns[0].len();

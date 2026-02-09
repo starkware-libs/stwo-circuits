@@ -18,13 +18,14 @@ impl BitwiseXorNumBits8B {
         common_lookup_elements: &relations::CommonLookupElements,
         eval: &mut E,
     ) -> [E::F; 0] {
-        let M31_521092554 = E::F::from(M31::from(521092554));
+        // let M31_521092554 = E::F::from(M31::from(521092554));
+        let M31_4 = E::F::from(M31::from(4));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
             E::EF::one(),
             &[
-                M31_521092554.clone(),
+                M31_4.clone(),
                 bitwise_xor_num_bits_8_b_input_limb_0.clone(),
                 bitwise_xor_num_bits_8_b_input_limb_1.clone(),
                 xor_col0.clone(),

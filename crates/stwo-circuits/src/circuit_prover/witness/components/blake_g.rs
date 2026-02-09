@@ -118,7 +118,8 @@ fn write_trace_simd(
     // let M31_45448144 = PackedM31::broadcast(M31::from(45448144));
     let M31_2 =  PackedM31::broadcast(M31::from(2)); // Leo: Subsitutes the above.
     let M31_512 = PackedM31::broadcast(M31::from(512));
-    let M31_521092554 = PackedM31::broadcast(M31::from(521092554));
+    // let M31_4 = PackedM31::broadcast(M31::from(521092554));
+    // Leo: xor_8_b uses same relation_id as xor_8 (M31_4), already defined above.
     // let M31_62225763 = PackedM31::broadcast(M31::from(62225763));
     let M31_3 =  PackedM31::broadcast(M31::from(3)); // Leo: Subsitutes the above.
     // let M31_648362599 = PackedM31::broadcast(M31::from(648362599));
@@ -256,7 +257,7 @@ fn write_trace_simd(
                 xor_col20,
             ];
             *lookup_data.verify_bitwise_xor_8_b_0 = [
-                M31_521092554,
+                M31_4,
                 split_16_low_part_size_8_output_tmp_f72c8_7[0],
                 split_16_low_part_size_8_output_tmp_f72c8_11[0],
                 xor_col20,
@@ -271,7 +272,7 @@ fn write_trace_simd(
             *sub_component_inputs.verify_bitwise_xor_8_b[1] =
                 [ms_8_bits_col15, ms_8_bits_col17, xor_col21];
             *lookup_data.verify_bitwise_xor_8_b_1 =
-                [M31_521092554, ms_8_bits_col15, ms_8_bits_col17, xor_col21];
+                [M31_4, ms_8_bits_col15, ms_8_bits_col17, xor_col21];
 
             let xor_rot_16_output_tmp_f72c8_20 = PackedUInt32::from_limbs([
                 ((xor_col20) + ((xor_col21) * (M31_256))),
@@ -493,7 +494,7 @@ fn write_trace_simd(
                 xor_col40,
             ];
             *lookup_data.verify_bitwise_xor_8_b_2 = [
-                M31_521092554,
+                M31_4,
                 split_16_low_part_size_8_output_tmp_f72c8_51[0],
                 split_16_low_part_size_8_output_tmp_f72c8_55[0],
                 xor_col40,
@@ -508,7 +509,7 @@ fn write_trace_simd(
             *sub_component_inputs.verify_bitwise_xor_8_b[3] =
                 [ms_8_bits_col35, ms_8_bits_col37, xor_col41];
             *lookup_data.verify_bitwise_xor_8_b_3 =
-                [M31_521092554, ms_8_bits_col35, ms_8_bits_col37, xor_col41];
+                [M31_4, ms_8_bits_col35, ms_8_bits_col37, xor_col41];
 
             let xor_rot_8_output_tmp_f72c8_64 = PackedUInt32::from_limbs([
                 ((xor_col39) + ((xor_col40) * (M31_256))),

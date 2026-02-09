@@ -104,6 +104,8 @@ fn test_prove_and_stark_verify_blake_gate_context() {
     }
 
     let total_claim_sum: QM31 = interaction_claim.claimed_sums.iter().sum();
+    println!("{:?}", total_claim_sum);
+    println!("{:?}", yield_sum);
     // This should be zero.
     println!("{:?}", total_claim_sum - yield_sum);
 }
@@ -130,10 +132,11 @@ fn compute_initial_state_limbs() -> Vec<[M31; 18]> {
         M31::from((initial_state[7] >> 16) & 0xffff),
     ];
     let mut res = vec![];
+    // Sum the initial state addresses.
     for i in 0..32 {
         let mut tmp = vec![];
         tmp.push(state_id);
-        tmp.push(M31::from(i));
+        tmp.push(M31::from(2*i));
         tmp.extend_from_slice(&initial_state_limbs);
         res.push(tmp.try_into().unwrap());
     }
