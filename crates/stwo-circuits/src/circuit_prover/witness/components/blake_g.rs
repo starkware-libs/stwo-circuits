@@ -115,7 +115,8 @@ fn write_trace_simd(
     let M31_16 = PackedM31::broadcast(M31::from(16));
     let M31_256 = PackedM31::broadcast(M31::from(256));
     let M31_4096 = PackedM31::broadcast(M31::from(4096));
-    let M31_45448144 = PackedM31::broadcast(M31::from(45448144));
+    // let M31_45448144 = PackedM31::broadcast(M31::from(45448144));
+    let M31_2 =  PackedM31::broadcast(M31::from(2)); // Leo: Subsitutes the above.
     let M31_512 = PackedM31::broadcast(M31::from(512));
     let M31_521092554 = PackedM31::broadcast(M31::from(521092554));
     // let M31_62225763 = PackedM31::broadcast(M31::from(62225763));
@@ -354,7 +355,7 @@ fn write_trace_simd(
             *sub_component_inputs.verify_bitwise_xor_4[0] =
                 [ms_4_bits_col24, ms_4_bits_col26, xor_col29];
             *lookup_data.verify_bitwise_xor_4_0 =
-                [M31_45448144, ms_4_bits_col24, ms_4_bits_col26, xor_col29];
+                [M31_2, ms_4_bits_col24, ms_4_bits_col26, xor_col29];
 
             // Bitwise Xor Num Bits 12.
 
@@ -384,7 +385,7 @@ fn write_trace_simd(
             *sub_component_inputs.verify_bitwise_xor_4[1] =
                 [ms_4_bits_col25, ms_4_bits_col27, xor_col31];
             *lookup_data.verify_bitwise_xor_4_1 =
-                [M31_45448144, ms_4_bits_col25, ms_4_bits_col27, xor_col31];
+                [M31_2, ms_4_bits_col25, ms_4_bits_col27, xor_col31];
 
             let xor_rot_12_output_tmp_f72c8_42 = PackedUInt32::from_limbs([
                 ((xor_col29) + ((xor_col30) * (M31_16))),
