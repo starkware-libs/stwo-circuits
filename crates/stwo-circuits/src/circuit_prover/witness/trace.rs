@@ -120,6 +120,27 @@ pub fn write_trace(
         blake_output_generator.write_trace();
     tree_builder.extend_evals(blake_output_trace.to_evals());
 
+    // Write triple xor 32 component.
+    let (triple_xor_32_trace, triple_xor_32_claim, triple_xor_32_interaction_claim_gen) =
+        triple_xor_32_state.write_trace(&verify_bitwise_xor_8_state);
+    tree_builder.extend_evals(triple_xor_32_trace.to_evals());
+
+    // NOTE: Temporarily skip xor and range-check components for debugging.
+    // Write verify bitwise xor 8 component.
+    let (
+        verify_bitwise_xor_8_trace,
+        _verify_bitwise_xor_8_claim,
+        verify_bitwise_xor_8_interaction_claim_gen,
+    ) = verify_bitwise_xor_8_state.write_trace();
+    tree_builder.extend_evals(verify_bitwise_xor_8_trace.to_evals());
+    let (
+        verify_bitwise_xor_12_trace,
+        _verify_bitwise_xor_12_claim,
+        verify_bitwise_xor_12_interaction_claim_gen,
+    ) = verify_bitwise_xor_12_state.write_trace();
+    tree_builder.extend_evals(verify_bitwise_xor_12_trace);
+
+    
     (
         CircuitClaim {
             log_sizes: [
@@ -130,6 +151,9 @@ pub fn write_trace(
                 crate::circuit_air::components::blake_round_sigma::LOG_SIZE,
                 blake_g_claim.log_size,
                 blake_output_claim.log_size,
+                triple_xor_32_claim.log_size,
+                crate::circuit_air::components::verify_bitwise_xor_8::LOG_SIZE,
+                crate::circuit_air::components::verify_bitwise_xor_12::LOG_SIZE,
             ],
         },
         CircuitInteractionClaimGenerator {
@@ -140,6 +164,9 @@ pub fn write_trace(
             blake_round_sigma: blake_round_sigma_interaction_claim_gen,
             blake_g: blake_g_interaction_claim_gen,
             blake_output: blake_output_interaction_claim_gen,
+            triple_xor_32: triple_xor_32_interaction_claim_gen,
+            verify_bitwise_xor_8: verify_bitwise_xor_8_interaction_claim_gen,
+            verify_bitwise_xor_12: verify_bitwise_xor_12_interaction_claim_gen,
         },
     )
 }
@@ -152,6 +179,9 @@ pub struct CircuitInteractionClaimGenerator {
     pub blake_round_sigma: blake_round_sigma::InteractionClaimGenerator,
     pub blake_g: blake_g::InteractionClaimGenerator,
     pub blake_output: blake_output::InteractionClaimGenerator,
+    pub triple_xor_32: triple_xor_32::InteractionClaimGenerator,
+    pub verify_bitwise_xor_8: verify_bitwise_xor_8::InteractionClaimGenerator,
+    pub verify_bitwise_xor_12: verify_bitwise_xor_12::InteractionClaimGenerator,
 }
 
 pub fn write_interaction_trace(
@@ -207,6 +237,25 @@ pub fn write_interaction_trace(
         .write_interaction_trace(&interaction_elements.common_lookup_elements);
     tree_builder.extend_evals(blake_output_trace);
 
+    // Write triple xor 32 interaction trace.
+    let (triple_xor_32_trace, triple_xor_32_interaction_claim) =
+        circuit_interaction_claim_generator
+            .triple_xor_32
+            .write_interaction_trace(&interaction_elements.common_lookup_elements);
+    tree_builder.extend_evals(triple_xor_32_trace);
+
+    // Write verify bitwise xor 8 interaction trace.
+    let (verify_bitwise_xor_8_trace, verify_bitwise_xor_8_interaction_claim) =
+        circuit_interaction_claim_generator
+            .verify_bitwise_xor_8
+            .write_interaction_trace(&interaction_elements.common_lookup_elements);
+    tree_builder.extend_evals(verify_bitwise_xor_8_trace);
+    let (verify_bitwise_xor_12_trace, verify_bitwise_xor_12_interaction_claim) =
+        circuit_interaction_claim_generator
+            .verify_bitwise_xor_12
+            .write_interaction_trace(&interaction_elements.common_lookup_elements);
+    tree_builder.extend_evals(verify_bitwise_xor_12_trace);
+
     CircuitInteractionClaim {
         claimed_sums: [
             eq_claimed_sum,
@@ -216,6 +265,9 @@ pub fn write_interaction_trace(
             blake_round_sigma_interaction_claim.claimed_sum,
             blake_g_interaction_claim.claimed_sum,
             blake_output_interaction_claim.claimed_sum,
+            triple_xor_32_interaction_claim.claimed_sum,
+            verify_bitwise_xor_8_interaction_claim.claimed_sum,
+            verify_bitwise_xor_12_interaction_claim.claimed_sum,
         ],
     }
 }

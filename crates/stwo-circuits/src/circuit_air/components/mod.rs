@@ -35,6 +35,9 @@ pub enum ComponentList {
     BlakeRoundSigma,
     BlakeG,
     BlakeOutput,
+    TripleXor32,
+    VerifyBitwiseXor8,
+    VerifyBitwiseXor12,
 }
 pub const N_COMPONENTS: usize = std::mem::variant_count::<ComponentList>();
 
@@ -46,6 +49,9 @@ pub struct CircuitComponents {
     pub blake_round_sigma: blake_round_sigma::Component,
     pub blake_g: blake_g::Component,
     pub blake_output: blake_output::Component,
+    pub triple_xor_32: triple_xor_32::Component,
+    pub verify_bitwise_xor_8: verify_bitwise_xor_8::Component,
+    pub verify_bitwise_xor_12: verify_bitwise_xor_12::Component,
 }
 impl CircuitComponents {
     pub fn new(
@@ -122,6 +128,32 @@ impl CircuitComponents {
             },
             interaction_claim.claimed_sums[ComponentList::BlakeOutput as usize],
         );
+        let triple_xor_32_component = triple_xor_32::Component::new(
+            tree_span_provider,
+            triple_xor_32::Eval {
+                claim: triple_xor_32::Claim {
+                    log_size: circuit_claim.log_sizes[ComponentList::TripleXor32 as usize],
+                },
+                common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
+            },
+            interaction_claim.claimed_sums[ComponentList::TripleXor32 as usize],
+        );
+        let verify_bitwise_xor_8_component = verify_bitwise_xor_8::Component::new(
+            tree_span_provider,
+            verify_bitwise_xor_8::Eval {
+                claim: verify_bitwise_xor_8::Claim {},
+                common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
+            },
+            interaction_claim.claimed_sums[ComponentList::VerifyBitwiseXor8 as usize],
+        );
+        let verify_bitwise_xor_12_component = verify_bitwise_xor_12::Component::new(
+            tree_span_provider,
+            verify_bitwise_xor_12::Eval {
+                claim: verify_bitwise_xor_12::Claim {},
+                common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
+            },
+            interaction_claim.claimed_sums[ComponentList::VerifyBitwiseXor12 as usize],
+        );
         Self {
             eq: eq_component,
             qm31_ops: qm31_ops_component,
@@ -130,6 +162,9 @@ impl CircuitComponents {
             blake_round_sigma: blake_round_sigma_component,
             blake_g: blake_g_component,
             blake_output: blake_output_component,
+            triple_xor_32: triple_xor_32_component,
+            verify_bitwise_xor_8: verify_bitwise_xor_8_component,
+            verify_bitwise_xor_12: verify_bitwise_xor_12_component,
         }
     }
 
@@ -142,6 +177,9 @@ impl CircuitComponents {
             &self.blake_round_sigma as &dyn ComponentProver<SimdBackend>,
             &self.blake_g as &dyn ComponentProver<SimdBackend>,
             &self.blake_output as &dyn ComponentProver<SimdBackend>,
+            &self.triple_xor_32 as &dyn ComponentProver<SimdBackend>,
+            &self.verify_bitwise_xor_8 as &dyn ComponentProver<SimdBackend>,
+            &self.verify_bitwise_xor_12 as &dyn ComponentProver<SimdBackend>,
         ])
         .collect()
     }
@@ -155,6 +193,9 @@ impl CircuitComponents {
             Box::new(self.blake_round_sigma) as Box<dyn Component>,
             Box::new(self.blake_g) as Box<dyn Component>,
             Box::new(self.blake_output) as Box<dyn Component>,
+            Box::new(self.triple_xor_32) as Box<dyn Component>,
+            Box::new(self.verify_bitwise_xor_8) as Box<dyn Component>,
+            Box::new(self.verify_bitwise_xor_12) as Box<dyn Component>,
         ]
     }
 }

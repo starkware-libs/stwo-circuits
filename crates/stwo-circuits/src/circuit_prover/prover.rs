@@ -76,6 +76,7 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
 
     // Base trace.
     let mut tree_builder = commitment_scheme.tree_builder();
+    println!("ONE ONE ONE ONEONE ONE");
     let preprocessed_trace_arc = Arc::new(preprocessed_trace);
     let (claim, interaction_generator) = write_trace(
         context.values(),
@@ -83,6 +84,7 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
         &mut tree_builder,
         &trace_generator,
     );
+    println!("TWO TWO TWO TWO TWO TWO");
     claim.mix_into(channel);
     tree_builder.commit(channel);
 
@@ -92,6 +94,7 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
 
     // Interaction trace.
     let mut tree_builder = commitment_scheme.tree_builder();
+    println!("THREE THREE THREE THREE THREE");
     let interaction_claim = write_interaction_trace(
         &claim,
         interaction_generator,
@@ -112,12 +115,12 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
         &interaction_claim,
         &preprocessed_trace_arc.ids(),
     );
-
+    println!("FOUR FOUR FOUR FOUR FOUR");
     let components = component_builder.provers();
 
     // Prove stark.
     let proof = prove_ex::<SimdBackend, _>(&components, channel, commitment_scheme);
-
+    println!("FIVE FIVE FIVE FIVE FIVE");
     CircuitProof {
         components: component_builder.components(),
         claim,
