@@ -380,7 +380,6 @@ impl PreProcessedTrace {
             .into_iter()
             .flat_map(|n_bits| gen_xor_columns(n_bits).into_iter())
             .collect();
-        eprintln!("Non circuit pp");
         pp_trace.columns.extend(chain!(seq, bitwise_xor));
         pp_trace.column_indices.extend([
             (PreProcessedColumnId { id: "seq_4".to_owned() }, n_columns),

@@ -118,7 +118,8 @@ fn write_trace_simd(
     let M31_45448144 = PackedM31::broadcast(M31::from(45448144));
     let M31_512 = PackedM31::broadcast(M31::from(512));
     let M31_521092554 = PackedM31::broadcast(M31::from(521092554));
-    let M31_62225763 = PackedM31::broadcast(M31::from(62225763));
+    // let M31_62225763 = PackedM31::broadcast(M31::from(62225763));
+    let M31_3 =  PackedM31::broadcast(M31::from(3)); // Leo: Subsitutes the above.
     // let M31_648362599 = PackedM31::broadcast(M31::from(648362599));
     let M31_1 =  PackedM31::broadcast(M31::from(1)); // Leo: Subsitutes the above.
     let M31_95781001 = PackedM31::broadcast(M31::from(95781001));
@@ -582,7 +583,7 @@ fn write_trace_simd(
                 xor_col48,
             ];
             *lookup_data.verify_bitwise_xor_7_0 = [
-                M31_62225763,
+                M31_3,
                 split_16_low_part_size_7_output_tmp_f72c8_71[0],
                 split_16_low_part_size_7_output_tmp_f72c8_75[0],
                 xor_col48,
@@ -612,7 +613,7 @@ fn write_trace_simd(
                 xor_col50,
             ];
             *lookup_data.verify_bitwise_xor_7_1 = [
-                M31_62225763,
+                M31_3,
                 split_16_low_part_size_7_output_tmp_f72c8_73[0],
                 split_16_low_part_size_7_output_tmp_f72c8_77[0],
                 xor_col50,
