@@ -123,7 +123,8 @@ fn write_trace_simd(
     let M31_3 =  PackedM31::broadcast(M31::from(3)); // Leo: Subsitutes the above.
     // let M31_648362599 = PackedM31::broadcast(M31::from(648362599));
     let M31_1 =  PackedM31::broadcast(M31::from(1)); // Leo: Subsitutes the above.
-    let M31_95781001 = PackedM31::broadcast(M31::from(95781001));
+    // let M31_95781001 = PackedM31::broadcast(M31::from(95781001));
+    let M31_5 = PackedM31::broadcast(M31::from(5)); // Leo: Subsitutes the above.
     let UInt16_12 = PackedUInt16::broadcast(UInt16::from(12));
     let UInt16_7 = PackedUInt16::broadcast(UInt16::from(7));
     let UInt16_8 = PackedUInt16::broadcast(UInt16::from(8));
@@ -599,7 +600,7 @@ fn write_trace_simd(
             *sub_component_inputs.verify_bitwise_xor_9[0] =
                 [ms_9_bits_col44, ms_9_bits_col46, xor_col49];
             *lookup_data.verify_bitwise_xor_9_0 =
-                [M31_95781001, ms_9_bits_col44, ms_9_bits_col46, xor_col49];
+                [M31_5, ms_9_bits_col44, ms_9_bits_col46, xor_col49];
 
             // Bitwise Xor Num Bits 7.
 
@@ -629,7 +630,7 @@ fn write_trace_simd(
             *sub_component_inputs.verify_bitwise_xor_9[1] =
                 [ms_9_bits_col45, ms_9_bits_col47, xor_col51];
             *lookup_data.verify_bitwise_xor_9_1 =
-                [M31_95781001, ms_9_bits_col45, ms_9_bits_col47, xor_col51];
+                [M31_5, ms_9_bits_col45, ms_9_bits_col47, xor_col51];
 
             let xor_rot_7_output_tmp_f72c8_86 = PackedUInt32::from_limbs([
                 ((xor_col49) + ((xor_col50) * (M31_512))),
