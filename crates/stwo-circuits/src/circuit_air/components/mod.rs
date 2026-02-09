@@ -38,6 +38,11 @@ pub enum ComponentList {
     TripleXor32,
     VerifyBitwiseXor8,
     VerifyBitwiseXor12,
+    VerifyBitwiseXor4,
+    VerifyBitwiseXor7,
+    VerifyBitwiseXor9,
+    RangeCheck15,
+    RangeCheck16,
 }
 pub const N_COMPONENTS: usize = std::mem::variant_count::<ComponentList>();
 
@@ -52,6 +57,11 @@ pub struct CircuitComponents {
     pub triple_xor_32: triple_xor_32::Component,
     pub verify_bitwise_xor_8: verify_bitwise_xor_8::Component,
     pub verify_bitwise_xor_12: verify_bitwise_xor_12::Component,
+    pub verify_bitwise_xor_4: verify_bitwise_xor_4::Component,
+    pub verify_bitwise_xor_7: verify_bitwise_xor_7::Component,
+    pub verify_bitwise_xor_9: verify_bitwise_xor_9::Component,
+    pub range_check_15: range_check_15::Component,
+    pub range_check_16: range_check_16::Component,
 }
 impl CircuitComponents {
     pub fn new(
@@ -154,6 +164,46 @@ impl CircuitComponents {
             },
             interaction_claim.claimed_sums[ComponentList::VerifyBitwiseXor12 as usize],
         );
+        let verify_bitwise_xor_4_component = verify_bitwise_xor_4::Component::new(
+            tree_span_provider,
+            verify_bitwise_xor_4::Eval {
+                claim: verify_bitwise_xor_4::Claim {},
+                common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
+            },
+            interaction_claim.claimed_sums[ComponentList::VerifyBitwiseXor4 as usize],
+        );
+        let verify_bitwise_xor_7_component = verify_bitwise_xor_7::Component::new(
+            tree_span_provider,
+            verify_bitwise_xor_7::Eval {
+                claim: verify_bitwise_xor_7::Claim {},
+                common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
+            },
+            interaction_claim.claimed_sums[ComponentList::VerifyBitwiseXor7 as usize],
+        );
+        let verify_bitwise_xor_9_component = verify_bitwise_xor_9::Component::new(
+            tree_span_provider,
+            verify_bitwise_xor_9::Eval {
+                claim: verify_bitwise_xor_9::Claim {},
+                common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
+            },
+            interaction_claim.claimed_sums[ComponentList::VerifyBitwiseXor9 as usize],
+        );
+        let range_check_15_component = range_check_15::Component::new(
+            tree_span_provider,
+            range_check_15::Eval {
+                claim: range_check_15::Claim {},
+                common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
+            },
+            interaction_claim.claimed_sums[ComponentList::RangeCheck15 as usize],
+        );
+        let range_check_16_component = range_check_16::Component::new(
+            tree_span_provider,
+            range_check_16::Eval {
+                claim: range_check_16::Claim {},
+                common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
+            },
+            interaction_claim.claimed_sums[ComponentList::RangeCheck16 as usize],
+        );
         Self {
             eq: eq_component,
             qm31_ops: qm31_ops_component,
@@ -165,6 +215,11 @@ impl CircuitComponents {
             triple_xor_32: triple_xor_32_component,
             verify_bitwise_xor_8: verify_bitwise_xor_8_component,
             verify_bitwise_xor_12: verify_bitwise_xor_12_component,
+            verify_bitwise_xor_4: verify_bitwise_xor_4_component,
+            verify_bitwise_xor_7: verify_bitwise_xor_7_component,
+            verify_bitwise_xor_9: verify_bitwise_xor_9_component,
+            range_check_15: range_check_15_component,
+            range_check_16: range_check_16_component,
         }
     }
 
@@ -180,6 +235,11 @@ impl CircuitComponents {
             &self.triple_xor_32 as &dyn ComponentProver<SimdBackend>,
             &self.verify_bitwise_xor_8 as &dyn ComponentProver<SimdBackend>,
             &self.verify_bitwise_xor_12 as &dyn ComponentProver<SimdBackend>,
+            &self.verify_bitwise_xor_4 as &dyn ComponentProver<SimdBackend>,
+            &self.verify_bitwise_xor_7 as &dyn ComponentProver<SimdBackend>,
+            &self.verify_bitwise_xor_9 as &dyn ComponentProver<SimdBackend>,
+            &self.range_check_15 as &dyn ComponentProver<SimdBackend>,
+            &self.range_check_16 as &dyn ComponentProver<SimdBackend>,
         ])
         .collect()
     }
@@ -196,6 +256,11 @@ impl CircuitComponents {
             Box::new(self.triple_xor_32) as Box<dyn Component>,
             Box::new(self.verify_bitwise_xor_8) as Box<dyn Component>,
             Box::new(self.verify_bitwise_xor_12) as Box<dyn Component>,
+            Box::new(self.verify_bitwise_xor_4) as Box<dyn Component>,
+            Box::new(self.verify_bitwise_xor_7) as Box<dyn Component>,
+            Box::new(self.verify_bitwise_xor_9) as Box<dyn Component>,
+            Box::new(self.range_check_15) as Box<dyn Component>,
+            Box::new(self.range_check_16) as Box<dyn Component>,
         ]
     }
 }

@@ -140,7 +140,47 @@ pub fn write_trace(
     ) = verify_bitwise_xor_12_state.write_trace();
     tree_builder.extend_evals(verify_bitwise_xor_12_trace);
 
-    
+    // Write verify bitwise xor 4 component.
+    let (
+        verify_bitwise_xor_4_trace,
+        _verify_bitwise_xor_4_claim,
+        verify_bitwise_xor_4_interaction_claim_gen,
+    ) = verify_bitwise_xor_4_state.write_trace();
+    tree_builder.extend_evals(verify_bitwise_xor_4_trace.to_evals());
+
+    // Write verify bitwise xor 7 component.
+    let (
+        verify_bitwise_xor_7_trace,
+        _verify_bitwise_xor_7_claim,
+        verify_bitwise_xor_7_interaction_claim_gen,
+    ) = verify_bitwise_xor_7_state.write_trace();
+    tree_builder.extend_evals(verify_bitwise_xor_7_trace.to_evals());
+
+    // Write verify bitwise xor 9 component.
+    let (
+        verify_bitwise_xor_9_trace,
+        _verify_bitwise_xor_9_claim,
+        verify_bitwise_xor_9_interaction_claim_gen,
+    ) = verify_bitwise_xor_9_state.write_trace();
+    tree_builder.extend_evals(verify_bitwise_xor_9_trace.to_evals());
+
+    // Write range check 15 component.
+    let (
+        range_check_15_trace,
+        _range_check_15_claim,
+        range_check_15_interaction_claim_gen,
+    ) = range_check_15_state.write_trace();
+    tree_builder.extend_evals(range_check_15_trace.to_evals());
+
+    // Write range check 16 component.
+    let (
+        range_check_16_trace,
+        _range_check_16_claim,
+        range_check_16_interaction_claim_gen,
+    ) = range_check_16_state.write_trace();
+    tree_builder.extend_evals(range_check_16_trace.to_evals());
+
+
     (
         CircuitClaim {
             log_sizes: [
@@ -154,6 +194,11 @@ pub fn write_trace(
                 triple_xor_32_claim.log_size,
                 crate::circuit_air::components::verify_bitwise_xor_8::LOG_SIZE,
                 crate::circuit_air::components::verify_bitwise_xor_12::LOG_SIZE,
+                crate::circuit_air::components::verify_bitwise_xor_4::LOG_SIZE,
+                crate::circuit_air::components::verify_bitwise_xor_7::LOG_SIZE,
+                crate::circuit_air::components::verify_bitwise_xor_9::LOG_SIZE,
+                crate::circuit_air::components::range_check_15::LOG_SIZE,
+                crate::circuit_air::components::range_check_16::LOG_SIZE,
             ],
         },
         CircuitInteractionClaimGenerator {
@@ -167,6 +212,11 @@ pub fn write_trace(
             triple_xor_32: triple_xor_32_interaction_claim_gen,
             verify_bitwise_xor_8: verify_bitwise_xor_8_interaction_claim_gen,
             verify_bitwise_xor_12: verify_bitwise_xor_12_interaction_claim_gen,
+            verify_bitwise_xor_4: verify_bitwise_xor_4_interaction_claim_gen,
+            verify_bitwise_xor_7: verify_bitwise_xor_7_interaction_claim_gen,
+            verify_bitwise_xor_9: verify_bitwise_xor_9_interaction_claim_gen,
+            range_check_15: range_check_15_interaction_claim_gen,
+            range_check_16: range_check_16_interaction_claim_gen,
         },
     )
 }
@@ -182,6 +232,11 @@ pub struct CircuitInteractionClaimGenerator {
     pub triple_xor_32: triple_xor_32::InteractionClaimGenerator,
     pub verify_bitwise_xor_8: verify_bitwise_xor_8::InteractionClaimGenerator,
     pub verify_bitwise_xor_12: verify_bitwise_xor_12::InteractionClaimGenerator,
+    pub verify_bitwise_xor_4: verify_bitwise_xor_4::InteractionClaimGenerator,
+    pub verify_bitwise_xor_7: verify_bitwise_xor_7::InteractionClaimGenerator,
+    pub verify_bitwise_xor_9: verify_bitwise_xor_9::InteractionClaimGenerator,
+    pub range_check_15: range_check_15::InteractionClaimGenerator,
+    pub range_check_16: range_check_16::InteractionClaimGenerator,
 }
 
 pub fn write_interaction_trace(
@@ -256,6 +311,41 @@ pub fn write_interaction_trace(
             .write_interaction_trace(&interaction_elements.common_lookup_elements);
     tree_builder.extend_evals(verify_bitwise_xor_12_trace);
 
+    // Write verify bitwise xor 4 interaction trace.
+    let (verify_bitwise_xor_4_trace, verify_bitwise_xor_4_interaction_claim) =
+        circuit_interaction_claim_generator
+            .verify_bitwise_xor_4
+            .write_interaction_trace(&interaction_elements.common_lookup_elements);
+    tree_builder.extend_evals(verify_bitwise_xor_4_trace);
+
+    // Write verify bitwise xor 7 interaction trace.
+    let (verify_bitwise_xor_7_trace, verify_bitwise_xor_7_interaction_claim) =
+        circuit_interaction_claim_generator
+            .verify_bitwise_xor_7
+            .write_interaction_trace(&interaction_elements.common_lookup_elements);
+    tree_builder.extend_evals(verify_bitwise_xor_7_trace);
+
+    // Write verify bitwise xor 9 interaction trace.
+    let (verify_bitwise_xor_9_trace, verify_bitwise_xor_9_interaction_claim) =
+        circuit_interaction_claim_generator
+            .verify_bitwise_xor_9
+            .write_interaction_trace(&interaction_elements.common_lookup_elements);
+    tree_builder.extend_evals(verify_bitwise_xor_9_trace);
+
+    // Write range check 15 interaction trace.
+    let (range_check_15_trace, range_check_15_interaction_claim) =
+        circuit_interaction_claim_generator
+            .range_check_15
+            .write_interaction_trace(&interaction_elements.common_lookup_elements);
+    tree_builder.extend_evals(range_check_15_trace);
+
+    // Write range check 16 interaction trace.
+    let (range_check_16_trace, range_check_16_interaction_claim) =
+        circuit_interaction_claim_generator
+            .range_check_16
+            .write_interaction_trace(&interaction_elements.common_lookup_elements);
+    tree_builder.extend_evals(range_check_16_trace);
+
     CircuitInteractionClaim {
         claimed_sums: [
             eq_claimed_sum,
@@ -268,6 +358,11 @@ pub fn write_interaction_trace(
             triple_xor_32_interaction_claim.claimed_sum,
             verify_bitwise_xor_8_interaction_claim.claimed_sum,
             verify_bitwise_xor_12_interaction_claim.claimed_sum,
+            verify_bitwise_xor_4_interaction_claim.claimed_sum,
+            verify_bitwise_xor_7_interaction_claim.claimed_sum,
+            verify_bitwise_xor_9_interaction_claim.claimed_sum,
+            range_check_15_interaction_claim.claimed_sum,
+            range_check_16_interaction_claim.claimed_sum,
         ],
     }
 }

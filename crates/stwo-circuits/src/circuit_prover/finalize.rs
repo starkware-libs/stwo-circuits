@@ -36,7 +36,7 @@ fn pad_eq(context: &mut Context<QM31>) {
 fn pad_blake(context: &mut Context<QM31>) {
     let n_blake_gates = context.circuit.blake.len();
     assert_ne!(
-        !std::cmp::max(n_blake_gates.next_power_of_two(), N_LANES),
+        std::cmp::max(n_blake_gates.next_power_of_two(), N_LANES),
         n_blake_gates,
         "We want padding."
     );

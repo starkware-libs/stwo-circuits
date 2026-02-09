@@ -230,17 +230,18 @@ fn fill_blake_columns(
     }
     // Pad the preprocessed columns used in blake compress.
     let n_blake_compress = columns[0].len();
-    eprintln!("Compress: {n_blake_compress}");
     let blake_compress_padding = std::cmp::max(n_blake_compress.next_power_of_two(), N_LANES);
+    // TODO(Leo): remove after we remove the circuit gates padding.
+    assert_eq!(n_blake_compress, blake_compress_padding, "Only padding through circuit gates for now.");
     // Pad with the first element.
     (0..9).for_each(|i| columns[i].resize(blake_compress_padding, *columns[i].first().unwrap()));
     columns[9].resize(blake_compress_padding, 0); // Enabler columns.
 
     // Pad the preprocessed columns used in blake output
     let n_blake_output = columns[10].len();
-    eprintln!("Output: {n_blake_output}");
-
     let blake_output_padding = std::cmp::max(n_blake_output.next_power_of_two(), N_LANES);
+    // TODO(Leo): remove after we remove the circuit gates padding.
+    assert_eq!(n_blake_output, blake_output_padding, "Only padding through circuit gates for now.");
     (10..13).for_each(|i| columns[i].resize(blake_output_padding, *columns[i].first().unwrap()));
     (13..15).for_each(|i| columns[i].resize(blake_output_padding, 0)); // Multiplicity columns.
 }
@@ -363,7 +364,7 @@ impl PreProcessedTrace {
         // Add QM31 operations columns.
         let qm31_ops_trace_generator =
             add_qm31_ops_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
-
+        eprintln!("Before blake pp");
         // TODO(Gali): Add Blake columns.
         add_blake_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
 
@@ -379,7 +380,7 @@ impl PreProcessedTrace {
             .into_iter()
             .flat_map(|n_bits| gen_xor_columns(n_bits).into_iter())
             .collect();
-
+        eprintln!("Non circuit pp");
         pp_trace.columns.extend(chain!(seq, bitwise_xor));
         pp_trace.column_indices.extend([
             (PreProcessedColumnId { id: "seq_4".to_owned() }, n_columns),

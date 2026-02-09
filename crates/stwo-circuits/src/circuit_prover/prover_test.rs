@@ -59,7 +59,7 @@ pub fn build_blake_gate_context() -> Context<QM31> {
     let mut inputs: Vec<Var> = vec![];
     let n_inputs = 4;
     let n_bytes = n_inputs * 16;
-    let n_blake_gates = 3;
+    let n_blake_gates = 20;
     for _ in 0..n_inputs {
         inputs.push(guess(&mut context, qm31_from_u32s(0, 1, 2, 3)));
     }
@@ -75,7 +75,7 @@ fn test_prove_and_stark_verify_blake_gate_context() {
     let mut blake_gate_context = build_blake_gate_context();
     blake_gate_context.finalize_guessed_vars();
     blake_gate_context.validate_circuit();
-
+    eprintln!("Here");
     let CircuitProof { components, claim, interaction_claim, pcs_config, stark_proof } =
         prove_circuit(&mut blake_gate_context);
     assert!(stark_proof.is_ok(), "Got error: {}", stark_proof.err().unwrap());
@@ -130,7 +130,7 @@ fn compute_initial_state_limbs() -> Vec<[M31; 18]> {
         M31::from((initial_state[7] >> 16) & 0xffff),
     ];
     let mut res = vec![];
-    for i in 0..16 {
+    for i in 0..32 {
         let mut tmp = vec![];
         tmp.push(state_id);
         tmp.push(M31::from(i));

@@ -165,6 +165,8 @@ impl ClaimGenerator {
         let n_rows = inputs.len();
         assert_ne!(n_rows, 0);
         let size = std::cmp::max(n_rows.next_power_of_two(), N_LANES);
+        // TODO(Leo): remove after we remove the circuit gates padding.
+        assert_eq!(size, n_rows, "Only padding through circuit gates for now.");
         inputs.resize(size, *inputs.first().unwrap());
         let packed_inputs = pack_values(&inputs);
 
