@@ -3,6 +3,7 @@
 #![allow(unused_parens)]
 use crate::circuit_air::components::blake_gate::{InteractionClaim, N_TRACE_COLUMNS};
 
+use crate::circuit_air::relations::GATE_RELATION_ID;
 use crate::circuit_prover::witness::components::prelude::*;
 use crate::circuit_prover::witness::components::{
     blake_message, blake_output, blake_round, range_check_15, range_check_16, triple_xor_32,
@@ -270,7 +271,6 @@ fn write_trace_simd(
     let M31_27145 = PackedM31::broadcast(M31::from(27145));
     let M31_3 = PackedM31::broadcast(M31::from(3));
     let M31_39685 = PackedM31::broadcast(M31::from(39685));
-    let M31_4 = PackedM31::broadcast(M31::from(4));
     let M31_40528774 = PackedM31::broadcast(M31::from(40528774));
     let M31_42319 = PackedM31::broadcast(M31::from(42319));
     let M31_44677 = PackedM31::broadcast(M31::from(44677));
@@ -1778,7 +1778,7 @@ fn write_trace_simd(
                     input_state_after_limb7_limb_1_col31,
                 ];
                 *lookup_data.gate_0 = [
-                    M31_0,
+                    PackedM31::broadcast(GATE_RELATION_ID),
                     message0_addr,
                     input_message_limb0_col32,
                     input_message_limb1_col33,
@@ -1786,7 +1786,7 @@ fn write_trace_simd(
                     input_message_limb3_col35,
                 ];
                 *lookup_data.gate_1 = [
-                    M31_0,
+                    PackedM31::broadcast(GATE_RELATION_ID),
                     message1_addr,
                     input_message_limb4_col36,
                     input_message_limb5_col37,
@@ -1794,7 +1794,7 @@ fn write_trace_simd(
                     input_message_limb7_col39,
                 ];
                 *lookup_data.gate_2 = [
-                    M31_0,
+                    PackedM31::broadcast(GATE_RELATION_ID),
                     message2_addr,
                     input_message_limb8_col40,
                     input_message_limb9_col41,
@@ -1802,7 +1802,7 @@ fn write_trace_simd(
                     input_message_limb11_col43,
                 ];
                 *lookup_data.gate_3 = [
-                    M31_0,
+                    PackedM31::broadcast(GATE_RELATION_ID),
                     message3_addr,
                     input_message_limb12_col44,
                     input_message_limb13_col45,
