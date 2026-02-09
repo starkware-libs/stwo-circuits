@@ -1,4 +1,4 @@
-use crate::cairo_air::statement::{CairoStatement, MEMORY_VALUES_LIMBS};
+use crate::cairo_air::statement::{CairoStatement, MEMORY_VALUES_LIMBS, all_opcode_components};
 use crate::circuits::context::{Context, TraceContext};
 use crate::circuits::ops::Guess;
 use crate::stark_verifier::proof::{Claim, ProofConfig};
@@ -45,7 +45,13 @@ pub fn verify_cairo(proof: &CairoProof<Blake2sM31MerkleHasher>) -> Context<QM31>
         .map(|chunk| array::from_fn(|i| M31::from_u32_unchecked(chunk[i])))
         .collect_vec();
 
-    let statement = CairoStatement::<QM31>::new(&mut context, public_claim, outputs, program);
+    let statement = CairoStatement::<QM31>::new_ex(
+        &mut context,
+        public_claim,
+        outputs,
+        program,
+        all_opcode_components(),
+    );
     let log_trace_size = component_log_sizes.iter().max().unwrap();
     let config = ProofConfig::from_statement(
         &statement,
