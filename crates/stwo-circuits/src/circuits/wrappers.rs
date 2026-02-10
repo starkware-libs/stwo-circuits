@@ -17,7 +17,7 @@ pub mod test;
 ///
 /// Using the [Guess] trait on [M31Wrapper] and gates that guarantee that the guessed value is
 /// indeed in the base field `M31`.
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct M31Wrapper<T>(T);
 
 impl<T> M31Wrapper<T> {

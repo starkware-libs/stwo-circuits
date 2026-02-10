@@ -1,0 +1,227 @@
+use starknet_ff::FieldElement;
+use stwo::core::fields::m31::BaseField;
+use stwo::core::fields::qm31::SecureField;
+
+use crate::circuits::blake::HashValue;
+use crate::circuits::wrappers::M31Wrapper;
+use crate::stark_verifier::fri_proof::{FriCommitProof, FriProof};
+use crate::stark_verifier::merkle::{AuthPath, AuthPaths};
+use crate::stark_verifier::oods::EvalDomainSamples;
+use crate::stark_verifier::proof::{Claim, InteractionAtOods, Proof};
+
+
+pub trait CircuitSerialize {
+    fn serialize(&self, output: &mut Vec<FieldElement>);
+}
+
+impl CircuitSerialize for Proof<SecureField> {
+    fn serialize(&self, output: &mut Vec<FieldElement>) {
+        let Self {
+            channel_salt,
+            preprocessed_root,
+            trace_root,
+            interaction_root,
+            composition_polynomial_root,
+            preprocessed_columns_at_oods,
+            trace_at_oods,
+            composition_eval_at_oods,
+            claim,
+            interaction_at_oods,
+            eval_domain_samples,
+            eval_domain_auth_paths,
+            proof_of_work_nonce,
+            interaction_pow_nonce,
+            fri,
+        } = self;
+
+        CircuitSerialize::serialize(channel_salt, output);
+        CircuitSerialize::serialize(preprocessed_root, output);
+        CircuitSerialize::serialize(trace_root, output);
+        CircuitSerialize::serialize(interaction_root, output);
+        CircuitSerialize::serialize(composition_polynomial_root, output);
+        CircuitSerialize::serialize(preprocessed_columns_at_oods, output);
+        CircuitSerialize::serialize(trace_at_oods, output);
+        CircuitSerialize::serialize(composition_eval_at_oods, output);
+        CircuitSerialize::serialize(claim, output);
+        CircuitSerialize::serialize(interaction_at_oods, output);
+        CircuitSerialize::serialize(eval_domain_samples, output);
+        CircuitSerialize::serialize(eval_domain_auth_paths, output);
+        CircuitSerialize::serialize(proof_of_work_nonce, output);
+        CircuitSerialize::serialize(interaction_pow_nonce, output);
+        CircuitSerialize::serialize(fri, output);
+    }
+}
+
+impl CircuitSerialize for u32 {
+    fn serialize(&self, output: &mut Vec<FieldElement>) {
+        output.push((*self).into());
+    }
+}
+
+impl CircuitSerialize for u64 {
+    fn serialize(&self, output: &mut Vec<FieldElement>) {
+        output.push((*self).into());
+    }
+}
+
+impl CircuitSerialize for usize {
+    fn serialize(&self, output: &mut Vec<FieldElement>) {
+        output.push((*self).into());
+    }
+}
+
+impl CircuitSerialize for BaseField {
+    fn serialize(&self, output: &mut Vec<FieldElement>) {
+        output.push(self.0.into());
+    }
+}
+
+impl CircuitSerialize for SecureField {
+    fn serialize(&self, output: &mut Vec<FieldElement>) {
+        output.extend(self.to_m31_array().map(|c| FieldElement::from(c.0)));
+    }
+}
+
+impl CircuitSerialize for FieldElement {
+    fn serialize(&self, output: &mut Vec<FieldElement>) {
+        output.push(*self);
+    }
+}
+
+impl<T: CircuitSerialize> CircuitSerialize for Option<T> {
+    fn serialize(&self, output: &mut Vec<FieldElement>) {
+        match self {
+            Some(v) => {
+                output.push(FieldElement::ZERO);
+                v.serialize(output);
+            }
+            None => output.push(FieldElement::ONE),
+        }
+    }
+}
+
+impl<T: CircuitSerialize> CircuitSerialize for [T] {
+    fn serialize(&self, output: &mut Vec<FieldElement>) {
+        output.push(self.len().into());
+        self.iter().for_each(|v| v.serialize(output));
+    }
+}
+
+impl<T: CircuitSerialize, const N: usize> CircuitSerialize for [T; N] {
+    fn serialize(&self, output: &mut Vec<FieldElement>) {
+        self.iter().for_each(|v| v.serialize(output));
+    }
+}
+
+impl<T: CircuitSerialize> CircuitSerialize for Vec<T> {
+    fn serialize(&self, output: &mut Vec<FieldElement>) {
+        (**self).serialize(output);
+    }
+}
+
+impl CircuitSerialize for HashValue<SecureField> {
+    fn serialize(&self, output: &mut Vec<FieldElement>) {
+        let Self(a, b) = self;
+        a.serialize(output);
+        b.serialize(output);
+    }
+}
+
+impl CircuitSerialize for Claim<SecureField> {
+    fn serialize(&self, output: &mut Vec<FieldElement>) {
+        let Self {
+            packed_enable_bits,
+            packed_component_log_sizes,
+            claimed_sums,
+        } = self;
+        packed_enable_bits.serialize(output);
+        packed_component_log_sizes.serialize(output);
+        claimed_sums.serialize(output);
+    }
+}
+
+impl CircuitSerialize for InteractionAtOods<SecureField> {
+    fn serialize(&self, output: &mut Vec<FieldElement>) {
+        let Self { at_oods, at_prev } = self;
+        at_oods.serialize(output);
+        at_prev.serialize(output);
+    }
+}
+
+impl CircuitSerialize for AuthPath<SecureField> {
+    fn serialize(&self, output: &mut Vec<FieldElement>) {
+        let Self(path) = self;
+        path.serialize(output);
+    }
+}
+
+impl CircuitSerialize for AuthPaths<SecureField> {
+    fn serialize(&self, output: &mut Vec<FieldElement>) {
+        let Self { data } = self;
+        data.serialize(output);
+    }
+}
+
+impl CircuitSerialize for M31Wrapper<SecureField> {
+    fn serialize(&self, output: &mut Vec<FieldElement>) {
+        // M31Wrapper wraps a value known to be in the base field M31.
+        let m31: BaseField = self.get().0 .0;
+        m31.serialize(output);
+    }
+}
+
+impl CircuitSerialize for EvalDomainSamples<SecureField> {
+    fn serialize(&self, output: &mut Vec<FieldElement>) {
+        let n_traces = self.n_traces();
+        output.push(n_traces.into());
+        for trace_idx in 0..n_traces {
+            let trace_data = self.data_for_trace(trace_idx);
+            output.push(trace_data.len().into());
+            for column in trace_data {
+                output.push(column.len().into());
+                for cell in column {
+                    cell.serialize(output);
+                }
+            }
+        }
+    }
+}
+
+impl CircuitSerialize for crate::stark_verifier::fri_proof::FriConfig {
+    fn serialize(&self, output: &mut Vec<FieldElement>) {
+        let Self {
+            log_trace_size,
+            log_blowup_factor,
+            n_queries,
+            log_n_last_layer_coefs,
+        } = self;
+        log_trace_size.serialize(output);
+        log_blowup_factor.serialize(output);
+        n_queries.serialize(output);
+        log_n_last_layer_coefs.serialize(output);
+    }
+}
+
+impl CircuitSerialize for FriCommitProof<SecureField> {
+    fn serialize(&self, output: &mut Vec<FieldElement>) {
+        let Self {
+            layer_commitments,
+            last_layer_coefs,
+        } = self;
+        layer_commitments.serialize(output);
+        last_layer_coefs.serialize(output);
+    }
+}
+
+impl CircuitSerialize for FriProof<SecureField> {
+    fn serialize(&self, output: &mut Vec<FieldElement>) {
+        let Self {
+            commit,
+            auth_paths,
+            fri_siblings,
+        } = self;
+        commit.serialize(output);
+        auth_paths.serialize(output);
+        fri_siblings.serialize(output);
+    }
+}

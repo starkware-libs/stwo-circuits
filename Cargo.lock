@@ -3624,6 +3624,7 @@ dependencies = [
  "num-traits",
  "rayon",
  "rstest",
+ "starknet-ff",
  "stwo",
  "stwo-air-utils",
  "stwo-air-utils-derive",

@@ -5,6 +5,7 @@ use crate::circuits::ops::Guess;
 use crate::stark_verifier::merkle::{AuthPath, AuthPaths};
 
 /// Represents the structure of a FRI proof.
+#[derive(Debug, PartialEq)]
 pub struct FriConfig {
     /// Log2 of the trace size.
     pub log_trace_size: usize,
@@ -23,6 +24,7 @@ impl FriConfig {
 }
 
 /// Represents the information for the FRI commitment phase of the proof.
+#[derive(Debug, PartialEq)]
 pub struct FriCommitProof<T> {
     pub layer_commitments: Vec<HashValue<T>>,
     pub last_layer_coefs: Vec<T>,
@@ -53,6 +55,7 @@ impl<Value: IValue> Guess<Value> for FriCommitProof<Value> {
 }
 
 /// Represents the information required to verify a FRI proof.
+#[derive(Debug, PartialEq)]
 pub struct FriProof<T> {
     /// Information regarding the FRI commitment phase.
     pub commit: FriCommitProof<T>,
