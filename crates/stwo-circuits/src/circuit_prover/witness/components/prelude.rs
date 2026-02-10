@@ -481,7 +481,7 @@ pub fn debug_logup(label: &str, values: &[PackedM31], mult: &[PackedM31]) {
     for lane in 0..N_LANES {
         let v: Vec<u32> = values.iter().map(|v| v.into_simd().to_array()[lane]).collect();
         let m: Vec<u32> = mult.iter().map(|v| v.into_simd().to_array()[lane]).collect();
-        eprintln!("{label}[{lane}]: mult={m:?} values={v:?}");
+        // eprintln!("{label}[{lane}]: mult={m:?} values={v:?}");
     }
 }
 

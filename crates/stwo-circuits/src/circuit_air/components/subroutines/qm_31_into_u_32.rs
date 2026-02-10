@@ -107,7 +107,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::one(),
+            -E::EF::from(M31_10.clone()),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -136,7 +136,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::one(),
+            -E::EF::from(M31_10.clone()),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -165,7 +165,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::one(),
+            -E::EF::from(M31_10.clone()),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -194,7 +194,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::one(),
+            -E::EF::from(M31_10.clone()),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -223,7 +223,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::one(),
+            -E::EF::from(M31_10.clone()),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -252,7 +252,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::one(),
+            -E::EF::from(M31_10.clone()),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -281,7 +281,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::one(),
+            -E::EF::from(M31_10.clone()),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -310,7 +310,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::one(),
+            -E::EF::from(M31_10.clone()),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -339,7 +339,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::one(),
+            -E::EF::from(M31_10.clone()),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -368,7 +368,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::one(),
+            -E::EF::from(M31_10.clone()),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -397,11 +397,11 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::one(),
+            -E::EF::from(M31_10.clone()),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
-                M31_10.clone(),
+                M31_10.clone().clone(),
                 limbi_low_col20.clone(),
                 limbi_high_col21.clone(),
             ],
@@ -426,7 +426,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::one(),
+            -E::EF::from(M31_10.clone()),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -455,7 +455,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::one(),
+            -E::EF::from(M31_10.clone()),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -484,7 +484,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::one(),
+            -E::EF::from(M31_10.clone()),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -513,7 +513,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::one(),
+            -E::EF::from(M31_10.clone()),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -542,7 +542,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::one(),
+            -E::EF::from(M31_10),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),

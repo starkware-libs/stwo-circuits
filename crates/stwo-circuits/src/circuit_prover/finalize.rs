@@ -1,6 +1,7 @@
 use stwo::prover::backend::simd::m31::N_LANES;
 
 use crate::circuits::context::Context;
+use crate::circuits::ivalue::qm31_from_u32s;
 use crate::eval;
 use stwo::core::fields::qm31::QM31;
 
@@ -44,15 +45,17 @@ fn pad_blake(context: &mut Context<QM31>) {
     // circuit.
     let blake_output_padding =
         std::cmp::max(n_blake_gates.next_power_of_two(), N_LANES) - n_blake_gates;
-    let zero = context.zero();
+    // let zero = context.zero();
+    // let leet = crate::circuits::ops::guess(context, qm31_from_u32s(1337, 1337, 1337, 1337));
+    let leet = context.constant(qm31_from_u32s(1337, 1337, 1337, 1337));
     for _ in 0..blake_output_padding - 1 {
-        crate::circuits::blake::blake(context, &[zero], 1);
+        crate::circuits::blake::blake(context, &[leet], 1);
     }
     let n_blake_compress: usize = context.circuit.blake.iter().map(|gate| gate.input.len()).sum();
     let blake_compress_padding =
         std::cmp::max(n_blake_compress.next_power_of_two(), N_LANES) - n_blake_compress;
     let n_last = blake_compress_padding * 4;
-    crate::circuits::blake::blake(context, &vec![zero; n_last], n_last * 16);
+    crate::circuits::blake::blake(context, &vec![leet; n_last], n_last * 16);
 }
 
 /// Finalizes the context by appending gates to the context for:

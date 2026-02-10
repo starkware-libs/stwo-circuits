@@ -78,7 +78,7 @@ fn write_trace_simd(
     // let M31_112558620 = PackedM31::broadcast(M31::from(112558620));
     let M31_4 = PackedM31::broadcast(M31::from(4)); // Leo: Subsitutes the above.
     let M31_256 = PackedM31::broadcast(M31::from(256));
-    // let M31_4 = PackedM31::broadcast(M31::from(521092554));
+    // let M31_521092554 = PackedM31::broadcast(M31::from(521092554));
     // Leo: xor_8_b uses same relation_id as xor_8 (M31_4), already defined above.
     let M31_990559919 = PackedM31::broadcast(M31::from(990559919));
     let UInt16_8 = PackedUInt16::broadcast(UInt16::from(8));

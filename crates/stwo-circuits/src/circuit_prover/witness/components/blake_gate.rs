@@ -256,6 +256,7 @@ fn write_trace_simd(
     let M31_1061955672 = PackedM31::broadcast(M31::from(1061955672));
     let M31_11 = PackedM31::broadcast(M31::from(11));
     // let M31_112558620 = PackedM31::broadcast(M31::from(112558620));
+    // let M31_521092554 = PackedM31::broadcast(M31::from(521092554));
     let M31_4 = PackedM31::broadcast(M31::from(4)); // Leo: Subsitutes the above.
     let M31_12 = PackedM31::broadcast(M31::from(12));
     let M31_127 = PackedM31::broadcast(M31::from(127));
@@ -1961,11 +1962,11 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
-                debug_logup("blake_gate/msg_0", values0, &[-PackedM31::one()]);
+                debug_logup("blake_gate/msg_0", values0, &[-PackedM31::broadcast(M31::from(10))]);
                 debug_logup("blake_gate/rc16_1", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom0 - denom1, denom0 * denom1);
+                writer.write_frac(denom0 - PackedQM31::broadcast(QM31::from(10)) *denom1, denom0 * denom1);
             });
         col_gen.finalize_col();
 
@@ -1978,10 +1979,10 @@ impl InteractionClaimGenerator {
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
                 debug_logup("blake_gate/rc15_1", values0, &[PackedM31::one()]);
-                debug_logup("blake_gate/msg_1", values1, &[-PackedM31::one()]);
+                debug_logup("blake_gate/msg_1", values1, &[-PackedM31::broadcast(M31::from(10))]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom1 - denom0, denom0 * denom1);
+                writer.write_frac(denom1 - PackedQM31::broadcast(QM31::from(10)) * denom0, denom0 * denom1);
             });
         col_gen.finalize_col();
 
@@ -2009,11 +2010,11 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
-                debug_logup("blake_gate/msg_2", values0, &[-PackedM31::one()]);
+                debug_logup("blake_gate/msg_2", values0, &[-PackedM31::broadcast(M31::from(10))]);
                 debug_logup("blake_gate/rc16_3", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom0 - denom1, denom0 * denom1);
+                writer.write_frac(denom0 - PackedQM31::broadcast(QM31::from(10)) * denom1, denom0 * denom1);
             });
         col_gen.finalize_col();
 
@@ -2026,10 +2027,10 @@ impl InteractionClaimGenerator {
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
                 debug_logup("blake_gate/rc15_3", values0, &[PackedM31::one()]);
-                debug_logup("blake_gate/msg_3", values1, &[-PackedM31::one()]);
+                debug_logup("blake_gate/msg_3", values1, &[-PackedM31::broadcast(M31::from(10))]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom1 - denom0, denom0 * denom1);
+                writer.write_frac(denom1 - PackedQM31::broadcast(QM31::from(10)) * denom0, denom0 * denom1);
             });
         col_gen.finalize_col();
 
@@ -2057,11 +2058,11 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
-                debug_logup("blake_gate/msg_4", values0, &[-PackedM31::one()]);
+                debug_logup("blake_gate/msg_4", values0, &[-PackedM31::broadcast(M31::from(10))]);
                 debug_logup("blake_gate/rc16_5", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom0 - denom1, denom0 * denom1);
+                writer.write_frac(denom0 - PackedQM31::broadcast(QM31::from(10)) * denom1, denom0 * denom1);
             });
         col_gen.finalize_col();
 
@@ -2077,7 +2078,7 @@ impl InteractionClaimGenerator {
                 debug_logup("blake_gate/msg_5", values1, &[-PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom1 - denom0, denom0 * denom1);
+                writer.write_frac(denom1 - PackedQM31::broadcast(QM31::from(10)) * denom0, denom0 * denom1);
             });
         col_gen.finalize_col();
 
@@ -2105,7 +2106,7 @@ impl InteractionClaimGenerator {
             .for_each(|(writer, values0, values1)| {
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom0 - denom1, denom0 * denom1);
+                writer.write_frac(denom0 - PackedQM31::broadcast(QM31::from(10)) *denom1, denom0 * denom1);
             });
         col_gen.finalize_col();
 
@@ -2119,7 +2120,7 @@ impl InteractionClaimGenerator {
             .for_each(|(writer, values0, values1)| {
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom1 - denom0, denom0 * denom1);
+                writer.write_frac(denom1 - PackedQM31::broadcast(QM31::from(10)) *denom0, denom0 * denom1);
             });
         col_gen.finalize_col();
 
@@ -2147,7 +2148,7 @@ impl InteractionClaimGenerator {
             .for_each(|(writer, values0, values1)| {
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom0 - denom1, denom0 * denom1);
+                writer.write_frac(denom0 - PackedQM31::broadcast(QM31::from(10)) *denom1, denom0 * denom1);
             });
         col_gen.finalize_col();
 
@@ -2161,7 +2162,7 @@ impl InteractionClaimGenerator {
             .for_each(|(writer, values0, values1)| {
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom1 - denom0, denom0 * denom1);
+                writer.write_frac(denom1 - PackedQM31::broadcast(QM31::from(10)) *denom0, denom0 * denom1);
             });
         col_gen.finalize_col();
 
@@ -2189,7 +2190,7 @@ impl InteractionClaimGenerator {
             .for_each(|(writer, values0, values1)| {
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom0 - denom1, denom0 * denom1);
+                writer.write_frac(denom0 - PackedQM31::broadcast(QM31::from(10)) *denom1, denom0 * denom1);
             });
         col_gen.finalize_col();
 
@@ -2203,7 +2204,7 @@ impl InteractionClaimGenerator {
             .for_each(|(writer, values0, values1)| {
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom1 - denom0, denom0 * denom1);
+                writer.write_frac(denom1 - PackedQM31::broadcast(QM31::from(10)) *denom0, denom0 * denom1);
             });
         col_gen.finalize_col();
 
@@ -2231,7 +2232,7 @@ impl InteractionClaimGenerator {
             .for_each(|(writer, values0, values1)| {
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom0 - denom1, denom0 * denom1);
+                writer.write_frac(denom0 - PackedQM31::broadcast(QM31::from(10)) *denom1, denom0 * denom1);
             });
         col_gen.finalize_col();
 
@@ -2245,7 +2246,7 @@ impl InteractionClaimGenerator {
             .for_each(|(writer, values0, values1)| {
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom1 - denom0, denom0 * denom1);
+                writer.write_frac(denom1 - PackedQM31::broadcast(QM31::from(10)) *denom0, denom0 * denom1);
             });
         col_gen.finalize_col();
 
@@ -2273,7 +2274,7 @@ impl InteractionClaimGenerator {
             .for_each(|(writer, values0, values1)| {
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom0 - denom1, denom0 * denom1);
+                writer.write_frac(denom0 - PackedQM31::broadcast(QM31::from(10)) *denom1, denom0 * denom1);
             });
         col_gen.finalize_col();
 
@@ -2287,7 +2288,7 @@ impl InteractionClaimGenerator {
             .for_each(|(writer, values0, values1)| {
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom1 - denom0, denom0 * denom1);
+                writer.write_frac(denom1 - PackedQM31::broadcast(QM31::from(10)) *denom0, denom0 * denom1);
             });
         col_gen.finalize_col();
 

@@ -20,6 +20,7 @@ impl BitwiseXorNumBits8B {
     ) -> [E::F; 0] {
         // let M31_521092554 = E::F::from(M31::from(521092554));
         let M31_4 = E::F::from(M31::from(4));
+        // TODO(leo and alon): Change this from 4 to a different one for soundness.
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
