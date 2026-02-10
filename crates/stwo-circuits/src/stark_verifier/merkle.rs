@@ -18,7 +18,7 @@ const LEAF_PREFIX: u32 = 0x6661656c; // 'leaf'.
 const NODE_PREFIX: u32 = 0x65646f6e; // 'node'.
 
 /// Represents an authentication path in a Merkle tree.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AuthPath<T>(pub Vec<HashValue<T>>);
 
 impl<Value: IValue> Guess<Value> for AuthPath<Value> {
@@ -30,6 +30,7 @@ impl<Value: IValue> Guess<Value> for AuthPath<Value> {
 }
 
 /// Represents the collection of authentication paths for a set of trees.
+#[derive(Debug, PartialEq)]
 pub struct AuthPaths<T> {
     // For each tree, for each query, the authentication path.
     pub data: Vec<Vec<AuthPath<T>>>,
