@@ -144,7 +144,7 @@ impl ProofConfig {
 }
 
 /// The values of an interaction column at the OODS point and the previous point.
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct InteractionAtOods<T> {
     /// The value at the OODS point and optionally the value at the previous point
     /// (`oods_point - trace_generator`).
@@ -163,6 +163,7 @@ impl<Value: IValue> Guess<Value> for InteractionAtOods<Value> {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct Claim<T> {
     // Every QM31 hold 4 bit.
     // TODO(ilya): Consider packing 29 bits into one M31.
@@ -187,6 +188,7 @@ impl<Value: IValue> Guess<Value> for Claim<Value> {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct Proof<T> {
     pub channel_salt: T,
 
