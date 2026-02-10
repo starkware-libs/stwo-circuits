@@ -324,6 +324,8 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
+                debug_logup("triple_xor/xor8_0", values0, &[PackedM31::one()]);
+                debug_logup("triple_xor/xor8_1", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -338,6 +340,8 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
+                debug_logup("triple_xor/xor8_2", values0, &[PackedM31::one()]);
+                debug_logup("triple_xor/xor8_3", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -352,6 +356,8 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
+                debug_logup("triple_xor/xor8b_0", values0, &[PackedM31::one()]);
+                debug_logup("triple_xor/xor8b_1", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -366,6 +372,8 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
+                debug_logup("triple_xor/xor8b_2", values0, &[PackedM31::one()]);
+                debug_logup("triple_xor/xor8b_3", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -378,8 +386,10 @@ impl InteractionClaimGenerator {
             .into_par_iter()
             .enumerate()
             .for_each(|(i, (writer, values))| {
+                let enabler = enabler_col.packed_at(i);
+                debug_logup("triple_xor/t_0", values, &[-enabler]);
                 let denom = common_lookup_elements.combine(values);
-                writer.write_frac(-PackedQM31::one() * enabler_col.packed_at(i), denom);
+                writer.write_frac(-PackedQM31::one() * enabler, denom);
             });
         col_gen.finalize_col();
 

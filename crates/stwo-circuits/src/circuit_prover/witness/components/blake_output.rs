@@ -200,6 +200,8 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1, mult)| {
+                debug_logup("blake_output/state_0", values0, &[PackedM31::one()]);
+                debug_logup("blake_output/gate_0", values1, &[-mult]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom1 - (denom0 * mult), denom0 * denom1);
@@ -211,6 +213,7 @@ impl InteractionClaimGenerator {
         (col_gen.par_iter_mut(), &self.lookup_data.gate_1, self.lookup_data.mults_1)
             .into_par_iter()
             .for_each(|(writer, values, mult)| {
+                debug_logup("blake_output/gate_1", values, &[-mult]);
                 let denom = common_lookup_elements.combine(values);
                 writer.write_frac(-PackedQM31::one() * mult, denom);
             });

@@ -234,6 +234,8 @@ pub fn write_interaction_trace(
     let mut col_gen = logup_gen.new_col();
     (col_gen.par_iter_mut(), &lookup_data.in_0, &lookup_data.in_1).into_par_iter().for_each(
         |(writer, values0, values1)| {
+            debug_logup("qm31_ops/in_0", values0, &[PackedM31::one()]);
+            debug_logup("qm31_ops/in_1", values1, &[PackedM31::one()]);
             let denom0: PackedQM31 = common_lookup_elements.combine(values0);
             let denom1: PackedQM31 = common_lookup_elements.combine(values1);
             writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -245,6 +247,7 @@ pub fn write_interaction_trace(
     let mut col_gen = logup_gen.new_col();
     (col_gen.par_iter_mut(), &lookup_data.out, lookup_data.mults).into_par_iter().for_each(
         |(writer, values, mults)| {
+            debug_logup("qm31_ops/out", values, &[-mults]);
             let denom = common_lookup_elements.combine(values);
             writer.write_frac(-PackedQM31::one() * mults, denom);
         },

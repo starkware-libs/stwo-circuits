@@ -107,6 +107,7 @@ impl InteractionClaimGenerator {
         (col_gen.par_iter_mut(), &self.lookup_data.range_check_15_0, self.lookup_data.mults_0)
             .into_par_iter()
             .for_each(|(writer, values, mults_0)| {
+                debug_logup("range_check_15/0", values, &[-mults_0]);
                 let denom = common_lookup_elements.combine(values);
                 writer.write_frac(-PackedQM31::one() * mults_0, denom);
             });

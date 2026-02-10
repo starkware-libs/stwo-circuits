@@ -1105,6 +1105,8 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
+                debug_logup("blake_round/sigma_0", values0, &[PackedM31::one()]);
+                debug_logup("blake_round/msg_0", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -1119,6 +1121,8 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
+                debug_logup("blake_round/msg_1", values0, &[PackedM31::one()]);
+                debug_logup("blake_round/msg_2", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -1133,6 +1137,8 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
+                debug_logup("blake_round/msg_3", values0, &[PackedM31::one()]);
+                debug_logup("blake_round/msg_4", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -1147,6 +1153,8 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
+                debug_logup("blake_round/msg_5", values0, &[PackedM31::one()]);
+                debug_logup("blake_round/msg_6", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -1161,6 +1169,8 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
+                debug_logup("blake_round/msg_7", values0, &[PackedM31::one()]);
+                debug_logup("blake_round/msg_8", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -1175,6 +1185,8 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
+                debug_logup("blake_round/msg_9", values0, &[PackedM31::one()]);
+                debug_logup("blake_round/msg_10", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -1189,6 +1201,8 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
+                debug_logup("blake_round/msg_11", values0, &[PackedM31::one()]);
+                debug_logup("blake_round/msg_12", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -1203,6 +1217,8 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
+                debug_logup("blake_round/msg_13", values0, &[PackedM31::one()]);
+                debug_logup("blake_round/msg_14", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -1213,6 +1229,8 @@ impl InteractionClaimGenerator {
         (col_gen.par_iter_mut(), &self.lookup_data.blake_message_15, &self.lookup_data.blake_g_0)
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
+                debug_logup("blake_round/msg_15", values0, &[PackedM31::one()]);
+                debug_logup("blake_round/g_0", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -1223,6 +1241,8 @@ impl InteractionClaimGenerator {
         (col_gen.par_iter_mut(), &self.lookup_data.blake_g_1, &self.lookup_data.blake_g_2)
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
+                debug_logup("blake_round/g_1", values0, &[PackedM31::one()]);
+                debug_logup("blake_round/g_2", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -1233,6 +1253,8 @@ impl InteractionClaimGenerator {
         (col_gen.par_iter_mut(), &self.lookup_data.blake_g_3, &self.lookup_data.blake_g_4)
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
+                debug_logup("blake_round/g_3", values0, &[PackedM31::one()]);
+                debug_logup("blake_round/g_4", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -1243,6 +1265,8 @@ impl InteractionClaimGenerator {
         (col_gen.par_iter_mut(), &self.lookup_data.blake_g_5, &self.lookup_data.blake_g_6)
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
+                debug_logup("blake_round/g_5", values0, &[PackedM31::one()]);
+                debug_logup("blake_round/g_6", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -1254,9 +1278,12 @@ impl InteractionClaimGenerator {
             .into_par_iter()
             .enumerate()
             .for_each(|(i, (writer, values0, values1))| {
+                let enabler = enabler_col.packed_at(i);
+                debug_logup("blake_round/g_7", values0, &[PackedM31::one()]);
+                debug_logup("blake_round/round_0", values1, &[enabler]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom0 * enabler_col.packed_at(i) + denom1, denom0 * denom1);
+                writer.write_frac(denom0 * enabler + denom1, denom0 * denom1);
             });
         col_gen.finalize_col();
 
@@ -1266,8 +1293,10 @@ impl InteractionClaimGenerator {
             .into_par_iter()
             .enumerate()
             .for_each(|(i, (writer, values))| {
+                let enabler = enabler_col.packed_at(i);
+                debug_logup("blake_round/round_1", values, &[-enabler]);
                 let denom = common_lookup_elements.combine(values);
-                writer.write_frac(-PackedQM31::one() * enabler_col.packed_at(i), denom);
+                writer.write_frac(-PackedQM31::one() * enabler, denom);
             });
         col_gen.finalize_col();
 

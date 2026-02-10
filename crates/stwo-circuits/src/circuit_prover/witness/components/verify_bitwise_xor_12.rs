@@ -119,12 +119,12 @@ impl InteractionClaimGenerator {
                         )
                     };
 
-                    let p0: PackedQM31 = common_lookup_elements.combine(
-                        &chain!([VERIFY_BITWISE_XOR_12_RELATION_ID.into()], v0).collect_vec(),
-                    );
-                    let p1: PackedQM31 = common_lookup_elements.combine(
-                        &chain!([VERIFY_BITWISE_XOR_12_RELATION_ID.into()], v1).collect_vec(),
-                    );
+                    let vals0: Vec<PackedM31> = chain!([VERIFY_BITWISE_XOR_12_RELATION_ID.into()], v0).collect_vec();
+                    let vals1: Vec<PackedM31> = chain!([VERIFY_BITWISE_XOR_12_RELATION_ID.into()], v1).collect_vec();
+                    debug_logup("verify_xor_12/0", &vals0, &[-mults0]);
+                    debug_logup("verify_xor_12/1", &vals1, &[-mults1]);
+                    let p0: PackedQM31 = common_lookup_elements.combine(&vals0);
+                    let p1: PackedQM31 = common_lookup_elements.combine(&vals1);
                     writer.write_frac(p0 * (-mults1) + p1 * (-mults0), p1 * p0);
                 },
             );

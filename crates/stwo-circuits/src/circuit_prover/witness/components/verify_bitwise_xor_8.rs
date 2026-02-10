@@ -134,6 +134,8 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1, mults_0, mults_1)| {
+                debug_logup("verify_xor_8/0", values0, &[-mults_0]);
+                debug_logup("verify_xor_8_b/0", values1, &[-mults_1]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(-(denom0 * mults_1 + denom1 * mults_0), denom0 * denom1);
