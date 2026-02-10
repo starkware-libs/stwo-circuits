@@ -105,3 +105,16 @@ fn test_verify_cairo() {
     context.validate_circuit();
     println!("Stats: {:?}", context.stats);
 }
+
+#[test]
+fn test_verify_privacy() {
+    let proof_path = get_proof_file_path("privacy");
+    let proof_file = File::open(proof_path).unwrap();
+    let cairo_proof = binary_deserialize_from_file(&proof_file).unwrap();
+
+    let mut context = verify_cairo(&cairo_proof);
+    context.check_vars_used();
+    context.finalize_guessed_vars();
+    context.circuit.check_yields();
+    context.validate_circuit();
+}
