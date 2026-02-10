@@ -12,7 +12,7 @@ use crate::circuits::ops::Guess;
 #[path = "blake_test.rs"]
 pub mod test;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct HashValue<T>(pub T, pub T);
 
 impl<Value: IValue> Guess<Value> for HashValue<Value> {

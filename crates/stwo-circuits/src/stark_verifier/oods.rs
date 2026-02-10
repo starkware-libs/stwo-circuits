@@ -24,7 +24,7 @@ pub const N_COMPOSITION_COLUMNS: usize = COMPOSITION_SPLIT * EXTENSION_DEGREE;
 pub mod test;
 
 /// Represents the sampled values in the evaluation domain.
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct EvalDomainSamples<T> {
     /// `data[trace_idx][column_idx][query_idx]` is the `M31` value of the column `column_idx` in
     /// trace `trace_idx` at the `query_idx` query.
