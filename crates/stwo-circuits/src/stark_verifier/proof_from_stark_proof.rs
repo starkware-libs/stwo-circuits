@@ -19,8 +19,9 @@ use crate::stark_verifier::proof::{Claim, InteractionAtOods, N_TRACES, Proof, Pr
 pub fn proof_from_stark_proof(
     proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
     config: &ProofConfig,
-    component_log_sizes: Vec<u32>,
-    claimed_sums: Vec<QM31>,
+    claim: Claim<QM31>,
+    interaction_pow_nonce: u64,
+    channel_salt: u32,
 ) -> Proof<QM31> {
     let commitments = &proof.proof.commitments;
     let sampled_values = &proof.proof.sampled_values;
@@ -29,6 +30,9 @@ pub fn proof_from_stark_proof(
     let pow: u64 = proof.proof.proof_of_work;
     let pow_high = (pow >> 32) as u32;
     let pow_low = (pow & 0xFFFFFFFF) as u32;
+
+    let interaction_pow_high = (interaction_pow_nonce >> 32) as u32;
+    let interaction_pow_low = (interaction_pow_nonce & 0xFFFFFFFF) as u32;
 
     Proof {
         preprocessed_root: commitments[0].into(),
@@ -45,10 +49,7 @@ pub fn proof_from_stark_proof(
                 _ => panic!("Unexpected interaction at OODS values"),
             })
             .collect_vec(),
-        claim: Claim {
-            packed_component_log_sizes: pack_component_log_sizes(component_log_sizes),
-            claimed_sums,
-        },
+        claim,
         composition_eval_at_oods: as_single_row(&sampled_values[3]).try_into().unwrap(),
         eval_domain_samples: construct_eval_domain_samples(proof, config),
         eval_domain_auth_paths: construct_eval_domain_auth_paths(proof, config),
@@ -65,6 +66,8 @@ pub fn proof_from_stark_proof(
             fri_siblings: construct_fri_siblings(proof, config),
         },
         proof_of_work_nonce: qm31_from_u32s(pow_low, pow_high, 0, 0),
+        interaction_pow_nonce: qm31_from_u32s(interaction_pow_low, interaction_pow_high, 0, 0),
+        channel_salt: qm31_from_u32s(channel_salt, 0, 0, 0),
     }
 }
 
@@ -204,16 +207,30 @@ fn construct_fri_siblings(
     res
 }
 
+/// Packs the enable bits into QM31s.
+pub fn pack_enable_bits(enable_bits: &[bool]) -> Vec<QM31> {
+    pack_into_qm31s(enable_bits.iter().map(|b| if *b { 1 } else { 0 }))
+}
+
 /// Packs the component log sizes into QM31s.
 /// Each QM31 holds up to 4 log sizes and the last one is padded with zeros.
-pub fn pack_component_log_sizes(component_log_sizes: Vec<u32>) -> Vec<QM31> {
-    component_log_sizes
-        .iter()
+pub fn pack_component_log_sizes(component_log_sizes: &[u32]) -> Vec<QM31> {
+    pack_into_qm31s(component_log_sizes.iter().cloned())
+}
+
+/// Packs the public claim into QM31s.
+/// Each QM31 holds up to 4 public claim values and the last one is padded with zeros.
+pub fn pack_public_claim(public_claim: &[M31]) -> Vec<QM31> {
+    pack_into_qm31s(public_claim.iter().cloned())
+}
+
+pub fn pack_into_qm31s<T: Into<M31>>(values: impl Iterator<Item = T>) -> Vec<QM31> {
+    values
         .chunks(4)
         .into_iter()
         .map(|mut chunk| {
             QM31::from_m31_array(array::from_fn(|_| {
-                M31::from_u32_unchecked(*chunk.next().unwrap_or(&0))
+                chunk.next().map(|v| v.into()).unwrap_or(M31::zero())
             }))
         })
         .collect_vec()

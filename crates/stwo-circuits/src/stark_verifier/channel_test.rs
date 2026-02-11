@@ -143,7 +143,7 @@ fn test_draw_point_regression() {
 #[case::wrong_n_bits1(9, 1524, false)]
 #[case::wrong_nonce0(10, 1523, false)]
 #[case::wrong_nonce1(10, 1525, false)]
-fn test_proof_of_work_regression(#[case] n_bits: usize, #[case] nonce: u32, #[case] success: bool) {
+fn test_proof_of_work_regression(#[case] n_bits: u32, #[case] nonce: u32, #[case] success: bool) {
     let mut context = TraceContext::default();
 
     let init_digest = [

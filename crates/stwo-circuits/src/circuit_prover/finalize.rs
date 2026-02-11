@@ -2,10 +2,13 @@ use stwo::prover::backend::simd::m31::N_LANES;
 
 use crate::circuits::context::Context;
 use crate::circuits::ivalue::qm31_from_u32s;
+use crate::circuits::blake::{HashValue, blake};
+use crate::circuits::context::{Var};
+use crate::circuits::ivalue::IValue;
+use crate::circuits::ops::output;
 use crate::eval;
-use stwo::core::fields::qm31::QM31;
 
-fn pad_qm31_ops(context: &mut Context<QM31>) {
+fn pad_qm31_ops(context: &mut Context<impl IValue>) {
     let qm31_ops_n_rows = context.circuit.add.len()
         + context.circuit.sub.len()
         + context.circuit.mul.len()
@@ -25,7 +28,7 @@ fn pad_qm31_ops(context: &mut Context<QM31>) {
     }
 }
 
-fn pad_eq(context: &mut Context<QM31>) {
+fn pad_eq(context: &mut Context<impl IValue>) {
     let eq_n_rows = context.circuit.eq.len();
     let eq_padding = std::cmp::max(eq_n_rows.next_power_of_two(), N_LANES) - eq_n_rows;
     let zero = context.zero();
@@ -34,7 +37,7 @@ fn pad_eq(context: &mut Context<QM31>) {
     }
 }
 
-fn pad_blake(context: &mut Context<QM31>) {
+fn pad_blake(context: &mut Context<impl IValue>) {
     let n_blake_gates = context.circuit.blake.len();
     assert_ne!(
         std::cmp::max(n_blake_gates.next_power_of_two(), N_LANES),
@@ -56,6 +59,12 @@ fn pad_blake(context: &mut Context<QM31>) {
         std::cmp::max(n_blake_compress.next_power_of_two(), N_LANES) - n_blake_compress;
     let n_last = blake_compress_padding * 4;
     crate::circuits::blake::blake(context, &vec![leet; n_last], n_last * 16);
+
+}
+fn hash_constants(context: &mut Context<impl IValue>) -> HashValue<Var> {
+    let constants: Vec<_> = context.constants().values().copied().collect();
+    let n_bytes = constants.len() * 16;
+    blake(context, &constants, n_bytes)
 }
 
 /// Finalizes the context by appending gates to the context for:
@@ -63,9 +72,12 @@ fn pad_blake(context: &mut Context<QM31>) {
 /// - Hashing the outputs.
 /// - Padding the components to a power of two.
 // TODO(Gali): Have it under a trait.
-pub(crate) fn finalize_context(context: &mut Context<QM31>) {
-    // TODO(Gali): Hash the constants.
-
+pub(crate) fn finalize_context(context: &mut Context<impl IValue>) {
+    let HashValue(hash0, hash1) = hash_constants(context);
+    // Add the hash of the constants to the outputs.
+    // TODO(Leo): consider storing these values at a fixed address.
+    output(context, hash0);
+    output(context, hash1);
     // TODO(Gali): Hash the outputs (all variables that have no uses).
 
     // Padding the components to a power of two.

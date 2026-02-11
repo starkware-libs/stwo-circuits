@@ -10,4 +10,5 @@ pub struct Stats {
     pub pointwise_mul: usize,
     pub guess: usize,
     pub blake_updates: usize,
+    pub outputs: usize,
 }

@@ -1,5 +1,9 @@
+use crate::circuits::ivalue::qm31_from_u32s;
+use crate::stark_verifier::proof::Claim;
+use crate::stark_verifier::proof_from_stark_proof::{pack_component_log_sizes, pack_public_claim};
+
 use itertools::{Itertools, zip_eq};
-use num_traits::One;
+use num_traits::{One, Zero};
 use stwo::core::ColumnVec;
 use stwo::core::air::Component;
 use stwo::core::channel::{Blake2sM31Channel, Channel};
@@ -9,6 +13,7 @@ use stwo::core::fields::qm31::{QM31, SecureField};
 use stwo::core::pcs::PcsConfig;
 use stwo::core::poly::circle::CanonicCoset;
 use stwo::core::proof::ExtendedStarkProof;
+use stwo::core::proof_of_work::GrindOps;
 use stwo::core::vcs_lifted::blake2_merkle::{Blake2sM31MerkleChannel, Blake2sM31MerkleHasher};
 use stwo::prover::backend::Col;
 use stwo::prover::backend::Column;
@@ -25,6 +30,12 @@ use stwo_constraint_framework::{
     EvalAtRow, FrameworkComponent, FrameworkEval, LogupTraceGenerator, RelationEntry,
     TraceLocationAllocator, relation,
 };
+
+use crate::examples::simple_statement::COMPONENT_LOG_SIZES;
+
+use crate::stark_verifier::proof_from_stark_proof::pack_enable_bits;
+
+pub const INTERACTION_POW_BITS: u32 = 8;
 
 #[cfg(test)]
 #[path = "simple_air_test.rs"]
@@ -172,15 +183,16 @@ fn generate_seq_column(
     CircleEvaluation::new(CanonicCoset::new(log_size).circle_domain(), col)
 }
 
-// The public input for the simple AIR verifier.
-pub struct PublicInput {
-    pub claimed_sums: Vec<QM31>,
-    pub component_log_sizes: Vec<u32>,
-}
-
+#[allow(clippy::type_complexity)]
 /// Creates a proof for the simple AIR. See documentation in [Eval].
-pub fn create_proof()
--> (Vec<Box<dyn Component>>, PublicInput, PcsConfig, ExtendedStarkProof<Blake2sM31MerkleHasher>) {
+pub fn create_proof() -> (
+    Vec<Box<dyn Component>>,
+    Claim<QM31>,
+    PcsConfig,
+    ExtendedStarkProof<Blake2sM31MerkleHasher>,
+    u64,
+    u32,
+) {
     let config = PcsConfig::default();
     // Precompute twiddles.
     let twiddles = SimdBackend::precompute_twiddles(
@@ -191,6 +203,11 @@ pub fn create_proof()
 
     // Setup protocol.
     let prover_channel = &mut Blake2sM31Channel::default();
+
+    // Mix channel salt. Note that we first reduce it modulo `M31::P`, then cast it as QM31.
+    let channel_salt = 0_u32;
+    prover_channel.mix_felts(&[channel_salt.into()]);
+    config.mix_into(prover_channel);
 
     let mut commitment_scheme =
         CommitmentSchemeProver::<SimdBackend, Blake2sM31MerkleChannel>::new(config, &twiddles);
@@ -204,34 +221,65 @@ pub fn create_proof()
     ]);
     tree_builder.commit(prover_channel);
 
-    prover_channel.mix_felts(&[QM31::from_u32_unchecked(
-        LOG_SIZE_LONG,
-        LOG_SIZE_SHORT,
-        LOG_SIZE_LONG,
-        0,
-    )]);
+    let n_components = 3;
+    prover_channel.mix_felts(&[qm31_from_u32s(n_components, 0, 0, 0)]);
 
-    // Trace.
+    // Mix the enable bits into the channel.
+    let packed_enable_bits = pack_enable_bits(&[true, true, false]);
+    prover_channel.mix_felts(&packed_enable_bits);
+
+    // Mix the component log sizes into the channel.
+    // Component_3 is disabled, so it has trace size 0.
+    let packed_component_log_sizes = pack_component_log_sizes(&COMPONENT_LOG_SIZES);
+    prover_channel.mix_felts(&packed_component_log_sizes);
+
+    // Mix the public claim into the channel.
+    // Public claim is empty.
+    let public_claim = pack_public_claim(&[]);
+    prover_channel.mix_felts(&public_claim);
+
     let trace_1 = generate_trace(LOG_SIZE_LONG);
     let trace_2 = generate_trace(LOG_SIZE_SHORT);
     let mut tree_builder = commitment_scheme.tree_builder();
-    tree_builder.extend_evals([trace_1.clone(), trace_2.clone(), trace_1.clone()].concat());
+    tree_builder.extend_evals(
+        [
+            trace_1.clone(),
+            trace_2.clone(),
+            // Zero-filled for component_3
+            vec![
+                CircleEvaluation::<SimdBackend, _, BitReversedOrder>::zero_padding();
+                trace_1.len()
+            ],
+        ]
+        .concat(),
+    );
     tree_builder.commit(prover_channel);
 
-    // TODO(lior): Add proof of work before drawing the lookup elements.
+    let interaction_pow_nonce = SimdBackend::grind(prover_channel, INTERACTION_POW_BITS);
+    prover_channel.mix_u64(interaction_pow_nonce);
 
     // Draw lookup element.
     let lookup_elements = SimpleRelation::draw(prover_channel);
 
-    // Interaction trace.
     let (interaction_trace_1, claimed_sum_1) =
         generate_interaction_trace(&trace_1, &lookup_elements.0);
     let (interaction_trace_2, claimed_sum_2) =
         generate_interaction_trace(&trace_2, &lookup_elements.0);
-    prover_channel.mix_felts(&[claimed_sum_1, claimed_sum_2, claimed_sum_1]);
+
+    let claimed_sums = vec![claimed_sum_1, claimed_sum_2, QM31::zero()];
+    prover_channel.mix_felts(&claimed_sums);
     let mut tree_builder = commitment_scheme.tree_builder();
+    let n_interaction_columns = interaction_trace_1.len();
     tree_builder.extend_evals(
-        [interaction_trace_1.clone(), interaction_trace_2, interaction_trace_1].concat(),
+        [
+            interaction_trace_1,
+            interaction_trace_2,
+            vec![
+                CircleEvaluation::<SimdBackend, _, BitReversedOrder>::zero_padding();
+                n_interaction_columns
+            ],
+        ]
+        .concat(),
     );
     tree_builder.commit(prover_channel);
 
@@ -256,7 +304,6 @@ pub fn create_proof()
         },
         claimed_sum_1,
     );
-
     let component_2 = SimpleComponent::new(
         &mut trace_location_allocator,
         Eval {
@@ -266,20 +313,20 @@ pub fn create_proof()
         },
         claimed_sum_2,
     );
-
-    let component_3 = SimpleComponent::new(
+    let component_3 = SimpleComponent::disabled(
         &mut trace_location_allocator,
         Eval {
             lookup_elements,
             preprocessed_column_id: long_preprocessed_column,
-            log_n_instances: LOG_SIZE_LONG,
+            log_n_instances: 0,
         },
-        claimed_sum_1,
     );
+
     let proof = prove_ex::<SimdBackend, Blake2sM31MerkleChannel>(
         &[&component_1, &component_2, &component_3],
         prover_channel,
         commitment_scheme,
+        true,
     )
     .unwrap();
 
@@ -288,11 +335,10 @@ pub fn create_proof()
 
     (
         components,
-        PublicInput {
-            claimed_sums: vec![claimed_sum_1, claimed_sum_2, claimed_sum_1],
-            component_log_sizes: vec![LOG_SIZE_LONG, LOG_SIZE_SHORT, LOG_SIZE_LONG],
-        },
+        Claim { packed_enable_bits, packed_component_log_sizes, claimed_sums },
         config,
         proof,
+        interaction_pow_nonce,
+        channel_salt,
     )
 }

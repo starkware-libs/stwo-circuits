@@ -1,5 +1,6 @@
 use crate::circuit_air::{CircuitClaim, CircuitInteractionElements};
 use crate::circuit_air::statement::CircuitStatement;
+use crate::circuit_air::statement::{INTERACTION_POW_BITS};
 use crate::circuit_prover::prover::{CircuitProof, finalize_context, prove_circuit};
 use crate::circuit_prover::witness::preprocessed::PreProcessedTrace;
 use crate::circuit_prover::witness::trace::{TraceGenerator, write_interaction_trace};
@@ -15,15 +16,20 @@ use crate::circuits::ivalue::{IValue, qm31_from_u32s};
 use crate::circuits::ops::{Guess, permute};
 use crate::circuits::{context::Context, ops::guess};
 use crate::eval;
-use crate::stark_verifier::proof::ProofConfig;
-use crate::stark_verifier::proof_from_stark_proof::proof_from_stark_proof;
+use crate::stark_verifier::proof::{Claim, ProofConfig};
+use crate::stark_verifier::proof_from_stark_proof::{
+    pack_component_log_sizes, pack_enable_bits, proof_from_stark_proof,
+};
+
 use expect_test::expect;
 use num_traits::{One, Zero};
+use stwo::core::proof_of_work::GrindOps;
 use std::sync::Arc;
 use stwo::core::air::Component;
 use stwo::core::channel::Blake2sM31Channel;
 use stwo::core::fields::FieldExpOps;
 use stwo::core::fields::m31::M31;
+use stwo::core::channel::Channel;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::{CommitmentSchemeVerifier, PcsConfig, TreeVec};
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
@@ -338,8 +344,16 @@ fn prove_circuit_with_relation_tracker(
         .half_coset,
     );
     let channel = &mut Blake2sM31Channel::default();
+    // Mix channel salt. Note that we first reduce it modulo `M31::P`, then cast it as QM31.
+    let channel_salt = 0_u32;
+    channel.mix_felts(&[channel_salt.into()]);
+
     let mut commitment_scheme =
         CommitmentSchemeProver::<SimdBackend, Blake2sM31MerkleChannel>::new(pcs_config, &twiddles);
+
+    // Mix channel salt. Note that we first reduce it modulo `M31::P`, then cast it as QM31.
+    let channel_salt = 0_u32;
+    channel.mix_felts(&[channel_salt.into()]);
 
     // Preprocessed trace.
     let mut tree_builder = commitment_scheme.tree_builder();
@@ -358,6 +372,9 @@ fn prove_circuit_with_relation_tracker(
     claim.mix_into(channel);
     tree_builder.commit(channel);
 
+    // Draw interaction elements.
+    let interaction_pow_nonce = SimdBackend::grind(channel, INTERACTION_POW_BITS);
+    channel.mix_u64(interaction_pow_nonce);
     // Draw interaction elements.
     let interaction_elements = CircuitInteractionElements::draw(channel);
 
@@ -409,13 +426,15 @@ fn prove_circuit_with_relation_tracker(
     let summary = RelationSummary::summarize_relations(&entries).cleaned();
 
     // Prove stark.
-    let proof = prove_ex::<SimdBackend, _>(&components, channel, commitment_scheme);
+    let proof = prove_ex::<SimdBackend, _>(&components, channel, commitment_scheme, true);
     let circuit_proof = CircuitProof {
         components: component_builder.components(),
         claim,
         interaction_claim,
         pcs_config,
         stark_proof: proof,
+        interaction_pow_nonce,
+        channel_salt
     };
 
     (circuit_proof, summary)
@@ -427,7 +446,7 @@ fn test_prove_and_stark_verify_blake_gate_context() {
     blake_gate_context.finalize_guessed_vars();
     blake_gate_context.validate_circuit();
     eprintln!("Here");
-    let CircuitProof { components, claim, interaction_claim, pcs_config, stark_proof } =
+    let CircuitProof { components, claim, interaction_claim, pcs_config, stark_proof, interaction_pow_nonce, channel_salt } =
         prove_circuit(&mut blake_gate_context);
     assert!(stark_proof.is_ok(), "Got error: {}", stark_proof.err().unwrap());
     let proof = stark_proof.unwrap();
@@ -435,6 +454,7 @@ fn test_prove_and_stark_verify_blake_gate_context() {
     // Compute the expected logup term. In this case it's only the terms corresponding to blake's
     // IV.
     let verifier_channel = &mut Blake2sM31Channel::default();
+    verifier_channel.mix_felts(&[channel_salt.into()]);
     let commitment_scheme =
         &mut CommitmentSchemeVerifier::<Blake2sM31MerkleChannel>::new(pcs_config);
 
@@ -444,6 +464,9 @@ fn test_prove_and_stark_verify_blake_gate_context() {
     commitment_scheme.commit(proof.proof.commitments[0], &sizes[0], verifier_channel);
     claim.mix_into(verifier_channel);
     commitment_scheme.commit(proof.proof.commitments[1], &sizes[1], verifier_channel);
+
+    verifier_channel.mix_u64(interaction_pow_nonce);
+
     let CircuitInteractionElements { common_lookup_elements } =
         CircuitInteractionElements::draw(verifier_channel);
 
@@ -501,13 +524,22 @@ fn test_prove_and_stark_verify_permutation_context() {
     permutation_context.finalize_guessed_vars();
     permutation_context.validate_circuit();
 
-    let CircuitProof { components, claim, interaction_claim, pcs_config, stark_proof } =
-        prove_circuit(&mut permutation_context);
+    let CircuitProof {
+        pcs_config,
+        claim,
+        interaction_pow_nonce,
+        interaction_claim,
+        components,
+        stark_proof,
+        channel_salt,
+    } = prove_circuit(&mut permutation_context);
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
 
     // Verify.
     let verifier_channel = &mut Blake2sM31Channel::default();
+    verifier_channel.mix_felts(&[channel_salt.into()]);
+    pcs_config.mix_into(verifier_channel);
     let commitment_scheme =
         &mut CommitmentSchemeVerifier::<Blake2sM31MerkleChannel>::new(pcs_config);
 
@@ -518,6 +550,8 @@ fn test_prove_and_stark_verify_permutation_context() {
     claim.mix_into(verifier_channel);
     commitment_scheme.commit(proof.proof.commitments[1], &sizes[1], verifier_channel);
     // TODO(Gali): Draw interaction element?
+    verifier_channel.verify_pow_nonce(INTERACTION_POW_BITS, interaction_pow_nonce);
+    verifier_channel.mix_u64(interaction_pow_nonce);
     interaction_claim.mix_into(verifier_channel);
     commitment_scheme.commit(proof.proof.commitments[2], &sizes[2], verifier_channel);
     stwo::core::verifier::verify(
@@ -535,13 +569,22 @@ fn test_prove_and_stark_verify_fibonacci_context() {
     fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
 
-    let CircuitProof { components, claim, interaction_claim, pcs_config, stark_proof } =
-        prove_circuit(&mut fibonacci_context);
+    let CircuitProof {
+        pcs_config,
+        claim,
+        interaction_pow_nonce,
+        interaction_claim,
+        components,
+        stark_proof,
+        channel_salt,
+    } = prove_circuit(&mut fibonacci_context);
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
 
     // Verify.
     let verifier_channel = &mut Blake2sM31Channel::default();
+    verifier_channel.mix_felts(&[channel_salt.into()]);
+    pcs_config.mix_into(verifier_channel);
     let commitment_scheme =
         &mut CommitmentSchemeVerifier::<Blake2sM31MerkleChannel>::new(pcs_config);
 
@@ -552,6 +595,8 @@ fn test_prove_and_stark_verify_fibonacci_context() {
     claim.mix_into(verifier_channel);
     commitment_scheme.commit(proof.proof.commitments[1], &sizes[1], verifier_channel);
     // TODO(Gali): Draw interaction element?
+    verifier_channel.verify_pow_nonce(INTERACTION_POW_BITS, interaction_pow_nonce);
+    verifier_channel.mix_u64(interaction_pow_nonce);
     interaction_claim.mix_into(verifier_channel);
     commitment_scheme.commit(proof.proof.commitments[2], &sizes[2], verifier_channel);
     stwo::core::verifier::verify(
@@ -569,23 +614,35 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
 
-    let CircuitProof { components: _, claim, interaction_claim, pcs_config, stark_proof } =
-        prove_circuit(&mut fibonacci_context);
+    let CircuitProof {
+        pcs_config,
+        claim,
+        interaction_pow_nonce,
+        interaction_claim,
+        components: _,
+        stark_proof,
+        channel_salt,
+    } = prove_circuit(&mut fibonacci_context);
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
 
     // Verify.
     let log_trace_size = claim.log_sizes.iter().max().unwrap();
     let statement = CircuitStatement::default();
-    let config = ProofConfig::from_statement(&statement, *log_trace_size as usize, &pcs_config);
+    let claim = Claim {
+        packed_enable_bits: pack_enable_bits(&[true, true]),
+        packed_component_log_sizes: pack_component_log_sizes(&claim.log_sizes),
+        claimed_sums: interaction_claim.claimed_sums.to_vec(),
+    };
+    let config = ProofConfig::from_statement(
+        &statement,
+        *log_trace_size as usize,
+        &pcs_config,
+        INTERACTION_POW_BITS,
+    );
 
     let mut context = TraceContext::default();
-    let proof = proof_from_stark_proof(
-        &proof,
-        &config,
-        claim.log_sizes.to_vec(),
-        interaction_claim.claimed_sums.to_vec(),
-    );
+    let proof = proof_from_stark_proof(&proof, &config, claim, interaction_pow_nonce, channel_salt);
     let proof_vars = proof.guess(&mut context);
 
     crate::stark_verifier::verify::verify(&mut context, &proof_vars, &config, &statement);

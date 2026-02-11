@@ -226,11 +226,7 @@ impl Simd {
 
     /// Packs a vector of [M31] values into [Simd].
     pub fn pack(context: &mut Context<impl IValue>, values: &[M31Wrapper<Var>]) -> Simd {
-        let unit_vecs = [
-            context.constant(qm31_from_u32s(0, 1, 0, 0)),
-            context.constant(qm31_from_u32s(0, 0, 1, 0)),
-            context.constant(qm31_from_u32s(0, 0, 0, 1)),
-        ];
+        let unit_vecs = UNIT_VECS.map(|v| context.constant(v));
 
         let n = values.len();
         let data = (0..n.div_ceil(4))
@@ -240,7 +236,7 @@ impl Simd {
                     if 4 * i + j == n {
                         break;
                     }
-                    res = eval!(context, (res) + ((unit_vecs[j - 1]) * (*values[4 * i + j].get())));
+                    res = eval!(context, (res) + ((unit_vecs[j]) * (*values[4 * i + j].get())));
                 }
                 res
             })
@@ -262,6 +258,43 @@ impl Simd {
             }
         }
         res
+    }
+
+    /// Packs little-endian bit-slices into a SIMD integer.
+    /// This is the inverse of `extract_bits`
+    ///
+    /// Assumes each `bits[i]` contains only 0/1 values;
+    /// returns Σ `bits[i] * (1 << i)` per lane.
+    pub fn combine_bits(context: &mut Context<impl IValue>, bits: &[Simd]) -> Simd {
+        let mut iter = bits.iter().rev();
+        let mut res = iter.next().unwrap().clone();
+        let two = M31Wrapper::new_unsafe(eval!(context, context.constant(QM31::from(2))));
+        for bit in iter {
+            res = Simd::scalar_mul(context, &res, &two);
+            res = Simd::add(context, &res, bit);
+        }
+        res
+    }
+
+    /// Asserts that not all the bits in each [Simd] are ones.
+    ///
+    /// Note that this function assumes that `bits.is_empty()` is false.
+    pub fn assert_not_all_ones(context: &mut Context<impl IValue>, bits: &[Simd]) {
+        let mut iter = bits.iter();
+        let mut res = iter.next().unwrap().clone();
+        for bit in iter {
+            res = Simd::mul(context, &res, bit);
+        }
+        let zero = Simd::zero(context, res.len());
+        Simd::eq(context, &res, &zero);
+    }
+
+    /// Marks the variables in the Simd as "maybe unused". This is intended for cases
+    /// where we create a Simd but we will only use some of its elements.
+    pub fn mark_partly_used(context: &mut Context<impl IValue>, simd: &Simd) {
+        for chunk in &simd.data {
+            context.mark_as_maybe_unused(chunk);
+        }
     }
 }
 

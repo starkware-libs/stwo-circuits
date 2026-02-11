@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::circuit_air::components::CircuitComponents;
+use crate::circuit_air::statement::INTERACTION_POW_BITS;
 use crate::circuit_air::{
     CircuitClaim, CircuitInteractionClaim, CircuitInteractionElements, lookup_sum,
 };
@@ -12,11 +13,13 @@ use crate::circuits::context::Context;
 use num_traits::Zero;
 use stwo::core::air::Component;
 use stwo::core::channel::Blake2sM31Channel;
+use stwo::core::channel::Channel;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::fields::qm31::SecureField;
 use stwo::core::pcs::PcsConfig;
 use stwo::core::poly::circle::CanonicCoset;
 use stwo::core::proof::ExtendedStarkProof;
+use stwo::core::proof_of_work::GrindOps;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 use stwo::prover::CommitmentSchemeProver;
@@ -26,11 +29,13 @@ use stwo::prover::{ProvingError, prove_ex};
 
 const COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND: u32 = 1;
 pub struct CircuitProof {
+    pub pcs_config: PcsConfig,
     pub claim: CircuitClaim,
+    pub interaction_pow_nonce: u64,
     pub interaction_claim: CircuitInteractionClaim,
     pub components: Vec<Box<dyn Component>>,
-    pub pcs_config: PcsConfig,
     pub stark_proof: Result<ExtendedStarkProof<Blake2sM31MerkleHasher>, ProvingError>,
+    pub channel_salt: u32,
 }
 
 #[cfg(test)]
@@ -71,6 +76,11 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     println!("before extend evals {:?}", std::time::Instant::now());
     // Setup protocol.
     let channel = &mut Blake2sM31Channel::default();
+
+    // Mix channel salt. Note that we first reduce it modulo `M31::P`, then cast it as QM31.
+    let channel_salt = 0_u32;
+    channel.mix_felts(&[channel_salt.into()]);
+    pcs_config.mix_into(channel);
     let mut commitment_scheme =
         CommitmentSchemeProver::<SimdBackend, Blake2sM31MerkleChannel>::new(pcs_config, &twiddles);
 
@@ -94,7 +104,8 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     tree_builder.commit(channel);
 
     // Draw interaction elements.
-    // TODO(Gali): Add proof of work.
+    let interaction_pow_nonce = SimdBackend::grind(channel, INTERACTION_POW_BITS);
+    channel.mix_u64(interaction_pow_nonce);
     let interaction_elements = CircuitInteractionElements::draw(channel);
 
     // Interaction trace.
@@ -123,14 +134,14 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     let components = component_builder.provers();
 
     // Prove stark.
-    println!("before prove stark {:?}", std::time::Instant::now());
-    let proof = prove_ex::<SimdBackend, _>(&components, channel, commitment_scheme);
-    println!("after prove stark {:?}", std::time::Instant::now());
+    let proof = prove_ex::<SimdBackend, _>(&components, channel, commitment_scheme, true);
     CircuitProof {
-        components: component_builder.components(),
-        claim,
-        interaction_claim,
         pcs_config,
+        claim,
+        interaction_pow_nonce,
+        interaction_claim,
+        components: component_builder.components(),
         stark_proof: proof,
+        channel_salt,
     }
 }

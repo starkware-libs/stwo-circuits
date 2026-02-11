@@ -1,5 +1,12 @@
-use stwo::core::pcs::PcsConfig;
+use std::fs::{File, OpenOptions};
 
+use cairo_air::utils::{binary_deserialize_from_file, binary_serialize_to_file};
+use num_traits::Zero;
+use std::path::PathBuf;
+use stwo::core::fields::m31::M31;
+
+use crate::cairo_air::statement::{MEMORY_VALUES_LIMBS, PUBLIC_DATA_LEN};
+use crate::cairo_air::verify::verify_cairo;
 use crate::{
     cairo_air::statement::CairoStatement,
     circuits::{context::Context, ivalue::NoValue, ops::Guess},
@@ -8,17 +15,39 @@ use crate::{
         verify::verify,
     },
 };
+use cairo_air::PreProcessedTraceVariant;
+use dev_utils::utils::get_compiled_cairo_program_path;
+use stwo::core::fri::FriConfig;
+use stwo::core::{pcs::PcsConfig, vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel};
+use stwo_cairo_prover::prover::{ChannelHash, ProverParameters, prove_cairo};
+use stwo_cairo_utils::vm_utils::{ProgramType, run_and_adapt};
+
+/// Logup security is defined by the `QM31` space (~124 bits) + `INTERACTION_POW_BITS` -
+/// log2(number of relation terms).
+/// The number of relation terms is defined as n_terms * n_relations * n_uses, where:
+/// n_terms = number of terms in each relation (the size of the relation entry) < 2^7,
+/// n_relations = number of different relations ids < 2^6,
+/// n_uses is bounded by the characteristic of the field = 2^31.
+/// E.g. assuming a 100-bit security target, the witness may contain up to
+/// 1 << (24 + INTERACTION_POW_BITS) relation terms.
+pub const INTERACTION_POW_BITS: u32 = 24;
 
 #[test]
 fn test_verify() {
     let pcs_config = PcsConfig::default();
 
-    let statement = CairoStatement::default();
+    let mut novalue_context = Context::<NoValue>::default();
+    let output_len = 1;
+    let program_len = 128;
+    let flat_claim = vec![M31::zero(); PUBLIC_DATA_LEN + output_len + program_len];
+    let outputs = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; output_len];
+    let program = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; program_len];
+    let statement = CairoStatement::new(&mut novalue_context, flat_claim, outputs, program);
 
-    let config = ProofConfig::from_statement(&statement, 4, &pcs_config);
+    let config = ProofConfig::from_statement(&statement, 20, &pcs_config, INTERACTION_POW_BITS);
 
     let empty_proof = empty_proof(&config);
-    let mut novalue_context = Context::<NoValue>::default();
+
     let proof_vars = empty_proof.guess(&mut novalue_context);
     verify(&mut novalue_context, &proof_vars, &config, &statement);
     novalue_context.finalize_guessed_vars();
@@ -26,4 +55,44 @@ fn test_verify() {
     novalue_context.circuit.check_yields();
 
     println!("Stats: {:?}", novalue_context.stats);
+}
+
+pub fn get_proof_file_path(test_name: &str) -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../test_data/")
+        .join(test_name)
+        .join("proof.bin")
+}
+
+#[test]
+fn test_verify_cairo() {
+    let proof_path = get_proof_file_path("all_opcode_components");
+
+    if std::env::var("FIX_PROOF").is_ok() {
+        let compiled_program =
+            get_compiled_cairo_program_path("test_prove_verify_all_opcode_components");
+        let input = run_and_adapt(&compiled_program, ProgramType::Json, None).unwrap();
+        let prover_params = ProverParameters {
+            channel_hash: ChannelHash::Blake2s,
+            pcs_config: PcsConfig { pow_bits: 26, fri_config: FriConfig::new(0, 1, 70) },
+            preprocessed_trace: PreProcessedTraceVariant::CanonicalWithoutPedersen,
+            channel_salt: 0,
+            store_polynomials_coefficients: false,
+        };
+        let cairo_proof = prove_cairo::<Blake2sM31MerkleChannel>(input, prover_params).unwrap();
+
+        let proof_file =
+            OpenOptions::new().create(true).write(true).truncate(true).open(&proof_path).unwrap();
+        binary_serialize_to_file(&cairo_proof, &proof_file).unwrap();
+    }
+
+    let proof_file = File::open(proof_path).unwrap();
+    let cairo_proof = binary_deserialize_from_file(&proof_file).unwrap();
+
+    let mut context = verify_cairo(&cairo_proof);
+    context.check_vars_used();
+    context.finalize_guessed_vars();
+    context.circuit.check_yields();
+    context.validate_circuit();
+    println!("Stats: {:?}", context.stats);
 }

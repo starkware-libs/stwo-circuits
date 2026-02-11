@@ -4,9 +4,13 @@ use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 use crate::circuit_air::preprocessed_columns::PREPROCESSED_COLUMNS_ORDER;
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
+use crate::stark_verifier::proof::Claim;
 
 use crate::stark_verifier::constraint_eval::CircuitEval;
 use crate::stark_verifier::statement::Statement;
+
+// TODO(ilya): Update this to to correct values.
+pub const INTERACTION_POW_BITS: u32 = 8;
 
 pub struct CircuitStatement<Value: IValue> {
     pub components: Vec<Box<dyn CircuitEval<Value>>>,
@@ -24,6 +28,10 @@ impl<Value: IValue> Default for CircuitStatement<Value> {
     }
 }
 impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
+    fn claims_to_mix(&self, _context: &mut Context<Value>) -> Vec<Vec<Var>> {
+        vec![vec![]]
+    }
+
     fn get_components(&self) -> &[Box<dyn CircuitEval<Value>>] {
         &self.components
     }
@@ -32,6 +40,7 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
         &self,
         context: &mut Context<Value>,
         _interaction_elements: [Var; 2],
+        _claim: &Claim<Var>,
     ) -> Var {
         context.zero()
     }
