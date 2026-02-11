@@ -1,0 +1,37 @@
+// This file was created by the AIR team.
+
+use crate::circuit_air::components::prelude::*;
+
+#[derive(Copy, Clone, Serialize)]
+pub struct BitwiseXorNumBits8B {}
+
+impl BitwiseXorNumBits8B {
+    #[allow(unused_parens)]
+    #[allow(clippy::double_parens)]
+    #[allow(non_snake_case)]
+    #[allow(clippy::unused_unit)]
+    #[allow(unused_variables)]
+    #[allow(clippy::too_many_arguments)]
+    pub fn evaluate<E: EvalAtRow>(
+        [bitwise_xor_num_bits_8_b_input_limb_0, bitwise_xor_num_bits_8_b_input_limb_1]: [E::F; 2],
+        xor_col0: E::F,
+        common_lookup_elements: &relations::CommonLookupElements,
+        eval: &mut E,
+    ) -> [E::F; 0] {
+        let M31_4 = E::F::from(M31::from(4));
+        // TODO(leo and alon): Change this from 4 to a different one for soundness.
+
+        eval.add_to_relation(RelationEntry::new(
+            common_lookup_elements,
+            E::EF::one(),
+            &[
+                M31_4.clone(),
+                bitwise_xor_num_bits_8_b_input_limb_0.clone(),
+                bitwise_xor_num_bits_8_b_input_limb_1.clone(),
+                xor_col0.clone(),
+            ],
+        ));
+
+        []
+    }
+}
