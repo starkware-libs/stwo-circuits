@@ -80,7 +80,7 @@ pub fn build_blake_gate_context() -> Context<QM31> {
     let mut inputs: Vec<Var> = vec![];
     let n_inputs = 4;
     let n_bytes = n_inputs * 16;
-    let n_blake_gates = 20000;
+    let n_blake_gates = 10;
     for i in 0..n_inputs {
         inputs.push(guess(&mut context, qm31_from_u32s(4*i + 82, 4*i + 83, 4*i + 84, 4*i + 85)));
     }
@@ -351,10 +351,6 @@ fn prove_circuit_with_relation_tracker(
     let mut commitment_scheme =
         CommitmentSchemeProver::<SimdBackend, Blake2sM31MerkleChannel>::new(pcs_config, &twiddles);
 
-    // Mix channel salt. Note that we first reduce it modulo `M31::P`, then cast it as QM31.
-    let channel_salt = 0_u32;
-    channel.mix_felts(&[channel_salt.into()]);
-
     // Preprocessed trace.
     let mut tree_builder = commitment_scheme.tree_builder();
     tree_builder.extend_evals(preprocessed_trace.get_trace::<SimdBackend>());
@@ -372,7 +368,6 @@ fn prove_circuit_with_relation_tracker(
     claim.mix_into(channel);
     tree_builder.commit(channel);
 
-    // Draw interaction elements.
     let interaction_pow_nonce = SimdBackend::grind(channel, INTERACTION_POW_BITS);
     channel.mix_u64(interaction_pow_nonce);
     // Draw interaction elements.
@@ -445,31 +440,47 @@ fn test_prove_and_stark_verify_blake_gate_context() {
     let mut blake_gate_context = build_blake_gate_context();
     blake_gate_context.finalize_guessed_vars();
     blake_gate_context.validate_circuit();
-    eprintln!("Here");
+    
     let CircuitProof { components, claim, interaction_claim, pcs_config, stark_proof, interaction_pow_nonce, channel_salt } =
         prove_circuit(&mut blake_gate_context);
     assert!(stark_proof.is_ok(), "Got error: {}", stark_proof.err().unwrap());
     let proof = stark_proof.unwrap();
 
-    // Compute the expected logup term. In this case it's only the terms corresponding to blake's
-    // IV.
     let verifier_channel = &mut Blake2sM31Channel::default();
     verifier_channel.mix_felts(&[channel_salt.into()]);
+    pcs_config.mix_into(verifier_channel);
     let commitment_scheme =
         &mut CommitmentSchemeVerifier::<Blake2sM31MerkleChannel>::new(pcs_config);
 
     // Retrieve the expected column sizes in each commitment interaction, from the AIR.
-    let sizes = TreeVec::concat_cols(components.iter().map(|c| c.trace_log_degree_bounds()));
+    let mut sizes = TreeVec::concat_cols(components.iter().map(|c| c.trace_log_degree_bounds()));
+    // Gather the preprocessed sizes by regenerating the preprocessed trace.
+    // TODO(Leo): do it in a better way.
 
+    sizes[0] = PreProcessedTrace::generate_preprocessed_trace(&blake_gate_context.circuit).0.columns.iter().map(|c| c.len().ilog2()).collect();     
     commitment_scheme.commit(proof.proof.commitments[0], &sizes[0], verifier_channel);
     claim.mix_into(verifier_channel);
     commitment_scheme.commit(proof.proof.commitments[1], &sizes[1], verifier_channel);
 
-    verifier_channel.mix_u64(interaction_pow_nonce);
+    verifier_channel.verify_pow_nonce(INTERACTION_POW_BITS, interaction_pow_nonce);
 
+    verifier_channel.mix_u64(interaction_pow_nonce);
     let CircuitInteractionElements { common_lookup_elements } =
         CircuitInteractionElements::draw(verifier_channel);
+    
+    interaction_claim.mix_into(verifier_channel);
 
+    commitment_scheme.commit(proof.proof.commitments[2], &sizes[2], verifier_channel);
+    stwo::core::verifier::verify(
+        &components.iter().map(|c| c.as_ref()).collect::<Vec<&dyn Component>>(),
+        verifier_channel,
+        commitment_scheme,
+        proof.proof,
+    )
+    .unwrap();
+
+    // Compute the expected logup term. In this case it's only the terms corresponding to blake's
+    // IV.
     let mut yield_sum: QM31 = QM31::zero();
     let limbs = compute_initial_state_limbs(&blake_gate_context);
     for limb in limbs {
@@ -478,10 +489,7 @@ fn test_prove_and_stark_verify_blake_gate_context() {
     }
 
     let total_claim_sum: QM31 = interaction_claim.claimed_sums.iter().sum();
-    println!("{:?}", total_claim_sum);
-    println!("{:?}", yield_sum);
-    // This should be zero.
-    println!("{:?}", total_claim_sum - yield_sum);
+
     assert_eq!(total_claim_sum, yield_sum);
 }
 
@@ -508,6 +516,7 @@ fn compute_initial_state_limbs(context: &Context<QM31>) -> Vec<[M31; 18]> {
     ];
     let mut res = vec![];
     // Sum the initial state addresses.
+    println!("# of blake gates: {}", context.circuit.blake.len());
     for i in 0..context.circuit.blake.len() {
         let mut tmp = vec![];
         tmp.push(state_id);

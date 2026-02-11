@@ -297,6 +297,7 @@ fn add_blake_to_preprocessed_trace(
         eq: _,
         blake,
         permutation: _,
+        output: _
     } = circuit;
     let mut blake_columns: [_; N_BLAKE_PP_COLUMNS] = std::array::from_fn(|_| vec![]);
     fill_blake_columns(blake, multiplicities, &mut blake_columns);
@@ -363,14 +364,7 @@ impl PreProcessedTrace {
         let additional_zero_multiplicity: usize =
             circuit.permutation.iter().map(|gate| gate.inputs.len() + gate.outputs.len()).sum();
         multiplicities[0] += additional_zero_multiplicity;
-        // TODO(Leo): **REMOVE** this code once the blake write trace is ready. Temporarily needed
-        // to pass tests.
-        for blake_gate in &circuit.blake {
-            for input_idx in blake_gate.input.iter().flatten() {
-                multiplicities[*input_idx] -= 1;
-            }
-        }
-
+        
         // Add Eq columns.
         add_eq_to_preprocessed_trace(circuit, &mut pp_trace);
         // Add QM31 operations columns.
@@ -381,7 +375,7 @@ impl PreProcessedTrace {
         add_blake_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
 
         Self::add_non_circuit_preprocessed_columns(&mut pp_trace);
-
+        println!("Length of pp trace: {}", pp_trace.columns.len());
         (pp_trace, TraceGenerator { qm31_ops_trace_generator })
     }
 

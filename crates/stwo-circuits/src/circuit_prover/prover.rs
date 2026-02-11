@@ -123,7 +123,7 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
 
     interaction_claim.mix_into(channel);
     tree_builder.commit(channel);
-
+    println!("# pp_trace_arc_ids: {}", preprocessed_trace_arc.ids().len());
     // Component provers.
     let component_builder = CircuitComponents::new(
         &claim,
@@ -132,7 +132,6 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
         &preprocessed_trace_arc.ids(),
     );
     let components = component_builder.provers();
-
     // Prove stark.
     let proof = prove_ex::<SimdBackend, _>(&components, channel, commitment_scheme, true);
     CircuitProof {
