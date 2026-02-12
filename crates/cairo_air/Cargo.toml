@@ -10,6 +10,7 @@ num-traits.workspace = true
 stwo.workspace = true
 stwo-constraint-framework.workspace = true
 cairo-air.workspace = true
+stwo_cairo_common.workspace = true
 circuits.workspace = true
 circuits-stark-verifier.workspace = true
 
