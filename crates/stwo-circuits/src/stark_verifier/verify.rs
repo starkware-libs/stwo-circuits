@@ -4,6 +4,7 @@ use itertools::{Itertools, chain, izip, zip_eq};
 use stwo::core::circle::CirclePoint;
 use stwo::core::fields::m31::P;
 use stwo::core::fields::qm31::QM31;
+use stwo::core::verifier::COMPOSITION_LOG_SPLIT;
 
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::{IValue, qm31_from_u32s};
@@ -155,7 +156,7 @@ pub fn verify<Value: IValue>(
         context,
         &proof.composition_eval_at_oods,
         oods_point,
-        config.log_evaluation_domain_size(),
+        config.log_trace_size() + COMPOSITION_LOG_SPLIT as usize,
     );
     eq(context, composition_eval, expected_composition_eval);
 
