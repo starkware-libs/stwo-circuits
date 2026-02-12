@@ -8,7 +8,7 @@ use cairo_air::relations::{
 use circuits::blake::blake;
 use circuits::eval;
 use circuits::extract_bits::extract_bits;
-use circuits::ops::{Guess, output};
+use circuits::ops::{Guess, eq, output};
 use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::empty_component::EmptyComponent;
 use circuits_stark_verifier::logup::logup_use_term;
@@ -127,7 +127,6 @@ impl PublicData<Var> {
         });
 
         let safe_call_ids = [*iter.next().unwrap(), *iter.next().unwrap()];
-
         let output_ids = iter.by_ref().take(output_len).cloned().collect_vec();
         let program_ids = iter.cloned().collect_vec();
         assert_eq!(program_ids.len(), program_len);
@@ -146,6 +145,112 @@ pub struct CairoStatement<Value: IValue> {
     pub public_data: PublicData<Var>,
     pub program: Vec<[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]>,
     pub outputs: Vec<[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]>,
+}
+
+impl<Value: IValue> CairoStatement<Value> {
+    pub fn verify_builtins(&self, context: &mut Context<Value>) {
+        // Validate the output segment range.
+        let segement_ranges = &self.public_data.public_memory.segement_ranges;
+        let SegmentRange::<Var> {
+            start: PubMemoryM31Value { id: _claim_id, value: output_start },
+            end: PubMemoryM31Value { id: _, value: output_end },
+        } = &segement_ranges[0];
+        let diff = eval!(context, (*output_end) - (*output_start));
+        let n_outputs = context.constant(self.outputs.len().into());
+        eq(context, diff, n_outputs);
+
+        let pedersen_segment_range = &segement_ranges[1];
+        let range_check_128_segment_range = &segement_ranges[2];
+        let ecdsa_segment_range = &segement_ranges[3];
+        let bitwise_segment_range = &segement_ranges[4];
+        let ec_op_segment_range = &segement_ranges[5];
+        let keccak_segment_range = &segement_ranges[6];
+        let poseidon_segment_range = &segement_ranges[7];
+        let range_check96_segment_range = &segement_ranges[8];
+        let add_mod_segment_range = &segement_ranges[9];
+        let mul_mod_segment_range = &segement_ranges[10];
+
+        let supported_builtins = [
+            pedersen_segment_range,
+            range_check_128_segment_range,
+            bitwise_segment_range,
+            poseidon_segment_range,
+        ];
+
+        let start_addresses = Simd::pack(
+            context,
+            &supported_builtins
+                .iter()
+                .map(|segment_range| M31Wrapper::new_unsafe(segment_range.start.value))
+                .collect_vec(),
+        );
+        let end_addresses = Simd::pack(
+            context,
+            &supported_builtins
+                .iter()
+                .map(|segment_range| M31Wrapper::new_unsafe(segment_range.end.value))
+                .collect_vec(),
+        );
+
+        // Note that the start_addresses are checked to fit in 27bits, in the logup.
+        let diff = Simd::sub(context, &end_addresses, &start_addresses);
+
+        // TODO(ilya): Need to check that the log_size of the builtin is large enough.
+
+        let instance_size_inverses = pack_into_qm31s(
+            [3, 1, 5, 6].into_iter().map(|size| M31::from_u32_unchecked(size).inverse()),
+        )
+        .into_iter()
+        .map(|qm31| context.constant(qm31))
+        .collect();
+        let packed_instance_sizes =
+            Simd::from_packed(instance_size_inverses, supported_builtins.len());
+        let n_instanes = Simd::mul(context, &diff, &packed_instance_sizes);
+        extract_bits(context, &n_instanes, 27);
+
+        // Handle the builting not supported by the circuit.
+        let zero = context.zero();
+        for segment_range in [
+            ec_op_segment_range,
+            ecdsa_segment_range,
+            keccak_segment_range,
+            range_check96_segment_range,
+            add_mod_segment_range,
+            mul_mod_segment_range,
+        ] {
+            let diff = eval!(context, (segment_range.end.value) - (segment_range.start.value));
+            eq(context, diff, zero);
+        }
+    }
+
+    pub fn verify_claim(&self, context: &mut Context<Value>) {
+        self.verify_builtins(context);
+        let CasmState { pc: initial_pc, ap: initial_ap, fp: initial_fp } =
+            &self.public_data.initial_state;
+        let CasmState { pc: final_pc, ap: final_ap, fp: final_fp } = &self.public_data.final_state;
+
+        // A vector of values that are going to be range checked to 29 bits.
+        let mut range_checks = vec![];
+
+        eq(context, *initial_pc, context.one());
+        // Check that initial_pc (== 1) + 2 < initial_ap.
+        // i.e. 0 < initial_ap - 3 < 2**29.
+        range_checks.push(eval!(context, (*initial_ap) - (context.constant(3.into()))));
+
+        eq(context, *initial_fp, *final_fp);
+        eq(context, *initial_fp, *initial_ap);
+        let expected_final_pc = context.constant(5.into());
+        eq(context, *final_pc, expected_final_pc);
+        // Check that the initial_ap < final_ap.
+        // i.e. 0 < final_ap - initial_ap. < 2**29.
+        range_checks.push(eval!(context, (*final_ap) - (*initial_ap)));
+
+        let rc_simd = Simd::pack(
+            context,
+            &range_checks.iter().map(|value| M31Wrapper::new_unsafe(*value)).collect_vec(),
+        );
+        extract_bits(context, &rc_simd, 29);
+    }
 }
 
 impl<Value: IValue> CairoStatement<Value> {
@@ -195,7 +300,9 @@ impl<Value: IValue> CairoStatement<Value> {
             })
             .collect_vec();
 
-        Self { packed_public_data, public_data, program, outputs, components }
+        let res = Self { packed_public_data, public_data, program, outputs, components };
+        res.verify_claim(context);
+        res
     }
 }
 
