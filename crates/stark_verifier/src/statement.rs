@@ -49,4 +49,12 @@ pub trait Statement<Value: IValue> {
     fn public_params(&self, _context: &mut Context<Value>) -> HashMap<String, Var> {
         HashMap::new()
     }
+
+    fn verify_claim(
+        &self,
+        _context: &mut Context<Value>,
+        _enable_bits: &[Var],
+        _component_sizes: &[Var],
+    ) {
+    }
 }
