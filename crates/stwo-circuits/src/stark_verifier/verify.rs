@@ -155,7 +155,7 @@ pub fn verify<Value: IValue>(
         context,
         &proof.composition_eval_at_oods,
         oods_point,
-        config.log_evaluation_domain_size(),
+        config.log_trace_size() + 1,
     );
     eq(context, composition_eval, expected_composition_eval);
 

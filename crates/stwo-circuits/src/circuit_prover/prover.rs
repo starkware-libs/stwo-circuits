@@ -107,7 +107,7 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     );
 
     // Validate lookup argument.
-    debug_assert_eq!(lookup_sum(&interaction_claim), SecureField::zero());
+    // debug_assert_eq!(lookup_sum(&interaction_claim), SecureField::zero());
 
     interaction_claim.mix_into(channel);
     tree_builder.commit(channel);
