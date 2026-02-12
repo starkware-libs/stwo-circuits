@@ -116,7 +116,10 @@ impl<Value: IValue> Context<Value> {
     ///
     /// Variables that were marked as unused by the code are excluded.
     pub fn check_vars_used(&self) {
-        let var_uses = self.circuit.compute_multiplicities().0;
+        let mut var_uses = self.circuit.compute_multiplicities().0;
+        for output in self.circuit.output.iter() {
+            var_uses[output.in0] += 1;
+        }
         for (idx, uses) in var_uses.iter().enumerate() {
             let unused = *uses == 0;
             let marked_as_unused = self.unused_vars.contains(&idx);

@@ -2,7 +2,8 @@ use std::array;
 use std::collections::HashMap;
 
 use crate::cairo_air::components;
-use crate::circuits::ops::Guess;
+use crate::circuits::blake::blake;
+use crate::circuits::ops::{Guess, output};
 use crate::circuits::wrappers::M31Wrapper;
 use crate::eval;
 use crate::stark_verifier::empty_component::EmptyComponent;
@@ -207,6 +208,12 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         let program_len = context.constant(qm31_from_u32s(self.program.len() as u32, 0, 0, 0));
         let packed_outputs =
             Simd::pack(context, &self.outputs.iter().flatten().cloned().collect_vec());
+
+        let output_hash = blake(context, packed_outputs.get_packed(), 4 * self.outputs.len() * MEMORY_VALUES_LIMBS );
+
+        // output the output hash.
+        output(context, output_hash.0);
+        output(context, output_hash.1);
 
         let packed_program =
             Simd::pack(context, &self.program.iter().flatten().cloned().collect_vec());
