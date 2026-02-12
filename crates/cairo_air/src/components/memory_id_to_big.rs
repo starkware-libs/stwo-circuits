@@ -1,5 +1,6 @@
 use crate::components::prelude::*;
 use crate::preprocessed_columns::MAX_SEQUENCE_LOG_SIZE;
+use stwo::core::fields::m31::P as M31_P;
 
 const LARGE_MEMORY_VALUE_ID_BASE: u32 = 0x40000000; // 2^30.
 const ID_TO_BIG_MAX_ROWS: u32 = 1 << MAX_SEQUENCE_LOG_SIZE;
@@ -142,6 +143,13 @@ impl<Value: IValue> CircuitEval<Value> for Component {
         component_data: &dyn ComponentDataTrait<Value>,
         acc: &mut CompositionConstraintAccumulator,
     ) {
+        // Check that the ids yielded by this component are within the M31 range.
+        assert!(
+            LARGE_MEMORY_VALUE_ID_BASE + (self.index + 1) * ID_TO_BIG_MAX_ROWS - 1 <= M31_P,
+            "memory_id_to_big index {} would exceed M31 range",
+            self.index
+        );
+
         accumulate_constraints(
             component_data.trace_columns(),
             context,
