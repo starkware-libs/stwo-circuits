@@ -131,8 +131,9 @@ pub fn verify<Value: IValue>(
     // Draw a random point for the OODS.
     let oods_point = channel.draw_point(context);
 
-    let unpacked_component_sizes = Simd::unpack(context, &component_sizes);
     check_relation_uses(context, statement, &component_sizes_bits);
+    let unpacked_component_sizes = Simd::unpack(context, &component_sizes);
+    statement.verify_claim(context, &enable_bits, &unpacked_component_sizes);
 
     // Compute the composition evaluation at the OODS point from `proof.*_at_oods` and compare
     // to `proof.composition_eval_at_oods`.

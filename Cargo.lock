@@ -1296,6 +1296,7 @@ dependencies = [
  "itertools 0.12.1",
  "num-traits",
  "stwo",
+ "stwo-cairo-common",
  "stwo-cairo-dev-utils",
  "stwo-cairo-prover",
  "stwo-cairo-utils",

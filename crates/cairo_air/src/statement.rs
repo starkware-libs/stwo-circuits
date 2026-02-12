@@ -1,22 +1,27 @@
 use std::array;
 use std::collections::HashMap;
 
+use cairo_air::components::memory_address_to_id::MEMORY_ADDRESS_TO_ID_SPLIT;
 use cairo_air::relations::{
     MEMORY_ADDRESS_TO_ID_RELATION_ID, MEMORY_ID_TO_BIG_RELATION_ID, OPCODES_RELATION_ID,
 };
 use circuits::blake::blake;
 use circuits::eval;
 use circuits::extract_bits::extract_bits;
-use circuits::ops::{Guess, output};
+use circuits::ops::{Guess, eq, output};
 use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::logup::logup_use_term;
 use circuits_stark_verifier::proof_from_stark_proof::pack_into_qm31s;
 use itertools::{Itertools, chain, izip, zip_eq};
 use stwo::core::fields::qm31::QM31;
+use stwo_cairo_common::builtins::{
+    BITWISE_BUILTIN_MEMORY_CELLS, PEDERSEN_BUILTIN_MEMORY_CELLS, POSEIDON_BUILTIN_MEMORY_CELLS,
+    RANGE_CHECK_BUILTIN_MEMORY_CELLS,
+};
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 use crate::all_components::all_components;
-use crate::preprocessed_columns::PREPROCESSED_COLUMNS_ORDER;
+use crate::preprocessed_columns::{MAX_SEQUENCE_LOG_SIZE, PREPROCESSED_COLUMNS_ORDER};
 use circuits::context::{Context, Var};
 use circuits::ivalue::{IValue, qm31_from_u32s};
 use circuits::simd::Simd;
@@ -93,7 +98,6 @@ pub struct SegmentRange<T> {
 pub struct PublicMemory<T> {
     pub segement_ranges: [SegmentRange<T>; N_SEGMENTS],
     pub safe_call_ids: [T; 2],
-    /// Output must be the last thing as it is variable length.
     pub output_ids: Vec<T>,
     pub program_ids: Vec<T>,
 }
@@ -126,7 +130,6 @@ impl PublicData<Var> {
         });
 
         let safe_call_ids = [*iter.next().unwrap(), *iter.next().unwrap()];
-
         let output_ids = iter.by_ref().take(output_len).cloned().collect_vec();
         let program_ids = iter.cloned().collect_vec();
         assert_eq!(program_ids.len(), program_len);
@@ -145,6 +148,131 @@ pub struct CairoStatement<Value: IValue> {
     pub public_data: PublicData<Var>,
     pub program: Vec<[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]>,
     pub outputs: Vec<[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]>,
+}
+
+impl<Value: IValue> CairoStatement<Value> {
+    /// Verifies the builtins.
+    ///
+    /// Assumes that the start and end addresses of the segment ranges are less than 2^27 (this is
+    /// guaranteed by `segment_range_logup_sum`).
+    pub fn verify_builtins(
+        &self,
+        context: &mut Context<Value>,
+        enable_bits: &[Var],
+        component_sizes: &[Var],
+    ) {
+        // Validate the output segment range.
+        let segement_ranges = &self.public_data.public_memory.segement_ranges;
+        let SegmentRange::<Var> {
+            start: PubMemoryM31Value { id: _, value: output_start },
+            end: PubMemoryM31Value { id: _, value: output_end },
+        } = &segement_ranges[0];
+        let diff = eval!(context, (*output_end) - (*output_start));
+        let n_outputs = context.constant(self.outputs.len().into());
+        eq(context, diff, n_outputs);
+
+        let pedersen_segment_range = &segement_ranges[1];
+        let range_check_128_segment_range = &segement_ranges[2];
+        let ecdsa_segment_range = &segement_ranges[3];
+        let bitwise_segment_range = &segement_ranges[4];
+        let ec_op_segment_range = &segement_ranges[5];
+        let keccak_segment_range = &segement_ranges[6];
+        let poseidon_segment_range = &segement_ranges[7];
+        let range_check96_segment_range = &segement_ranges[8];
+        let add_mod_segment_range = &segement_ranges[9];
+        let mul_mod_segment_range = &segement_ranges[10];
+
+        let supported_builtins = [
+            pedersen_segment_range,
+            range_check_128_segment_range,
+            bitwise_segment_range,
+            poseidon_segment_range,
+        ];
+        let start_addresses = Simd::pack(
+            context,
+            &supported_builtins
+                .iter()
+                .map(|segment_range| M31Wrapper::new_unsafe(segment_range.start.value))
+                .collect_vec(),
+        );
+        let end_addresses = Simd::pack(
+            context,
+            &supported_builtins
+                .iter()
+                .map(|segment_range| M31Wrapper::new_unsafe(segment_range.end.value))
+                .collect_vec(),
+        );
+        let diff = Simd::sub(context, &end_addresses, &start_addresses);
+
+        let builtin_memory_cells = [
+            ("pedersen_builtin_narrow_windows", PEDERSEN_BUILTIN_MEMORY_CELLS),
+            ("range_check_builtin", RANGE_CHECK_BUILTIN_MEMORY_CELLS),
+            ("bitwise_builtin", BITWISE_BUILTIN_MEMORY_CELLS),
+            ("poseidon_builtin", POSEIDON_BUILTIN_MEMORY_CELLS),
+        ];
+        let instance_size_inverses = pack_into_qm31s(
+            builtin_memory_cells.into_iter().map(|(_name, size)| M31::from(size).inverse()),
+        )
+        .into_iter()
+        .map(|qm31| context.constant(qm31))
+        .collect();
+        let packed_instance_size_inverses =
+            Simd::from_packed(instance_size_inverses, supported_builtins.len());
+
+        let n_uses_simd = Simd::mul(context, &diff, &packed_instance_size_inverses);
+
+        // Range-check the number of times each builtin is used.
+        // n_uses = (end - start) / instance_size, which implies end = start + n_uses *
+        // instance_size (mod M31_P). Since all values are less than 2^27, this equality
+        // also holds over the integers.
+        extract_bits(context, &n_uses_simd, SMALL_VALUE_BITS);
+        let max_builtin_memory_cell =
+            builtin_memory_cells.iter().map(|(_name, size)| size).max().unwrap();
+        assert!(
+            max_builtin_memory_cell.ilog2() < (31 - SMALL_VALUE_BITS),
+            "max_builtin_memory_cell * segment_range.start might exceed M31_P"
+        );
+
+        let mut actual_uses_iter = Simd::unpack(context, &n_uses_simd).into_iter();
+        let mut range_checks = vec![];
+
+        let all_components = all_components::<Value>();
+        let mut validate_builtin = |context: &mut Context<Value>, name: &str| {
+            let index = all_components.get_index_of(name).unwrap();
+            let component_size = component_sizes[index];
+
+            // Check that either actual_uses == 0 or is_disabled == 0.
+            let actual_uses = actual_uses_iter.next().unwrap();
+            let is_disabled = eval!(context, (1) - (enable_bits[index]));
+            let constraint_val = eval!(context, (actual_uses) * (is_disabled));
+            eq(context, constraint_val, context.zero());
+
+            // Check that 0 <= component_size - actual_uses < 2^27 => actual_uses <= component_size.
+            let diff = eval!(context, (component_size) - (actual_uses));
+            range_checks.push(M31Wrapper::new_unsafe(diff));
+        };
+
+        for (name, _size) in builtin_memory_cells {
+            validate_builtin(context, name);
+        }
+
+        let rc_simd = Simd::pack(context, &range_checks);
+        extract_bits(context, &rc_simd, SMALL_VALUE_BITS);
+
+        // Handle the builting not supported by the circuit.
+        let zero = context.zero();
+        for segment_range in [
+            ec_op_segment_range,
+            ecdsa_segment_range,
+            keccak_segment_range,
+            range_check96_segment_range,
+            add_mod_segment_range,
+            mul_mod_segment_range,
+        ] {
+            let diff = eval!(context, (segment_range.end.value) - (segment_range.start.value));
+            eq(context, diff, zero);
+        }
+    }
 }
 
 impl<Value: IValue> CairoStatement<Value> {
@@ -270,6 +398,50 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
             .map(|(k, v)| (k.to_string(), v.start.value)),
         );
         public_params
+    }
+
+    fn verify_claim(
+        &self,
+        context: &mut Context<Value>,
+        enable_bits: &[Var],
+        component_sizes: &[Var],
+    ) {
+        let PublicData { initial_state, final_state, public_memory: _ } = &self.public_data;
+
+        self.verify_builtins(context, enable_bits, component_sizes);
+        // TODO(ilya): Consider adding sanity checks on the content of the program segment.
+
+        let CasmState { pc: initial_pc, ap: initial_ap, fp: initial_fp } = initial_state;
+        let CasmState { pc: final_pc, ap: final_ap, fp: final_fp } = final_state;
+
+        // A vector of values that are going to be range checked to 29 bits.
+        let mut range_checks = vec![];
+
+        eq(context, *initial_pc, context.one());
+        // Check that initial_pc (== 1) + 2 < initial_ap.
+        // i.e. 3 < initial_ap < 2**29 + 4.
+        range_checks.push(eval!(context, (*initial_ap) - (context.constant(4.into()))));
+
+        eq(context, *initial_fp, *final_fp);
+        eq(context, *initial_fp, *initial_ap);
+        let expected_final_pc = context.constant(5.into());
+        eq(context, *final_pc, expected_final_pc);
+        // Check that the initial_ap <= final_ap.
+        // i.e. 0 <= final_ap - initial_ap. < 2**29.
+        range_checks.push(eval!(context, (*final_ap) - (*initial_ap)));
+
+        let rc_simd = Simd::pack(
+            context,
+            &range_checks.iter().map(|value| M31Wrapper::new_unsafe(*value)).collect_vec(),
+        );
+        extract_bits(context, &rc_simd, 29);
+
+        // Sanity check: ensure that the maximum address in the address_to_id component fits within
+        // a 29-bit address space (i.e., is less than 2**29).
+        // Higher addresses are not supported by components that assume 29-bit addresses.
+        const { assert!(MEMORY_ADDRESS_TO_ID_SPLIT * MAX_SEQUENCE_LOG_SIZE < 1 << 29) };
+
+        // TODO(ilya): Check that opcodes_uses < 2^29.
     }
 }
 
