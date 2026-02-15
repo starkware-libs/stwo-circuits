@@ -17,7 +17,6 @@ itertools = { version = "0.12", default-features = false, features = [
     "use_alloc",
 ] }
 num-traits = { version = "0.2.19", default-features = false }
-starknet-ff = "0.3.7"
 stwo = { git = "https://github.com/starkware-libs/stwo", rev = "a8fcf4bd", features = [
     "parallel",
     "prover",
