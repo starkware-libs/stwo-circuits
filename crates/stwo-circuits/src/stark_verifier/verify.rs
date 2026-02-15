@@ -65,6 +65,15 @@ pub fn verify<Value: IValue>(
     ));
     channel.mix_qm31s(context, [pcs_config]);
 
+    // TODO(ilya): Can we remove the following?.
+    let lifting_log_size = context.constant(QM31::from_u32_unchecked(
+        (config.log_trace_size() + config.fri.log_blowup_factor) as u32,
+        0,
+        0,
+        0,
+    ));
+    channel.mix_qm31s(context, [lifting_log_size]);
+
     // Mix the trace commitments into the channel.
     channel.mix_commitment(context, proof.preprocessed_root);
 
