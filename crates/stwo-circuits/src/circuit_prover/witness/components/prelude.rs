@@ -474,17 +474,6 @@ impl AtomicMultiplicityColumn {
 
 pub use std::collections::HashMap;
 
-/// Debug helper: prints each SIMD lane of a logup entry as unpacked M31 values.
-/// `label` identifies the component and lookup name.
-/// `mult` is the multiplicity for this entry per SIMD lane.
-pub fn debug_logup(label: &str, values: &[PackedM31], mult: &[PackedM31]) {
-    for lane in 0..N_LANES {
-        let v: Vec<u32> = values.iter().map(|v| v.into_simd().to_array()[lane]).collect();
-        let m: Vec<u32> = mult.iter().map(|v| v.into_simd().to_array()[lane]).collect();
-        // eprintln!("{label}[{lane}]: mult={m:?} values={v:?}");
-    }
-}
-
 /// Create the input_to_row map used in const-size components.
 ///
 /// `preprocessed_trace` - The preprocessed trace.

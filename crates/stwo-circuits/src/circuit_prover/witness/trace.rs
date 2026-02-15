@@ -165,21 +165,14 @@ pub fn write_trace(
     tree_builder.extend_evals(verify_bitwise_xor_9_trace.to_evals());
 
     // Write range check 15 component.
-    let (
-        range_check_15_trace,
-        _range_check_15_claim,
-        range_check_15_interaction_claim_gen,
-    ) = range_check_15_state.write_trace();
+    let (range_check_15_trace, _range_check_15_claim, range_check_15_interaction_claim_gen) =
+        range_check_15_state.write_trace();
     tree_builder.extend_evals(range_check_15_trace.to_evals());
 
     // Write range check 16 component.
-    let (
-        range_check_16_trace,
-        _range_check_16_claim,
-        range_check_16_interaction_claim_gen,
-    ) = range_check_16_state.write_trace();
+    let (range_check_16_trace, _range_check_16_claim, range_check_16_interaction_claim_gen) =
+        range_check_16_state.write_trace();
     tree_builder.extend_evals(range_check_16_trace.to_evals());
-
 
     (
         CircuitClaim {

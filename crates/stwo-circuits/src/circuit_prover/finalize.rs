@@ -1,10 +1,10 @@
 use stwo::prover::backend::simd::m31::N_LANES;
 
-use crate::circuits::context::Context;
-use crate::circuits::ivalue::qm31_from_u32s;
 use crate::circuits::blake::{HashValue, blake};
-use crate::circuits::context::{Var};
+use crate::circuits::context::Context;
+use crate::circuits::context::Var;
 use crate::circuits::ivalue::IValue;
+use crate::circuits::ivalue::qm31_from_u32s;
 use crate::circuits::ops::output;
 use crate::eval;
 
@@ -59,7 +59,6 @@ fn pad_blake(context: &mut Context<impl IValue>) {
         std::cmp::max(n_blake_compress.next_power_of_two(), N_LANES) - n_blake_compress;
     let n_last = blake_compress_padding * 4;
     crate::circuits::blake::blake(context, &vec![zero; n_last], n_last * 16);
-
 }
 fn hash_constants(context: &mut Context<impl IValue>) -> HashValue<Var> {
     let constants: Vec<_> = context.constants().values().copied().collect();

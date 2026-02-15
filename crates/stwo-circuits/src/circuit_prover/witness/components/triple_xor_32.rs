@@ -75,11 +75,9 @@ fn write_trace_simd(
         )
     };
 
-    // let M31_112558620 = PackedM31::broadcast(M31::from(112558620));
-    let M31_4 = PackedM31::broadcast(M31::from(4)); // Leo: Subsitutes the above.
+    let M31_4 = PackedM31::broadcast(M31::from(4));
+    let M31_6 = PackedM31::broadcast(M31::from(6));
     let M31_256 = PackedM31::broadcast(M31::from(256));
-    // let M31_521092554 = PackedM31::broadcast(M31::from(521092554));
-    // Leo: xor_8_b uses same relation_id as xor_8 (M31_4), already defined above.
     let M31_990559919 = PackedM31::broadcast(M31::from(990559919));
     let UInt16_8 = PackedUInt16::broadcast(UInt16::from(8));
     let enabler_col = Enabler::new(n_rows);
@@ -182,12 +180,8 @@ fn write_trace_simd(
                 *row[13] = xor_col13;
                 *sub_component_inputs.verify_bitwise_xor_8[1] =
                     [xor_col12, split_16_low_part_size_8_output_tmp_298db_9[0], xor_col13];
-                *lookup_data.verify_bitwise_xor_8_1 = [
-                    M31_4,
-                    xor_col12,
-                    split_16_low_part_size_8_output_tmp_298db_9[0],
-                    xor_col13,
-                ];
+                *lookup_data.verify_bitwise_xor_8_1 =
+                    [M31_4, xor_col12, split_16_low_part_size_8_output_tmp_298db_9[0], xor_col13];
 
                 // Bitwise Xor Num Bits 8.
 
@@ -224,7 +218,7 @@ fn write_trace_simd(
                     xor_col16,
                 ];
                 *lookup_data.verify_bitwise_xor_8_b_0 = [
-                    M31_4,
+                    M31_6,
                     split_16_low_part_size_8_output_tmp_298db_3[0],
                     split_16_low_part_size_8_output_tmp_298db_7[0],
                     xor_col16,
@@ -238,12 +232,8 @@ fn write_trace_simd(
                 *row[17] = xor_col17;
                 *sub_component_inputs.verify_bitwise_xor_8_b[1] =
                     [xor_col16, split_16_low_part_size_8_output_tmp_298db_11[0], xor_col17];
-                *lookup_data.verify_bitwise_xor_8_b_1 = [
-                    M31_4,
-                    xor_col16,
-                    split_16_low_part_size_8_output_tmp_298db_11[0],
-                    xor_col17,
-                ];
+                *lookup_data.verify_bitwise_xor_8_b_1 =
+                    [M31_6, xor_col16, split_16_low_part_size_8_output_tmp_298db_11[0], xor_col17];
 
                 // Bitwise Xor Num Bits 8 B.
 
@@ -254,7 +244,7 @@ fn write_trace_simd(
                 *sub_component_inputs.verify_bitwise_xor_8_b[2] =
                     [ms_8_bits_col7, ms_8_bits_col9, xor_col18];
                 *lookup_data.verify_bitwise_xor_8_b_2 =
-                    [M31_4, ms_8_bits_col7, ms_8_bits_col9, xor_col18];
+                    [M31_6, ms_8_bits_col7, ms_8_bits_col9, xor_col18];
 
                 // Bitwise Xor Num Bits 8 B.
 
@@ -265,7 +255,7 @@ fn write_trace_simd(
                 *sub_component_inputs.verify_bitwise_xor_8_b[3] =
                     [xor_col18, ms_8_bits_col11, xor_col19];
                 *lookup_data.verify_bitwise_xor_8_b_3 =
-                    [M31_4, xor_col18, ms_8_bits_col11, xor_col19];
+                    [M31_6, xor_col18, ms_8_bits_col11, xor_col19];
 
                 let triple_xor32_output_tmp_298db_28 = PackedUInt32::from_limbs([
                     ((xor_col13) + ((xor_col15) * (M31_256))),
@@ -324,8 +314,6 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
-                debug_logup("triple_xor/xor8_0", values0, &[PackedM31::one()]);
-                debug_logup("triple_xor/xor8_1", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -340,8 +328,6 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
-                debug_logup("triple_xor/xor8_2", values0, &[PackedM31::one()]);
-                debug_logup("triple_xor/xor8_3", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -356,8 +342,6 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
-                debug_logup("triple_xor/xor8b_0", values0, &[PackedM31::one()]);
-                debug_logup("triple_xor/xor8b_1", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -372,8 +356,6 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
-                debug_logup("triple_xor/xor8b_2", values0, &[PackedM31::one()]);
-                debug_logup("triple_xor/xor8b_3", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -387,7 +369,6 @@ impl InteractionClaimGenerator {
             .enumerate()
             .for_each(|(i, (writer, values))| {
                 let enabler = enabler_col.packed_at(i);
-                debug_logup("triple_xor/t_0", values, &[-enabler]);
                 let denom = common_lookup_elements.combine(values);
                 writer.write_frac(-PackedQM31::one() * enabler, denom);
             });

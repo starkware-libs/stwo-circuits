@@ -18,7 +18,6 @@ impl BitwiseXorNumBits7 {
         common_lookup_elements: &relations::CommonLookupElements,
         eval: &mut E,
     ) -> [E::F; 0] {
-        // let M31_62225763 = E::F::from(M31::from(62225763));
         let M31_3 = E::F::from(M31::from(3));
 
         eval.add_to_relation(RelationEntry::new(

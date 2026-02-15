@@ -194,33 +194,3 @@ impl FrameworkEval for Eval {
         eval
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use num_traits::Zero;
-//     use rand::rngs::SmallRng;
-//     use rand::{Rng, SeedableRng};
-//     use stwo::core::fields::qm31::QM31;
-//     use stwo_constraint_framework::expr::ExprEvaluator;
-
-//     use super::*;
-//     use crate::components::constraints_regression_test_values::BLAKE_OUTPUT;
-
-//     #[test]
-//     fn blake_output_constraints_regression() {
-//         let mut rng = SmallRng::seed_from_u64(0);
-//         let eval = Eval {
-//             claim: Claim { log_size: 4 },
-//             common_lookup_elements: relations::CommonLookupElements::dummy(),
-//         };
-//         let expr_eval = eval.evaluate(ExprEvaluator::new());
-//         let assignment = expr_eval.random_assignment();
-
-//         let mut sum = QM31::zero();
-//         for c in expr_eval.constraints {
-//             sum += c.assign(&assignment) * rng.gen::<QM31>();
-//         }
-
-//         BLAKE_OUTPUT.assert_debug_eq(&sum);
-//     }
-// }

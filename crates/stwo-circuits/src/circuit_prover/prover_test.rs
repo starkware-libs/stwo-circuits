@@ -1,15 +1,15 @@
-use crate::circuit_air::{CircuitClaim, CircuitInteractionElements};
 use crate::circuit_air::statement::CircuitStatement;
-use crate::circuit_air::statement::{INTERACTION_POW_BITS};
+use crate::circuit_air::statement::INTERACTION_POW_BITS;
+use crate::circuit_air::{CircuitClaim, CircuitInteractionElements};
 use crate::circuit_prover::prover::{CircuitProof, finalize_context, prove_circuit};
-use crate::circuit_prover::witness::preprocessed::PreProcessedTrace;
-use crate::circuit_prover::witness::trace::{TraceGenerator, write_interaction_trace};
+use crate::circuit_prover::witness::components::blake_gate::blake2s_initial_state;
 use crate::circuit_prover::witness::components::{
     blake_g, blake_gate, blake_output, blake_round, blake_round_sigma, eq, qm31_ops,
     range_check_15, range_check_16, triple_xor_32, verify_bitwise_xor_4, verify_bitwise_xor_7,
     verify_bitwise_xor_8, verify_bitwise_xor_9, verify_bitwise_xor_12,
 };
-use crate::circuit_prover::witness::components::blake_gate::blake2s_initial_state;
+use crate::circuit_prover::witness::preprocessed::PreProcessedTrace;
+use crate::circuit_prover::witness::trace::{TraceGenerator, write_interaction_trace};
 use crate::circuits::blake::blake;
 use crate::circuits::context::{TraceContext, Var};
 use crate::circuits::ivalue::{IValue, qm31_from_u32s};
@@ -23,24 +23,24 @@ use crate::stark_verifier::proof_from_stark_proof::{
 
 use expect_test::expect;
 use num_traits::{One, Zero};
-use stwo::core::proof_of_work::GrindOps;
 use std::sync::Arc;
 use stwo::core::air::Component;
 use stwo::core::channel::Blake2sM31Channel;
+use stwo::core::channel::Channel;
 use stwo::core::fields::FieldExpOps;
 use stwo::core::fields::m31::M31;
-use stwo::core::channel::Channel;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::{CommitmentSchemeVerifier, PcsConfig, TreeVec};
-use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::core::poly::circle::CanonicCoset;
+use stwo::core::proof_of_work::GrindOps;
+use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::prover::CommitmentSchemeProver;
+use stwo::prover::TreeBuilder;
 use stwo::prover::backend::simd::SimdBackend;
 use stwo::prover::poly::circle::PolyOps;
 use stwo::prover::prove_ex;
-use stwo::prover::TreeBuilder;
-use stwo_constraint_framework::relation_tracker::{add_to_relation_entries, RelationSummary};
 use stwo_constraint_framework::Relation;
+use stwo_constraint_framework::relation_tracker::{RelationSummary, add_to_relation_entries};
 
 // Not a power of 2 so that we can test component padding.
 const N: usize = 1030;
@@ -82,7 +82,10 @@ pub fn build_blake_gate_context() -> Context<QM31> {
     let n_bytes = n_inputs * 16;
     let n_blake_gates = 10;
     for i in 0..n_inputs {
-        inputs.push(guess(&mut context, qm31_from_u32s(4*i + 82, 4*i + 83, 4*i + 84, 4*i + 85)));
+        inputs.push(guess(
+            &mut context,
+            qm31_from_u32s(4 * i + 82, 4 * i + 83, 4 * i + 84, 4 * i + 85),
+        ));
     }
     for _ in 0..n_blake_gates {
         let _output = blake(&mut context, &inputs, n_bytes as usize);
@@ -94,7 +97,11 @@ pub fn build_blake_gate_context() -> Context<QM31> {
 }
 
 fn evals_to_cols(
-    evals: &[stwo::prover::poly::circle::CircleEvaluation<SimdBackend, M31, stwo::prover::poly::BitReversedOrder>],
+    evals: &[stwo::prover::poly::circle::CircleEvaluation<
+        SimdBackend,
+        M31,
+        stwo::prover::poly::BitReversedOrder,
+    >],
 ) -> Vec<Vec<M31>> {
     evals.iter().map(|eval| eval.to_cpu().values.clone()).collect()
 }
@@ -104,7 +111,11 @@ fn write_trace_with_cols(
     preprocessed_trace: Arc<PreProcessedTrace>,
     trace_generator: &TraceGenerator,
     tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, Blake2sM31MerkleChannel>,
-) -> (CircuitClaim, crate::circuit_prover::witness::trace::CircuitInteractionClaimGenerator, Vec<Vec<M31>>) {
+) -> (
+    CircuitClaim,
+    crate::circuit_prover::witness::trace::CircuitInteractionClaimGenerator,
+    Vec<Vec<M31>>,
+) {
     let preprocessed_trace_ref = preprocessed_trace.as_ref();
     let mut original_cols: Vec<Vec<M31>> = vec![];
 
@@ -262,21 +273,15 @@ fn write_trace_with_cols(
     tree_builder.extend_evals(verify_bitwise_xor_9_evals);
 
     // Write range check 15 component.
-    let (
-        range_check_15_trace,
-        _range_check_15_claim,
-        range_check_15_interaction_claim_gen,
-    ) = range_check_15_state.write_trace();
+    let (range_check_15_trace, _range_check_15_claim, range_check_15_interaction_claim_gen) =
+        range_check_15_state.write_trace();
     let range_check_15_evals = range_check_15_trace.to_evals();
     original_cols.extend(evals_to_cols(&range_check_15_evals));
     tree_builder.extend_evals(range_check_15_evals);
 
     // Write range check 16 component.
-    let (
-        range_check_16_trace,
-        _range_check_16_claim,
-        range_check_16_interaction_claim_gen,
-    ) = range_check_16_state.write_trace();
+    let (range_check_16_trace, _range_check_16_claim, range_check_16_interaction_claim_gen) =
+        range_check_16_state.write_trace();
     let range_check_16_evals = range_check_16_trace.to_evals();
     original_cols.extend(evals_to_cols(&range_check_16_evals));
     tree_builder.extend_evals(range_check_16_evals);
@@ -429,7 +434,7 @@ fn prove_circuit_with_relation_tracker(
         pcs_config,
         stark_proof: proof,
         interaction_pow_nonce,
-        channel_salt
+        channel_salt,
     };
 
     (circuit_proof, summary)
@@ -440,9 +445,16 @@ fn test_prove_and_stark_verify_blake_gate_context() {
     let mut blake_gate_context = build_blake_gate_context();
     blake_gate_context.finalize_guessed_vars();
     blake_gate_context.validate_circuit();
-    
-    let CircuitProof { components, claim, interaction_claim, pcs_config, stark_proof, interaction_pow_nonce, channel_salt } =
-        prove_circuit(&mut blake_gate_context);
+
+    let CircuitProof {
+        components,
+        claim,
+        interaction_claim,
+        pcs_config,
+        stark_proof,
+        interaction_pow_nonce,
+        channel_salt,
+    } = prove_circuit(&mut blake_gate_context);
     assert!(stark_proof.is_ok(), "Got error: {}", stark_proof.err().unwrap());
     let proof = stark_proof.unwrap();
 
@@ -457,7 +469,12 @@ fn test_prove_and_stark_verify_blake_gate_context() {
     // Gather the preprocessed sizes by regenerating the preprocessed trace.
     // TODO(Leo): do it in a better way.
 
-    sizes[0] = PreProcessedTrace::generate_preprocessed_trace(&blake_gate_context.circuit).0.columns.iter().map(|c| c.len().ilog2()).collect();     
+    sizes[0] = PreProcessedTrace::generate_preprocessed_trace(&blake_gate_context.circuit)
+        .0
+        .columns
+        .iter()
+        .map(|c| c.len().ilog2())
+        .collect();
     commitment_scheme.commit(proof.proof.commitments[0], &sizes[0], verifier_channel);
     claim.mix_into(verifier_channel);
     commitment_scheme.commit(proof.proof.commitments[1], &sizes[1], verifier_channel);
@@ -467,7 +484,7 @@ fn test_prove_and_stark_verify_blake_gate_context() {
     verifier_channel.mix_u64(interaction_pow_nonce);
     let CircuitInteractionElements { common_lookup_elements } =
         CircuitInteractionElements::draw(verifier_channel);
-    
+
     interaction_claim.mix_into(verifier_channel);
 
     commitment_scheme.commit(proof.proof.commitments[2], &sizes[2], verifier_channel);
@@ -520,7 +537,7 @@ fn compute_initial_state_limbs(context: &Context<QM31>) -> Vec<[M31; 18]> {
     for i in 0..context.circuit.blake.len() {
         let mut tmp = vec![];
         tmp.push(state_id);
-        tmp.push(M31::from(2*i));
+        tmp.push(M31::from(2 * i));
         tmp.extend_from_slice(&initial_state_limbs);
         res.push(tmp.try_into().unwrap());
     }

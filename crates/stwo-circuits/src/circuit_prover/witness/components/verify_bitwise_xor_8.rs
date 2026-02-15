@@ -72,6 +72,7 @@ fn write_trace_simd(
     };
 
     let relation_id = PackedM31::broadcast(relations::VERIFY_BITWISE_XOR_8_RELATION_ID);
+    let relation_id_b = PackedM31::broadcast(relations::VERIFY_BITWISE_XOR_8_B_RELATION_ID);
     let bitwise_xor_8_0 =
         preprocessed_trace.get_column(&PreProcessedColumnId { id: "bitwise_xor_8_0".to_owned() });
     let bitwise_xor_8_1 =
@@ -90,7 +91,7 @@ fn write_trace_simd(
             *lookup_data.verify_bitwise_xor_8_0 =
                 [relation_id, bitwise_xor_8_0, bitwise_xor_8_1, bitwise_xor_8_2];
             *lookup_data.verify_bitwise_xor_8_b_0 =
-                [relation_id, bitwise_xor_8_0, bitwise_xor_8_1, bitwise_xor_8_2];
+                [relation_id_b, bitwise_xor_8_0, bitwise_xor_8_1, bitwise_xor_8_2];
             let mult = &mults[0];
             let mult_at_row = *mult.get(row_index).unwrap_or(&PackedM31::zero());
             *row[0] = mult_at_row;
@@ -134,8 +135,6 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1, mults_0, mults_1)| {
-                debug_logup("verify_xor_8/0", values0, &[-mults_0]);
-                debug_logup("verify_xor_8_b/0", values1, &[-mults_1]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(-(denom0 * mults_1 + denom1 * mults_0), denom0 * denom1);

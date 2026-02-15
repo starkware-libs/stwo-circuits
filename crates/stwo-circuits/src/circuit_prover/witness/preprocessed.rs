@@ -237,7 +237,10 @@ fn fill_blake_columns(
     let n_blake_compress = columns[0].len();
     let blake_compress_padding = std::cmp::max(n_blake_compress.next_power_of_two(), N_LANES);
     // TODO(Leo): remove after we remove the circuit gates padding.
-    assert_eq!(n_blake_compress, blake_compress_padding, "Only padding through circuit gates for now.");
+    assert_eq!(
+        n_blake_compress, blake_compress_padding,
+        "Only padding through circuit gates for now."
+    );
     // Pad with the first element.
     (0..9).for_each(|i| columns[i].resize(blake_compress_padding, *columns[i].first().unwrap()));
     columns[9].resize(blake_compress_padding, 0); // Enabler columns.
@@ -297,7 +300,7 @@ fn add_blake_to_preprocessed_trace(
         eq: _,
         blake,
         permutation: _,
-        output: _
+        output: _,
     } = circuit;
     let mut blake_columns: [_; N_BLAKE_PP_COLUMNS] = std::array::from_fn(|_| vec![]);
     fill_blake_columns(blake, multiplicities, &mut blake_columns);
@@ -364,7 +367,7 @@ impl PreProcessedTrace {
         let additional_zero_multiplicity: usize =
             circuit.permutation.iter().map(|gate| gate.inputs.len() + gate.outputs.len()).sum();
         multiplicities[0] += additional_zero_multiplicity;
-        
+
         // Add Eq columns.
         add_eq_to_preprocessed_trace(circuit, &mut pp_trace);
         // Add QM31 operations columns.

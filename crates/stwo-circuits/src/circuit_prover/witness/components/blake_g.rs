@@ -108,24 +108,18 @@ fn write_trace_simd(
         )
     };
 
-    // let M31_112558620 = PackedM31::broadcast(M31::from(112558620));
-    let M31_4 = PackedM31::broadcast(M31::from(4)); // Leo: Subsitutes the above.
+    let M31_4 = PackedM31::broadcast(M31::from(4));
+    let M31_6 = PackedM31::broadcast(M31::from(6));
     let M31_1139985212 = PackedM31::broadcast(M31::from(1139985212));
     let M31_128 = PackedM31::broadcast(M31::from(128));
     let M31_16 = PackedM31::broadcast(M31::from(16));
     let M31_256 = PackedM31::broadcast(M31::from(256));
     let M31_4096 = PackedM31::broadcast(M31::from(4096));
-    // let M31_45448144 = PackedM31::broadcast(M31::from(45448144));
-    let M31_2 =  PackedM31::broadcast(M31::from(2)); // Leo: Subsitutes the above.
+    let M31_2 = PackedM31::broadcast(M31::from(2));
     let M31_512 = PackedM31::broadcast(M31::from(512));
-    // let M31_4 = PackedM31::broadcast(M31::from(521092554));
-    // Leo: xor_8_b uses same relation_id as xor_8 (M31_4), already defined above.
-    // let M31_62225763 = PackedM31::broadcast(M31::from(62225763));
-    let M31_3 =  PackedM31::broadcast(M31::from(3)); // Leo: Subsitutes the above.
-    // let M31_648362599 = PackedM31::broadcast(M31::from(648362599));
-    let M31_1 =  PackedM31::broadcast(M31::from(1)); // Leo: Subsitutes the above.
-    // let M31_95781001 = PackedM31::broadcast(M31::from(95781001));
-    let M31_5 = PackedM31::broadcast(M31::from(5)); // Leo: Subsitutes the above.
+    let M31_3 = PackedM31::broadcast(M31::from(3));
+    let M31_1 = PackedM31::broadcast(M31::from(1));
+    let M31_5 = PackedM31::broadcast(M31::from(5));
     let UInt16_12 = PackedUInt16::broadcast(UInt16::from(12));
     let UInt16_7 = PackedUInt16::broadcast(UInt16::from(7));
     let UInt16_8 = PackedUInt16::broadcast(UInt16::from(8));
@@ -257,7 +251,7 @@ fn write_trace_simd(
                 xor_col20,
             ];
             *lookup_data.verify_bitwise_xor_8_b_0 = [
-                M31_4,
+                M31_6,
                 split_16_low_part_size_8_output_tmp_f72c8_7[0],
                 split_16_low_part_size_8_output_tmp_f72c8_11[0],
                 xor_col20,
@@ -272,7 +266,7 @@ fn write_trace_simd(
             *sub_component_inputs.verify_bitwise_xor_8_b[1] =
                 [ms_8_bits_col15, ms_8_bits_col17, xor_col21];
             *lookup_data.verify_bitwise_xor_8_b_1 =
-                [M31_4, ms_8_bits_col15, ms_8_bits_col17, xor_col21];
+                [M31_6, ms_8_bits_col15, ms_8_bits_col17, xor_col21];
 
             let xor_rot_16_output_tmp_f72c8_20 = PackedUInt32::from_limbs([
                 ((xor_col20) + ((xor_col21) * (M31_256))),
@@ -494,7 +488,7 @@ fn write_trace_simd(
                 xor_col40,
             ];
             *lookup_data.verify_bitwise_xor_8_b_2 = [
-                M31_4,
+                M31_6,
                 split_16_low_part_size_8_output_tmp_f72c8_51[0],
                 split_16_low_part_size_8_output_tmp_f72c8_55[0],
                 xor_col40,
@@ -509,7 +503,7 @@ fn write_trace_simd(
             *sub_component_inputs.verify_bitwise_xor_8_b[3] =
                 [ms_8_bits_col35, ms_8_bits_col37, xor_col41];
             *lookup_data.verify_bitwise_xor_8_b_3 =
-                [M31_4, ms_8_bits_col35, ms_8_bits_col37, xor_col41];
+                [M31_6, ms_8_bits_col35, ms_8_bits_col37, xor_col41];
 
             let xor_rot_8_output_tmp_f72c8_64 = PackedUInt32::from_limbs([
                 ((xor_col39) + ((xor_col40) * (M31_256))),
@@ -711,8 +705,6 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
-                debug_logup("blake_g/xor8_0", values0, &[PackedM31::one()]);
-                debug_logup("blake_g/xor8_1", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -727,8 +719,6 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
-                debug_logup("blake_g/xor8b_0", values0, &[PackedM31::one()]);
-                debug_logup("blake_g/xor8b_1", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -743,8 +733,6 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
-                debug_logup("blake_g/xor12_0", values0, &[PackedM31::one()]);
-                debug_logup("blake_g/xor4_0", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -759,8 +747,6 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
-                debug_logup("blake_g/xor12_1", values0, &[PackedM31::one()]);
-                debug_logup("blake_g/xor4_1", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -775,8 +761,6 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
-                debug_logup("blake_g/xor8_2", values0, &[PackedM31::one()]);
-                debug_logup("blake_g/xor8_3", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -791,8 +775,6 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
-                debug_logup("blake_g/xor8b_2", values0, &[PackedM31::one()]);
-                debug_logup("blake_g/xor8b_3", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -807,8 +789,6 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
-                debug_logup("blake_g/xor7_0", values0, &[PackedM31::one()]);
-                debug_logup("blake_g/xor9_0", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -823,8 +803,6 @@ impl InteractionClaimGenerator {
         )
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
-                debug_logup("blake_g/xor7_1", values0, &[PackedM31::one()]);
-                debug_logup("blake_g/xor9_1", values1, &[PackedM31::one()]);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
@@ -836,7 +814,6 @@ impl InteractionClaimGenerator {
         (col_gen.par_iter_mut(), &self.lookup_data.blake_g_0).into_par_iter().enumerate().for_each(
             |(i, (writer, values))| {
                 let enabler = enabler_col.packed_at(i);
-                debug_logup("blake_g/g_0", values, &[-PackedM31::one() * enabler]);
                 let denom = common_lookup_elements.combine(values);
                 writer.write_frac(-PackedQM31::one() * enabler, denom);
             },

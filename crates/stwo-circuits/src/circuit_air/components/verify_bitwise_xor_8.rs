@@ -49,6 +49,7 @@ impl FrameworkEval for Eval {
     #[allow(non_snake_case)]
     fn evaluate<E: EvalAtRow>(&self, mut eval: E) -> E {
         let relation_id = E::F::from(relations::VERIFY_BITWISE_XOR_8_RELATION_ID);
+        let relation_id_b = E::F::from(relations::VERIFY_BITWISE_XOR_8_B_RELATION_ID);
         let bitwise_xor_8_0 =
             eval.get_preprocessed_column(PreProcessedColumnId { id: "bitwise_xor_8_0".to_owned() });
         let bitwise_xor_8_1 =
@@ -73,7 +74,7 @@ impl FrameworkEval for Eval {
             &self.common_lookup_elements,
             -E::EF::from(multiplicity_1),
             &[
-                relation_id.clone(),
+                relation_id_b.clone(),
                 bitwise_xor_8_0.clone(),
                 bitwise_xor_8_1.clone(),
                 bitwise_xor_8_2.clone(),
@@ -84,33 +85,3 @@ impl FrameworkEval for Eval {
         eval
     }
 }
-
-// #[cfg(test)]
-// mod tests {
-//     use num_traits::Zero;
-//     use rand::rngs::SmallRng;
-//     use rand::{Rng, SeedableRng};
-//     use stwo::core::fields::qm31::QM31;
-//     use stwo_constraint_framework::expr::ExprEvaluator;
-
-//     use super::*;
-//     use crate::components::constraints_regression_test_values::VERIFY_BITWISE_XOR_8;
-
-//     #[test]
-//     fn verify_bitwise_xor_8_constraints_regression() {
-//         let mut rng = SmallRng::seed_from_u64(0);
-//         let eval = Eval {
-//             claim: Claim {},
-//             common_lookup_elements: relations::CommonLookupElements::dummy(),
-//         };
-//         let expr_eval = eval.evaluate(ExprEvaluator::new());
-//         let assignment = expr_eval.random_assignment();
-
-//         let mut sum = QM31::zero();
-//         for c in expr_eval.constraints {
-//             sum += c.assign(&assignment) * rng.gen::<QM31>();
-//         }
-
-//         VERIFY_BITWISE_XOR_8.assert_debug_eq(&sum);
-//     }
-// }

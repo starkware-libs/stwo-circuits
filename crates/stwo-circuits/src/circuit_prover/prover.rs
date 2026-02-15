@@ -63,12 +63,11 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     // Account for blowup factor and for composition polynomial calculation (taking the max since
     // the composition polynomial is split prior to LDE).
     let twiddles = SimdBackend::precompute_twiddles(
-        CanonicCoset::new( 23
-            // trace_log_size 
-            //     + std::cmp::max(
-            //         pcs_config.fri_config.log_blowup_factor,
-            //         COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND,
-            //     ),
+        CanonicCoset::new(
+            23, /* trace_log_size
+                *     + std::cmp::max( pcs_config.fri_config.log_blowup_factor,
+                *       COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND,
+                *     ), */
         )
         .circle_domain()
         .half_coset,
@@ -89,7 +88,7 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     let mut tree_builder = commitment_scheme.tree_builder();
     tree_builder.extend_evals(preprocessed_trace.get_trace::<SimdBackend>());
     tree_builder.commit(channel);
-    
+
     // Base trace.
     let mut tree_builder = commitment_scheme.tree_builder();
     let preprocessed_trace_arc = Arc::new(preprocessed_trace);
@@ -133,7 +132,7 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     );
     let components = component_builder.provers();
     // Prove stark.
-    let proof = prove_ex::<SimdBackend, _>(&components, channel, commitment_scheme, true);
+    let proof = prove_ex::<SimdBackend, _>(&components, channel, commitment_scheme, false);
     CircuitProof {
         pcs_config,
         claim,
