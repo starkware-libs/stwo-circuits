@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::circuit_air::components::CircuitComponents;
 use crate::circuit_air::statement::INTERACTION_POW_BITS;
 use crate::circuit_air::{
@@ -42,13 +44,20 @@ pub mod test;
 
 pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     finalize_context(context);
-    // Generate preprocessed trace.
+    let pcs_config = PcsConfig::default();
+    // Blake gate preprocessed trace.
+    // After creating this preprocessed trace and the next one, we need to sort the columns by size
+    // and then commit to them. Generate preprocessed trace.
+    // );
+    // print time
+    println!("before pp{:?}", std::time::Instant::now());
     let (preprocessed_trace, trace_generator) =
         PreProcessedTrace::generate_preprocessed_trace(&context.circuit);
-
+    println!("before twiddles{:?}", std::time::Instant::now());
     // The trace size is the size of the largest column in the preprocessed trace (since all
     // components have preprocessed columns).
     let trace_log_size = preprocessed_trace.log_sizes().into_iter().max().unwrap();
+    // let real_trace_log_size
 
     let mut pcs_config = PcsConfig::default();
     let lifting_log_size = trace_log_size + pcs_config.fri_config.log_blowup_factor;
@@ -60,16 +69,15 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     // the composition polynomial is split prior to LDE).
     let twiddles = SimdBackend::precompute_twiddles(
         CanonicCoset::new(
-            trace_log_size
-                + std::cmp::max(
-                    pcs_config.fri_config.log_blowup_factor,
-                    COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND,
-                ),
+            23, /* trace_log_size
+                *     + std::cmp::max( pcs_config.fri_config.log_blowup_factor,
+                *       COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND,
+                *     ), */
         )
         .circle_domain()
         .half_coset,
     );
-
+    println!("before extend evals {:?}", std::time::Instant::now());
     // Setup protocol.
     let channel = &mut Blake2sM31Channel::default();
 
@@ -80,6 +88,7 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     let mut commitment_scheme =
         CommitmentSchemeProver::<SimdBackend, Blake2sM31MerkleChannel>::new(pcs_config, &twiddles);
 
+    commitment_scheme.set_store_polynomials_coefficients();
     // Preprocessed trace.
     let mut tree_builder = commitment_scheme.tree_builder();
     tree_builder.extend_evals(preprocessed_trace.get_trace::<SimdBackend>());
@@ -87,8 +96,14 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
 
     // Base trace.
     let mut tree_builder = commitment_scheme.tree_builder();
-    let (claim, interaction_generator) =
-        write_trace(context.values(), &preprocessed_trace, &mut tree_builder, &trace_generator);
+    let preprocessed_trace_arc = Arc::new(preprocessed_trace);
+    println!("before write trace {:?}", std::time::Instant::now());
+    let (claim, interaction_generator) = write_trace(
+        context.values(),
+        preprocessed_trace_arc.clone(),
+        &mut tree_builder,
+        &trace_generator,
+    );
     claim.mix_into(channel);
     tree_builder.commit(channel);
 
@@ -99,6 +114,7 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
 
     // Interaction trace.
     let mut tree_builder = commitment_scheme.tree_builder();
+    println!("before write interaction trace {:?}", std::time::Instant::now());
     let interaction_claim = write_interaction_trace(
         &claim,
         interaction_generator,
@@ -111,19 +127,17 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
 
     interaction_claim.mix_into(channel);
     tree_builder.commit(channel);
-
+    println!("# pp_trace_arc_ids: {}", preprocessed_trace_arc.ids().len());
     // Component provers.
     let component_builder = CircuitComponents::new(
         &claim,
         &interaction_elements,
         &interaction_claim,
-        &preprocessed_trace.ids(),
+        &preprocessed_trace_arc.ids(),
     );
-
     let components = component_builder.provers();
-
     // Prove stark.
-    let proof = prove_ex::<SimdBackend, _>(&components, channel, commitment_scheme, true);
+    let proof = prove_ex::<SimdBackend, _>(&components, channel, commitment_scheme, false);
     CircuitProof {
         pcs_config,
         claim,
