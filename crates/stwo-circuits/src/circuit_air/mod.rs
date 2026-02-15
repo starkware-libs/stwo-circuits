@@ -5,19 +5,26 @@ pub mod statement;
 
 use crate::circuit_air::components::N_COMPONENTS;
 use crate::circuits::ivalue::qm31_from_u32s;
-use crate::stark_verifier::proof_from_stark_proof::{pack_component_log_sizes, pack_enable_bits};
+use crate::stark_verifier::proof_from_stark_proof::{
+    pack_component_log_sizes, pack_enable_bits, pack_public_claim,
+};
+use itertools::Itertools;
 use stwo::core::channel::Channel;
-use stwo::core::fields::qm31::SecureField;
+use stwo::core::fields::m31::M31;
+use stwo::core::fields::qm31::QM31;
 
 pub type ComponentLogSize = u32;
-pub type ClaimedSum = SecureField;
+pub type ClaimedSum = QM31;
 
 pub struct CircuitClaim {
     pub log_sizes: [ComponentLogSize; N_COMPONENTS],
+    /// Output gate data: (address, value) for each output gate in the circuit.
+    /// Each entry stores the variable index and the 4 M31 components of its QM31 value.
+    pub outputs: Vec<(M31, QM31)>,
 }
 impl CircuitClaim {
     pub fn mix_into(&self, channel: &mut impl Channel) {
-        let Self { log_sizes } = self;
+        let Self { log_sizes, outputs } = self;
 
         // mix the number of components.
         let n_components = log_sizes.len();
@@ -26,8 +33,12 @@ impl CircuitClaim {
         // mix the enable bits into the channel.
         channel.mix_felts(&pack_enable_bits(&[true, true]));
         channel.mix_felts(&pack_component_log_sizes(log_sizes));
-        // public claim is empty.
-        channel.mix_felts(&[]);
+
+        // Mix the output gates data into the channel.
+        let output_addresses: Vec<M31> = outputs.iter().map(|(addr, _)| *addr).collect_vec();
+        let output_values: Vec<QM31> = outputs.iter().map(|(_, value)| *value).collect_vec();
+        channel.mix_felts(&pack_public_claim(&output_addresses));
+        channel.mix_felts(&output_values);
     }
 }
 
@@ -52,7 +63,7 @@ impl CircuitInteractionClaim {
     }
 }
 
-pub fn lookup_sum(interaction_claim: &CircuitInteractionClaim) -> SecureField {
+pub fn lookup_sum(interaction_claim: &CircuitInteractionClaim) -> QM31 {
     let CircuitInteractionClaim { claimed_sums } = interaction_claim;
     claimed_sums.iter().sum()
 }

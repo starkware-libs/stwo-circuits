@@ -1,9 +1,18 @@
 use crate::circuit_air::components::{eq, qm31_ops};
+use crate::circuit_air::relations::GATE_RELATION_ID;
+use crate::circuits::ops::guess;
+use crate::circuits::simd::Simd;
+use crate::circuits::wrappers::M31Wrapper;
+use crate::eval;
+use itertools::Itertools;
+use stwo::core::fields::m31::M31;
+use stwo::core::fields::qm31::QM31;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 use crate::circuit_air::preprocessed_columns::PREPROCESSED_COLUMNS_ORDER;
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
+use crate::stark_verifier::logup::logup_use_term;
 use crate::stark_verifier::proof::Claim;
 
 use crate::stark_verifier::constraint_eval::CircuitEval;
@@ -12,11 +21,29 @@ use crate::stark_verifier::statement::Statement;
 // TODO(ilya): Update this to to correct values.
 pub const INTERACTION_POW_BITS: u32 = 8;
 
+/// Represents an output of the circuit with its variable address and QM31 value (see
+/// [crate::circuits::circuit::Output]).
+pub struct Output {
+    /// The variable index (address) of the output.
+    pub address: M31Wrapper<Var>,
+    /// The value of the output.
+    pub value: Var,
+}
+
 pub struct CircuitStatement<Value: IValue> {
     pub components: Vec<Box<dyn CircuitEval<Value>>>,
+    pub outputs: Vec<Output>,
 }
-impl<Value: IValue> Default for CircuitStatement<Value> {
-    fn default() -> Self {
+impl<Value: IValue> CircuitStatement<Value> {
+    pub fn new(context: &mut Context<Value>, outputs: &[(M31, QM31)]) -> Self {
+        let outputs = outputs
+            .iter()
+            .map(|&(addr, value)| Output {
+                address: M31Wrapper::new_unsafe(guess(context, Value::from_qm31(addr.into()))),
+                value: guess(context, Value::from_qm31(value)),
+            })
+            .collect();
+
         Self {
             components: vec![
                 Box::new(eq::CircuitEqComponent { preprocessed_column_indices: [0, 1] }),
@@ -24,12 +51,18 @@ impl<Value: IValue> Default for CircuitStatement<Value> {
                     preprocessed_column_indices: [2, 3, 4, 5, 6, 7, 8, 9],
                 }),
             ],
+            outputs,
         }
     }
 }
 impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
-    fn claims_to_mix(&self, _context: &mut Context<Value>) -> Vec<Vec<Var>> {
-        vec![vec![]]
+    fn claims_to_mix(&self, context: &mut Context<Value>) -> Vec<Vec<Var>> {
+        let packed_output_addresses = Simd::pack(
+            context,
+            &self.outputs.iter().map(|output| output.address.clone()).collect_vec(),
+        );
+        let output_values: Vec<Var> = self.outputs.iter().map(|output| output.value).collect_vec();
+        vec![packed_output_addresses.get_packed().to_vec(), output_values]
     }
 
     fn get_components(&self) -> &[Box<dyn CircuitEval<Value>>] {
@@ -39,10 +72,32 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
     fn public_logup_sum(
         &self,
         context: &mut Context<Value>,
-        _interaction_elements: [Var; 2],
+        interaction_elements: [Var; 2],
         _claim: &Claim<Var>,
     ) -> Var {
-        context.zero()
+        let mut sum = context.zero();
+
+        let gate_relation_id = context.constant(GATE_RELATION_ID.into());
+        for output in &self.outputs {
+            let [output_value_0, output_value_1, output_value_2, output_value_3] =
+                Simd::unpack(context, &Simd::from_packed(vec![output.value], 4))
+                    .try_into()
+                    .unwrap();
+            let term = logup_use_term(
+                context,
+                &[
+                    gate_relation_id,
+                    *output.address.get(),
+                    output_value_0,
+                    output_value_1,
+                    output_value_2,
+                    output_value_3,
+                ],
+                interaction_elements,
+            );
+            sum = eval!(context, (sum) + (term));
+        }
+        sum
     }
 
     fn get_preprocessed_column_ids(&self) -> Vec<PreProcessedColumnId> {

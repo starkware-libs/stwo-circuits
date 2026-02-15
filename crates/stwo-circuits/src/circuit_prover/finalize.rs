@@ -3,7 +3,6 @@ use stwo::prover::backend::simd::m31::N_LANES;
 use crate::circuits::blake::{HashValue, blake};
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
-use crate::circuits::ops::output;
 use crate::eval;
 
 fn pad_qm31_ops(context: &mut Context<impl IValue>) {
@@ -47,11 +46,12 @@ fn hash_constants(context: &mut Context<impl IValue>) -> HashValue<Var> {
 /// - Padding the components to a power of two.
 // TODO(Gali): Have it under a trait.
 pub(crate) fn finalize_context(context: &mut Context<impl IValue>) {
-    let HashValue(hash0, hash1) = hash_constants(context);
+    let HashValue(_hash0, _hash1) = hash_constants(context);
     // Add the hash of the constants to the outputs.
     // TODO(Leo): consider storing these values at a fixed address.
-    output(context, hash0);
-    output(context, hash1);
+    // TODO(Leo): Uncomment once blake is integrated.
+    // output(context, hash0);
+    // output(context, hash1);
     // TODO(Gali): Hash the outputs (all variables that have no uses).
 
     // Padding the components to a power of two.
