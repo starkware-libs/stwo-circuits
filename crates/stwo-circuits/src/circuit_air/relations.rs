@@ -3,6 +3,9 @@ use stwo_constraint_framework::relation;
 
 use stwo::core::fields::m31::M31;
 
+// TODO(alon): Add all relation IDs here.
+// TODO(alon): Reorder the ids to make more sense.
+// TODO(alon): Use this constants (instead of hardcoded values) where needed.
 pub const GATE_RELATION_ID: M31 = M31::from_u32_unchecked(0);
 pub const VERIFY_BITWISE_XOR_12_RELATION_ID: M31 = M31::from_u32_unchecked(1); // Done
 pub const VERIFY_BITWISE_XOR_4_RELATION_ID: M31 = M31::from_u32_unchecked(2); // Done

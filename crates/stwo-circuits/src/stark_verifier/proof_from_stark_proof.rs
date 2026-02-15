@@ -34,23 +34,32 @@ pub fn proof_from_stark_proof(
     let interaction_pow_high = (interaction_pow_nonce >> 32) as u32;
     let interaction_pow_low = (interaction_pow_nonce & 0xFFFFFFFF) as u32;
 
+    println!("1");
+    let preprocessed_columns_at_oods = as_single_row(&sampled_values[0]);
+    println!("2");
+    let trace_at_oods = as_single_row(&sampled_values[1]);
+    println!("3");
+    let interaction_at_oods = sampled_values[2]
+    .iter()
+    .map(|x| match x[..] {
+        [at_prev, at_oods] => InteractionAtOods { at_oods, at_prev: Some(at_prev) },
+        [at_oods] => InteractionAtOods { at_oods, at_prev: None },
+        _ => panic!("Unexpected interaction at OODS values"),
+    })
+    .collect_vec();
+    println!("4");
+    let composition_eval_at_oods = as_single_row(&sampled_values[3]).try_into().unwrap();
+    println!("5");
     Proof {
         preprocessed_root: commitments[0].into(),
         trace_root: commitments[1].into(),
         interaction_root: commitments[2].into(),
         composition_polynomial_root: commitments[3].into(),
-        preprocessed_columns_at_oods: as_single_row(&sampled_values[0]),
-        trace_at_oods: as_single_row(&sampled_values[1]),
-        interaction_at_oods: sampled_values[2]
-            .iter()
-            .map(|x| match x[..] {
-                [at_prev, at_oods] => InteractionAtOods { at_oods, at_prev: Some(at_prev) },
-                [at_oods] => InteractionAtOods { at_oods, at_prev: None },
-                _ => panic!("Unexpected interaction at OODS values"),
-            })
-            .collect_vec(),
+        preprocessed_columns_at_oods,
+        trace_at_oods,
+        interaction_at_oods,
         claim,
-        composition_eval_at_oods: as_single_row(&sampled_values[3]).try_into().unwrap(),
+        composition_eval_at_oods,
         eval_domain_samples: construct_eval_domain_samples(proof, config),
         eval_domain_auth_paths: construct_eval_domain_auth_paths(proof, config),
         fri: FriProof {

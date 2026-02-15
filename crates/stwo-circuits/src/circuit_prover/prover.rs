@@ -42,19 +42,16 @@ pub struct CircuitProof {
 #[path = "prover_test.rs"]
 pub mod test;
 
-pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
+pub fn prove_circuit(context: &mut Context<QM31>) -> (CircuitProof, Vec<u32>) {
     finalize_context(context);
     // Generate preprocessed trace.
     let (preprocessed_trace, trace_generator) =
         PreProcessedTrace::generate_preprocessed_trace(&context.circuit);
-    println!("before twiddles{:?}", std::time::Instant::now());
-    // The trace size is the size of the largest column in the preprocessed trace (since all
-    // components have preprocessed columns).
-    let trace_log_size = preprocessed_trace.log_sizes().into_iter().max().unwrap();
-    // let real_trace_log_size
+    let preprocessed_trace_sizes = preprocessed_trace.log_sizes();
 
     let mut pcs_config = PcsConfig::default();
-    let lifting_log_size = trace_log_size + pcs_config.fri_config.log_blowup_factor;
+    let lifting_log_size = preprocessed_trace_sizes.iter().copied().max().unwrap()
+        + pcs_config.fri_config.log_blowup_factor;
 
     pcs_config.lifting_log_size = Some(lifting_log_size);
 
@@ -71,7 +68,6 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
         .circle_domain()
         .half_coset,
     );
-    println!("before extend evals {:?}", std::time::Instant::now());
     // Setup protocol.
     let channel = &mut Blake2sM31Channel::default();
 
@@ -91,7 +87,6 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     // Base trace.
     let mut tree_builder = commitment_scheme.tree_builder();
     let preprocessed_trace_arc = Arc::new(preprocessed_trace);
-    println!("before write trace {:?}", std::time::Instant::now());
     let (claim, interaction_generator) = write_trace(
         context.values(),
         preprocessed_trace_arc.clone(),
@@ -108,7 +103,6 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
 
     // Interaction trace.
     let mut tree_builder = commitment_scheme.tree_builder();
-    println!("before write interaction trace {:?}", std::time::Instant::now());
     let interaction_claim = write_interaction_trace(
         &claim,
         interaction_generator,
@@ -121,7 +115,6 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
 
     interaction_claim.mix_into(channel);
     tree_builder.commit(channel);
-    println!("# pp_trace_arc_ids: {}", preprocessed_trace_arc.ids().len());
     // Component provers.
     let component_builder = CircuitComponents::new(
         &claim,
@@ -132,7 +125,7 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     let components = component_builder.provers();
     // Prove stark.
     let proof = prove_ex::<SimdBackend, _>(&components, channel, commitment_scheme, false);
-    CircuitProof {
+    (CircuitProof {
         pcs_config,
         claim,
         interaction_pow_nonce,
@@ -140,5 +133,5 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
         components: component_builder.components(),
         stark_proof: proof,
         channel_salt,
-    }
+    }, preprocessed_trace_sizes)
 }

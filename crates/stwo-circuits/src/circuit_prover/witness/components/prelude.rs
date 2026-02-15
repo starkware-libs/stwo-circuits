@@ -386,14 +386,6 @@ impl Add for PackedUInt32 {
     }
 }
 
-// unsafe impl Zeroable for PackedUInt32 {
-//     fn zeroed() -> Self {
-//         Self {
-//             simd: unsafe { core::mem::zeroed() },
-//         }
-//     }
-// }
-
 impl Pack for UInt32 {
     type SimdType = PackedUInt32;
 
@@ -605,16 +597,6 @@ pub fn sigma_m31(round: usize, col: usize) -> M31 {
     (sigma(round)[col]).into()
 }
 
-#[derive(Debug)]
-pub struct BlakeSigma {
-    pub col: usize,
-}
-
-impl BlakeSigma {
-    pub fn new(col: usize) -> Self {
-        Self { col }
-    }
-}
 // Pads all rows below <padding_offset> with the first row. Uses the <get_m31> function to get the
 // value in a given row and column.
 pub fn pad<F>(get_m31: F, padding_offset: usize, col: usize) -> Vec<M31>
@@ -623,30 +605,6 @@ where
 {
     let n = padding_offset.next_power_of_two();
     (0..n).map(|i| if i < padding_offset { i } else { 0 }).map(|i| get_m31(i, col)).collect()
-}
-
-impl PreProcessedColumn for BlakeSigma {
-    fn log_size(&self) -> u32 {
-        LOG_N_ROWS
-    }
-
-    // #[cfg(feature = "prover")]
-    fn packed_at(&self, vec_row: usize) -> PackedM31 {
-        assert!(vec_row == 0, "Accessing BlakeSigma out of bounds row {vec_row}");
-        PackedM31::from_array(pad(sigma_m31, N_BLAKE_ROUNDS, self.col).try_into().unwrap())
-    }
-
-    // #[cfg(feature = "prover")]
-    fn gen_column_simd(&self) -> CircleEvaluation<SimdBackend, BaseField, BitReversedOrder> {
-        CircleEvaluation::new(
-            CanonicCoset::new(LOG_N_ROWS).circle_domain(),
-            BaseColumn::from_iter(pad(sigma_m31, N_BLAKE_ROUNDS, self.col)),
-        )
-    }
-
-    fn id(&self) -> PreProcessedColumnId {
-        PreProcessedColumnId { id: format!("{}_{}", BLAKE_SIGMA_TABLE, self.col) }
-    }
 }
 
 #[derive(Debug)]
@@ -662,66 +620,6 @@ impl PackedBlakeRoundSigma {
     }
 }
 
-// pub struct BlakeRound {
-//     memory: Arc<Memory>,
-// }
-
-// impl BlakeRound {
-//     pub fn new(memory: Arc<Memory>) -> Self {
-//         Self { memory }
-//     }
-//     pub fn deduce_output(
-//         &self,
-//         chain: PackedM31,
-//         round: PackedM31,
-//         (state, message_pointer): ([PackedUInt32; 16], PackedM31),
-//     ) -> (PackedM31, PackedM31, ([PackedUInt32; 16], PackedM31)) {
-//         let (chain, round, (state, message_pointer)) = self.blake_round(
-//             chain.into_simd(),
-//             round.into_simd(),
-//             (state.map(|x| x.simd), message_pointer.into_simd()),
-//         );
-
-//         unsafe {
-//             (
-//                 PackedM31::from_simd_unchecked(chain),
-//                 PackedM31::from_simd_unchecked(round),
-//                 (
-//                     state.map(|simd| PackedUInt32 { simd }),
-//                     PackedM31::from_simd_unchecked(message_pointer),
-//                 ),
-//             )
-//         }
-//     }
-//     fn blake_round(
-//         &self,
-//         chain: u32x16,
-//         round: u32x16,
-//         (state, message_pointer): ([u32x16; 16], u32x16),
-//     ) -> (u32x16, u32x16, ([u32x16; 16], u32x16)) {
-//         let sigma = PackedBlakeRoundSigma::packed_sigma(round);
-
-//         let message: [_; N_LANES] = from_fn(|i| {
-//             u32x16::from(from_fn(|j| {
-//                 self.memory.get(message_pointer[j] + sigma[i][j]).as_small() as u32
-//             }))
-//         });
-
-//         let mut state = state;
-//         for (row_index, &[i0, i1, i2, i3]) in G_STATE_INDICES.iter().enumerate() {
-//             [state[i0], state[i1], state[i2], state[i3]] = PackedBlakeG::blake_g([
-//                 state[i0],
-//                 state[i1],
-//                 state[i2],
-//                 state[i3],
-//                 message[row_index * 2],
-//                 message[row_index * 2 + 1],
-//             ]);
-//         }
-
-//         (chain, round + u32x16::splat(1), (state, message_pointer))
-//     }
-// }
 pub const SIMD_ENUMERATION_0: Simd<u32, N_LANES> =
     Simd::from_array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
 
@@ -739,12 +637,10 @@ impl PreProcessedColumn for Seq {
     fn log_size(&self) -> u32 {
         self.log_size
     }
-    // #[cfg(feature = "prover")]
     fn packed_at(&self, vec_row: usize) -> PackedM31 {
         PackedM31::broadcast(M31::from(vec_row * N_LANES))
             + unsafe { PackedM31::from_simd_unchecked(SIMD_ENUMERATION_0) }
     }
-    // #[cfg(feature = "prover")]
     fn gen_column_simd(&self) -> CircleEvaluation<SimdBackend, BaseField, BitReversedOrder> {
         let col = Col::<SimdBackend, BaseField>::from_iter(
             (0..(1 << self.log_size)).map(BaseField::from),
@@ -758,43 +654,8 @@ impl PreProcessedColumn for Seq {
 }
 
 pub trait PreProcessedColumn: Send + Sync {
-    // #[cfg(feature = "prover")]
     fn packed_at(&self, vec_row: usize) -> PackedM31;
     fn log_size(&self) -> u32;
     fn id(&self) -> PreProcessedColumnId;
-    // #[cfg(feature = "prover")]
     fn gen_column_simd(&self) -> CircleEvaluation<SimdBackend, BaseField, BitReversedOrder>;
 }
-
-// #[derive(Debug)]
-// pub struct PackedBlakeG {}
-
-// impl PackedBlakeG {
-//     pub fn deduce_output(
-//         input: [PackedUInt32; NUM_INPUT_WORDS_G],
-//     ) -> [PackedUInt32; NUM_OUTPUT_WORDS_G] {
-//         PackedBlakeG::blake_g(input.map(|x| x.simd)).map(|simd| PackedUInt32 { simd })
-//     }
-
-//     fn blake_g(input: [u32x16; NUM_INPUT_WORDS_G]) -> [u32x16; NUM_OUTPUT_WORDS_G] {
-//         let [mut a, mut b, mut c, mut d, m0, m1] = input;
-
-//         a = a + b + m0;
-//         d ^= a;
-//         d = rotate::<16>(d);
-
-//         c += d;
-//         b ^= c;
-//         b = rotate::<12>(b);
-
-//         a = a + b + m1;
-//         d ^= a;
-//         d = rotate::<8>(d);
-
-//         c += d;
-//         b ^= c;
-//         b = rotate::<7>(b);
-
-//         [a, b, c, d]
-//     }
-// }

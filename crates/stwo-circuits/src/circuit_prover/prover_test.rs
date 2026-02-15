@@ -446,7 +446,7 @@ fn test_prove_and_stark_verify_blake_gate_context() {
     blake_gate_context.finalize_guessed_vars();
     blake_gate_context.validate_circuit();
 
-    let CircuitProof {
+    let (CircuitProof {
         components,
         claim,
         interaction_claim,
@@ -454,7 +454,7 @@ fn test_prove_and_stark_verify_blake_gate_context() {
         stark_proof,
         interaction_pow_nonce,
         channel_salt,
-    } = prove_circuit(&mut blake_gate_context);
+    }, preprocessed_trace_sizes) = prove_circuit(&mut blake_gate_context);
     assert!(stark_proof.is_ok(), "Got error: {}", stark_proof.err().unwrap());
     let proof = stark_proof.unwrap();
 
@@ -469,12 +469,8 @@ fn test_prove_and_stark_verify_blake_gate_context() {
     // Gather the preprocessed sizes by regenerating the preprocessed trace.
     // TODO(Leo): do it in a better way.
 
-    sizes[0] = PreProcessedTrace::generate_preprocessed_trace(&blake_gate_context.circuit)
-        .0
-        .columns
-        .iter()
-        .map(|c| c.len().ilog2())
-        .collect();
+    sizes[0] = preprocessed_trace_sizes;
+
     commitment_scheme.commit(proof.proof.commitments[0], &sizes[0], verifier_channel);
     claim.mix_into(verifier_channel);
     commitment_scheme.commit(proof.proof.commitments[1], &sizes[1], verifier_channel);
@@ -532,8 +528,8 @@ fn compute_initial_state_limbs(context: &Context<QM31>) -> Vec<[M31; 18]> {
         M31::from((initial_state[7] >> 16) & 0xffff),
     ];
     let mut res = vec![];
+
     // Sum the initial state addresses.
-    println!("# of blake gates: {}", context.circuit.blake.len());
     for i in 0..context.circuit.blake.len() {
         let mut tmp = vec![];
         tmp.push(state_id);
@@ -550,7 +546,7 @@ fn test_prove_and_stark_verify_permutation_context() {
     permutation_context.finalize_guessed_vars();
     permutation_context.validate_circuit();
 
-    let CircuitProof {
+    let (CircuitProof {
         pcs_config,
         claim,
         interaction_pow_nonce,
@@ -558,7 +554,7 @@ fn test_prove_and_stark_verify_permutation_context() {
         components,
         stark_proof,
         channel_salt,
-    } = prove_circuit(&mut permutation_context);
+    }, preprocessed_trace_sizes) = prove_circuit(&mut permutation_context);
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
 
@@ -570,8 +566,8 @@ fn test_prove_and_stark_verify_permutation_context() {
         &mut CommitmentSchemeVerifier::<Blake2sM31MerkleChannel>::new(pcs_config);
 
     // Retrieve the expected column sizes in each commitment interaction, from the AIR.
-    let sizes = TreeVec::concat_cols(components.iter().map(|c| c.trace_log_degree_bounds()));
-
+    let mut sizes = TreeVec::concat_cols(components.iter().map(|c| c.trace_log_degree_bounds()));
+    sizes[0] = preprocessed_trace_sizes;
     commitment_scheme.commit(proof.proof.commitments[0], &sizes[0], verifier_channel);
     claim.mix_into(verifier_channel);
     commitment_scheme.commit(proof.proof.commitments[1], &sizes[1], verifier_channel);
@@ -595,7 +591,7 @@ fn test_prove_and_stark_verify_fibonacci_context() {
     fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
 
-    let CircuitProof {
+    let (CircuitProof {
         pcs_config,
         claim,
         interaction_pow_nonce,
@@ -603,7 +599,7 @@ fn test_prove_and_stark_verify_fibonacci_context() {
         components,
         stark_proof,
         channel_salt,
-    } = prove_circuit(&mut fibonacci_context);
+    }, preprocessed_trace_sizes) = prove_circuit(&mut fibonacci_context);
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
 
@@ -615,7 +611,8 @@ fn test_prove_and_stark_verify_fibonacci_context() {
         &mut CommitmentSchemeVerifier::<Blake2sM31MerkleChannel>::new(pcs_config);
 
     // Retrieve the expected column sizes in each commitment interaction, from the AIR.
-    let sizes = TreeVec::concat_cols(components.iter().map(|c| c.trace_log_degree_bounds()));
+    let mut sizes = TreeVec::concat_cols(components.iter().map(|c| c.trace_log_degree_bounds()));
+    sizes[0] = preprocessed_trace_sizes;
 
     commitment_scheme.commit(proof.proof.commitments[0], &sizes[0], verifier_channel);
     claim.mix_into(verifier_channel);
@@ -640,7 +637,7 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
 
-    let CircuitProof {
+    let (CircuitProof {
         pcs_config,
         claim,
         interaction_pow_nonce,
@@ -648,7 +645,7 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
         components: _,
         stark_proof,
         channel_salt,
-    } = prove_circuit(&mut fibonacci_context);
+    }, preprocessed_trace_sizes) = prove_circuit(&mut fibonacci_context);
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
 

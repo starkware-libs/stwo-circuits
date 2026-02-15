@@ -203,11 +203,9 @@ fn fill_blake_columns(
             columns[2].push(0);
             // State before address.
             columns[3].push(state_address);
-            eprintln!("{state_address}");
             // State after address.
             state_address += 1;
             columns[4].push(state_address);
-            eprintln!("{state_address}");
             // Message addresses.
             columns[5].push(*in0);
             columns[6].push(*in1);
@@ -222,7 +220,6 @@ fn fill_blake_columns(
         // Fill the preprocessed column needed by the blake_output component.
         // Set final state address.
         columns[10].push(state_address);
-        eprintln!("{state_address}");
 
         let [out0, out1] = gate.yields()[..] else { panic!("Expected 2 yields for gate") };
         columns[11].push(out0);
@@ -373,7 +370,6 @@ impl PreProcessedTrace {
         // Add QM31 operations columns.
         let qm31_ops_trace_generator =
             add_qm31_ops_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
-        eprintln!("Before blake pp");
         // TODO(Gali): Add Blake columns.
         add_blake_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
 
@@ -469,83 +465,3 @@ fn gen_xor_columns(n_bits: usize) -> [Vec<usize>; 3] {
     }
     columns
 }
-
-// /// A table of a,b,c, where a,b,c are integers and a ^ b = c.
-// ///
-// /// # Attributes
-// ///
-// /// - `n_bits`: The number of bits in each integer.
-// /// - `col_index`: The column index in the preprocessed table.
-// #[derive(Debug)]
-// pub struct BitwiseXor {
-//     n_bits: u32,
-//     col_index: usize,
-// }
-// impl BitwiseXor {
-//     pub const fn new(n_bits: u32, col_index: usize) -> Self {
-//         assert!(col_index < 3, "col_index must be in range 0..=2");
-//         Self { n_bits, col_index }
-//     }
-// }
-
-// impl PreProcessedColumn for BitwiseXor {
-//     fn log_size(&self) -> u32 {
-//         2 * self.n_bits
-//     }
-
-//     fn packed_at(&self, vec_row: usize) -> PackedM31 {
-//         let lhs = || -> u32x16 {
-//             (SIMD_ENUMERATION_0 + Simd::splat((vec_row * N_LANES) as u32)) >> self.n_bits
-//         };
-//         let rhs = || -> u32x16 {
-//             (SIMD_ENUMERATION_0 + Simd::splat((vec_row * N_LANES) as u32))
-//                 & Simd::splat((1 << self.n_bits) - 1)
-//         };
-//         let simd = match self.col_index {
-//             0 => lhs(),
-//             1 => rhs(),
-//             2 => lhs() ^ rhs(),
-//             _ => unreachable!(),
-//         };
-//         unsafe { PackedM31::from_simd_unchecked(simd) }
-//     }
-
-//     fn gen_column_simd(&self) -> CircleEvaluation<SimdBackend, BaseField, BitReversedOrder> {
-//         CircleEvaluation::new(
-//             CanonicCoset::new(self.log_size()).circle_domain(),
-//             BaseColumn::from_simd(
-//                 (0..(1 << (self.log_size() - LOG_N_LANES)))
-//                     .map(|i| self.packed_at(i))
-//                     .collect(),
-//             ),
-//         )
-//     }
-
-//     fn id(&self) -> PreProcessedColumnId {
-//         PreProcessedColumnId {
-//             id: format!("bitwise_xor_{}_{}", self.n_bits, self.col_index),
-//         }
-//     }
-// }
-
-// use std::simd::Simd;
-
-// use stwo::core::fields::m31::M31;
-
-// const N_LANES: usize = 4;
-
-// // Pads all rows below <padding_offset> with the first row. Uses the <get_m31> function to get
-// the // value in a given row and column.
-// pub fn pad<F>(get_m31: F, padding_offset: usize, col: usize) -> Vec<M31>
-// where
-//     F: Fn(usize, usize) -> M31,
-// {
-//     let n = padding_offset.next_power_of_two();
-//     (0..n)
-//         .map(|i| if i < padding_offset { i } else { 0 })
-//         .map(|i| get_m31(i, col))
-//         .collect()
-// }
-
-// pub const SIMD_ENUMERATION_0: Simd<u32, N_LANES> =
-//     Simd::from_array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);

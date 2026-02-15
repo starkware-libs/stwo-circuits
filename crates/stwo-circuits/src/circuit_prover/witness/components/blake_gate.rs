@@ -363,7 +363,6 @@ fn write_trace_simd(
                 })
             })
             .collect();
-    eprintln!("{padding}");
     (
         trace.par_iter_mut(),
         lookup_data.par_iter_mut(),

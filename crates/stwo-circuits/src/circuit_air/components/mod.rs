@@ -16,9 +16,6 @@ pub mod verify_bitwise_xor_7;
 pub mod verify_bitwise_xor_8;
 pub mod verify_bitwise_xor_9;
 
-#[cfg(test)]
-pub mod constraints_regression_test_values;
-
 use crate::circuit_air::{CircuitClaim, CircuitInteractionClaim, CircuitInteractionElements};
 use itertools::chain;
 use stwo::core::air::Component;
