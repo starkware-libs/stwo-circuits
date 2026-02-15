@@ -2,7 +2,7 @@ use crate::circuit_air::statement::{CircuitStatement, INTERACTION_POW_BITS};
 use crate::circuit_prover::prover::{CircuitProof, finalize_context, prove_circuit};
 use crate::circuits::context::TraceContext;
 use crate::circuits::ivalue::{IValue, qm31_from_u32s};
-use crate::circuits::ops::{Guess, permute};
+use crate::circuits::ops::{Guess, output, permute};
 use crate::circuits::{context::Context, ops::guess};
 use crate::eval;
 use crate::stark_verifier::proof::{Claim, ProofConfig};
@@ -34,6 +34,7 @@ pub fn build_fibonacci_context() -> Context<QM31> {
         (809871181 + 0i) + (0 + 0i)u
     "#]]
     .assert_debug_eq(&context.get(b));
+    output(&mut context, b);
 
     context
 }
@@ -159,7 +160,9 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     let proof = stark_proof.unwrap();
 
     // Verify.
-    let statement = CircuitStatement::default();
+    let mut context = TraceContext::default();
+    let statement =
+        CircuitStatement::new(&mut context, &claim.output_addresses, &claim.output_values);
     let claim = Claim {
         packed_enable_bits: pack_enable_bits(&[true, true]),
         packed_component_log_sizes: pack_component_log_sizes(&claim.log_sizes),
@@ -167,7 +170,6 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     };
     let config = ProofConfig::from_statement(&statement, &pcs_config, INTERACTION_POW_BITS);
 
-    let mut context = TraceContext::default();
     let proof = proof_from_stark_proof(&proof, &config, claim, interaction_pow_nonce, channel_salt);
     let proof_vars = proof.guess(&mut context);
 

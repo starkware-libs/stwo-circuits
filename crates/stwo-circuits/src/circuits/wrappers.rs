@@ -1,7 +1,6 @@
 use std::fmt::Debug;
 
 use stwo::core::fields::m31::M31;
-use stwo::core::fields::qm31::QM31;
 
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
@@ -30,9 +29,9 @@ impl<T> M31Wrapper<T> {
     }
 }
 
-impl From<M31> for M31Wrapper<QM31> {
+impl<Value: IValue> From<M31> for M31Wrapper<Value> {
     fn from(value: M31) -> Self {
-        M31Wrapper(value.into())
+        M31Wrapper(Value::from_qm31(value.into()))
     }
 }
 

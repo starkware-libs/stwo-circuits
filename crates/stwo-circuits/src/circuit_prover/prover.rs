@@ -13,7 +13,6 @@ use stwo::core::air::Component;
 use stwo::core::channel::Blake2sM31Channel;
 use stwo::core::channel::Channel;
 use stwo::core::fields::qm31::QM31;
-use stwo::core::fields::qm31::SecureField;
 use stwo::core::pcs::PcsConfig;
 use stwo::core::poly::circle::CanonicCoset;
 use stwo::core::proof::ExtendedStarkProof;
@@ -88,7 +87,7 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     // Base trace.
     let mut tree_builder = commitment_scheme.tree_builder();
     let (claim, interaction_generator) =
-        write_trace(context.values(), &preprocessed_trace, &mut tree_builder, &trace_generator);
+        write_trace(context, &preprocessed_trace, &mut tree_builder, &trace_generator);
     claim.mix_into(channel);
     tree_builder.commit(channel);
 
@@ -107,7 +106,7 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     );
 
     // Validate lookup argument.
-    debug_assert_eq!(lookup_sum(&interaction_claim), SecureField::zero());
+    debug_assert_eq!(lookup_sum(&claim, &interaction_claim, &interaction_elements), QM31::zero());
 
     interaction_claim.mix_into(channel);
     tree_builder.commit(channel);
