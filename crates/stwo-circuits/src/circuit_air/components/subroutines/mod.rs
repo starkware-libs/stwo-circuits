@@ -1,5 +1,4 @@
 pub mod qm_31_into_u_32;
-// pub mod triple_sum_32;
 pub mod bitwise_xor_num_bits_12;
 pub mod bitwise_xor_num_bits_4;
 pub mod bitwise_xor_num_bits_7;
