@@ -88,7 +88,7 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     // Base trace.
     let mut tree_builder = commitment_scheme.tree_builder();
     let (claim, interaction_generator) =
-        write_trace(context.values(), &preprocessed_trace, &mut tree_builder, &trace_generator);
+        write_trace(context, &preprocessed_trace, &mut tree_builder, &trace_generator);
     claim.mix_into(channel);
     tree_builder.commit(channel);
 

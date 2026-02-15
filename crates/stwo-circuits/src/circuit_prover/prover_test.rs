@@ -159,7 +159,8 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     let proof = stark_proof.unwrap();
 
     // Verify.
-    let statement = CircuitStatement::default();
+    let mut context = TraceContext::default();
+    let statement = CircuitStatement::new(&mut context, &claim.outputs);
     let claim = Claim {
         packed_enable_bits: pack_enable_bits(&[true, true]),
         packed_component_log_sizes: pack_component_log_sizes(&claim.log_sizes),
@@ -167,7 +168,6 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     };
     let config = ProofConfig::from_statement(&statement, &pcs_config, INTERACTION_POW_BITS);
 
-    let mut context = TraceContext::default();
     let proof = proof_from_stark_proof(&proof, &config, claim, interaction_pow_nonce, channel_salt);
     let proof_vars = proof.guess(&mut context);
 
