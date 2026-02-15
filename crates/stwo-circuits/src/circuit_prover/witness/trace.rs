@@ -4,6 +4,8 @@ use crate::circuit_air::CircuitInteractionElements;
 use crate::circuit_prover::witness::components::eq;
 use crate::circuit_prover::witness::components::qm31_ops;
 use crate::circuit_prover::witness::preprocessed::PreProcessedTrace;
+use crate::circuits::context::Context;
+use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::prover::TreeBuilder;
@@ -14,11 +16,12 @@ pub struct TraceGenerator {
 }
 
 pub fn write_trace(
-    context_values: &[QM31],
+    context: &Context<QM31>,
     preprocessed_trace: &PreProcessedTrace,
     tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, Blake2sM31MerkleChannel>,
     trace_generator: &TraceGenerator,
 ) -> (CircuitClaim, CircuitInteractionClaimGenerator) {
+    let context_values = context.values();
     let (eq_log_size, eq_lookup_data) =
         eq::write_trace(context_values, preprocessed_trace, tree_builder);
     let (qm31_ops_log_size, qm31_ops_lookup_data) = qm31_ops::write_trace(
@@ -28,8 +31,19 @@ pub fn write_trace(
         &trace_generator.qm31_ops_trace_generator,
     );
 
+    let (output_addresses, output_values) = context
+        .circuit
+        .output
+        .iter()
+        .map(|out| (M31::from(out.in0), context_values[out.in0]))
+        .unzip();
+
     (
-        CircuitClaim { log_sizes: [eq_log_size, qm31_ops_log_size] },
+        CircuitClaim {
+            log_sizes: [eq_log_size, qm31_ops_log_size],
+            output_addresses,
+            output_values,
+        },
         CircuitInteractionClaimGenerator { eq_lookup_data, qm31_ops_lookup_data },
     )
 }
@@ -45,7 +59,7 @@ pub fn write_interaction_trace(
     tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, Blake2sM31MerkleChannel>,
     interaction_elements: &CircuitInteractionElements,
 ) -> CircuitInteractionClaim {
-    let CircuitClaim { log_sizes } = circuit_claim;
+    let CircuitClaim { log_sizes, output_addresses: _, output_values: _ } = circuit_claim;
     let mut component_log_size_iter = log_sizes.iter();
 
     let eq_claimed_sum = eq::write_interaction_trace(

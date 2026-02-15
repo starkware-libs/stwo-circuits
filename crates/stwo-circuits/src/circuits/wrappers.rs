@@ -1,13 +1,12 @@
 use std::fmt::Debug;
 
-use stwo::core::fields::m31::M31;
-use stwo::core::fields::qm31::QM31;
-
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ivalue::NoValue;
 use crate::circuits::ops::{Guess, pointwise_mul};
 use crate::eval;
+use stwo::core::fields::m31::M31;
+use stwo::core::fields::qm31::QM31;
 
 #[cfg(test)]
 #[path = "wrappers_test.rs"]
