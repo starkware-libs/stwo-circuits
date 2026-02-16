@@ -1,5 +1,5 @@
-use crate::cairo_air::component_utils::RelationUse;
 use crate::circuit_air::components::prelude::*;
+use crate::stark_verifier::constraint_eval::RelationUse;
 
 pub const N_PREPROCESSED_COLUMNS: usize = 8;
 pub const N_TRACE_COLUMNS: usize = 12;

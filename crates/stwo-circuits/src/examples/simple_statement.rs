@@ -4,13 +4,13 @@ use stwo::core::fields::m31::M31;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 use super::simple_air::FIB_SEQUENCE_LENGTH;
-use crate::cairo_air::component_utils::RelationUse;
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::div;
 use crate::circuits::simd::Simd;
 use crate::eval;
 use crate::examples::simple_air::{FIB_PREPROCESSED_COLUMNS, LOG_SIZE_LONG, LOG_SIZE_SHORT};
+use crate::stark_verifier::constraint_eval::RelationUse;
 use crate::stark_verifier::constraint_eval::{
     CircuitEval, ComponentDataTrait, CompositionConstraintAccumulator,
 };
