@@ -8,10 +8,10 @@ pub const N_INTERACTION_COLUMNS: usize = 4;
 pub const RELATION_USES_PER_ROW: [RelationUse; 0] = [];
 
 #[allow(unused_variables)]
-pub fn accumulate_constraints(
+pub fn accumulate_constraints<Value: IValue>(
     input: &[Var],
-    context: &mut Context<impl IValue>,
-    component_data: &ComponentData<'_>,
+    context: &mut Context<Value>,
+    component_data: &dyn ComponentDataTrait<Value>,
     acc: &mut CompositionConstraintAccumulator,
 ) {
     let [multiplicity_0, multiplicity_1] = input.try_into().unwrap();
@@ -48,10 +48,10 @@ impl<Value: IValue> CircuitEval<Value> for Component {
     fn evaluate(
         &self,
         context: &mut Context<Value>,
-        component_data: &ComponentData<'_>,
+        component_data: &dyn ComponentDataTrait<Value>,
         acc: &mut CompositionConstraintAccumulator,
     ) {
-        accumulate_constraints(component_data.trace_columns, context, component_data, acc);
+        accumulate_constraints(component_data.trace_columns(), context, component_data, acc);
         // Verify this component has 2 ** 16 rows
         let size_bit = component_data.get_n_instances_bit(context, 16);
         eq(context, size_bit, context.one());
@@ -67,5 +67,79 @@ impl<Value: IValue> CircuitEval<Value> for Component {
 
     fn relation_uses_per_row(&self) -> &[RelationUse] {
         &RELATION_USES_PER_ROW
+    }
+}
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+    use stwo::core::fields::qm31::QM31;
+
+    #[allow(unused_imports)]
+    use crate::cairo_air::components::prelude::PreProcessedColumnId;
+    use crate::cairo_air::sample_evaluations::*;
+    use crate::cairo_air::test::TestComponentData;
+    use crate::circuits::context::Context;
+    use crate::circuits::ivalue::qm31_from_u32s;
+    use crate::stark_verifier::constraint_eval::*;
+
+    use super::Component;
+
+    #[test]
+    fn test_evaluation_result() {
+        let component = Component {};
+        let mut context: Context<QM31> = Default::default();
+        context.enable_assert_eq_on_eval();
+        let trace_columns = [
+            qm31_from_u32s(700269555, 307766862, 1685683780, 745982081),
+            qm31_from_u32s(633160376, 173549134, 1618574916, 745982081),
+        ];
+        let interaction_columns = [qm31_from_u32s(1005168032, 79980996, 1847888101, 1941984119)];
+        let component_data = TestComponentData::from_values(
+            &mut context,
+            &trace_columns,
+            &interaction_columns,
+            qm31_from_u32s(1115374022, 1127856551, 489657863, 643630026),
+            qm31_from_u32s(1398335417, 314974026, 1722107152, 821933968),
+            65536,
+        );
+        let random_coeff =
+            context.new_var(qm31_from_u32s(474642921, 876336632, 1911695779, 974600512));
+        let interaction_elements = [
+            context.new_var(qm31_from_u32s(445623802, 202571636, 1360224996, 131355117)),
+            context.new_var(qm31_from_u32s(476823935, 939223384, 62486082, 122423602)),
+        ];
+        let preprocessed_columns = HashMap::from([
+            (
+                PreProcessedColumnId { id: "bitwise_xor_8_0".to_owned() },
+                context.constant(qm31_from_u32s(1541997479, 760368373, 967211141, 1503140347)),
+            ),
+            (
+                PreProcessedColumnId { id: "bitwise_xor_8_1".to_owned() },
+                context.constant(qm31_from_u32s(1609106658, 894586101, 1034320005, 1503140347)),
+            ),
+            (
+                PreProcessedColumnId { id: "bitwise_xor_8_2".to_owned() },
+                context.constant(qm31_from_u32s(1407779121, 491932917, 832993413, 1503140347)),
+            ),
+        ]);
+        let public_params = HashMap::from([]);
+        let mut accumulator = CompositionConstraintAccumulator::new(
+            &mut context,
+            preprocessed_columns,
+            public_params,
+            random_coeff,
+            interaction_elements,
+        );
+        accumulator.set_enable_bit(context.one());
+        component.evaluate(&mut context, &component_data, &mut accumulator);
+        accumulator.finalize_logup_in_pairs(
+            &mut context,
+            <TestComponentData as ComponentDataTrait<QM31>>::interaction_columns(&component_data),
+            &component_data,
+        );
+
+        let result = accumulator.finalize();
+        let result_value = context.get(result);
+        assert_eq!(result_value, VERIFY_BITWISE_XOR_8_SAMPLE_EVAL_RESULT)
     }
 }

@@ -24,10 +24,10 @@ pub const RELATION_USES_PER_ROW: [RelationUse; 18] = [
 ];
 
 #[allow(unused_variables)]
-pub fn accumulate_constraints(
+pub fn accumulate_constraints<Value: IValue>(
     input: &[Var],
-    context: &mut Context<impl IValue>,
-    component_data: &ComponentData<'_>,
+    context: &mut Context<Value>,
+    component_data: &dyn ComponentDataTrait<Value>,
     acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
     let [

@@ -34,18 +34,48 @@ pub struct ComponentData<'a> {
     n_instances_bits: &'a [Simd],
 }
 
-impl<'a> ComponentData<'a> {
+pub trait ComponentDataTrait<Value: IValue> {
+    fn trace_columns(&self) -> &[Var];
+
+    fn interaction_columns(&self) -> &[InteractionAtOods<Var>];
+
+    fn n_instances(&self) -> Var;
+
+    fn claimed_sum(&self) -> Var;
+
     /// Returns one of the bits of the component number of rows (bit 0 is LSB).
     /// Because the number of rows is always a power of two, only one of the bits
     /// will be 1 and the rest will be zero.
-    pub fn get_n_instances_bit(&self, context: &mut Context<impl IValue>, bit: usize) -> Var {
-        Simd::unpack_idx(context, &self.n_instances_bits[bit], self.index)
-    }
+    fn get_n_instances_bit(&self, context: &mut Context<Value>, bit: usize) -> Var;
 
     // The number of bits required to represent the size of the largest supported component size.
     // Note that this is one more than log2(max_component_size), because 2**n is a (n+1)-bit
     // number.
-    pub fn max_component_size_bits(&self) -> usize {
+    fn max_component_size_bits(&self) -> usize;
+}
+
+impl<'a, Value: IValue> ComponentDataTrait<Value> for ComponentData<'a> {
+    fn trace_columns(&self) -> &[Var] {
+        self.trace_columns
+    }
+
+    fn interaction_columns(&self) -> &[InteractionAtOods<Var>] {
+        self.interaction_columns
+    }
+
+    fn n_instances(&self) -> Var {
+        self.n_instances
+    }
+
+    fn claimed_sum(&self) -> Var {
+        self.claimed_sum
+    }
+
+    fn get_n_instances_bit(&self, context: &mut Context<Value>, bit: usize) -> Var {
+        Simd::unpack_idx(context, &self.n_instances_bits[bit], self.index)
+    }
+
+    fn max_component_size_bits(&self) -> usize {
         self.n_instances_bits.len()
     }
 }
@@ -135,11 +165,11 @@ impl CompositionConstraintAccumulator {
         self.terms.push(logup_term(context, self.interaction_elements, numerator, element));
     }
 
-    pub fn finalize_logup_in_pairs(
+    pub fn finalize_logup_in_pairs<Value: IValue>(
         &mut self,
-        context: &mut Context<impl IValue>,
+        context: &mut Context<Value>,
         interaction_columns: &[InteractionAtOods<Var>],
-        component_data: &ComponentData<'_>,
+        component_data: &dyn ComponentDataTrait<Value>,
     ) {
         // TODO(Gali): Get the terms from the component instead of storing them in the accumulator.
         let n_batches = self.terms.len().div_ceil(2);
@@ -169,7 +199,7 @@ impl CompositionConstraintAccumulator {
         let cur_cumsum = from_partial_evals(context, last_chunk.each_ref().map(|x| x.at_oods));
 
         let diff = eval!(context, ((cur_cumsum) - (prev_row_cumsum)) - (prev_col_cumsum));
-        let cumsum_shift = div(context, component_data.claimed_sum, component_data.n_instances);
+        let cumsum_shift = div(context, component_data.claimed_sum(), component_data.n_instances());
         // Instead of checking diff = num / denom, check diff = num / denom - cumsum_shift.
         // This makes (num / denom - cumsum_shift) have sum zero, which makes the constraint
         // uniform - apply on all rows.
@@ -198,7 +228,7 @@ pub trait CircuitEval<Value: IValue> {
     fn evaluate(
         &self,
         context: &mut Context<Value>,
-        component_data: &ComponentData<'_>,
+        component_data: &dyn ComponentDataTrait<Value>,
         acc: &mut CompositionConstraintAccumulator,
     );
 

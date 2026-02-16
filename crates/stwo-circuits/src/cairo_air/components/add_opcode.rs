@@ -13,10 +13,10 @@ pub const RELATION_USES_PER_ROW: [RelationUse; 4] = [
 ];
 
 #[allow(unused_variables)]
-pub fn accumulate_constraints(
+pub fn accumulate_constraints<Value: IValue>(
     input: &[Var],
-    context: &mut Context<impl IValue>,
-    component_data: &ComponentData<'_>,
+    context: &mut Context<Value>,
+    component_data: &dyn ComponentDataTrait<Value>,
     acc: &mut CompositionConstraintAccumulator,
 ) {
     let [
@@ -427,10 +427,10 @@ impl<Value: IValue> CircuitEval<Value> for Component {
     fn evaluate(
         &self,
         context: &mut Context<Value>,
-        component_data: &ComponentData<'_>,
+        component_data: &dyn ComponentDataTrait<Value>,
         acc: &mut CompositionConstraintAccumulator,
     ) {
-        accumulate_constraints(component_data.trace_columns, context, component_data, acc);
+        accumulate_constraints(component_data.trace_columns(), context, component_data, acc);
     }
 
     fn trace_columns(&self) -> usize {
@@ -443,5 +443,173 @@ impl<Value: IValue> CircuitEval<Value> for Component {
 
     fn relation_uses_per_row(&self) -> &[RelationUse] {
         &RELATION_USES_PER_ROW
+    }
+}
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+    use stwo::core::fields::qm31::QM31;
+
+    #[allow(unused_imports)]
+    use crate::cairo_air::components::prelude::PreProcessedColumnId;
+    use crate::cairo_air::sample_evaluations::*;
+    use crate::cairo_air::test::TestComponentData;
+    use crate::circuits::context::Context;
+    use crate::circuits::ivalue::qm31_from_u32s;
+    use crate::stark_verifier::constraint_eval::*;
+
+    use super::Component;
+
+    #[test]
+    fn test_evaluation_result() {
+        let component = Component {};
+        let mut context: Context<QM31> = Default::default();
+        context.enable_assert_eq_on_eval();
+        let trace_columns = [
+            qm31_from_u32s(1659099300, 905558730, 651199673, 1375009625),
+            qm31_from_u32s(1591990121, 771341002, 584090809, 1375009625),
+            qm31_from_u32s(1793317658, 1173994186, 785417401, 1375009625),
+            qm31_from_u32s(1726208479, 1039776458, 718308537, 1375009625),
+            qm31_from_u32s(1390662584, 368687818, 382764217, 1375009625),
+            qm31_from_u32s(1323553405, 234470090, 315655353, 1375009625),
+            qm31_from_u32s(1524880942, 637123274, 516981945, 1375009625),
+            qm31_from_u32s(1457771763, 502905546, 449873081, 1375009625),
+            qm31_from_u32s(48489085, 1979300555, 1188070585, 1375009625),
+            qm31_from_u32s(2128863553, 1845082826, 1120961721, 1375009625),
+            qm31_from_u32s(1852335767, 645078115, 2059236183, 343880121),
+            qm31_from_u32s(1919444946, 779295843, 2126345047, 343880121),
+            qm31_from_u32s(1986554125, 913513571, 45970264, 343880122),
+            qm31_from_u32s(2053663304, 1047731299, 113079128, 343880122),
+            qm31_from_u32s(1583899051, 108207203, 1790800727, 343880121),
+            qm31_from_u32s(1651008230, 242424931, 1857909591, 343880121),
+            qm31_from_u32s(1718117409, 376642659, 1925018455, 343880121),
+            qm31_from_u32s(1785226588, 510860387, 1992127319, 343880121),
+            qm31_from_u32s(1315462335, 1718819938, 1522365270, 343880121),
+            qm31_from_u32s(1382571514, 1853037666, 1589474134, 343880121),
+            qm31_from_u32s(1986820986, 913513739, 45970432, 343880178),
+            qm31_from_u32s(1919711807, 779296011, 2126345215, 343880177),
+            qm31_from_u32s(2121039344, 1181949195, 180188160, 343880178),
+            qm31_from_u32s(2053930165, 1047731467, 113079296, 343880178),
+            qm31_from_u32s(1718384270, 376642827, 1925018623, 343880177),
+            qm31_from_u32s(1651275091, 242425099, 1857909759, 343880177),
+            qm31_from_u32s(1852602628, 645078283, 2059236351, 343880177),
+            qm31_from_u32s(1785493449, 510860555, 1992127487, 343880177),
+            qm31_from_u32s(1449947554, 1987255562, 1656583166, 343880177),
+            qm31_from_u32s(1382838375, 1853037834, 1589474302, 343880177),
+            qm31_from_u32s(510356977, 108207322, 717059022, 343880161),
+            qm31_from_u32s(577466156, 242425050, 784167886, 343880161),
+            qm31_from_u32s(376138619, 1987255513, 582841293, 343880161),
+            qm31_from_u32s(443247798, 2121473241, 649950157, 343880161),
+            qm31_from_u32s(778793693, 645078234, 985494478, 343880161),
+            qm31_from_u32s(845902872, 779295962, 1052603342, 343880161),
+            qm31_from_u32s(644575335, 376642778, 851276750, 343880161),
+            qm31_from_u32s(711684514, 510860506, 918385614, 343880161),
+            qm31_from_u32s(1047230409, 1181949146, 1253929934, 343880161),
+            qm31_from_u32s(1114339588, 1316166874, 1321038798, 343880161),
+            qm31_from_u32s(1717810224, 376642479, 1925018275, 343880061),
+            qm31_from_u32s(1650701045, 242424751, 1857909411, 343880061),
+            qm31_from_u32s(1583591866, 108207023, 1790800547, 343880061),
+            qm31_from_u32s(1516482687, 2121472942, 1723691682, 343880061),
+            qm31_from_u32s(1986246940, 913513391, 45970084, 343880062),
+            qm31_from_u32s(1919137761, 779295663, 2126344867, 343880061),
+            qm31_from_u32s(1852028582, 645077935, 2059236003, 343880061),
+            qm31_from_u32s(1784919403, 510860207, 1992127139, 343880061),
+            qm31_from_u32s(1180936792, 1450384302, 1388147362, 343880061),
+            qm31_from_u32s(1113827613, 1316166574, 1321038498, 343880061),
+            qm31_from_u32s(241305891, 1718819697, 448623205, 343880041),
+            qm31_from_u32s(308415070, 1853037425, 515732069, 343880041),
+            qm31_from_u32s(375524249, 1987255153, 582840933, 343880041),
+            qm31_from_u32s(442633428, 2121472881, 649949797, 343880041),
+            qm31_from_u32s(509742607, 108206962, 717058662, 343880041),
+            qm31_from_u32s(576851786, 242424690, 784167526, 343880041),
+            qm31_from_u32s(643960965, 376642418, 851276390, 343880041),
+            qm31_from_u32s(711070144, 510860146, 918385254, 343880041),
+            qm31_from_u32s(778179323, 645077874, 985494118, 343880041),
+            qm31_from_u32s(845288502, 779295602, 1052602982, 343880041),
+            qm31_from_u32s(375831434, 1987255333, 582841113, 343880101),
+            qm31_from_u32s(308722255, 1853037605, 515732249, 343880101),
+            qm31_from_u32s(510049792, 108207142, 717058842, 343880101),
+            qm31_from_u32s(442940613, 2121473061, 649949977, 343880101),
+            qm31_from_u32s(644268150, 376642598, 851276570, 343880101),
+            qm31_from_u32s(577158971, 242424870, 784167706, 343880101),
+            qm31_from_u32s(778486508, 645078054, 985494298, 343880101),
+            qm31_from_u32s(711377329, 510860326, 918385434, 343880101),
+            qm31_from_u32s(912704866, 913513510, 1119712026, 343880101),
+            qm31_from_u32s(845595687, 779295782, 1052603162, 343880101),
+            qm31_from_u32s(1046820829, 1181948906, 1253929694, 343880081),
+            qm31_from_u32s(1113930008, 1316166634, 1321038558, 343880081),
+            qm31_from_u32s(912602471, 913513450, 1119711966, 343880081),
+            qm31_from_u32s(979711650, 1047731178, 1186820830, 343880081),
+            qm31_from_u32s(778384113, 645077994, 985494238, 343880081),
+            qm31_from_u32s(845493292, 779295722, 1052603102, 343880081),
+            qm31_from_u32s(644165755, 376642538, 851276510, 343880081),
+            qm31_from_u32s(711274934, 510860266, 918385374, 343880081),
+            qm31_from_u32s(1583694261, 108207083, 1790800607, 343880081),
+            qm31_from_u32s(1650803440, 242424811, 1857909471, 343880081),
+            qm31_from_u32s(108388425, 1450385012, 314406248, 343880298),
+            qm31_from_u32s(41279246, 1316167284, 247297384, 343880298),
+            qm31_from_u32s(2121653714, 1181949555, 180188520, 343880298),
+            qm31_from_u32s(2054544535, 1047731827, 113079656, 343880298),
+            qm31_from_u32s(1987435356, 913514099, 45970792, 343880298),
+            qm31_from_u32s(1920326177, 779296371, 2126345575, 343880297),
+            qm31_from_u32s(1853216998, 645078643, 2059236711, 343880297),
+            qm31_from_u32s(1786107819, 510860915, 1992127847, 343880297),
+            qm31_from_u32s(1718998640, 376643187, 1925018983, 343880297),
+            qm31_from_u32s(1651889461, 242425459, 1857910119, 343880297),
+            qm31_from_u32s(779367739, 645078582, 985494826, 343880277),
+            qm31_from_u32s(846476918, 779296310, 1052603690, 343880277),
+            qm31_from_u32s(913586097, 913514038, 1119712554, 343880277),
+            qm31_from_u32s(980695276, 1047731766, 1186821418, 343880277),
+            qm31_from_u32s(510931023, 108207670, 717059370, 343880277),
+            qm31_from_u32s(578040202, 242425398, 784168234, 343880277),
+            qm31_from_u32s(645149381, 376643126, 851277098, 343880277),
+            qm31_from_u32s(712258560, 510860854, 918385962, 343880277),
+            qm31_from_u32s(1316241171, 1718820406, 1522365738, 343880277),
+            qm31_from_u32s(1383350350, 1853038134, 1589474602, 343880277),
+            qm31_from_u32s(1340598866, 536394231, 1198633759, 502514173),
+            qm31_from_u32s(1407708045, 670611959, 1265742623, 502514173),
+            qm31_from_u32s(902525010, 1115155995, 130434373, 2116865290),
+        ];
+        let interaction_columns = [
+            qm31_from_u32s(1005168032, 79980996, 1847888101, 1941984119),
+            qm31_from_u32s(1072277211, 214198724, 1914996965, 1941984119),
+            qm31_from_u32s(1139386390, 348416452, 1982105829, 1941984119),
+            qm31_from_u32s(1206495569, 482634180, 2049214693, 1941984119),
+            qm31_from_u32s(736731316, 1690593731, 1579452644, 1941984119),
+        ];
+        let component_data = TestComponentData::from_values(
+            &mut context,
+            &trace_columns,
+            &interaction_columns,
+            qm31_from_u32s(1115374022, 1127856551, 489657863, 643630026),
+            qm31_from_u32s(1398335417, 314974026, 1722107152, 821933968),
+            32768,
+        );
+        let random_coeff =
+            context.new_var(qm31_from_u32s(474642921, 876336632, 1911695779, 974600512));
+        let interaction_elements = [
+            context.new_var(qm31_from_u32s(445623802, 202571636, 1360224996, 131355117)),
+            context.new_var(qm31_from_u32s(476823935, 939223384, 62486082, 122423602)),
+        ];
+        let preprocessed_columns = HashMap::from([]);
+        let public_params = HashMap::from([]);
+        let mut accumulator = CompositionConstraintAccumulator::new(
+            &mut context,
+            preprocessed_columns,
+            public_params,
+            random_coeff,
+            interaction_elements,
+        );
+        accumulator.set_enable_bit(context.one());
+        component.evaluate(&mut context, &component_data, &mut accumulator);
+        accumulator.finalize_logup_in_pairs(
+            &mut context,
+            <TestComponentData as ComponentDataTrait<QM31>>::interaction_columns(&component_data),
+            &component_data,
+        );
+
+        let result = accumulator.finalize();
+        let result_value = context.get(result);
+        assert_eq!(result_value, ADD_OPCODE_SAMPLE_EVAL_RESULT)
     }
 }

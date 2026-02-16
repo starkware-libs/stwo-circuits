@@ -6,10 +6,10 @@ pub const RELATION_USES_PER_ROW: [RelationUse; 1] =
     [RelationUse { relation_id: "VerifyInstruction", uses: 1 }];
 
 #[allow(unused_variables)]
-pub fn accumulate_constraints(
+pub fn accumulate_constraints<Value: IValue>(
     input: &[Var],
-    context: &mut Context<impl IValue>,
-    component_data: &ComponentData<'_>,
+    context: &mut Context<Value>,
+    component_data: &dyn ComponentDataTrait<Value>,
     acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
     let [decode_instruction_161c9_input_pc, offset0_col0, dst_base_fp_col1, ap_update_add_1_col2] =

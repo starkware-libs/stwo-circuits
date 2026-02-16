@@ -6,10 +6,10 @@ const ID_TO_BIG_MAX_ROWS: u32 = 1 << MAX_SEQUENCE_LOG_SIZE;
 pub const N_TRACE_COLUMNS: usize = 29;
 pub const N_INTERACTION_COLUMNS: usize = 32;
 
-pub fn accumulate_constraints(
+pub fn accumulate_constraints<Value: IValue>(
     input: &[Var],
-    context: &mut Context<impl IValue>,
-    component_data: &ComponentData<'_>,
+    context: &mut Context<Value>,
+    component_data: &dyn ComponentDataTrait<Value>,
     acc: &mut CompositionConstraintAccumulator,
     index: u32,
 ) {
@@ -131,11 +131,11 @@ impl<Value: IValue> CircuitEval<Value> for Component {
     fn evaluate(
         &self,
         context: &mut Context<Value>,
-        component_data: &ComponentData<'_>,
+        component_data: &dyn ComponentDataTrait<Value>,
         acc: &mut CompositionConstraintAccumulator,
     ) {
         accumulate_constraints(
-            component_data.trace_columns,
+            component_data.trace_columns(),
             context,
             component_data,
             acc,
