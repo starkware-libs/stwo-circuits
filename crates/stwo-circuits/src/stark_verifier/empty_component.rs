@@ -1,8 +1,7 @@
 use crate::{
-    cairo_air::component_utils::RelationUse,
     circuits::{context::Context, ivalue::IValue},
     stark_verifier::constraint_eval::{
-        CircuitEval, ComponentDataTrait, CompositionConstraintAccumulator,
+        CircuitEval, ComponentDataTrait, CompositionConstraintAccumulator, RelationUse,
     },
 };
 

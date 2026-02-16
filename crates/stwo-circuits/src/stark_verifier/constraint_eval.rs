@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use crate::cairo_air::component_utils::RelationUse;
 use crate::circuits::context::{Context, Var};
 use crate::circuits::ivalue::IValue;
 use crate::circuits::ops::{div, from_partial_evals};
@@ -15,6 +14,12 @@ use crate::stark_verifier::statement::{EvaluateArgs, Statement};
 use itertools::{Itertools, izip, zip_eq};
 use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
+
+#[derive(Debug)]
+pub struct RelationUse {
+    pub relation_id: &'static str,
+    pub uses: u64,
+}
 
 // Data accosiated with a specific compoonent.
 pub struct ComponentData<'a> {
