@@ -39,6 +39,27 @@ pub fn double_point(
     }
 }
 
+/// Computes `p + p`.
+pub fn double_point_simd(
+    context: &mut Context<impl IValue>,
+    p: &CirclePoint<Simd>,
+) -> CirclePoint<Simd> {
+
+}
+
+/// Computes `p + p`.
+pub fn repeated_double_point(
+    context: &mut Context<impl IValue>,
+    p: &CirclePoint<M31Wrapper<Var>>,
+) -> CirclePoint<M31Wrapper<Var>> {
+    let xy = eval!(context, (*p.x.get()) * (*p.y.get()));
+    let new_y = eval!(context, (xy) + (xy));
+    CirclePoint {
+        x: M31Wrapper::new_unsafe(double_x(context, *p.x.get())),
+        y: M31Wrapper::new_unsafe(new_y),
+    }
+}
+
 /// Computes `point0 + point1` on the circle.
 pub fn add_points(
     context: &mut Context<impl IValue>,
