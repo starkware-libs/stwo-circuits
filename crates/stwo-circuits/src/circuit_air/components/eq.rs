@@ -1,8 +1,5 @@
-use crate::{
-    cairo_air::component_utils::RelationUse,
-    circuit_air::{components::prelude::*, relations::GATE_RELATION_ID},
-    stark_verifier::constraint_eval::ComponentDataTrait,
-};
+use crate::circuit_air::{components::prelude::*, relations::GATE_RELATION_ID};
+use crate::stark_verifier::constraint_eval::{ComponentDataTrait, RelationUse};
 
 pub const N_PREPROCESSED_COLUMNS: usize = 2;
 pub const N_TRACE_COLUMNS: usize = 8;
