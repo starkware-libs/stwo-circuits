@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::sync::{Arc, mpsc};
 
 use crate::circuit_air::CircuitClaim;
 use crate::circuit_air::CircuitInteractionClaim;
@@ -19,6 +19,7 @@ use crate::circuit_prover::witness::components::verify_bitwise_xor_8;
 use crate::circuit_prover::witness::components::verify_bitwise_xor_9;
 use crate::circuit_prover::witness::components::verify_bitwise_xor_12;
 use crate::circuit_prover::witness::preprocessed::PreProcessedTrace;
+use rayon::{join, scope};
 use stwo::core::fields::qm31::QM31;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::prover::TreeBuilder;
@@ -39,7 +40,7 @@ pub fn write_trace(
     // Write eq component.
     let (eq_trace, eq_log_size, eq_lookup_data) =
         eq::write_trace(context_values, preprocessed_trace_ref);
-    tree_builder.extend_evals(eq_trace.to_evals());
+    let mut trace_evals = eq_trace.to_evals();
 
     // Write qm31_ops component.
     let (qm31_ops_trace, qm31_ops_log_size, qm31_ops_lookup_data) = qm31_ops::write_trace(
@@ -47,7 +48,7 @@ pub fn write_trace(
         preprocessed_trace_ref,
         &trace_generator.qm31_ops_trace_generator,
     );
-    tree_builder.extend_evals(qm31_ops_trace.to_evals());
+    trace_evals.extend(qm31_ops_trace.to_evals());
 
     let verify_bitwise_xor_8_state =
         verify_bitwise_xor_8::ClaimGenerator::new(preprocessed_trace.clone());
@@ -83,7 +84,7 @@ pub fn write_trace(
         &mut blake_round_generator,
         &mut triple_xor_32_state,
     );
-    tree_builder.extend_evals(blake_gate_trace.to_evals());
+    trace_evals.extend(blake_gate_trace.to_evals());
 
     // Write blake round component.
     let (blake_round_trace, blake_round_log_size, blake_round_interaction_claim_gen) =
@@ -92,7 +93,7 @@ pub fn write_trace(
             &blake_message_state,
             &mut blake_g_generator,
         );
-    tree_builder.extend_evals(blake_round_trace.to_evals());
+    trace_evals.extend(blake_round_trace.to_evals());
 
     // Write blake round sigma component.
     let (
@@ -100,79 +101,115 @@ pub fn write_trace(
         _blake_round_sigma_claim,
         blake_round_sigma_interaction_claim_gen,
     ) = blake_round_sigma_generator.write_trace();
-    tree_builder.extend_evals(blake_round_sigma_trace.to_evals());
+    trace_evals.extend(blake_round_sigma_trace.to_evals());
 
-    // Write blake g component.
-    let (blake_g_trace, blake_g_claim, blake_g_interaction_claim_gen) = blake_g_generator
-        .write_trace(
-            &verify_bitwise_xor_8_state,
-            &verify_bitwise_xor_12_state,
-            &verify_bitwise_xor_4_state,
-            &verify_bitwise_xor_7_state,
-            &verify_bitwise_xor_9_state,
-        );
-    tree_builder.extend_evals(blake_g_trace.to_evals());
-
-    // Write blake output component.
+    // Write blake g, blake output, and triple xor 32 components in parallel.
     let blake_output_generator =
         blake_output::ClaimGenerator::new(blake_output_component_input, preprocessed_trace);
-    let (blake_output_trace, blake_output_claim, blake_output_interaction_claim_gen) =
-        blake_output_generator.write_trace();
-    tree_builder.extend_evals(blake_output_trace.to_evals());
-
-    // Write triple xor 32 component.
-    let (triple_xor_32_trace, triple_xor_32_claim, triple_xor_32_interaction_claim_gen) =
-        triple_xor_32_state.write_trace(&verify_bitwise_xor_8_state);
-    tree_builder.extend_evals(triple_xor_32_trace.to_evals());
+    let (
+        (blake_g_trace, blake_g_claim, blake_g_interaction_claim_gen),
+        (
+            (blake_output_trace, blake_output_claim, blake_output_interaction_claim_gen),
+            (triple_xor_32_trace, triple_xor_32_claim, triple_xor_32_interaction_claim_gen),
+        ),
+    ) = join(
+        || {
+            blake_g_generator.write_trace(
+                &verify_bitwise_xor_8_state,
+                &verify_bitwise_xor_12_state,
+                &verify_bitwise_xor_4_state,
+                &verify_bitwise_xor_7_state,
+                &verify_bitwise_xor_9_state,
+            )
+        },
+        || {
+            join(
+                || blake_output_generator.write_trace(),
+                || triple_xor_32_state.write_trace(&verify_bitwise_xor_8_state),
+            )
+        },
+    );
+    trace_evals.extend(blake_g_trace.to_evals());
+    trace_evals.extend(blake_output_trace.to_evals());
+    trace_evals.extend(triple_xor_32_trace.to_evals());
 
     // NOTE: Temporarily skip xor and range-check components for debugging.
-    // Write verify bitwise xor 8 component.
+    // Write xor and range-check components in parallel.
+    let (verify_bitwise_xor_8_tx, verify_bitwise_xor_8_rx) = mpsc::channel();
+    let (verify_bitwise_xor_12_tx, verify_bitwise_xor_12_rx) = mpsc::channel();
+    let (verify_bitwise_xor_4_tx, verify_bitwise_xor_4_rx) = mpsc::channel();
+    let (verify_bitwise_xor_7_tx, verify_bitwise_xor_7_rx) = mpsc::channel();
+    let (verify_bitwise_xor_9_tx, verify_bitwise_xor_9_rx) = mpsc::channel();
+    let (range_check_15_tx, range_check_15_rx) = mpsc::channel();
+    let (range_check_16_tx, range_check_16_rx) = mpsc::channel();
+
+    scope(|s| {
+        s.spawn(move |_| {
+            let _ = verify_bitwise_xor_8_tx.send(verify_bitwise_xor_8_state.write_trace());
+        });
+        s.spawn(move |_| {
+            let _ = verify_bitwise_xor_12_tx.send(verify_bitwise_xor_12_state.write_trace());
+        });
+        s.spawn(move |_| {
+            let _ = verify_bitwise_xor_4_tx.send(verify_bitwise_xor_4_state.write_trace());
+        });
+        s.spawn(move |_| {
+            let _ = verify_bitwise_xor_7_tx.send(verify_bitwise_xor_7_state.write_trace());
+        });
+        s.spawn(move |_| {
+            let _ = verify_bitwise_xor_9_tx.send(verify_bitwise_xor_9_state.write_trace());
+        });
+        s.spawn(move |_| {
+            let _ = range_check_15_tx.send(range_check_15_state.write_trace());
+        });
+        s.spawn(move |_| {
+            let _ = range_check_16_tx.send(range_check_16_state.write_trace());
+        });
+    });
+
     let (
         verify_bitwise_xor_8_trace,
         _verify_bitwise_xor_8_claim,
         verify_bitwise_xor_8_interaction_claim_gen,
-    ) = verify_bitwise_xor_8_state.write_trace();
-    tree_builder.extend_evals(verify_bitwise_xor_8_trace.to_evals());
+    ) = verify_bitwise_xor_8_rx.recv().expect("verify_bitwise_xor_8 trace task failed");
+    trace_evals.extend(verify_bitwise_xor_8_trace.to_evals());
     let (
         verify_bitwise_xor_12_trace,
         _verify_bitwise_xor_12_claim,
         verify_bitwise_xor_12_interaction_claim_gen,
-    ) = verify_bitwise_xor_12_state.write_trace();
-    tree_builder.extend_evals(verify_bitwise_xor_12_trace);
+    ) = verify_bitwise_xor_12_rx.recv().expect("verify_bitwise_xor_12 trace task failed");
+    trace_evals.extend(verify_bitwise_xor_12_trace);
 
-    // Write verify bitwise xor 4 component.
     let (
         verify_bitwise_xor_4_trace,
         _verify_bitwise_xor_4_claim,
         verify_bitwise_xor_4_interaction_claim_gen,
-    ) = verify_bitwise_xor_4_state.write_trace();
-    tree_builder.extend_evals(verify_bitwise_xor_4_trace.to_evals());
+    ) = verify_bitwise_xor_4_rx.recv().expect("verify_bitwise_xor_4 trace task failed");
+    trace_evals.extend(verify_bitwise_xor_4_trace.to_evals());
 
-    // Write verify bitwise xor 7 component.
     let (
         verify_bitwise_xor_7_trace,
         _verify_bitwise_xor_7_claim,
         verify_bitwise_xor_7_interaction_claim_gen,
-    ) = verify_bitwise_xor_7_state.write_trace();
-    tree_builder.extend_evals(verify_bitwise_xor_7_trace.to_evals());
+    ) = verify_bitwise_xor_7_rx.recv().expect("verify_bitwise_xor_7 trace task failed");
+    trace_evals.extend(verify_bitwise_xor_7_trace.to_evals());
 
-    // Write verify bitwise xor 9 component.
     let (
         verify_bitwise_xor_9_trace,
         _verify_bitwise_xor_9_claim,
         verify_bitwise_xor_9_interaction_claim_gen,
-    ) = verify_bitwise_xor_9_state.write_trace();
-    tree_builder.extend_evals(verify_bitwise_xor_9_trace.to_evals());
+    ) = verify_bitwise_xor_9_rx.recv().expect("verify_bitwise_xor_9 trace task failed");
+    trace_evals.extend(verify_bitwise_xor_9_trace.to_evals());
 
-    // Write range check 15 component.
     let (range_check_15_trace, _range_check_15_claim, range_check_15_interaction_claim_gen) =
-        range_check_15_state.write_trace();
-    tree_builder.extend_evals(range_check_15_trace.to_evals());
+        range_check_15_rx.recv().expect("range_check_15 trace task failed");
+    trace_evals.extend(range_check_15_trace.to_evals());
 
-    // Write range check 16 component.
     let (range_check_16_trace, _range_check_16_claim, range_check_16_interaction_claim_gen) =
-        range_check_16_state.write_trace();
-    tree_builder.extend_evals(range_check_16_trace.to_evals());
+        range_check_16_rx.recv().expect("range_check_16 trace task failed");
+    trace_evals.extend(range_check_16_trace.to_evals());
+
+    tree_builder.extend_evals(trace_evals);
 
     (
         CircuitClaim {

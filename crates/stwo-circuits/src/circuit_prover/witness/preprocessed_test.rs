@@ -36,10 +36,7 @@ fn test_generate_preprocessed_trace() {
         PreProcessedTrace::generate_preprocessed_trace(&circuit).0.get_trace::<SimdBackend>();
 
     assert_eq!(preprocessed_trace.len(), 73);
-    let lengths = preprocessed_trace
-        .iter()
-        .map(|column| column.values.len())
-        .collect_vec();
+    let lengths = preprocessed_trace.iter().map(|column| column.values.len()).collect_vec();
     expect![[r#"
         [
             2,
