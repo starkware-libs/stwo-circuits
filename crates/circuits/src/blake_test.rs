@@ -1,0 +1,50 @@
+use blake2::{Blake2s256, Digest};
+use rstest::rstest;
+use stwo::core::vcs::blake2_hash::reduce_to_m31;
+
+use crate::blake::{blake, qm31_from_bytes};
+use crate::context::TraceContext;
+use crate::ivalue::qm31_from_u32s;
+use crate::ops::{Guess, eq, guess};
+use crate::stats::Stats;
+
+#[rstest]
+#[case::success(false)]
+#[case::wrong_output(true)]
+fn test_blake(#[case] wrong_output: bool) {
+    let mut context = TraceContext::default();
+
+    let input = [
+        qm31_from_u32s(1, 2, 3, 4),
+        qm31_from_u32s(5, 6, 7, 8),
+        qm31_from_u32s(9, 10, 11, 12),
+        qm31_from_u32s(13, 14, 15, 16),
+        qm31_from_u32s(17, 0, 0, 0),
+    ]
+    .guess(&mut context);
+
+    let mut hasher = Blake2s256::new();
+    hasher.update([
+        1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4, 0, 0, 0, 5, 0, 0, 0, 6, 0, 0, 0, 7, 0, 0, 0, 8, 0,
+        0, 0, 9, 0, 0, 0, 10, 0, 0, 0, 11, 0, 0, 0, 12, 0, 0, 0, 13, 0, 0, 0, 14, 0, 0, 0, 15, 0,
+        0, 0, 16, 0, 0, 0, 17, 0,
+    ]);
+    let mut expected_hash: [u8; 32] = reduce_to_m31(hasher.finalize().into());
+    if wrong_output {
+        expected_hash[0] += 1;
+    }
+
+    let output = blake(&mut context, &input, 66);
+    let out0 = guess(&mut context, qm31_from_bytes(expected_hash[0..16].try_into().unwrap()));
+    let out1 = guess(&mut context, qm31_from_bytes(expected_hash[16..32].try_into().unwrap()));
+    eq(&mut context, output.0, out0);
+    eq(&mut context, output.1, out1);
+
+    assert_eq!(context.stats, Stats { blake_updates: 2, guess: 9, equals: 2, ..Stats::default() });
+
+    context.finalize_guessed_vars();
+    assert_eq!(context.circuit.compute_multiplicities().0, vec![13, 1, 2, 2, 2, 2, 2, 1, 1, 2, 2]);
+    context.circuit.check_yields();
+
+    assert_eq!(context.is_circuit_valid(), !wrong_output);
+}
