@@ -224,7 +224,7 @@ pub fn accumulate_constraints<Value: IValue>(
         partial_ec_mul_window_bits_18_output_limb_67_col202,
         partial_ec_mul_window_bits_18_output_limb_68_col203,
         partial_ec_mul_window_bits_18_output_limb_69_col204,
-        multiplicity_0,
+        multiplicity_0_col205,
     ] = input.try_into().unwrap();
     let seq = seq_of_component_size(context, component_data, acc);
 
@@ -744,7 +744,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, input_limb_1_col1),
         eval!(context, input_limb_2_col2),
     ];
-    let numerator_11 = eval!(context, -(multiplicity_0));
+    let numerator_11 = eval!(context, -(multiplicity_0_col205));
     acc.add_to_relation(context, numerator_11, tuple_11);
 }
 

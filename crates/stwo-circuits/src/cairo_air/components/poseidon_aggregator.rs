@@ -365,7 +365,7 @@ pub fn accumulate_constraints<Value: IValue>(
         unpacked_limb_22_col338,
         unpacked_limb_24_col339,
         unpacked_limb_25_col340,
-        multiplicity_0,
+        multiplicity_0_col341,
     ] = input.try_into().unwrap();
 
     read_positive_known_id_num_bits_252::accumulate_constraints(
@@ -1132,7 +1132,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, input_limb_4_col4),
         eval!(context, input_limb_5_col5),
     ];
-    let numerator_37 = eval!(context, -(multiplicity_0));
+    let numerator_37 = eval!(context, -(multiplicity_0_col341));
     acc.add_to_relation(context, numerator_37, tuple_37);
 }
 

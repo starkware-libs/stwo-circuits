@@ -330,13 +330,15 @@ pub fn accumulate_constraints<Value: IValue>(
         carry_24_col293,
         carry_25_col294,
         carry_26_col295,
-        enabler,
+        enabler_col296,
     ] = input.try_into().unwrap();
-    let enabler_constraint_value = eval!(context, ((enabler) * (enabler)) - (enabler));
-    acc.add_constraint(context, enabler_constraint_value);
+
+    let constraint_0_value =
+        eval!(context, ((enabler_col296) * (enabler_col296)) - (enabler_col296));
+    acc.add_constraint(context, constraint_0_value);
 
     // Use PedersenPointsTableWindowBits18.
-    let tuple_0 = &[
+    let tuple_1 = &[
         eval!(context, 1444721856),
         eval!(context, ((262144) * (input_limb_1_col1)) + (input_limb_2_col2)),
         eval!(context, pedersen_points_table_window_bits_18_output_limb_0_col72),
@@ -396,8 +398,8 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, pedersen_points_table_window_bits_18_output_limb_54_col126),
         eval!(context, pedersen_points_table_window_bits_18_output_limb_55_col127),
     ];
-    let numerator_0 = eval!(context, 1);
-    acc.add_to_relation(context, numerator_0, tuple_0);
+    let numerator_1 = eval!(context, 1);
+    acc.add_to_relation(context, numerator_1, tuple_1);
 
     ec_add::accumulate_constraints(
         &[
@@ -688,7 +690,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
 
     // Use PartialEcMulWindowBits18.
-    let tuple_2 = &[
+    let tuple_3 = &[
         eval!(context, 1621226978),
         eval!(context, input_limb_0_col0),
         eval!(context, input_limb_1_col1),
@@ -763,11 +765,11 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, input_limb_70_col70),
         eval!(context, input_limb_71_col71),
     ];
-    let numerator_2 = eval!(context, enabler);
-    acc.add_to_relation(context, numerator_2, tuple_2);
+    let numerator_3 = eval!(context, enabler_col296);
+    acc.add_to_relation(context, numerator_3, tuple_3);
 
     // Yield PartialEcMulWindowBits18.
-    let tuple_3 = &[
+    let tuple_4 = &[
         eval!(context, 1621226978),
         eval!(context, input_limb_0_col0),
         eval!(context, (input_limb_1_col1) + (1)),
@@ -842,8 +844,8 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, result_y_limb_26_col266),
         eval!(context, result_y_limb_27_col267),
     ];
-    let numerator_3 = eval!(context, -(enabler));
-    acc.add_to_relation(context, numerator_3, tuple_3);
+    let numerator_4 = eval!(context, -(enabler_col296));
+    acc.add_to_relation(context, numerator_4, tuple_4);
 }
 
 pub struct Component {}

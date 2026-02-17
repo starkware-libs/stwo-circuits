@@ -74,10 +74,11 @@ pub fn accumulate_constraints<Value: IValue>(
         xor_col49,
         xor_col50,
         xor_col51,
-        enabler,
+        enabler_col52,
     ] = input.try_into().unwrap();
-    let enabler_constraint_value = eval!(context, ((enabler) * (enabler)) - (enabler));
-    acc.add_constraint(context, enabler_constraint_value);
+
+    let constraint_0_value = eval!(context, ((enabler_col52) * (enabler_col52)) - (enabler_col52));
+    acc.add_constraint(context, constraint_0_value);
 
     triple_sum_32::accumulate_constraints(
         &[
@@ -236,7 +237,7 @@ pub fn accumulate_constraints<Value: IValue>(
         .unwrap();
 
     // Yield BlakeG.
-    let tuple_8 = &[
+    let tuple_9 = &[
         eval!(context, 1139985212),
         eval!(context, input_limb_0_col0),
         eval!(context, input_limb_1_col1),
@@ -259,8 +260,8 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, xor_rot_32_r_8_output_tmp_f72c8_65_limb_0),
         eval!(context, xor_rot_32_r_8_output_tmp_f72c8_65_limb_1),
     ];
-    let numerator_8 = eval!(context, -(enabler));
-    acc.add_to_relation(context, numerator_8, tuple_8);
+    let numerator_9 = eval!(context, -(enabler_col52));
+    acc.add_to_relation(context, numerator_9, tuple_9);
 }
 
 pub struct Component {}

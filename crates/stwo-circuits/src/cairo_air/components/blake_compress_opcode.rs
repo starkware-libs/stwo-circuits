@@ -197,11 +197,13 @@ pub fn accumulate_constraints<Value: IValue>(
         high_14_ms_bits_col170,
         high_5_ms_bits_col171,
         new_state_7_id_col172,
-        enabler,
+        enabler_col173,
     ] = input.try_into().unwrap();
     let seq = seq_of_component_size(context, component_data, acc);
-    let enabler_constraint_value = eval!(context, ((enabler) * (enabler)) - (enabler));
-    acc.add_constraint(context, enabler_constraint_value);
+
+    let constraint_0_value =
+        eval!(context, ((enabler_col173) * (enabler_col173)) - (enabler_col173));
+    acc.add_constraint(context, constraint_0_value);
 
     let [
         decode_blake_opcode_output_tmp_53f39_42_limb_0,
@@ -330,7 +332,7 @@ pub fn accumulate_constraints<Value: IValue>(
     .unwrap();
 
     // Yield BlakeRound.
-    let tuple_2 = &[
+    let tuple_3 = &[
         eval!(context, 40528774),
         eval!(context, seq),
         eval!(context, 0),
@@ -368,11 +370,11 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, 23520),
         eval!(context, decode_blake_opcode_output_tmp_53f39_42_limb_1),
     ];
-    let numerator_2 = eval!(context, -(1));
-    acc.add_to_relation(context, numerator_2, tuple_2);
+    let numerator_3 = eval!(context, -(1));
+    acc.add_to_relation(context, numerator_3, tuple_3);
 
     // Use BlakeRound.
-    let tuple_3 = &[
+    let tuple_4 = &[
         eval!(context, 40528774),
         eval!(context, seq),
         eval!(context, 10),
@@ -410,8 +412,8 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, blake_round_output_limb_31_col123),
         eval!(context, blake_round_output_limb_32_col124),
     ];
-    let numerator_3 = eval!(context, 1);
-    acc.add_to_relation(context, numerator_3, tuple_3);
+    let numerator_4 = eval!(context, 1);
+    acc.add_to_relation(context, numerator_4, tuple_4);
 
     create_blake_output::accumulate_constraints(
         &[
@@ -606,24 +608,24 @@ pub fn accumulate_constraints<Value: IValue>(
     );
 
     // Use Opcodes.
-    let tuple_13 = &[
+    let tuple_14 = &[
         eval!(context, 428564188),
         eval!(context, input_pc_col0),
         eval!(context, input_ap_col1),
         eval!(context, input_fp_col2),
     ];
-    let numerator_13 = eval!(context, enabler);
-    acc.add_to_relation(context, numerator_13, tuple_13);
+    let numerator_14 = eval!(context, enabler_col173);
+    acc.add_to_relation(context, numerator_14, tuple_14);
 
     // Yield Opcodes.
-    let tuple_14 = &[
+    let tuple_15 = &[
         eval!(context, 428564188),
         eval!(context, (input_pc_col0) + (1)),
         eval!(context, (input_ap_col1) + (ap_update_add_1_col9)),
         eval!(context, input_fp_col2),
     ];
-    let numerator_14 = eval!(context, -(enabler));
-    acc.add_to_relation(context, numerator_14, tuple_14);
+    let numerator_15 = eval!(context, -(enabler_col173));
+    acc.add_to_relation(context, numerator_15, tuple_15);
 }
 
 pub struct Component {}

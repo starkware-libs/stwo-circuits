@@ -14,7 +14,7 @@ pub fn accumulate_constraints<Value: IValue>(
     component_data: &dyn ComponentDataTrait<Value>,
     acc: &mut CompositionConstraintAccumulator,
 ) {
-    let [multiplicity_0, multiplicity_1] = input.try_into().unwrap();
+    let [multiplicity_0_col0, multiplicity_1_col1] = input.try_into().unwrap();
     let bitwise_xor_8_0 =
         acc.get_preprocessed_column(&PreProcessedColumnId { id: "bitwise_xor_8_0".to_owned() });
     let bitwise_xor_8_1 =
@@ -29,7 +29,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, bitwise_xor_8_1),
         eval!(context, bitwise_xor_8_2),
     ];
-    let numerator_0 = eval!(context, -(multiplicity_0));
+    let numerator_0 = eval!(context, -(multiplicity_0_col0));
     acc.add_to_relation(context, numerator_0, tuple_0);
 
     // Yield VerifyBitwiseXor_8_B.
@@ -39,7 +39,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, bitwise_xor_8_1),
         eval!(context, bitwise_xor_8_2),
     ];
-    let numerator_1 = eval!(context, -(multiplicity_1));
+    let numerator_1 = eval!(context, -(multiplicity_1_col1));
     acc.add_to_relation(context, numerator_1, tuple_1);
 }
 
