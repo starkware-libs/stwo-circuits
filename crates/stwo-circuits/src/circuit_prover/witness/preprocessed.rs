@@ -191,10 +191,10 @@ fn fill_blake_columns(
     columns: &mut [Vec<usize>; N_BLAKE_PP_COLUMNS],
 ) {
     // IV should be in state_address 0.
-    let mut state_address = 0;
+    let mut state_address = 1;
     let mut message_length = 0;
     for gate in blake.iter() {
-        for [in0, in1, in2, in3] in gate.input.iter() {
+        for (i, [in0, in1, in2, in3]) in gate.input.iter().enumerate() {
             // The current message length split to 2 u16.
             message_length = gate.n_bytes.min(message_length + 16 * 4);
             columns[0].push(message_length & 0xffff);
@@ -204,9 +204,18 @@ fn fill_blake_columns(
             columns[2].push(0);
 
             // State before and after addresses.
+            let is_first_compression = i == 0;
+            let state_address_before = if is_first_compression {
+                // First compression starts from IV at address 0.
+                0
+            } else {
+                state_address
+            };
+            columns[3].push(state_address_before);
 
-            columns[3].push(state_address);
-            state_address += 1;
+            if !is_first_compression {
+                state_address += 1;
+            }
             columns[4].push(state_address);
 
             // Message addresses.

@@ -1,7 +1,9 @@
 use crate::circuit_air::statement::CircuitStatement;
 use crate::circuit_air::statement::INTERACTION_POW_BITS;
 use crate::circuit_air::{CircuitClaim, CircuitInteractionElements};
-use crate::circuit_prover::prover::{CircuitProof, finalize_context, prove_circuit};
+use crate::circuit_prover::prover::{
+    CircuitProof, blake_iv_public_logup_sum, finalize_context, prove_circuit,
+};
 use crate::circuit_prover::witness::components::blake_gate::blake2s_initial_state;
 use crate::circuit_prover::witness::components::{
     blake_g, blake_gate, blake_output, blake_round, blake_round_sigma, eq, qm31_ops,
@@ -496,14 +498,16 @@ fn test_prove_and_stark_verify_blake_gate_context() {
     )
     .unwrap();
 
-    // Compute the expected logup term. In this case it's only the terms corresponding to blake's
-    // IV.
-    let mut yield_sum: QM31 = QM31::zero();
-    let limbs = compute_initial_state_limbs(&blake_gate_context);
-    for limb in limbs {
-        let denom: QM31 = common_lookup_elements.combine(&limb);
-        yield_sum += denom.inverse();
-    }
+    // // Compute the expected logup term. In this case it's only the terms corresponding to blake's
+    // // IV.
+    // let mut yield_sum: QM31 = QM31::zero();
+    // let limbs = compute_initial_state_limbs(&blake_gate_context);
+    // for limb in limbs {
+    //     let denom: QM31 = common_lookup_elements.combine(&limb);
+    //     yield_sum += denom.inverse();
+    // }
+
+    let yield_sum = blake_iv_public_logup_sum(&blake_gate_context, &common_lookup_elements);
 
     let total_claim_sum: QM31 = interaction_claim.claimed_sums.iter().sum();
 
