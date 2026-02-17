@@ -105,7 +105,7 @@ pub fn fri_commit(
 // }
 
 /// Validates that the values in `fri_input` are consistent with the FRI commitment.
-pub fn fri_decommit_with_jumps<Value: IValue>(
+pub fn fri_decommit<Value: IValue>(
     context: &mut Context<Value>,
     proof: &FriProof<Var>,
     config: &FriConfig,
@@ -119,7 +119,7 @@ pub fn fri_decommit_with_jumps<Value: IValue>(
         commit: FriCommitProof { layer_commitments, last_layer_coefs },
         auth_paths,
         line_coset_vals_per_query_per_tree,
-        circle_fri_siblings
+        circle_fri_siblings,
     } = proof;
 
     let steps: Vec<usize> = vec![]; // TODO: part of config?
@@ -139,7 +139,7 @@ pub fn fri_decommit_with_jumps<Value: IValue>(
     let mut base_point = points.clone();
     let mut bit_counter = 0;
 
-    for (tree_idx, (root, step)) in zip_eq(layer_commitments, steps).enumerate().skip(1) {
+    for (tree_idx, (root, step)) in zip_eq(&layer_commitments[1..], steps).enumerate().skip(1) {
         let coset_per_query = &line_coset_vals_per_query_per_tree[tree_idx];
         let bit_range = (1 + bit_counter)..(1 + bit_counter + step);
 
@@ -192,7 +192,8 @@ pub fn fri_decommit_with_jumps<Value: IValue>(
     }
 }
 
-/// A vector v = [v_1, ..., v_step], where v_i is a vector of length 2^(step - i), corresponding to the twiddles of the internal fold.
+/// A vector v = [v_1, ..., v_step], where v_i is a vector of length 2^(step - i), corresponding to
+/// the twiddles of the internal fold.
 type JumpTwiddles = Vec<Vec<Var>>;
 
 fn compute_twiddles_from_base_point<Value: IValue>(

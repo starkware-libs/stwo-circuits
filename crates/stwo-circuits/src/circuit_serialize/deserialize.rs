@@ -217,10 +217,10 @@ fn deserialize_fri_proof(
     }
     let auth_paths = AuthPaths { data: auth_path_trees };
 
-    let mut fri_siblings = Vec::with_capacity(config.log_trace_size);
-    for _ in 0..config.log_trace_size {
-        fri_siblings.push(deserialize_vec(data, config.n_queries)?);
-    }
+    // let mut fri_siblings = Vec::with_capacity(config.log_trace_size);
+    // for _ in 0..config.log_trace_size {
+    //     fri_siblings.push(deserialize_vec(data, config.n_queries)?);
+    // }
 
-    Ok(FriProof { commit, auth_paths, fri_siblings })
+    Ok(FriProof { commit, auth_paths, circle_fri_siblings: vec![], line_coset_vals_per_query_per_tree: vec![] })
 }

@@ -16,7 +16,7 @@ pub struct FriConfig {
     /// Log2 of the number of coefficients in the last layer of FRI.
     pub log_n_last_layer_coefs: usize,
     // Jumps
-    pub steps: Vec<usize>
+    pub steps: Vec<usize>,
 }
 
 impl FriConfig {
@@ -71,7 +71,12 @@ pub struct FriProof<T> {
 impl<T> FriProof<T> {
     /// Validates that the size of the members of the struct are consistent with the config.
     pub fn validate_structure(&self, config: &FriConfig) {
-        let FriProof { commit, auth_paths, line_coset_vals_per_query_per_tree, circle_fri_siblings } = self;
+        let FriProof {
+            commit,
+            auth_paths,
+            line_coset_vals_per_query_per_tree,
+            circle_fri_siblings,
+        } = self;
         let log_evaluation_domain_size = config.log_evaluation_domain_size();
 
         commit.validate_structure(config);
@@ -105,7 +110,9 @@ impl<Value: IValue> Guess<Value> for FriProof<Value> {
             commit: self.commit.guess(context),
             auth_paths: self.auth_paths.guess(context),
             circle_fri_siblings: self.circle_fri_siblings.guess(context),
-            line_coset_vals_per_query_per_tree: self.line_coset_vals_per_query_per_tree.guess(context)
+            line_coset_vals_per_query_per_tree: self
+                .line_coset_vals_per_query_per_tree
+                .guess(context),
         }
     }
 }
@@ -125,7 +132,8 @@ pub fn empty_fri_proof(config: &FriConfig) -> FriProof<NoValue> {
             .collect(),
     };
 
-    let line_coset_vals_per_query_per_tree = config.steps.iter().map(|step| vec![vec![NoValue; 1 <<  step]; config.n_queries]).collect();
+    let line_coset_vals_per_query_per_tree =
+        config.steps.iter().map(|step| vec![vec![NoValue; 1 << step]; config.n_queries]).collect();
     FriProof {
         commit: FriCommitProof {
             layer_commitments: vec![empty_hash; config.log_trace_size],
@@ -133,6 +141,6 @@ pub fn empty_fri_proof(config: &FriConfig) -> FriProof<NoValue> {
         },
         auth_paths,
         circle_fri_siblings: vec![NoValue; config.n_queries],
-        line_coset_vals_per_query_per_tree
+        line_coset_vals_per_query_per_tree,
     }
 }

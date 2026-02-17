@@ -618,10 +618,10 @@ dependencies = [
  "starknet-curve 0.6.0",
  "starknet-ff",
  "starknet-types-core",
- "stwo",
+ "stwo 2.0.0 (git+https://github.com/starkware-libs/stwo?rev=dcc899bc)",
  "stwo-cairo-common",
  "stwo-cairo-serialize",
- "stwo-constraint-framework",
+ "stwo-constraint-framework 2.0.0 (git+https://github.com/starkware-libs/stwo?rev=dcc899bc)",
  "thiserror",
  "tracing",
 ]
@@ -3415,6 +3415,33 @@ checksum = "7da8b5736845d9f2fcb837ea5d9e2628564b3b043a70948a3f0b778838c5fb4f"
 [[package]]
 name = "stwo"
 version = "2.0.0"
+dependencies = [
+ "blake2",
+ "blake3",
+ "bytemuck",
+ "cfg-if",
+ "dashmap",
+ "educe 0.5.11",
+ "fnv",
+ "hashbrown 0.15.5",
+ "hex",
+ "indexmap",
+ "itertools 0.12.1",
+ "num-traits",
+ "rand 0.8.5",
+ "rayon",
+ "serde",
+ "starknet-crypto 0.6.2",
+ "starknet-ff",
+ "stwo-std-shims",
+ "thiserror",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "stwo"
+version = "2.0.0"
 source = "git+https://github.com/starkware-libs/stwo?rev=dcc899bc#dcc899bcd96ecd14327b4a46d0af2a4bd61945fd"
 dependencies = [
  "blake2",
@@ -3443,13 +3470,34 @@ dependencies = [
 [[package]]
 name = "stwo-air-utils"
 version = "2.0.0"
+dependencies = [
+ "bytemuck",
+ "itertools 0.12.1",
+ "rayon",
+ "stwo 2.0.0",
+ "stwo-air-utils-derive 2.0.0",
+]
+
+[[package]]
+name = "stwo-air-utils"
+version = "2.0.0"
 source = "git+https://github.com/starkware-libs/stwo?rev=dcc899bc#dcc899bcd96ecd14327b4a46d0af2a4bd61945fd"
 dependencies = [
  "bytemuck",
  "itertools 0.12.1",
  "rayon",
- "stwo",
- "stwo-air-utils-derive",
+ "stwo 2.0.0 (git+https://github.com/starkware-libs/stwo?rev=dcc899bc)",
+ "stwo-air-utils-derive 2.0.0 (git+https://github.com/starkware-libs/stwo?rev=dcc899bc)",
+]
+
+[[package]]
+name = "stwo-air-utils-derive"
+version = "2.0.0"
+dependencies = [
+ "itertools 0.13.0",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.115",
 ]
 
 [[package]]
@@ -3483,7 +3531,7 @@ dependencies = [
  "rayon",
  "serde",
  "serde_json",
- "stwo",
+ "stwo 2.0.0 (git+https://github.com/starkware-libs/stwo?rev=dcc899bc)",
  "stwo-cairo-common",
  "thiserror",
  "tracing",
@@ -3503,9 +3551,9 @@ dependencies = [
  "starknet-curve 0.6.0",
  "starknet-ff",
  "starknet-types-core",
- "stwo",
+ "stwo 2.0.0 (git+https://github.com/starkware-libs/stwo?rev=dcc899bc)",
  "stwo-cairo-serialize",
- "stwo-constraint-framework",
+ "stwo-constraint-framework 2.0.0 (git+https://github.com/starkware-libs/stwo?rev=dcc899bc)",
 ]
 
 [[package]]
@@ -3528,7 +3576,7 @@ dependencies = [
  "serde_json",
  "sonic-rs",
  "starknet-ff",
- "stwo",
+ "stwo 2.0.0 (git+https://github.com/starkware-libs/stwo?rev=dcc899bc)",
  "stwo-cairo-adapter",
  "stwo-cairo-prover",
  "stwo-cairo-serialize",
@@ -3561,13 +3609,13 @@ dependencies = [
  "starknet-curve 0.6.0",
  "starknet-ff",
  "starknet-types-core",
- "stwo",
- "stwo-air-utils",
- "stwo-air-utils-derive",
+ "stwo 2.0.0 (git+https://github.com/starkware-libs/stwo?rev=dcc899bc)",
+ "stwo-air-utils 2.0.0 (git+https://github.com/starkware-libs/stwo?rev=dcc899bc)",
+ "stwo-air-utils-derive 2.0.0 (git+https://github.com/starkware-libs/stwo?rev=dcc899bc)",
  "stwo-cairo-adapter",
  "stwo-cairo-common",
  "stwo-cairo-serialize",
- "stwo-constraint-framework",
+ "stwo-constraint-framework 2.0.0 (git+https://github.com/starkware-libs/stwo?rev=dcc899bc)",
  "tracing",
 ]
 
@@ -3577,7 +3625,7 @@ version = "1.0.0"
 source = "git+https://github.com/starkware-libs/stwo-cairo?rev=cf18bdf4#cf18bdf4710bd084dbcb0af90102e635d5de1935"
 dependencies = [
  "starknet-ff",
- "stwo",
+ "stwo 2.0.0 (git+https://github.com/starkware-libs/stwo?rev=dcc899bc)",
  "stwo-cairo-serialize-derive",
 ]
 
@@ -3625,13 +3673,27 @@ dependencies = [
  "num-traits",
  "rayon",
  "rstest",
- "stwo",
- "stwo-air-utils",
- "stwo-air-utils-derive",
+ "stwo 2.0.0",
+ "stwo-air-utils 2.0.0",
+ "stwo-air-utils-derive 2.0.0",
  "stwo-cairo-dev-utils",
  "stwo-cairo-prover",
  "stwo-cairo-utils",
- "stwo-constraint-framework",
+ "stwo-constraint-framework 2.0.0",
+]
+
+[[package]]
+name = "stwo-constraint-framework"
+version = "2.0.0"
+dependencies = [
+ "hashbrown 0.15.5",
+ "itertools 0.12.1",
+ "num-traits",
+ "rand 0.8.5",
+ "rayon",
+ "stwo 2.0.0",
+ "stwo-std-shims",
+ "tracing",
 ]
 
 [[package]]
@@ -3644,7 +3706,7 @@ dependencies = [
  "num-traits",
  "rand 0.8.5",
  "rayon",
- "stwo",
+ "stwo 2.0.0 (git+https://github.com/starkware-libs/stwo?rev=dcc899bc)",
  "stwo-std-shims",
  "tracing",
 ]

@@ -155,9 +155,10 @@ impl CircuitSerialize for FriCommitProof<QM31> {
 
 impl CircuitSerialize for FriProof<QM31> {
     fn serialize(&self, output: &mut Vec<u8>) {
-        let Self { commit, auth_paths, fri_siblings } = self;
+        // TODO(Leo): change back.
+        let Self { commit, auth_paths, .. } = self;
         commit.serialize(output);
         auth_paths.serialize(output);
-        fri_siblings.serialize(output);
+        // fri_siblings.serialize(output);
     }
 }

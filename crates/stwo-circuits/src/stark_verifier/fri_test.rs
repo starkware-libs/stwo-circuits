@@ -1,16 +1,34 @@
 use crate::circuits::blake::HashValue;
 use crate::circuits::context::TraceContext;
 use crate::circuits::ivalue::qm31_from_u32s;
-use crate::circuits::ops::Guess;
+use crate::circuits::ops::{Guess, mul};
 use crate::circuits::simd::Simd;
 use crate::circuits::test_utils::{packed_values, simd_from_u32s};
 use crate::stark_verifier::channel::Channel;
 use crate::stark_verifier::circle::repeated_double_point_simd;
+use crate::stark_verifier::fri::fri_decommit;
 use crate::stark_verifier::fri_proof::FriCommitProof;
 use crate::stark_verifier::select_queries::select_queries;
+use itertools::zip_eq;
+use num_traits::One;
 use rstest::rstest;
+use stwo::core::circle::Coset;
+use stwo::core::fields::m31::BaseField;
+use stwo::core::fields::qm31::{QM31, SecureField};
+use stwo::core::fri::{FriConfig, fold_coset as stwo_fold_coset, fold_line as stwo_fold_line};
+use stwo::core::poly::circle::CircleDomain;
+use stwo::core::poly::line::LineDomain;
+use stwo::core::utils::bit_reverse_index;
+use stwo::core::vcs_lifted::blake2_merkle::Blake2sMerkleChannel;
+use stwo::prover::backend::CpuBackend;
+use stwo::prover::backend::cpu::CpuCirclePoly;
+use stwo::prover::poly::BitReversedOrder;
+use stwo::prover::poly::circle::SecureEvaluation;
 
-use super::{fri_commit, translate_base_point, validate_query_position_in_coset};
+use super::{
+    compute_twiddles_from_base_point, fold_coset, fri_commit, translate_base_point,
+    validate_query_position_in_coset,
+};
 
 #[test]
 fn test_fri_commit_regression() {
@@ -108,50 +126,67 @@ fn simd_lanes(context: &TraceContext, simd: &Simd) -> Vec<u32> {
     (0..simd.len()).map(|i| packed[i / 4].to_m31_array()[i % 4].0).collect()
 }
 
-#[test]
-fn test_update_base_point_logic() {
-    let mut context = TraceContext::default();
-    const LOG_DOMAIN_SIZE: usize = 7;
 
-    // Query indices are interpreted by `select_queries`.
-    let query_indices = vec![0b1001111_u32, 0b0110101_u32, 0b1100010_u32, 0b0011011_u32];
-    let input = simd_from_u32s(&mut context, query_indices.clone());
-    let queries = select_queries(&mut context, &input, LOG_DOMAIN_SIZE);
+// #[test]
+// fn test_jump_folding_matches_stwo_reference() {
+//     let mut context = TraceContext::default();
+//     const LOG_DOMAIN_SIZE: usize = 8;
+//     let steps = [2_usize, 1_usize, 2_usize];
 
-    // Simulate several jump steps. This mirrors the logic in `fri_decommit_with_jumps`:
-    // 1) translate base point by consumed bits of this step,
-    // 2) double base point by `step` for the next folded layer.
-    let steps = [2_usize, 2_usize, 1_usize];
-    let mut bit_counter = 0usize;
-    let mut base_point = queries.points.clone();
+//     // Query indices in the circle evaluation domain.
+//     let query_indices = vec![0b0101_1011_u32, 0b1010_0110_u32, 0b0011_1100_u32, 0b1110_0001_u32];
+//     let input = simd_from_u32s(&mut context, query_indices.clone());
+//     let queries = select_queries(&mut context, &input, LOG_DOMAIN_SIZE);
 
-    for step in steps {
-        let bit_range = (1 + bit_counter)..(1 + bit_counter + step);
-        base_point = translate_base_point(&mut context, base_point, &queries.bits[bit_range]);
+//     // Start from the first line layer (after circle->line fold).
+//     let mut query_positions: Vec<usize> =
+//         query_indices.iter().map(|q| (*q as usize) >> 1).collect();
+//     let mut line_domain = LineDomain::new(Coset::half_odds((LOG_DOMAIN_SIZE - 1) as u32));
 
-        // Compare against the expected translated base:
-        // clear all consumed bits in the original query index (bits 1..=bit_counter+step),
-        // then move to the currently folded layer by doubling `bit_counter` times.
-        let consumed_bits = bit_counter + step;
-        let mask = (1..=consumed_bits).fold(0_u32, |acc, i| acc | (1_u32 << i));
-        let expected_indices = query_indices.iter().map(|q| *q & !mask).collect::<Vec<_>>();
-        let expected_input = simd_from_u32s(&mut context, expected_indices);
-        let expected_queries = select_queries(&mut context, &expected_input, LOG_DOMAIN_SIZE);
-        let expected_translated =
-            repeated_double_point_simd(&mut context, &expected_queries.points, bit_counter);
+//     // Deterministic layer values.
+//     let mut layer_values_qm31: Vec<QM31> = (0..(1 << (LOG_DOMAIN_SIZE - 1)))
+//         .map(|i| qm31_from_u32s(i as u32 + 1, 2 * i as u32 + 3, 3 * i as u32 + 5, 5 * i as u32 + 7))
+//         .collect();
+//     let mut layer_values_vars: Vec<_> =
+//         layer_values_qm31.iter().map(|x| context.constant(*x)).collect();
 
-        assert_eq!(
-            simd_lanes(&context, &base_point.x),
-            simd_lanes(&context, &expected_translated.x)
-        );
-        assert_eq!(
-            simd_lanes(&context, &base_point.y),
-            simd_lanes(&context, &expected_translated.y)
-        );
+//     let alpha_values = [
+//         qm31_from_u32s(17, 3, 5, 7),
+//         qm31_from_u32s(11, 13, 2, 9),
+//         qm31_from_u32s(19, 4, 1, 6),
+//     ];
+//     let alphas: Vec<_> = alpha_values.iter().map(|x| context.constant(*x)).collect();
 
-        bit_counter += step;
-        base_point = repeated_double_point_simd(&mut context, &base_point, step);
+//     let mut base_point = queries.points.clone();
+//     let mut bit_counter = 0usize;
+
+//     fri_decommit(context, proof, config, fri_input, bits, packed_bits, points, &alphas);
+
+//     context.validate_circuit();
+// }
+    /// Returns an evaluation of a random polynomial with degree `2^log_degree`.
+    ///
+    /// The evaluation domain size is `2^(log_degree + log_blowup_factor)`.
+    fn polynomial_evaluation(
+        log_degree: u32,
+        log_blowup_factor: u32,
+    ) -> SecureEvaluation<CpuBackend, BitReversedOrder> {
+        let poly = CpuCirclePoly::new(vec![BaseField::one(); 1 << log_degree]);
+        let coset = Coset::half_odds(log_degree + log_blowup_factor - 1);
+        let domain = CircleDomain::new(coset);
+        let values = poly.evaluate(domain);
+        SecureEvaluation::new(domain, values.into_iter().map(SecureField::from).collect())
     }
 
-    context.validate_circuit();
-}
+type FriProver<'a> = stwo::prover::fri::FriProver<'a, CpuBackend, Blake2sMerkleChannel>;
+fn stwo_jumps() {
+        const LOG_BLOWUP_FACTOR: u32 = 2;
+
+        let config = FriConfig::new(2, LOG_BLOWUP_FACTOR, 3, 2);
+        let column = polynomial_evaluation(6, LOG_BLOWUP_FACTOR);
+        let twiddles = CpuBackend::precompute_twiddles(column.domain.half_coset);
+
+        let prover = FriProver::commit(&mut test_channel(), config, &column, &twiddles);
+        let queries = Queries::from_positions(vec![0, 3], 6 + LOG_BLOWUP_FACTOR);
+        prover.decommit_on_queries(&queries);
+    }

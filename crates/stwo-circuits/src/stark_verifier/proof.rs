@@ -92,7 +92,7 @@ impl ProofConfig {
         let PcsConfig {
             pow_bits,
             fri_config:
-                stwo::core::fri::FriConfig { log_blowup_factor, n_queries, log_last_layer_degree_bound },
+                stwo::core::fri::FriConfig { log_blowup_factor, n_queries, log_last_layer_degree_bound, line_fold_step: 1 },
             lifting_log_size: Some(lifting_log_size),
         } = pcs_config
         else {
@@ -117,7 +117,7 @@ impl ProofConfig {
                 log_blowup_factor: *log_blowup_factor as usize,
                 n_queries: *n_queries,
                 log_n_last_layer_coefs: *log_last_layer_degree_bound as usize,
-                steps
+                steps,
             },
             interaction_pow_bits,
         }
