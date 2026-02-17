@@ -5,11 +5,12 @@ use crate::circuits::ops::Guess;
 use crate::circuits::simd::Simd;
 use crate::circuits::test_utils::{packed_values, simd_from_u32s};
 use crate::stark_verifier::channel::Channel;
+use crate::stark_verifier::circle::repeated_double_point_simd;
 use crate::stark_verifier::fri_proof::FriCommitProof;
 use crate::stark_verifier::select_queries::select_queries;
 use rstest::rstest;
 
-use super::{fri_commit, update_base_point, validate_query_position_in_coset};
+use super::{fri_commit, translate_base_point, validate_query_position_in_coset};
 
 #[test]
 fn test_fri_commit_regression() {
@@ -113,30 +114,43 @@ fn test_update_base_point_logic() {
     const LOG_DOMAIN_SIZE: usize = 7;
 
     // Query indices are interpreted by `select_queries`.
-    let query_indices = vec![0b1001111_u32, 0b0110101_u32, 0b1100010_u32];
+    let query_indices = vec![0b1001111_u32, 0b0110101_u32, 0b1100010_u32, 0b0011011_u32];
     let input = simd_from_u32s(&mut context, query_indices.clone());
     let queries = select_queries(&mut context, &input, LOG_DOMAIN_SIZE);
 
-    // Test several jump windows: each should clear the corresponding consumed bits.
-    let jump_windows = [(0_usize, 2_usize), (2, 2), (1, 3)];
-    for (bit_counter, step) in jump_windows {
-        let bit_range = (1 + bit_counter)..(1 + bit_counter + step);
-        let updated_base_point =
-            update_base_point(&mut context, queries.points.clone(), &queries.bits, bit_range.clone());
+    // Simulate several jump steps. This mirrors the logic in `fri_decommit_with_jumps`:
+    // 1) translate base point by consumed bits of this step,
+    // 2) double base point by `step` for the next folded layer.
+    let steps = [2_usize, 2_usize, 1_usize];
+    let mut bit_counter = 0usize;
+    let mut base_point = queries.points.clone();
 
-        let mask = bit_range.clone().fold(0_u32, |acc, i| acc | (1_u32 << i));
+    for step in steps {
+        let bit_range = (1 + bit_counter)..(1 + bit_counter + step);
+        base_point = translate_base_point(&mut context, base_point, &queries.bits[bit_range]);
+
+        // Compare against the expected translated base:
+        // clear all consumed bits in the original query index (bits 1..=bit_counter+step),
+        // then move to the currently folded layer by doubling `bit_counter` times.
+        let consumed_bits = bit_counter + step;
+        let mask = (1..=consumed_bits).fold(0_u32, |acc, i| acc | (1_u32 << i));
         let expected_indices = query_indices.iter().map(|q| *q & !mask).collect::<Vec<_>>();
         let expected_input = simd_from_u32s(&mut context, expected_indices);
         let expected_queries = select_queries(&mut context, &expected_input, LOG_DOMAIN_SIZE);
+        let expected_translated =
+            repeated_double_point_simd(&mut context, &expected_queries.points, bit_counter);
 
         assert_eq!(
-            simd_lanes(&context, &updated_base_point.x),
-            simd_lanes(&context, &expected_queries.points.x)
+            simd_lanes(&context, &base_point.x),
+            simd_lanes(&context, &expected_translated.x)
         );
         assert_eq!(
-            simd_lanes(&context, &updated_base_point.y),
-            simd_lanes(&context, &expected_queries.points.y)
+            simd_lanes(&context, &base_point.y),
+            simd_lanes(&context, &expected_translated.y)
         );
+
+        bit_counter += step;
+        base_point = repeated_double_point_simd(&mut context, &base_point, step);
     }
 
     context.validate_circuit();
