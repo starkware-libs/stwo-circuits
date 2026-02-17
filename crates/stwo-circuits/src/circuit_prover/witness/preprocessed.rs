@@ -1,5 +1,5 @@
+use crate::circuit_prover::prover::CircuitParams;
 use crate::circuit_prover::witness::components::qm31_ops;
-use crate::circuit_prover::witness::trace::TraceGenerator;
 use crate::circuits::circuit::{Circuit, Permutation};
 use crate::circuits::circuit::{Eq, Gate};
 use itertools::{Itertools, zip_eq};
@@ -192,7 +192,7 @@ pub struct PreProcessedTrace {
 
 impl PreProcessedTrace {
     /// Generates the preprocessed trace for the circuit, assuming it is already finalized.
-    pub fn generate_preprocessed_trace(circuit: &Circuit) -> (Self, TraceGenerator) {
+    pub fn generate_preprocessed_trace(circuit: &Circuit) -> (Self, CircuitParams) {
         let mut pp_trace = Self { columns: vec![], column_indices: HashMap::new() };
 
         // Adjust multiplicities to account for the use of the constant 0 in the permutation gate
@@ -218,7 +218,14 @@ impl PreProcessedTrace {
 
         // TODO(Gali): Add Blake columns.
 
-        (pp_trace, TraceGenerator { qm31_ops_trace_generator })
+        // The trace size is the size of the largest column in the preprocessed trace (since all
+        // components have preprocessed columns).
+        let trace_log_size = pp_trace.log_sizes().into_iter().max().unwrap();
+        let params = CircuitParams {
+            trace_log_size,
+            first_permutation_row: qm31_ops_trace_generator.first_permutation_row,
+        };
+        (pp_trace, params)
     }
 
     pub fn log_sizes(&self) -> Vec<u32> {
