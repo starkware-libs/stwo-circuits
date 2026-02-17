@@ -9,5 +9,6 @@ pub mod statement;
 #[cfg(test)]
 mod statement_test;
 
+pub mod all_components;
 pub mod sample_evaluations;
 pub mod verify;

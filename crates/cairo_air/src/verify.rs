@@ -1,4 +1,5 @@
-use crate::statement::{CairoStatement, MEMORY_VALUES_LIMBS, all_components};
+use crate::all_components::all_components;
+use crate::statement::{CairoStatement, MEMORY_VALUES_LIMBS};
 use cairo_air::CairoProof;
 use cairo_air::flat_claims::FlatClaim;
 use cairo_air::flat_claims::flatten_interaction_claim;
@@ -46,7 +47,7 @@ pub fn verify_cairo(proof: &CairoProof<Blake2sM31MerkleHasher>) -> Context<QM31>
         .map(|chunk| array::from_fn(|i| M31::from_u32_unchecked(chunk[i])))
         .collect_vec();
 
-    let components = zip_eq(all_components(), &component_enable_bits)
+    let components = zip_eq(all_components().into_values().collect_vec(), &component_enable_bits)
         .map(
             |(component, enable_bit)| {
                 if *enable_bit { component } else { Box::new(EmptyComponent {}) }

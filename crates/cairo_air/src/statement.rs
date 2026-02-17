@@ -1,7 +1,6 @@
 use std::array;
 use std::collections::HashMap;
 
-use crate::components;
 use cairo_air::relations::{
     MEMORY_ADDRESS_TO_ID_RELATION_ID, MEMORY_ID_TO_BIG_RELATION_ID, OPCODES_RELATION_ID,
 };
@@ -10,13 +9,13 @@ use circuits::eval;
 use circuits::extract_bits::extract_bits;
 use circuits::ops::{Guess, output};
 use circuits::wrappers::M31Wrapper;
-use circuits_stark_verifier::empty_component::EmptyComponent;
 use circuits_stark_verifier::logup::logup_use_term;
 use circuits_stark_verifier::proof_from_stark_proof::pack_into_qm31s;
 use itertools::{Itertools, chain, izip, zip_eq};
 use stwo::core::fields::qm31::QM31;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
+use crate::all_components::all_components;
 use crate::preprocessed_columns::PREPROCESSED_COLUMNS_ORDER;
 use circuits::context::{Context, Var};
 use circuits::ivalue::{IValue, qm31_from_u32s};
@@ -155,7 +154,7 @@ impl<Value: IValue> CairoStatement<Value> {
         outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
         program: Vec<[M31; MEMORY_VALUES_LIMBS]>,
     ) -> Self {
-        let components = all_components();
+        let components = all_components().into_values().collect_vec();
         Self::new_ex(context, public_data, outputs, program, components)
     }
 
@@ -451,90 +450,4 @@ pub fn public_logup_sum(
     sum = eval!(context, (sum) + (program_logup_sum));
 
     sum
-}
-
-pub fn all_components<Value: IValue>() -> Vec<Box<dyn CircuitEval<Value>>> {
-    vec![
-        Box::new(components::add_opcode::Component {}),
-        Box::new(components::add_opcode_small::Component {}),
-        Box::new(components::add_ap_opcode::Component {}),
-        Box::new(components::assert_eq_opcode::Component {}),
-        Box::new(components::assert_eq_opcode_imm::Component {}),
-        Box::new(components::assert_eq_opcode_double_deref::Component {}),
-        Box::new(components::blake_compress_opcode::Component {}),
-        Box::new(components::call_opcode_abs::Component {}),
-        Box::new(components::call_opcode_rel_imm::Component {}),
-        Box::new(components::generic_opcode::Component {}),
-        Box::new(components::jnz_opcode_non_taken::Component {}),
-        Box::new(components::jnz_opcode_taken::Component {}),
-        Box::new(components::jump_opcode_abs::Component {}),
-        Box::new(components::jump_opcode_double_deref::Component {}),
-        Box::new(components::jump_opcode_rel::Component {}),
-        Box::new(components::jump_opcode_rel_imm::Component {}),
-        Box::new(components::mul_opcode::Component {}),
-        Box::new(components::mul_opcode_small::Component {}),
-        Box::new(components::qm_31_add_mul_opcode::Component {}),
-        Box::new(components::ret_opcode::Component {}),
-        Box::new(components::verify_instruction::Component {}),
-        Box::new(components::blake_round::Component {}),
-        Box::new(components::blake_g::Component {}),
-        Box::new(components::blake_round_sigma::Component {}),
-        Box::new(components::triple_xor_32::Component {}),
-        Box::new(components::verify_bitwise_xor_12::Component {}),
-        Box::new(components::add_mod_builtin::Component {}),
-        Box::new(components::bitwise_builtin::Component {}),
-        Box::new(components::mul_mod_builtin::Component {}),
-        Box::new(components::pedersen_builtin::Component {}),
-        Box::new(components::pedersen_builtin_narrow_windows::Component {}),
-        Box::new(components::poseidon_builtin::Component {}),
-        Box::new(components::range_check96_builtin::Component {}),
-        Box::new(components::range_check_builtin::Component {}),
-        Box::new(components::pedersen_aggregator_window_bits_18::Component {}),
-        Box::new(components::partial_ec_mul_window_bits_18::Component {}),
-        Box::new(EmptyComponent {}), // pedersen_points_table_window_bits_18 requires seq_23
-        Box::new(components::pedersen_aggregator_window_bits_9::Component {}),
-        Box::new(components::partial_ec_mul_window_bits_9::Component {}),
-        Box::new(components::pedersen_points_table_window_bits_9::Component {}),
-        Box::new(components::poseidon_aggregator::Component {}),
-        Box::new(components::poseidon_3_partial_rounds_chain::Component {}),
-        Box::new(components::poseidon_full_round_chain::Component {}),
-        Box::new(components::cube_252::Component {}),
-        Box::new(components::poseidon_round_keys::Component {}),
-        Box::new(components::range_check_252_width_27::Component {}),
-        Box::new(components::memory_address_to_id::Component {}),
-        Box::new(components::memory_id_to_big::Component { index: 0 }),
-        Box::new(components::memory_id_to_big::Component { index: 1 }),
-        Box::new(components::memory_id_to_big::Component { index: 2 }),
-        Box::new(components::memory_id_to_big::Component { index: 3 }),
-        Box::new(components::memory_id_to_big::Component { index: 4 }),
-        Box::new(components::memory_id_to_big::Component { index: 5 }),
-        Box::new(components::memory_id_to_big::Component { index: 6 }),
-        Box::new(components::memory_id_to_big::Component { index: 7 }),
-        Box::new(components::memory_id_to_big::Component { index: 8 }),
-        Box::new(components::memory_id_to_big::Component { index: 9 }),
-        Box::new(components::memory_id_to_big::Component { index: 10 }),
-        Box::new(components::memory_id_to_big::Component { index: 11 }),
-        Box::new(components::memory_id_to_big::Component { index: 12 }),
-        Box::new(components::memory_id_to_big::Component { index: 13 }),
-        Box::new(components::memory_id_to_big::Component { index: 14 }),
-        Box::new(components::memory_id_to_big::Component { index: 15 }),
-        Box::new(components::memory_id_to_small::Component {}),
-        Box::new(components::range_check_6::Component {}),
-        Box::new(components::range_check_8::Component {}),
-        Box::new(components::range_check_11::Component {}),
-        Box::new(components::range_check_12::Component {}),
-        Box::new(components::range_check_18::Component {}),
-        Box::new(components::range_check_20::Component {}),
-        Box::new(components::range_check_4_3::Component {}),
-        Box::new(components::range_check_4_4::Component {}),
-        Box::new(components::range_check_9_9::Component {}),
-        Box::new(components::range_check_7_2_5::Component {}),
-        Box::new(components::range_check_3_6_6_3::Component {}),
-        Box::new(components::range_check_4_4_4_4::Component {}),
-        Box::new(components::range_check_3_3_3_3_3::Component {}),
-        Box::new(components::verify_bitwise_xor_4::Component {}),
-        Box::new(components::verify_bitwise_xor_7::Component {}),
-        Box::new(components::verify_bitwise_xor_8::Component {}),
-        Box::new(components::verify_bitwise_xor_9::Component {}),
-    ]
 }
