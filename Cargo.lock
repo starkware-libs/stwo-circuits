@@ -1262,6 +1262,154 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
 
 [[package]]
+name = "circuit-air"
+version = "0.1.0"
+dependencies = [
+ "blake2",
+ "cairo-air",
+ "circuits",
+ "circuits-stark-verifier",
+ "expect-test",
+ "hashbrown 0.15.5",
+ "indexmap",
+ "indoc",
+ "itertools 0.12.1",
+ "num-traits",
+ "rayon",
+ "rstest",
+ "stwo",
+ "stwo-air-utils",
+ "stwo-air-utils-derive",
+ "stwo-cairo-dev-utils",
+ "stwo-cairo-prover",
+ "stwo-cairo-utils",
+ "stwo-constraint-framework",
+]
+
+[[package]]
+name = "circuit-cairo-air"
+version = "0.1.0"
+dependencies = [
+ "blake2",
+ "cairo-air",
+ "circuits",
+ "circuits-stark-verifier",
+ "expect-test",
+ "hashbrown 0.15.5",
+ "indexmap",
+ "indoc",
+ "itertools 0.12.1",
+ "num-traits",
+ "rayon",
+ "rstest",
+ "stwo",
+ "stwo-air-utils",
+ "stwo-air-utils-derive",
+ "stwo-cairo-dev-utils",
+ "stwo-cairo-prover",
+ "stwo-cairo-utils",
+ "stwo-constraint-framework",
+]
+
+[[package]]
+name = "circuit-prover"
+version = "0.1.0"
+dependencies = [
+ "blake2",
+ "cairo-air",
+ "circuit-air",
+ "circuits",
+ "circuits-stark-verifier",
+ "expect-test",
+ "hashbrown 0.15.5",
+ "indexmap",
+ "indoc",
+ "itertools 0.12.1",
+ "num-traits",
+ "rayon",
+ "rstest",
+ "stwo",
+ "stwo-air-utils",
+ "stwo-air-utils-derive",
+ "stwo-cairo-dev-utils",
+ "stwo-cairo-prover",
+ "stwo-cairo-utils",
+ "stwo-constraint-framework",
+]
+
+[[package]]
+name = "circuit-serialize"
+version = "0.1.0"
+dependencies = [
+ "blake2",
+ "cairo-air",
+ "circuits",
+ "circuits-stark-verifier",
+ "expect-test",
+ "hashbrown 0.15.5",
+ "indexmap",
+ "indoc",
+ "itertools 0.12.1",
+ "num-traits",
+ "rayon",
+ "rstest",
+ "stwo",
+ "stwo-air-utils",
+ "stwo-air-utils-derive",
+ "stwo-cairo-dev-utils",
+ "stwo-cairo-prover",
+ "stwo-cairo-utils",
+ "stwo-constraint-framework",
+]
+
+[[package]]
+name = "circuits"
+version = "0.1.0"
+dependencies = [
+ "blake2",
+ "cairo-air",
+ "expect-test",
+ "hashbrown 0.15.5",
+ "indexmap",
+ "indoc",
+ "itertools 0.12.1",
+ "num-traits",
+ "rayon",
+ "rstest",
+ "stwo",
+ "stwo-air-utils",
+ "stwo-air-utils-derive",
+ "stwo-cairo-dev-utils",
+ "stwo-cairo-prover",
+ "stwo-cairo-utils",
+ "stwo-constraint-framework",
+]
+
+[[package]]
+name = "circuits-stark-verifier"
+version = "0.1.0"
+dependencies = [
+ "blake2",
+ "cairo-air",
+ "circuits",
+ "expect-test",
+ "hashbrown 0.15.5",
+ "indexmap",
+ "indoc",
+ "itertools 0.12.1",
+ "num-traits",
+ "rayon",
+ "rstest",
+ "stwo",
+ "stwo-air-utils",
+ "stwo-air-utils-derive",
+ "stwo-cairo-dev-utils",
+ "stwo-cairo-prover",
+ "stwo-cairo-utils",
+ "stwo-constraint-framework",
+]
+
+[[package]]
 name = "clap"
 version = "4.5.58"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3609,29 +3757,6 @@ dependencies = [
  "thiserror",
  "tracing",
  "tracing-subscriber",
-]
-
-[[package]]
-name = "stwo-circuits"
-version = "0.1.0"
-dependencies = [
- "blake2",
- "cairo-air",
- "expect-test",
- "hashbrown 0.16.1",
- "indexmap",
- "indoc",
- "itertools 0.12.1",
- "num-traits",
- "rayon",
- "rstest",
- "stwo",
- "stwo-air-utils",
- "stwo-air-utils-derive",
- "stwo-cairo-dev-utils",
- "stwo-cairo-prover",
- "stwo-cairo-utils",
- "stwo-constraint-framework",
 ]
 
 [[package]]

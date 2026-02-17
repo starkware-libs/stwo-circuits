@@ -1,0 +1,26 @@
+[package]
+name = "circuits-stark-verifier"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+blake2.workspace = true
+hashbrown.workspace = true
+indexmap.workspace = true
+itertools.workspace = true
+num-traits.workspace = true
+stwo.workspace = true
+stwo-constraint-framework.workspace = true
+stwo-air-utils-derive.workspace = true
+stwo-air-utils.workspace = true
+cairo-air.workspace = true
+rayon.workspace = true
+stwo_cairo_prover.workspace = true
+dev_utils.workspace = true
+stwo_cairo_utils.workspace = true
+circuits.workspace = true
+
+[dev-dependencies]
+indoc.workspace = true
+rstest.workspace = true
+expect-test.workspace = true
