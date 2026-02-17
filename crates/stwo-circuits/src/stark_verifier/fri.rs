@@ -198,7 +198,6 @@ pub fn fri_decommit_with_jumps<Value: IValue>(
 }
 
 fn compute_twiddles_from_base_point<Value: IValue>(context: &mut Context<Value>, base_point: &CirclePoint<Simd>, step: usize) -> Vec<Vec<Vec<Var>>> {
-    // v[i] is is the i-th (in bitrev order) twiddle for all queries, first fold.
     let mut buf: Vec<Vec<Vec<Var>>> = vec![];
     let n_queries = base_point.x.len();
     let mut prev_x_coord: Vec<_> = compute_coset_points(context, base_point, step as u32 - 1)
@@ -208,11 +207,11 @@ fn compute_twiddles_from_base_point<Value: IValue>(context: &mut Context<Value>,
     let mut prev_twiddles: Vec<_> = prev_x_coord.iter().map(|x| x.inv(context)).collect();
     buf.push(prev_twiddles.iter().map(|t_simd| Simd::unpack(context, t_simd)).collect());
     // Compute the rest of the folds
-    for _ in 0..step - 2 {
+    if step >= 2 {for _ in 0..step - 2 {
         prev_x_coord = prev_x_coord.iter().map(|x| double_x_simd(context, x)).collect();
         prev_twiddles = prev_x_coord.iter().map(|x| x.inv(context)).collect();
         buf.push(prev_twiddles.iter().map(|t_simd| Simd::unpack(context, t_simd)).collect());
-    }
+    }}
     let mut twiddles_per_fold_per_query = vec![];
     // Transpose
     for twiddles in buf.iter() {

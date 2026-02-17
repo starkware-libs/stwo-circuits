@@ -4,8 +4,9 @@ use crate::circuits::ivalue::qm31_from_u32s;
 use crate::circuits::ops::Guess;
 use crate::stark_verifier::channel::Channel;
 use crate::stark_verifier::fri_proof::FriCommitProof;
+use rstest::rstest;
 
-use super::fri_commit;
+use super::{fri_commit, validate_query_position_in_coset};
 
 #[test]
 fn test_fri_commit_regression() {
@@ -64,4 +65,36 @@ fn test_fri_commit_regression() {
     );
 
     context.validate_circuit();
+}
+
+#[rstest]
+#[case::success(true)]
+#[case::failure(false)]
+fn test_validate_query_position_in_coset(#[case] success: bool) {
+    let mut context = TraceContext::default();
+
+    let mut const_var = |value: u32| context.constant(qm31_from_u32s(value, 0, 0, 0));
+
+    // 3 queries, each with a coset of size 4 (2 index bits).
+    let fri_coset_per_query = vec![
+        vec![const_var(10), const_var(11), const_var(12), const_var(13)],
+        vec![const_var(20), const_var(21), const_var(22), const_var(23)],
+        vec![const_var(30), const_var(31), const_var(32), const_var(33)],
+    ];
+
+    // `select_by_index` interprets bits as little-endian: idx = b0 + 2*b1.
+    // Query indices are: 0, 1, 2.
+    let bits = vec![
+        vec![const_var(0), const_var(1), const_var(0)], // b0
+        vec![const_var(0), const_var(0), const_var(1)], // b1
+    ];
+
+    let mut fri_data = vec![const_var(10), const_var(21), const_var(32)];
+    if !success {
+        // Make the 3rd query inconsistent with bits=(0,1), which should point to value 32.
+        fri_data[2] = const_var(33);
+    }
+
+    validate_query_position_in_coset(&mut context, &fri_coset_per_query, &fri_data, &bits);
+    assert_eq!(context.is_circuit_valid(), success);
 }
