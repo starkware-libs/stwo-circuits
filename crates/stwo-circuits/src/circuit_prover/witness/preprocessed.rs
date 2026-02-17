@@ -184,13 +184,13 @@ fn add_eq_to_preprocessed_trace(circuit: &Circuit, pp_trace: &mut PreProcessedTr
     pp_trace.columns.extend(eq_columns);
 }
 
-/// Currently fills 9 columns.
+// TODO(alonf): Parallelize.
 fn fill_blake_columns(
     blake: &[Blake],
     multiplicities: &[usize],
     columns: &mut [Vec<usize>; N_BLAKE_PP_COLUMNS],
 ) {
-    // IV should somehow be in state_address 0.
+    // IV should be in state_address 0.
     let mut state_address = 0;
     let mut message_length = 0;
     for gate in blake.iter() {
@@ -199,13 +199,16 @@ fn fill_blake_columns(
             message_length = gate.n_bytes.min(message_length + 16 * 4);
             columns[0].push(message_length & 0xffff);
             columns[1].push((message_length >> 16) & 0xffff);
+
             // Finalize flag.
             columns[2].push(0);
-            // State before address.
+
+            // State before and after addresses.
+
             columns[3].push(state_address);
-            // State after address.
             state_address += 1;
             columns[4].push(state_address);
+
             // Message addresses.
             columns[5].push(*in0);
             columns[6].push(*in1);
@@ -215,8 +218,10 @@ fn fill_blake_columns(
             // Enable
             columns[9].push(1);
         }
+
         // Set the finalize flag to 1 for the last compression of the gate.
         *columns[2].last_mut().unwrap() = 1;
+
         // Fill the preprocessed column needed by the blake_output component.
         // Set final state address.
         columns[10].push(state_address);
@@ -230,14 +235,17 @@ fn fill_blake_columns(
         // Start a new blake chain.
         state_address += 1;
     }
+
     // Pad the preprocessed columns used in blake compress.
     let n_blake_compress = columns[0].len();
     let blake_compress_padding = std::cmp::max(n_blake_compress.next_power_of_two(), N_LANES);
+
     // TODO(Leo): remove after we remove the circuit gates padding.
     assert_eq!(
         n_blake_compress, blake_compress_padding,
         "Only padding through circuit gates for now."
     );
+
     // Pad with the first element.
     (0..9).for_each(|i| columns[i].resize(blake_compress_padding, *columns[i].first().unwrap()));
     columns[9].resize(blake_compress_padding, 0); // Enabler columns.
@@ -245,6 +253,7 @@ fn fill_blake_columns(
     // Pad the preprocessed columns used in blake output
     let n_blake_output = columns[10].len();
     let blake_output_padding = std::cmp::max(n_blake_output.next_power_of_two(), N_LANES);
+
     // TODO(Leo): remove after we remove the circuit gates padding.
     assert_eq!(n_blake_output, blake_output_padding, "Only padding through circuit gates for now.");
     (10..13).for_each(|i| columns[i].resize(blake_output_padding, *columns[i].first().unwrap()));
