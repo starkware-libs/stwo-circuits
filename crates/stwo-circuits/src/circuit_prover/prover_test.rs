@@ -498,54 +498,13 @@ fn test_prove_and_stark_verify_blake_gate_context() {
     )
     .unwrap();
 
-    // // Compute the expected logup term. In this case it's only the terms corresponding to blake's
-    // // IV.
-    // let mut yield_sum: QM31 = QM31::zero();
-    // let limbs = compute_initial_state_limbs(&blake_gate_context);
-    // for limb in limbs {
-    //     let denom: QM31 = common_lookup_elements.combine(&limb);
-    //     yield_sum += denom.inverse();
-    // }
-
+    // Compute the expected logup term. In this case it's only the terms corresponding to blake's
+    // IV.
     let yield_sum = blake_iv_public_logup_sum(&blake_gate_context, &common_lookup_elements);
 
     let total_claim_sum: QM31 = interaction_claim.claimed_sums.iter().sum();
 
     assert_eq!(total_claim_sum, yield_sum);
-}
-
-fn compute_initial_state_limbs(context: &Context<QM31>) -> Vec<[M31; 18]> {
-    let state_id = M31::from(1061955672);
-    let initial_state = blake2s_initial_state();
-    let initial_state_limbs = [
-        M31::from(initial_state[0] & 0xffff),
-        M31::from((initial_state[0] >> 16) & 0xffff),
-        M31::from(initial_state[1] & 0xffff),
-        M31::from((initial_state[1] >> 16) & 0xffff),
-        M31::from(initial_state[2] & 0xffff),
-        M31::from((initial_state[2] >> 16) & 0xffff),
-        M31::from(initial_state[3] & 0xffff),
-        M31::from((initial_state[3] >> 16) & 0xffff),
-        M31::from(initial_state[4] & 0xffff),
-        M31::from((initial_state[4] >> 16) & 0xffff),
-        M31::from(initial_state[5] & 0xffff),
-        M31::from((initial_state[5] >> 16) & 0xffff),
-        M31::from(initial_state[6] & 0xffff),
-        M31::from((initial_state[6] >> 16) & 0xffff),
-        M31::from(initial_state[7] & 0xffff),
-        M31::from((initial_state[7] >> 16) & 0xffff),
-    ];
-    let mut res = vec![];
-
-    // Sum the initial state addresses.
-    for i in 0..context.circuit.blake.len() {
-        let mut tmp = vec![];
-        tmp.push(state_id);
-        tmp.push(M31::from(2 * i));
-        tmp.extend_from_slice(&initial_state_limbs);
-        res.push(tmp.try_into().unwrap());
-    }
-    res
 }
 
 #[test]
