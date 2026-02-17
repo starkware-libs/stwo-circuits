@@ -128,9 +128,9 @@ pub fn fri_decommit_with_jumps<Value: IValue>(
     fri_data = fold_circle_to_line(fri_data);
     // Line to line.
     let n_bits = bits.len(); // TODO(Leo): check off by one errors.
-    let n_points = points.x.len(); // = number of queries.
+    let n_queries = points.x.len();
     let mut base_point = points.clone();
-    let zero = Simd::zero(context, n_points);
+    let zero = Simd::zero(context, n_queries);
     let mut bit_counter = 0;
 
     for (tree_idx, (root, step)) in
@@ -154,7 +154,7 @@ pub fn fri_decommit_with_jumps<Value: IValue>(
 
         // Update base point.
         for i in bit_range {
-            let cur_gen_pt = generator_point_simd(context, i, n_points);
+            let cur_gen_pt = generator_point_simd(context, i, n_queries);
             let minus_y_coord = Simd::sub(context, &zero, &cur_gen_pt.y);
             let minus_cur_gen_pt = CirclePoint { x: cur_gen_pt.x, y: minus_y_coord };
             // Select between `point` and `point - cur_gen_pt`.
@@ -197,19 +197,31 @@ pub fn fri_decommit_with_jumps<Value: IValue>(
 }
 
 fn compute_twiddles_from_base_point<Value: IValue>(context: &mut Context<Value>, base_point: &CirclePoint<Simd>, step: usize) -> Vec<Vec<Vec<Var>>> {
-    let mut twiddles_per_fold_per_query = vec![];
-    let coset_x_coords: Vec<Vec<Var>> = compute_coset_points(context, base_point, step as u32 - 1)
+    // v[i] is is the i-th (in bitrev order) twiddle for all queries, first fold.
+    let mut buf: Vec<Vec<Vec<Var>>> = vec![];
+    let n_queries = base_point.x.len();
+    let mut prev_x_coord: Vec<_> = compute_coset_points(context, base_point, step as u32 - 1)
         .iter() 
-        .map(|p| { let x_inv = p.x.inv(context); Simd::unpack(context, &x_inv)})
+        .map(|p| p.x.clone())
         .collect();
-
-    // Transpose
-    let mut res: Vec<Vec<Var>> = vec![];
-    for i in 0..coset_x_coords.len() {
-        res.push(coset_x_coords.iter().map(|p| p[i]).collect());
+    let mut prev_twiddles: Vec<_> = prev_x_coord.iter().map(|x| x.inv(context)).collect();
+    buf.push(prev_twiddles.iter().map(|t_simd| Simd::unpack(context, t_simd)).collect());
+    // Compute the rest of the folds
+    for _ in 0..step - 2 {
+        prev_x_coord = prev_x_coord.iter().map(|x| double_x_simd(context, x)).collect();
+        prev_twiddles = prev_x_coord.iter().map(|x| x.inv(context)).collect();
+        buf.push(prev_twiddles.iter().map(|t_simd| Simd::unpack(context, t_simd)).collect());
     }
-    twiddles_per_fold_per_query.push(res);
-    todo!()
+    let mut twiddles_per_fold_per_query = vec![];
+    // Transpose
+    for twiddles in buf.iter() {
+        let mut res: Vec<Vec<Var>> = vec![];
+        for i in 0..n_queries {
+            res.push(twiddles.iter().map(|p| p[i]).collect());
+        }
+        twiddles_per_fold_per_query.push(res);
+    }
+    twiddles_per_fold_per_query
 }
 
 fn validate_query_position_in_coset<Value: IValue>(
