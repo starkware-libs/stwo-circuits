@@ -34,22 +34,17 @@ pub fn proof_from_stark_proof(
     let interaction_pow_high = (interaction_pow_nonce >> 32) as u32;
     let interaction_pow_low = (interaction_pow_nonce & 0xFFFFFFFF) as u32;
 
-    println!("1");
     let preprocessed_columns_at_oods = as_single_row(&sampled_values[0]);
-    println!("2");
     let trace_at_oods = as_single_row(&sampled_values[1]);
-    println!("3");
     let interaction_at_oods = sampled_values[2]
-    .iter()
-    .map(|x| match x[..] {
-        [at_prev, at_oods] => InteractionAtOods { at_oods, at_prev: Some(at_prev) },
-        [at_oods] => InteractionAtOods { at_oods, at_prev: None },
-        _ => panic!("Unexpected interaction at OODS values"),
-    })
-    .collect_vec();
-    println!("4");
+        .iter()
+        .map(|x| match x[..] {
+            [at_prev, at_oods] => InteractionAtOods { at_oods, at_prev: Some(at_prev) },
+            [at_oods] => InteractionAtOods { at_oods, at_prev: None },
+            _ => panic!("Unexpected interaction at OODS values"),
+        })
+        .collect_vec();
     let composition_eval_at_oods = as_single_row(&sampled_values[3]).try_into().unwrap();
-    println!("5");
     Proof {
         preprocessed_root: commitments[0].into(),
         trace_root: commitments[1].into(),

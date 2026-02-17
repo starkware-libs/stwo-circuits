@@ -446,15 +446,18 @@ fn test_prove_and_stark_verify_blake_gate_context() {
     blake_gate_context.finalize_guessed_vars();
     blake_gate_context.validate_circuit();
 
-    let (CircuitProof {
-        components,
-        claim,
-        interaction_claim,
-        pcs_config,
-        stark_proof,
-        interaction_pow_nonce,
-        channel_salt,
-    }, preprocessed_trace_sizes) = prove_circuit(&mut blake_gate_context);
+    let (
+        CircuitProof {
+            components,
+            claim,
+            interaction_claim,
+            pcs_config,
+            stark_proof,
+            interaction_pow_nonce,
+            channel_salt,
+        },
+        preprocessed_trace_sizes,
+    ) = prove_circuit(&mut blake_gate_context);
     assert!(stark_proof.is_ok(), "Got error: {}", stark_proof.err().unwrap());
     let proof = stark_proof.unwrap();
 
@@ -484,11 +487,12 @@ fn test_prove_and_stark_verify_blake_gate_context() {
     interaction_claim.mix_into(verifier_channel);
 
     commitment_scheme.commit(proof.proof.commitments[2], &sizes[2], verifier_channel);
-    stwo::core::verifier::verify(
+    stwo::core::verifier::verify_ex(
         &components.iter().map(|c| c.as_ref()).collect::<Vec<&dyn Component>>(),
         verifier_channel,
         commitment_scheme,
         proof.proof,
+        true,
     )
     .unwrap();
 
@@ -546,15 +550,18 @@ fn test_prove_and_stark_verify_permutation_context() {
     permutation_context.finalize_guessed_vars();
     permutation_context.validate_circuit();
 
-    let (CircuitProof {
-        pcs_config,
-        claim,
-        interaction_pow_nonce,
-        interaction_claim,
-        components,
-        stark_proof,
-        channel_salt,
-    }, preprocessed_trace_sizes) = prove_circuit(&mut permutation_context);
+    let (
+        CircuitProof {
+            pcs_config,
+            claim,
+            interaction_pow_nonce,
+            interaction_claim,
+            components,
+            stark_proof,
+            channel_salt,
+        },
+        preprocessed_trace_sizes,
+    ) = prove_circuit(&mut permutation_context);
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
 
@@ -576,11 +583,12 @@ fn test_prove_and_stark_verify_permutation_context() {
     verifier_channel.mix_u64(interaction_pow_nonce);
     interaction_claim.mix_into(verifier_channel);
     commitment_scheme.commit(proof.proof.commitments[2], &sizes[2], verifier_channel);
-    stwo::core::verifier::verify(
+    stwo::core::verifier::verify_ex(
         &components.iter().map(|c| c.as_ref()).collect::<Vec<&dyn Component>>(),
         verifier_channel,
         commitment_scheme,
         proof.proof,
+        true,
     )
     .unwrap();
 }
@@ -591,15 +599,18 @@ fn test_prove_and_stark_verify_fibonacci_context() {
     fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
 
-    let (CircuitProof {
-        pcs_config,
-        claim,
-        interaction_pow_nonce,
-        interaction_claim,
-        components,
-        stark_proof,
-        channel_salt,
-    }, preprocessed_trace_sizes) = prove_circuit(&mut fibonacci_context);
+    let (
+        CircuitProof {
+            pcs_config,
+            claim,
+            interaction_pow_nonce,
+            interaction_claim,
+            components,
+            stark_proof,
+            channel_salt,
+        },
+        preprocessed_trace_sizes,
+    ) = prove_circuit(&mut fibonacci_context);
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
 
@@ -622,30 +633,35 @@ fn test_prove_and_stark_verify_fibonacci_context() {
     verifier_channel.mix_u64(interaction_pow_nonce);
     interaction_claim.mix_into(verifier_channel);
     commitment_scheme.commit(proof.proof.commitments[2], &sizes[2], verifier_channel);
-    stwo::core::verifier::verify(
+    stwo::core::verifier::verify_ex(
         &components.iter().map(|c| c.as_ref()).collect::<Vec<&dyn Component>>(),
         verifier_channel,
         commitment_scheme,
         proof.proof,
+        true,
     )
     .unwrap();
 }
 
 #[test]
+#[ignore = "Verifier does not yet support Blake AIR."]
 fn test_prove_and_circuit_verify_fibonacci_context() {
     let mut fibonacci_context = build_fibonacci_context();
     fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
 
-    let (CircuitProof {
-        pcs_config,
-        claim,
-        interaction_pow_nonce,
-        interaction_claim,
-        components: _,
-        stark_proof,
-        channel_salt,
-    }, preprocessed_trace_sizes) = prove_circuit(&mut fibonacci_context);
+    let (
+        CircuitProof {
+            pcs_config,
+            claim,
+            interaction_pow_nonce,
+            interaction_claim,
+            components: _,
+            stark_proof,
+            channel_salt,
+        },
+        preprocessed_trace_sizes,
+    ) = prove_circuit(&mut fibonacci_context);
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
 

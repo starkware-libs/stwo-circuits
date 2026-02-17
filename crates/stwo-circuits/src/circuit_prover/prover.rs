@@ -47,11 +47,14 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> (CircuitProof, Vec<u32>) {
     // Generate preprocessed trace.
     let (preprocessed_trace, trace_generator) =
         PreProcessedTrace::generate_preprocessed_trace(&context.circuit);
+
+    // The trace size is the size of the largest column in the preprocessed trace (since all
+    // components have preprocessed columns).
     let preprocessed_trace_sizes = preprocessed_trace.log_sizes();
+    let trace_log_size = preprocessed_trace_sizes.iter().copied().max().unwrap();
 
     let mut pcs_config = PcsConfig::default();
-    let lifting_log_size = preprocessed_trace_sizes.iter().copied().max().unwrap()
-        + pcs_config.fri_config.log_blowup_factor;
+    let lifting_log_size = trace_log_size + pcs_config.fri_config.log_blowup_factor;
 
     pcs_config.lifting_log_size = Some(lifting_log_size);
 
@@ -60,10 +63,11 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> (CircuitProof, Vec<u32>) {
     // the composition polynomial is split prior to LDE).
     let twiddles = SimdBackend::precompute_twiddles(
         CanonicCoset::new(
-            23, /* trace_log_size
-                *     + std::cmp::max( pcs_config.fri_config.log_blowup_factor,
-                *       COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND,
-                *     ), */
+            trace_log_size
+                + std::cmp::max(
+                    pcs_config.fri_config.log_blowup_factor,
+                    COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND,
+                ),
         )
         .circle_domain()
         .half_coset,
@@ -79,6 +83,7 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> (CircuitProof, Vec<u32>) {
         CommitmentSchemeProver::<SimdBackend, Blake2sM31MerkleChannel>::new(pcs_config, &twiddles);
 
     commitment_scheme.set_store_polynomials_coefficients();
+
     // Preprocessed trace.
     let mut tree_builder = commitment_scheme.tree_builder();
     tree_builder.extend_evals(preprocessed_trace.get_trace::<SimdBackend>());
@@ -111,7 +116,7 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> (CircuitProof, Vec<u32>) {
     );
 
     // Validate lookup argument.
-    // debug_assert_eq!(lookup_sum(&interaction_claim), SecureField::zero());
+    debug_assert_eq!(lookup_sum(&interaction_claim), SecureField::zero());
 
     interaction_claim.mix_into(channel);
     tree_builder.commit(channel);
@@ -124,14 +129,17 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> (CircuitProof, Vec<u32>) {
     );
     let components = component_builder.provers();
     // Prove stark.
-    let proof = prove_ex::<SimdBackend, _>(&components, channel, commitment_scheme, false);
-    (CircuitProof {
-        pcs_config,
-        claim,
-        interaction_pow_nonce,
-        interaction_claim,
-        components: component_builder.components(),
-        stark_proof: proof,
-        channel_salt,
-    }, preprocessed_trace_sizes)
+    let proof = prove_ex::<SimdBackend, _>(&components, channel, commitment_scheme, true);
+    (
+        CircuitProof {
+            pcs_config,
+            claim,
+            interaction_pow_nonce,
+            interaction_claim,
+            components: component_builder.components(),
+            stark_proof: proof,
+            channel_salt,
+        },
+        preprocessed_trace_sizes,
+    )
 }

@@ -374,7 +374,6 @@ impl PreProcessedTrace {
         add_blake_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
 
         Self::add_non_circuit_preprocessed_columns(&mut pp_trace);
-        println!("Length of pp trace: {}", pp_trace.columns.len());
         (pp_trace, TraceGenerator { qm31_ops_trace_generator })
     }
 
