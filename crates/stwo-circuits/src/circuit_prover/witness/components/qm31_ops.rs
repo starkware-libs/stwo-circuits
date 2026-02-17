@@ -70,9 +70,8 @@ pub fn extract_component_inputs(
 pub fn write_trace(
     context_values: &[QM31],
     preprocessed_trace: &PreProcessedTrace,
-    tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, Blake2sM31MerkleChannel>,
     trace_generator: &TraceGenerator,
-) -> (ComponentLogSize, LookupData) {
+) -> (ComponentTrace<N_TRACE_COLUMNS>, ComponentLogSize, LookupData) {
     let add_flag =
         preprocessed_trace.get_column(&PreProcessedColumnId { id: "qm31_ops_add_flag".to_owned() });
     let sub_flag =
@@ -121,9 +120,8 @@ pub fn write_trace(
     .collect_vec();
 
     let (trace, lookup_data) = write_trace_simd(packed_inputs, preprocessed_columns);
-    tree_builder.extend_evals(trace.to_evals());
 
-    (log_size, lookup_data)
+    (trace, log_size, lookup_data)
 }
 
 fn write_trace_simd(
@@ -228,9 +226,8 @@ pub struct LookupData {
 pub fn write_interaction_trace(
     log_size: u32,
     lookup_data: LookupData,
-    tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, Blake2sM31MerkleChannel>,
     common_lookup_elements: &relations::CommonLookupElements,
-) -> ClaimedSum {
+) -> (Vec<CircleEvaluation<SimdBackend, M31, BitReversedOrder>>, ClaimedSum) {
     let mut logup_gen = LogupTraceGenerator::new(log_size);
 
     // Sum logup terms in pairs.
@@ -255,7 +252,6 @@ pub fn write_interaction_trace(
     col_gen.finalize_col();
 
     let (trace, claimed_sum) = logup_gen.finalize_last();
-    tree_builder.extend_evals(trace);
 
-    claimed_sum
+    (trace, claimed_sum)
 }

@@ -34,3 +34,4 @@ stwo_cairo_utils = { package = "stwo-cairo-utils", git = "https://github.com/sta
 rstest = "0.26.1"
 expect-test = "1.5.1"
 rayon = "1.10.0"
+serde = "1.0.219"

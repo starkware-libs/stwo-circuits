@@ -3625,6 +3625,7 @@ dependencies = [
  "num-traits",
  "rayon",
  "rstest",
+ "serde",
  "stwo",
  "stwo-air-utils",
  "stwo-air-utils-derive",
