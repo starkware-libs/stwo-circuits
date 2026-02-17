@@ -46,6 +46,7 @@ pub use std::sync::atomic::Ordering;
 pub use stwo::prover::backend::simd::conversion::{Pack, Unpack};
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[repr(transparent)]
 pub struct UInt16 {
     pub value: u16,
 }
@@ -115,6 +116,7 @@ impl BitXor for UInt16 {
 }
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[repr(transparent)]
 pub struct UInt32 {
     pub value: u32,
 }

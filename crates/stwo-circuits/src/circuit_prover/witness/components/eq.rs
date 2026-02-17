@@ -1,5 +1,4 @@
 use crate::circuit_air::components::eq::N_TRACE_COLUMNS;
-use crate::circuit_air::relations::GATE_RELATION_ID;
 use crate::circuit_prover::witness::components::prelude::*;
 
 pub type InputType = [[M31; 4]; 2];
@@ -66,6 +65,7 @@ fn write_trace_simd(
     inputs: Vec<PackedInputType>,
     preprocessed_columns: Vec<Vec<PackedM31>>,
 ) -> (ComponentTrace<N_TRACE_COLUMNS>, LookupData) {
+    let m31_gate_relation_id = PackedM31::broadcast(M31::from(378353459));
     let log_n_packed_rows = inputs.len().ilog2();
     let log_size = log_n_packed_rows + LOG_N_LANES;
     let (mut trace, mut lookup_data) = unsafe {
@@ -100,22 +100,10 @@ fn write_trace_simd(
             *row[6] = in1_col6;
             let in1_col7 = qm_31_ops_input[1][3];
             *row[7] = in1_col7;
-            *lookup_data.in_0 = [
-                PackedM31::from(GATE_RELATION_ID),
-                in0_address,
-                in0_col0,
-                in0_col1,
-                in0_col2,
-                in0_col3,
-            ];
-            *lookup_data.in_1 = [
-                PackedM31::from(GATE_RELATION_ID),
-                in1_address,
-                in1_col4,
-                in1_col5,
-                in1_col6,
-                in1_col7,
-            ];
+            *lookup_data.in_0 =
+                [m31_gate_relation_id, in0_address, in0_col0, in0_col1, in0_col2, in0_col3];
+            *lookup_data.in_1 =
+                [m31_gate_relation_id, in1_address, in1_col4, in1_col5, in1_col6, in1_col7];
         });
 
     (trace, lookup_data)
