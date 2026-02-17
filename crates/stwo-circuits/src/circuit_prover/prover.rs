@@ -4,7 +4,9 @@ use crate::circuit_air::{
     CircuitClaim, CircuitInteractionClaim, CircuitInteractionElements, lookup_sum,
 };
 use crate::circuit_prover::finalize::finalize_context;
+use crate::circuit_prover::witness::components::qm31_ops;
 use crate::circuit_prover::witness::preprocessed::PreProcessedTrace;
+use crate::circuit_prover::witness::trace::TraceGenerator;
 use crate::circuit_prover::witness::trace::write_interaction_trace;
 use crate::circuit_prover::witness::trace::write_trace;
 use crate::circuits::context::Context;
@@ -26,6 +28,12 @@ use stwo::prover::poly::circle::PolyOps;
 use stwo::prover::{ProvingError, prove_ex};
 
 const COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND: u32 = 1;
+
+pub struct CircuitParams {
+    pub trace_log_size: u32,
+    pub first_permutation_row: usize,
+}
+
 pub struct CircuitProof {
     pub pcs_config: PcsConfig,
     pub claim: CircuitClaim,
@@ -42,13 +50,24 @@ pub mod test;
 
 pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     finalize_context(context);
-    // Generate preprocessed trace.
-    let (preprocessed_trace, trace_generator) =
+
+    let (preprocessed_trace, params) =
         PreProcessedTrace::generate_preprocessed_trace(&context.circuit);
 
-    // The trace size is the size of the largest column in the preprocessed trace (since all
-    // components have preprocessed columns).
-    let trace_log_size = preprocessed_trace.log_sizes().into_iter().max().unwrap();
+    prove_circuit_assignment(context.values(), preprocessed_trace, &params)
+}
+
+pub fn prove_circuit_assignment(
+    values: &[QM31],
+    preprocessed_trace: PreProcessedTrace,
+    params: &CircuitParams,
+) -> CircuitProof {
+    let trace_generator = TraceGenerator {
+        qm31_ops_trace_generator: qm31_ops::TraceGenerator {
+            first_permutation_row: params.first_permutation_row,
+        },
+    };
+    let trace_log_size = params.trace_log_size;
 
     let mut pcs_config = PcsConfig::default();
     let lifting_log_size = trace_log_size + pcs_config.fri_config.log_blowup_factor;
@@ -88,7 +107,7 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     // Base trace.
     let mut tree_builder = commitment_scheme.tree_builder();
     let (claim, interaction_generator) =
-        write_trace(context.values(), &preprocessed_trace, &mut tree_builder, &trace_generator);
+        write_trace(values, &preprocessed_trace, &mut tree_builder, &trace_generator);
     claim.mix_into(channel);
     tree_builder.commit(channel);
 
