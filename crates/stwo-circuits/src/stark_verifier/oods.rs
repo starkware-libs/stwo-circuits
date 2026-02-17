@@ -144,7 +144,7 @@ pub fn extract_expected_composition_eval(
     context: &mut Context<impl IValue>,
     composition_eval_at_oods: &[Var; N_COMPOSITION_COLUMNS],
     oods_point: CirclePoint<Var>,
-    log_evaluation_domain_size: usize,
+    max_log_degree_bound: usize,
 ) -> Var {
     let composition_eval_at_oods_left =
         from_partial_evals(context, composition_eval_at_oods[0..4].try_into().unwrap());
@@ -152,9 +152,9 @@ pub fn extract_expected_composition_eval(
         from_partial_evals(context, composition_eval_at_oods[4..8].try_into().unwrap());
 
     // Compute:
-    //  `x = pi^{log_evaluation_domain_size - 2}(oods_point.x) = pi(pi(...pi(oods_point.x)...))`.
+    //  `x = pi^{max_log_degree_bound - 2}(oods_point.x) = pi(pi(...pi(oods_point.x)...))`.
     let mut x = oods_point.x;
-    for _ in 0..log_evaluation_domain_size - 2 {
+    for _ in 0..max_log_degree_bound - 2 {
         x = double_x(context, x);
     }
 
