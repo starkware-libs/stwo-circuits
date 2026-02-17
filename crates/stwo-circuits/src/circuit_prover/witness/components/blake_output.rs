@@ -1,6 +1,7 @@
 // This file was created by the AIR team.
 
 #![allow(unused_parens)]
+#![allow(dead_code)]
 use crate::circuit_air::components::blake_output::{Claim, InteractionClaim, N_TRACE_COLUMNS};
 
 use crate::circuit_prover::witness::components::prelude::*;
@@ -170,12 +171,15 @@ fn write_trace_simd(
     (trace, lookup_data)
 }
 
+#[allow(dead_code)]
 #[derive(Uninitialized, IterMut, ParIterMut)]
 struct LookupData {
     blake_output_0: Vec<[PackedM31; 18]>,
     gate_0: Vec<[PackedM31; 6]>,
     gate_1: Vec<[PackedM31; 6]>,
+    #[allow(dead_code)]
     mults_0: Vec<PackedM31>,
+    #[allow(dead_code)]
     mults_1: Vec<PackedM31>,
 }
 
