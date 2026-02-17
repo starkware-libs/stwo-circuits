@@ -1,13 +1,10 @@
 // This file was created by the AIR team.
 
-use crate::circuit_air::components::prelude::*;
-use crate::circuit_air::components::subroutines::triple_sum_32::TripleSum32;
-use crate::circuit_air::components::subroutines::xor_rot_32_r_7::XorRot32R7;
-use crate::circuit_air::components::subroutines::xor_rot_32_r_8::XorRot32R8;
-use crate::circuit_air::components::subroutines::xor_rot_32_r_12::XorRot32R12;
-use crate::circuit_air::components::subroutines::xor_rot_32_r_16::XorRot32R16;
+use super::prelude::*;
 
 pub const N_TRACE_COLUMNS: usize = 53;
+pub const N_INTERACTION_COLUMNS: usize = 36;
+
 pub const RELATION_USES_PER_ROW: [RelationUse; 6] = [
     RelationUse { relation_id: "VerifyBitwiseXor_12", uses: 2 },
     RelationUse { relation_id: "VerifyBitwiseXor_4", uses: 2 },
@@ -17,283 +14,276 @@ pub const RELATION_USES_PER_ROW: [RelationUse; 6] = [
     RelationUse { relation_id: "VerifyBitwiseXor_9", uses: 2 },
 ];
 
-pub struct Eval {
-    pub claim: Claim,
-    pub common_lookup_elements: relations::CommonLookupElements,
-}
+#[allow(unused_variables)]
+pub fn accumulate_constraints<Value: IValue>(
+    input: &[Var],
+    context: &mut Context<Value>,
+    component_data: &dyn ComponentDataTrait<Value>,
+    acc: &mut CompositionConstraintAccumulator,
+) {
+    let [
+        input_limb_0_col0,
+        input_limb_1_col1,
+        input_limb_2_col2,
+        input_limb_3_col3,
+        input_limb_4_col4,
+        input_limb_5_col5,
+        input_limb_6_col6,
+        input_limb_7_col7,
+        input_limb_8_col8,
+        input_limb_9_col9,
+        input_limb_10_col10,
+        input_limb_11_col11,
+        triple_sum32_res_limb_0_col12,
+        triple_sum32_res_limb_1_col13,
+        ms_8_bits_col14,
+        ms_8_bits_col15,
+        ms_8_bits_col16,
+        ms_8_bits_col17,
+        xor_col18,
+        xor_col19,
+        xor_col20,
+        xor_col21,
+        triple_sum32_res_limb_0_col22,
+        triple_sum32_res_limb_1_col23,
+        ms_4_bits_col24,
+        ms_4_bits_col25,
+        ms_4_bits_col26,
+        ms_4_bits_col27,
+        xor_col28,
+        xor_col29,
+        xor_col30,
+        xor_col31,
+        triple_sum32_res_limb_0_col32,
+        triple_sum32_res_limb_1_col33,
+        ms_8_bits_col34,
+        ms_8_bits_col35,
+        ms_8_bits_col36,
+        ms_8_bits_col37,
+        xor_col38,
+        xor_col39,
+        xor_col40,
+        xor_col41,
+        triple_sum32_res_limb_0_col42,
+        triple_sum32_res_limb_1_col43,
+        ms_9_bits_col44,
+        ms_9_bits_col45,
+        ms_9_bits_col46,
+        ms_9_bits_col47,
+        xor_col48,
+        xor_col49,
+        xor_col50,
+        xor_col51,
+        enabler_col52,
+    ] = input.try_into().unwrap();
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
-pub struct Claim {
-    pub log_size: u32,
-}
-impl Claim {
-    pub fn log_sizes(&self) -> TreeVec<Vec<u32>> {
-        let trace_log_sizes = vec![self.log_size; N_TRACE_COLUMNS];
-        let interaction_log_sizes = vec![self.log_size; SECURE_EXTENSION_DEGREE * 9];
-        TreeVec::new(vec![vec![], trace_log_sizes, interaction_log_sizes])
-    }
+    let constraint_0_value = eval!(context, ((enabler_col52) * (enabler_col52)) - (enabler_col52));
+    acc.add_constraint(context, constraint_0_value);
 
-    pub fn mix_into(&self, channel: &mut impl Channel) {
-        channel.mix_u64(self.log_size as u64);
-    }
-}
+    triple_sum_32::accumulate_constraints(
+        &[
+            eval!(context, input_limb_0_col0),
+            eval!(context, input_limb_1_col1),
+            eval!(context, input_limb_2_col2),
+            eval!(context, input_limb_3_col3),
+            eval!(context, input_limb_8_col8),
+            eval!(context, input_limb_9_col9),
+            eval!(context, triple_sum32_res_limb_0_col12),
+            eval!(context, triple_sum32_res_limb_1_col13),
+        ],
+        context,
+        component_data,
+        acc,
+    );
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
-pub struct InteractionClaim {
-    pub claimed_sum: SecureField,
-}
-impl InteractionClaim {
-    pub fn mix_into(&self, channel: &mut impl Channel) {
-        channel.mix_felts(&[self.claimed_sum]);
-    }
-}
-
-pub type Component = FrameworkComponent<Eval>;
-
-impl FrameworkEval for Eval {
-    fn log_size(&self) -> u32 {
-        self.claim.log_size
-    }
-
-    fn max_constraint_log_degree_bound(&self) -> u32 {
-        self.log_size() + 1
-    }
-
-    #[allow(unused_parens)]
-    #[allow(clippy::double_parens)]
-    #[allow(non_snake_case)]
-    fn evaluate<E: EvalAtRow>(&self, mut eval: E) -> E {
-        let M31_0 = E::F::from(M31::from(0));
-        let M31_1139985212 = E::F::from(M31::from(1139985212));
-        let input_limb_0_col0 = eval.next_trace_mask();
-        let input_limb_1_col1 = eval.next_trace_mask();
-        let input_limb_2_col2 = eval.next_trace_mask();
-        let input_limb_3_col3 = eval.next_trace_mask();
-        let input_limb_4_col4 = eval.next_trace_mask();
-        let input_limb_5_col5 = eval.next_trace_mask();
-        let input_limb_6_col6 = eval.next_trace_mask();
-        let input_limb_7_col7 = eval.next_trace_mask();
-        let input_limb_8_col8 = eval.next_trace_mask();
-        let input_limb_9_col9 = eval.next_trace_mask();
-        let input_limb_10_col10 = eval.next_trace_mask();
-        let input_limb_11_col11 = eval.next_trace_mask();
-        let triple_sum32_res_limb_0_col12 = eval.next_trace_mask();
-        let triple_sum32_res_limb_1_col13 = eval.next_trace_mask();
-        let ms_8_bits_col14 = eval.next_trace_mask();
-        let ms_8_bits_col15 = eval.next_trace_mask();
-        let ms_8_bits_col16 = eval.next_trace_mask();
-        let ms_8_bits_col17 = eval.next_trace_mask();
-        let xor_col18 = eval.next_trace_mask();
-        let xor_col19 = eval.next_trace_mask();
-        let xor_col20 = eval.next_trace_mask();
-        let xor_col21 = eval.next_trace_mask();
-        let triple_sum32_res_limb_0_col22 = eval.next_trace_mask();
-        let triple_sum32_res_limb_1_col23 = eval.next_trace_mask();
-        let ms_4_bits_col24 = eval.next_trace_mask();
-        let ms_4_bits_col25 = eval.next_trace_mask();
-        let ms_4_bits_col26 = eval.next_trace_mask();
-        let ms_4_bits_col27 = eval.next_trace_mask();
-        let xor_col28 = eval.next_trace_mask();
-        let xor_col29 = eval.next_trace_mask();
-        let xor_col30 = eval.next_trace_mask();
-        let xor_col31 = eval.next_trace_mask();
-        let triple_sum32_res_limb_0_col32 = eval.next_trace_mask();
-        let triple_sum32_res_limb_1_col33 = eval.next_trace_mask();
-        let ms_8_bits_col34 = eval.next_trace_mask();
-        let ms_8_bits_col35 = eval.next_trace_mask();
-        let ms_8_bits_col36 = eval.next_trace_mask();
-        let ms_8_bits_col37 = eval.next_trace_mask();
-        let xor_col38 = eval.next_trace_mask();
-        let xor_col39 = eval.next_trace_mask();
-        let xor_col40 = eval.next_trace_mask();
-        let xor_col41 = eval.next_trace_mask();
-        let triple_sum32_res_limb_0_col42 = eval.next_trace_mask();
-        let triple_sum32_res_limb_1_col43 = eval.next_trace_mask();
-        let ms_9_bits_col44 = eval.next_trace_mask();
-        let ms_9_bits_col45 = eval.next_trace_mask();
-        let ms_9_bits_col46 = eval.next_trace_mask();
-        let ms_9_bits_col47 = eval.next_trace_mask();
-        let xor_col48 = eval.next_trace_mask();
-        let xor_col49 = eval.next_trace_mask();
-        let xor_col50 = eval.next_trace_mask();
-        let xor_col51 = eval.next_trace_mask();
-        let enabler = eval.next_trace_mask();
-
-        eval.add_constraint(enabler.clone() * enabler.clone() - enabler.clone());
-
-        TripleSum32::evaluate(
-            [
-                input_limb_0_col0.clone(),
-                input_limb_1_col1.clone(),
-                input_limb_2_col2.clone(),
-                input_limb_3_col3.clone(),
-                input_limb_8_col8.clone(),
-                input_limb_9_col9.clone(),
-            ],
-            triple_sum32_res_limb_0_col12.clone(),
-            triple_sum32_res_limb_1_col13.clone(),
-            &self.common_lookup_elements,
-            &mut eval,
-        );
-        #[allow(clippy::unused_unit)]
-        #[allow(unused_variables)]
-        let [
-            xor_rot_32_r_16_output_tmp_f72c8_21_limb_0,
-            xor_rot_32_r_16_output_tmp_f72c8_21_limb_1,
-        ] = XorRot32R16::evaluate(
-            [
-                triple_sum32_res_limb_0_col12.clone(),
-                triple_sum32_res_limb_1_col13.clone(),
-                input_limb_6_col6.clone(),
-                input_limb_7_col7.clone(),
-            ],
-            ms_8_bits_col14.clone(),
-            ms_8_bits_col15.clone(),
-            ms_8_bits_col16.clone(),
-            ms_8_bits_col17.clone(),
-            xor_col18.clone(),
-            xor_col19.clone(),
-            xor_col20.clone(),
-            xor_col21.clone(),
-            &self.common_lookup_elements,
-            &mut eval,
-        );
-        TripleSum32::evaluate(
-            [
-                input_limb_4_col4.clone(),
-                input_limb_5_col5.clone(),
-                xor_rot_32_r_16_output_tmp_f72c8_21_limb_0.clone(),
-                xor_rot_32_r_16_output_tmp_f72c8_21_limb_1.clone(),
-                M31_0.clone(),
-                M31_0.clone(),
-            ],
-            triple_sum32_res_limb_0_col22.clone(),
-            triple_sum32_res_limb_1_col23.clone(),
-            &self.common_lookup_elements,
-            &mut eval,
-        );
-        #[allow(clippy::unused_unit)]
-        #[allow(unused_variables)]
-        let [
-            xor_rot_32_r_12_output_tmp_f72c8_43_limb_0,
-            xor_rot_32_r_12_output_tmp_f72c8_43_limb_1,
-        ] = XorRot32R12::evaluate(
-            [
-                input_limb_2_col2.clone(),
-                input_limb_3_col3.clone(),
-                triple_sum32_res_limb_0_col22.clone(),
-                triple_sum32_res_limb_1_col23.clone(),
-            ],
-            ms_4_bits_col24.clone(),
-            ms_4_bits_col25.clone(),
-            ms_4_bits_col26.clone(),
-            ms_4_bits_col27.clone(),
-            xor_col28.clone(),
-            xor_col29.clone(),
-            xor_col30.clone(),
-            xor_col31.clone(),
-            &self.common_lookup_elements,
-            &mut eval,
-        );
-        TripleSum32::evaluate(
-            [
-                triple_sum32_res_limb_0_col12.clone(),
-                triple_sum32_res_limb_1_col13.clone(),
-                xor_rot_32_r_12_output_tmp_f72c8_43_limb_0.clone(),
-                xor_rot_32_r_12_output_tmp_f72c8_43_limb_1.clone(),
-                input_limb_10_col10.clone(),
-                input_limb_11_col11.clone(),
-            ],
-            triple_sum32_res_limb_0_col32.clone(),
-            triple_sum32_res_limb_1_col33.clone(),
-            &self.common_lookup_elements,
-            &mut eval,
-        );
-        #[allow(clippy::unused_unit)]
-        #[allow(unused_variables)]
-        let [xor_rot_32_r_8_output_tmp_f72c8_65_limb_0, xor_rot_32_r_8_output_tmp_f72c8_65_limb_1] =
-            XorRot32R8::evaluate(
-                [
-                    triple_sum32_res_limb_0_col32.clone(),
-                    triple_sum32_res_limb_1_col33.clone(),
-                    xor_rot_32_r_16_output_tmp_f72c8_21_limb_0.clone(),
-                    xor_rot_32_r_16_output_tmp_f72c8_21_limb_1.clone(),
-                ],
-                ms_8_bits_col34.clone(),
-                ms_8_bits_col35.clone(),
-                ms_8_bits_col36.clone(),
-                ms_8_bits_col37.clone(),
-                xor_col38.clone(),
-                xor_col39.clone(),
-                xor_col40.clone(),
-                xor_col41.clone(),
-                &self.common_lookup_elements,
-                &mut eval,
-            );
-        TripleSum32::evaluate(
-            [
-                triple_sum32_res_limb_0_col22.clone(),
-                triple_sum32_res_limb_1_col23.clone(),
-                xor_rot_32_r_8_output_tmp_f72c8_65_limb_0.clone(),
-                xor_rot_32_r_8_output_tmp_f72c8_65_limb_1.clone(),
-                M31_0.clone(),
-                M31_0.clone(),
-            ],
-            triple_sum32_res_limb_0_col42.clone(),
-            triple_sum32_res_limb_1_col43.clone(),
-            &self.common_lookup_elements,
-            &mut eval,
-        );
-        #[allow(clippy::unused_unit)]
-        #[allow(unused_variables)]
-        let [xor_rot_32_r_7_output_tmp_f72c8_87_limb_0, xor_rot_32_r_7_output_tmp_f72c8_87_limb_1] =
-            XorRot32R7::evaluate(
-                [
-                    xor_rot_32_r_12_output_tmp_f72c8_43_limb_0.clone(),
-                    xor_rot_32_r_12_output_tmp_f72c8_43_limb_1.clone(),
-                    triple_sum32_res_limb_0_col42.clone(),
-                    triple_sum32_res_limb_1_col43.clone(),
-                ],
-                ms_9_bits_col44.clone(),
-                ms_9_bits_col45.clone(),
-                ms_9_bits_col46.clone(),
-                ms_9_bits_col47.clone(),
-                xor_col48.clone(),
-                xor_col49.clone(),
-                xor_col50.clone(),
-                xor_col51.clone(),
-                &self.common_lookup_elements,
-                &mut eval,
-            );
-        eval.add_to_relation(RelationEntry::new(
-            &self.common_lookup_elements,
-            -E::EF::from(enabler.clone()),
+    let [xor_rot_32_r_16_output_tmp_f72c8_21_limb_0, xor_rot_32_r_16_output_tmp_f72c8_21_limb_1] =
+        xor_rot_32_r_16::accumulate_constraints(
             &[
-                M31_1139985212.clone(),
-                input_limb_0_col0.clone(),
-                input_limb_1_col1.clone(),
-                input_limb_2_col2.clone(),
-                input_limb_3_col3.clone(),
-                input_limb_4_col4.clone(),
-                input_limb_5_col5.clone(),
-                input_limb_6_col6.clone(),
-                input_limb_7_col7.clone(),
-                input_limb_8_col8.clone(),
-                input_limb_9_col9.clone(),
-                input_limb_10_col10.clone(),
-                input_limb_11_col11.clone(),
-                triple_sum32_res_limb_0_col32.clone(),
-                triple_sum32_res_limb_1_col33.clone(),
-                xor_rot_32_r_7_output_tmp_f72c8_87_limb_0.clone(),
-                xor_rot_32_r_7_output_tmp_f72c8_87_limb_1.clone(),
-                triple_sum32_res_limb_0_col42.clone(),
-                triple_sum32_res_limb_1_col43.clone(),
-                xor_rot_32_r_8_output_tmp_f72c8_65_limb_0.clone(),
-                xor_rot_32_r_8_output_tmp_f72c8_65_limb_1.clone(),
+                eval!(context, triple_sum32_res_limb_0_col12),
+                eval!(context, triple_sum32_res_limb_1_col13),
+                eval!(context, input_limb_6_col6),
+                eval!(context, input_limb_7_col7),
+                eval!(context, ms_8_bits_col14),
+                eval!(context, ms_8_bits_col15),
+                eval!(context, ms_8_bits_col16),
+                eval!(context, ms_8_bits_col17),
+                eval!(context, xor_col18),
+                eval!(context, xor_col19),
+                eval!(context, xor_col20),
+                eval!(context, xor_col21),
             ],
-        ));
+            context,
+            component_data,
+            acc,
+        )
+        .try_into()
+        .unwrap();
 
-        eval.finalize_logup_in_pairs();
-        eval
+    triple_sum_32::accumulate_constraints(
+        &[
+            eval!(context, input_limb_4_col4),
+            eval!(context, input_limb_5_col5),
+            eval!(context, xor_rot_32_r_16_output_tmp_f72c8_21_limb_0),
+            eval!(context, xor_rot_32_r_16_output_tmp_f72c8_21_limb_1),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, triple_sum32_res_limb_0_col22),
+            eval!(context, triple_sum32_res_limb_1_col23),
+        ],
+        context,
+        component_data,
+        acc,
+    );
+
+    let [xor_rot_32_r_12_output_tmp_f72c8_43_limb_0, xor_rot_32_r_12_output_tmp_f72c8_43_limb_1] =
+        xor_rot_32_r_12::accumulate_constraints(
+            &[
+                eval!(context, input_limb_2_col2),
+                eval!(context, input_limb_3_col3),
+                eval!(context, triple_sum32_res_limb_0_col22),
+                eval!(context, triple_sum32_res_limb_1_col23),
+                eval!(context, ms_4_bits_col24),
+                eval!(context, ms_4_bits_col25),
+                eval!(context, ms_4_bits_col26),
+                eval!(context, ms_4_bits_col27),
+                eval!(context, xor_col28),
+                eval!(context, xor_col29),
+                eval!(context, xor_col30),
+                eval!(context, xor_col31),
+            ],
+            context,
+            component_data,
+            acc,
+        )
+        .try_into()
+        .unwrap();
+
+    triple_sum_32::accumulate_constraints(
+        &[
+            eval!(context, triple_sum32_res_limb_0_col12),
+            eval!(context, triple_sum32_res_limb_1_col13),
+            eval!(context, xor_rot_32_r_12_output_tmp_f72c8_43_limb_0),
+            eval!(context, xor_rot_32_r_12_output_tmp_f72c8_43_limb_1),
+            eval!(context, input_limb_10_col10),
+            eval!(context, input_limb_11_col11),
+            eval!(context, triple_sum32_res_limb_0_col32),
+            eval!(context, triple_sum32_res_limb_1_col33),
+        ],
+        context,
+        component_data,
+        acc,
+    );
+
+    let [xor_rot_32_r_8_output_tmp_f72c8_65_limb_0, xor_rot_32_r_8_output_tmp_f72c8_65_limb_1] =
+        xor_rot_32_r_8::accumulate_constraints(
+            &[
+                eval!(context, triple_sum32_res_limb_0_col32),
+                eval!(context, triple_sum32_res_limb_1_col33),
+                eval!(context, xor_rot_32_r_16_output_tmp_f72c8_21_limb_0),
+                eval!(context, xor_rot_32_r_16_output_tmp_f72c8_21_limb_1),
+                eval!(context, ms_8_bits_col34),
+                eval!(context, ms_8_bits_col35),
+                eval!(context, ms_8_bits_col36),
+                eval!(context, ms_8_bits_col37),
+                eval!(context, xor_col38),
+                eval!(context, xor_col39),
+                eval!(context, xor_col40),
+                eval!(context, xor_col41),
+            ],
+            context,
+            component_data,
+            acc,
+        )
+        .try_into()
+        .unwrap();
+
+    triple_sum_32::accumulate_constraints(
+        &[
+            eval!(context, triple_sum32_res_limb_0_col22),
+            eval!(context, triple_sum32_res_limb_1_col23),
+            eval!(context, xor_rot_32_r_8_output_tmp_f72c8_65_limb_0),
+            eval!(context, xor_rot_32_r_8_output_tmp_f72c8_65_limb_1),
+            eval!(context, 0),
+            eval!(context, 0),
+            eval!(context, triple_sum32_res_limb_0_col42),
+            eval!(context, triple_sum32_res_limb_1_col43),
+        ],
+        context,
+        component_data,
+        acc,
+    );
+
+    let [xor_rot_32_r_7_output_tmp_f72c8_87_limb_0, xor_rot_32_r_7_output_tmp_f72c8_87_limb_1] =
+        xor_rot_32_r_7::accumulate_constraints(
+            &[
+                eval!(context, xor_rot_32_r_12_output_tmp_f72c8_43_limb_0),
+                eval!(context, xor_rot_32_r_12_output_tmp_f72c8_43_limb_1),
+                eval!(context, triple_sum32_res_limb_0_col42),
+                eval!(context, triple_sum32_res_limb_1_col43),
+                eval!(context, ms_9_bits_col44),
+                eval!(context, ms_9_bits_col45),
+                eval!(context, ms_9_bits_col46),
+                eval!(context, ms_9_bits_col47),
+                eval!(context, xor_col48),
+                eval!(context, xor_col49),
+                eval!(context, xor_col50),
+                eval!(context, xor_col51),
+            ],
+            context,
+            component_data,
+            acc,
+        )
+        .try_into()
+        .unwrap();
+
+    // Yield BlakeG.
+    let tuple_9 = &[
+        eval!(context, 1139985212),
+        eval!(context, input_limb_0_col0),
+        eval!(context, input_limb_1_col1),
+        eval!(context, input_limb_2_col2),
+        eval!(context, input_limb_3_col3),
+        eval!(context, input_limb_4_col4),
+        eval!(context, input_limb_5_col5),
+        eval!(context, input_limb_6_col6),
+        eval!(context, input_limb_7_col7),
+        eval!(context, input_limb_8_col8),
+        eval!(context, input_limb_9_col9),
+        eval!(context, input_limb_10_col10),
+        eval!(context, input_limb_11_col11),
+        eval!(context, triple_sum32_res_limb_0_col32),
+        eval!(context, triple_sum32_res_limb_1_col33),
+        eval!(context, xor_rot_32_r_7_output_tmp_f72c8_87_limb_0),
+        eval!(context, xor_rot_32_r_7_output_tmp_f72c8_87_limb_1),
+        eval!(context, triple_sum32_res_limb_0_col42),
+        eval!(context, triple_sum32_res_limb_1_col43),
+        eval!(context, xor_rot_32_r_8_output_tmp_f72c8_65_limb_0),
+        eval!(context, xor_rot_32_r_8_output_tmp_f72c8_65_limb_1),
+    ];
+    let numerator_9 = eval!(context, -(enabler_col52));
+    acc.add_to_relation(context, numerator_9, tuple_9);
+}
+
+pub struct Component {}
+impl<Value: IValue> CircuitEval<Value> for Component {
+    fn evaluate(
+        &self,
+        context: &mut Context<Value>,
+        component_data: &dyn ComponentDataTrait<Value>,
+        acc: &mut CompositionConstraintAccumulator,
+    ) {
+        accumulate_constraints(component_data.trace_columns(), context, component_data, acc);
+    }
+
+    fn trace_columns(&self) -> usize {
+        N_TRACE_COLUMNS
+    }
+
+    fn interaction_columns(&self) -> usize {
+        N_INTERACTION_COLUMNS
+    }
+
+    fn relation_uses_per_row(&self) -> &[RelationUse] {
+        &RELATION_USES_PER_ROW
     }
 }

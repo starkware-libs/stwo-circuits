@@ -1,98 +1,115 @@
 // This file was created by the AIR team.
 
-use crate::circuit_air::components::prelude::*;
-use crate::circuit_air::components::subroutines::bitwise_xor_num_bits_7::BitwiseXorNumBits7;
-use crate::circuit_air::components::subroutines::bitwise_xor_num_bits_9::BitwiseXorNumBits9;
-use crate::circuit_air::components::subroutines::split_16_low_part_size_7::Split16LowPartSize7;
+use super::super::prelude::*;
 
-#[derive(Copy, Clone, Serialize)]
-pub struct XorRot32R7 {}
+pub const RELATION_USES_PER_ROW: [RelationUse; 2] = [
+    RelationUse { relation_id: "VerifyBitwiseXor_7", uses: 2 },
+    RelationUse { relation_id: "VerifyBitwiseXor_9", uses: 2 },
+];
 
-impl XorRot32R7 {
-    #[allow(unused_parens)]
-    #[allow(clippy::double_parens)]
-    #[allow(non_snake_case)]
-    #[allow(clippy::unused_unit)]
-    #[allow(unused_variables)]
-    #[allow(clippy::too_many_arguments)]
-    pub fn evaluate<E: EvalAtRow>(
-        [
-            xor_rot_32_r_7_input_limb_0,
-            xor_rot_32_r_7_input_limb_1,
-            xor_rot_32_r_7_input_limb_2,
-            xor_rot_32_r_7_input_limb_3,
-        ]: [E::F; 4],
-        ms_9_bits_col0: E::F,
-        ms_9_bits_col1: E::F,
-        ms_9_bits_col2: E::F,
-        ms_9_bits_col3: E::F,
-        xor_col4: E::F,
-        xor_col5: E::F,
-        xor_col6: E::F,
-        xor_col7: E::F,
-        common_lookup_elements: &relations::CommonLookupElements,
-        eval: &mut E,
-    ) -> [E::F; 2] {
-        let M31_512 = E::F::from(M31::from(512));
+#[allow(unused_variables)]
+pub fn accumulate_constraints<Value: IValue>(
+    input: &[Var],
+    context: &mut Context<Value>,
+    component_data: &dyn ComponentDataTrait<Value>,
+    acc: &mut CompositionConstraintAccumulator,
+) -> Vec<Var> {
+    let [
+        xor_rot_32_r_7_input_limb_0,
+        xor_rot_32_r_7_input_limb_1,
+        xor_rot_32_r_7_input_limb_2,
+        xor_rot_32_r_7_input_limb_3,
+        ms_9_bits_col0,
+        ms_9_bits_col1,
+        ms_9_bits_col2,
+        ms_9_bits_col3,
+        xor_col4,
+        xor_col5,
+        xor_col6,
+        xor_col7,
+    ] = input.try_into().unwrap();
 
-        let [split_16_low_part_size_7_output_tmp_e97b9_1_limb_0] = Split16LowPartSize7::evaluate(
-            [xor_rot_32_r_7_input_limb_0.clone()],
-            ms_9_bits_col0.clone(),
-            common_lookup_elements,
-            eval,
-        );
-        let [split_16_low_part_size_7_output_tmp_e97b9_3_limb_0] = Split16LowPartSize7::evaluate(
-            [xor_rot_32_r_7_input_limb_1.clone()],
-            ms_9_bits_col1.clone(),
-            common_lookup_elements,
-            eval,
-        );
-        let [split_16_low_part_size_7_output_tmp_e97b9_5_limb_0] = Split16LowPartSize7::evaluate(
-            [xor_rot_32_r_7_input_limb_2.clone()],
-            ms_9_bits_col2.clone(),
-            common_lookup_elements,
-            eval,
-        );
-        let [split_16_low_part_size_7_output_tmp_e97b9_7_limb_0] = Split16LowPartSize7::evaluate(
-            [xor_rot_32_r_7_input_limb_3.clone()],
-            ms_9_bits_col3.clone(),
-            common_lookup_elements,
-            eval,
-        );
-        BitwiseXorNumBits7::evaluate(
-            [
-                split_16_low_part_size_7_output_tmp_e97b9_1_limb_0.clone(),
-                split_16_low_part_size_7_output_tmp_e97b9_5_limb_0.clone(),
-            ],
-            xor_col4.clone(),
-            common_lookup_elements,
-            eval,
-        );
-        BitwiseXorNumBits9::evaluate(
-            [ms_9_bits_col0.clone(), ms_9_bits_col2.clone()],
-            xor_col5.clone(),
-            common_lookup_elements,
-            eval,
-        );
-        BitwiseXorNumBits7::evaluate(
-            [
-                split_16_low_part_size_7_output_tmp_e97b9_3_limb_0.clone(),
-                split_16_low_part_size_7_output_tmp_e97b9_7_limb_0.clone(),
-            ],
-            xor_col6.clone(),
-            common_lookup_elements,
-            eval,
-        );
-        BitwiseXorNumBits9::evaluate(
-            [ms_9_bits_col1.clone(), ms_9_bits_col3.clone()],
-            xor_col7.clone(),
-            common_lookup_elements,
-            eval,
-        );
-        let xor_rot_7_output_tmp_e97b9_16_limb_0 =
-            eval.add_intermediate((xor_col5.clone() + (xor_col6.clone() * M31_512.clone())));
-        let xor_rot_7_output_tmp_e97b9_16_limb_1 =
-            eval.add_intermediate((xor_col7.clone() + (xor_col4.clone() * M31_512.clone())));
-        [xor_rot_7_output_tmp_e97b9_16_limb_0.clone(), xor_rot_7_output_tmp_e97b9_16_limb_1.clone()]
-    }
+    let [split_16_low_part_size_7_output_tmp_e97b9_1_limb_0] =
+        split_16_low_part_size_7::accumulate_constraints(
+            &[eval!(context, xor_rot_32_r_7_input_limb_0), eval!(context, ms_9_bits_col0)],
+            context,
+            component_data,
+            acc,
+        )
+        .try_into()
+        .unwrap();
+
+    let [split_16_low_part_size_7_output_tmp_e97b9_3_limb_0] =
+        split_16_low_part_size_7::accumulate_constraints(
+            &[eval!(context, xor_rot_32_r_7_input_limb_1), eval!(context, ms_9_bits_col1)],
+            context,
+            component_data,
+            acc,
+        )
+        .try_into()
+        .unwrap();
+
+    let [split_16_low_part_size_7_output_tmp_e97b9_5_limb_0] =
+        split_16_low_part_size_7::accumulate_constraints(
+            &[eval!(context, xor_rot_32_r_7_input_limb_2), eval!(context, ms_9_bits_col2)],
+            context,
+            component_data,
+            acc,
+        )
+        .try_into()
+        .unwrap();
+
+    let [split_16_low_part_size_7_output_tmp_e97b9_7_limb_0] =
+        split_16_low_part_size_7::accumulate_constraints(
+            &[eval!(context, xor_rot_32_r_7_input_limb_3), eval!(context, ms_9_bits_col3)],
+            context,
+            component_data,
+            acc,
+        )
+        .try_into()
+        .unwrap();
+
+    bitwise_xor_num_bits_7::accumulate_constraints(
+        &[
+            eval!(context, split_16_low_part_size_7_output_tmp_e97b9_1_limb_0),
+            eval!(context, split_16_low_part_size_7_output_tmp_e97b9_5_limb_0),
+            eval!(context, xor_col4),
+        ],
+        context,
+        component_data,
+        acc,
+    );
+
+    bitwise_xor_num_bits_9::accumulate_constraints(
+        &[eval!(context, ms_9_bits_col0), eval!(context, ms_9_bits_col2), eval!(context, xor_col5)],
+        context,
+        component_data,
+        acc,
+    );
+
+    bitwise_xor_num_bits_7::accumulate_constraints(
+        &[
+            eval!(context, split_16_low_part_size_7_output_tmp_e97b9_3_limb_0),
+            eval!(context, split_16_low_part_size_7_output_tmp_e97b9_7_limb_0),
+            eval!(context, xor_col6),
+        ],
+        context,
+        component_data,
+        acc,
+    );
+
+    bitwise_xor_num_bits_9::accumulate_constraints(
+        &[eval!(context, ms_9_bits_col1), eval!(context, ms_9_bits_col3), eval!(context, xor_col7)],
+        context,
+        component_data,
+        acc,
+    );
+
+    let xor_rot_7_output_tmp_e97b9_16_limb_0 = eval!(context, (xor_col5) + ((xor_col6) * (512)));
+
+    let xor_rot_7_output_tmp_e97b9_16_limb_1 = eval!(context, (xor_col7) + ((xor_col4) * (512)));
+    vec![
+        eval!(context, xor_rot_7_output_tmp_e97b9_16_limb_0),
+        eval!(context, xor_rot_7_output_tmp_e97b9_16_limb_1),
+    ]
 }

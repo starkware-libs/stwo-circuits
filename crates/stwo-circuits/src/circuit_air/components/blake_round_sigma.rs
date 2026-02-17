@@ -1,115 +1,102 @@
 // This file was created by the AIR team.
 
-use crate::circuit_air::components::prelude::*;
+use super::prelude::*;
 
 pub const N_TRACE_COLUMNS: usize = 1;
-pub const LOG_SIZE: u32 = 4;
+pub const N_INTERACTION_COLUMNS: usize = 4;
+
 pub const RELATION_USES_PER_ROW: [RelationUse; 0] = [];
 
-pub struct Eval {
-    pub claim: Claim,
-    pub common_lookup_elements: relations::CommonLookupElements,
+#[allow(unused_variables)]
+pub fn accumulate_constraints<Value: IValue>(
+    input: &[Var],
+    context: &mut Context<Value>,
+    component_data: &dyn ComponentDataTrait<Value>,
+    acc: &mut CompositionConstraintAccumulator,
+) {
+    let [multiplicity_0_col0] = input.try_into().unwrap();
+    let blake_sigma_0 =
+        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_0".to_owned() });
+    let blake_sigma_1 =
+        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_1".to_owned() });
+    let blake_sigma_10 =
+        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_10".to_owned() });
+    let blake_sigma_11 =
+        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_11".to_owned() });
+    let blake_sigma_12 =
+        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_12".to_owned() });
+    let blake_sigma_13 =
+        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_13".to_owned() });
+    let blake_sigma_14 =
+        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_14".to_owned() });
+    let blake_sigma_15 =
+        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_15".to_owned() });
+    let blake_sigma_2 =
+        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_2".to_owned() });
+    let blake_sigma_3 =
+        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_3".to_owned() });
+    let blake_sigma_4 =
+        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_4".to_owned() });
+    let blake_sigma_5 =
+        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_5".to_owned() });
+    let blake_sigma_6 =
+        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_6".to_owned() });
+    let blake_sigma_7 =
+        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_7".to_owned() });
+    let blake_sigma_8 =
+        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_8".to_owned() });
+    let blake_sigma_9 =
+        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_sigma_9".to_owned() });
+    let seq_4 = acc.get_preprocessed_column(&PreProcessedColumnId { id: "seq_4".to_owned() });
+
+    // Yield BlakeRoundSigma.
+    let tuple_0 = &[
+        eval!(context, 1805967942),
+        eval!(context, seq_4),
+        eval!(context, blake_sigma_0),
+        eval!(context, blake_sigma_1),
+        eval!(context, blake_sigma_2),
+        eval!(context, blake_sigma_3),
+        eval!(context, blake_sigma_4),
+        eval!(context, blake_sigma_5),
+        eval!(context, blake_sigma_6),
+        eval!(context, blake_sigma_7),
+        eval!(context, blake_sigma_8),
+        eval!(context, blake_sigma_9),
+        eval!(context, blake_sigma_10),
+        eval!(context, blake_sigma_11),
+        eval!(context, blake_sigma_12),
+        eval!(context, blake_sigma_13),
+        eval!(context, blake_sigma_14),
+        eval!(context, blake_sigma_15),
+    ];
+    let numerator_0 = eval!(context, -(multiplicity_0_col0));
+    acc.add_to_relation(context, numerator_0, tuple_0);
 }
 
-#[derive(Copy, Clone, Serialize, Deserialize)]
-pub struct Claim {}
-impl Claim {
-    pub fn log_sizes(&self) -> TreeVec<Vec<u32>> {
-        let trace_log_sizes = vec![LOG_SIZE; N_TRACE_COLUMNS];
-        let interaction_log_sizes = vec![LOG_SIZE; SECURE_EXTENSION_DEGREE];
-        TreeVec::new(vec![vec![], trace_log_sizes, interaction_log_sizes])
+pub struct Component {}
+impl<Value: IValue> CircuitEval<Value> for Component {
+    fn evaluate(
+        &self,
+        context: &mut Context<Value>,
+        component_data: &dyn ComponentDataTrait<Value>,
+        acc: &mut CompositionConstraintAccumulator,
+    ) {
+        accumulate_constraints(component_data.trace_columns(), context, component_data, acc);
+        // Verify this component has 2 ** 4 rows
+        let size_bit = component_data.get_n_instances_bit(context, 4);
+        eq(context, size_bit, context.one());
     }
 
-    pub fn mix_into(&self, _channel: &mut impl Channel) {}
-}
-
-#[derive(Copy, Clone, Serialize, Deserialize)]
-pub struct InteractionClaim {
-    pub claimed_sum: SecureField,
-}
-impl InteractionClaim {
-    pub fn mix_into(&self, channel: &mut impl Channel) {
-        channel.mix_felts(&[self.claimed_sum]);
-    }
-}
-
-pub type Component = FrameworkComponent<Eval>;
-
-impl FrameworkEval for Eval {
-    fn log_size(&self) -> u32 {
-        LOG_SIZE
+    fn trace_columns(&self) -> usize {
+        N_TRACE_COLUMNS
     }
 
-    fn max_constraint_log_degree_bound(&self) -> u32 {
-        self.log_size() + 1
+    fn interaction_columns(&self) -> usize {
+        N_INTERACTION_COLUMNS
     }
 
-    #[allow(unused_parens)]
-    #[allow(clippy::double_parens)]
-    #[allow(non_snake_case)]
-    fn evaluate<E: EvalAtRow>(&self, mut eval: E) -> E {
-        let M31_1805967942 = E::F::from(M31::from(1805967942));
-        let seq_4 = eval.get_preprocessed_column(PreProcessedColumnId { id: "seq_4".to_owned() });
-        let blake_sigma_0 =
-            eval.get_preprocessed_column(PreProcessedColumnId { id: "blake_sigma_0".to_owned() });
-        let blake_sigma_1 =
-            eval.get_preprocessed_column(PreProcessedColumnId { id: "blake_sigma_1".to_owned() });
-        let blake_sigma_2 =
-            eval.get_preprocessed_column(PreProcessedColumnId { id: "blake_sigma_2".to_owned() });
-        let blake_sigma_3 =
-            eval.get_preprocessed_column(PreProcessedColumnId { id: "blake_sigma_3".to_owned() });
-        let blake_sigma_4 =
-            eval.get_preprocessed_column(PreProcessedColumnId { id: "blake_sigma_4".to_owned() });
-        let blake_sigma_5 =
-            eval.get_preprocessed_column(PreProcessedColumnId { id: "blake_sigma_5".to_owned() });
-        let blake_sigma_6 =
-            eval.get_preprocessed_column(PreProcessedColumnId { id: "blake_sigma_6".to_owned() });
-        let blake_sigma_7 =
-            eval.get_preprocessed_column(PreProcessedColumnId { id: "blake_sigma_7".to_owned() });
-        let blake_sigma_8 =
-            eval.get_preprocessed_column(PreProcessedColumnId { id: "blake_sigma_8".to_owned() });
-        let blake_sigma_9 =
-            eval.get_preprocessed_column(PreProcessedColumnId { id: "blake_sigma_9".to_owned() });
-        let blake_sigma_10 =
-            eval.get_preprocessed_column(PreProcessedColumnId { id: "blake_sigma_10".to_owned() });
-        let blake_sigma_11 =
-            eval.get_preprocessed_column(PreProcessedColumnId { id: "blake_sigma_11".to_owned() });
-        let blake_sigma_12 =
-            eval.get_preprocessed_column(PreProcessedColumnId { id: "blake_sigma_12".to_owned() });
-        let blake_sigma_13 =
-            eval.get_preprocessed_column(PreProcessedColumnId { id: "blake_sigma_13".to_owned() });
-        let blake_sigma_14 =
-            eval.get_preprocessed_column(PreProcessedColumnId { id: "blake_sigma_14".to_owned() });
-        let blake_sigma_15 =
-            eval.get_preprocessed_column(PreProcessedColumnId { id: "blake_sigma_15".to_owned() });
-        let multiplicity_0 = eval.next_trace_mask();
-
-        eval.add_to_relation(RelationEntry::new(
-            &self.common_lookup_elements,
-            -E::EF::from(multiplicity_0),
-            &[
-                M31_1805967942.clone(),
-                seq_4.clone(),
-                blake_sigma_0.clone(),
-                blake_sigma_1.clone(),
-                blake_sigma_2.clone(),
-                blake_sigma_3.clone(),
-                blake_sigma_4.clone(),
-                blake_sigma_5.clone(),
-                blake_sigma_6.clone(),
-                blake_sigma_7.clone(),
-                blake_sigma_8.clone(),
-                blake_sigma_9.clone(),
-                blake_sigma_10.clone(),
-                blake_sigma_11.clone(),
-                blake_sigma_12.clone(),
-                blake_sigma_13.clone(),
-                blake_sigma_14.clone(),
-                blake_sigma_15.clone(),
-            ],
-        ));
-
-        eval.finalize_logup_in_pairs();
-        eval
+    fn relation_uses_per_row(&self) -> &[RelationUse] {
+        &RELATION_USES_PER_ROW
     }
 }

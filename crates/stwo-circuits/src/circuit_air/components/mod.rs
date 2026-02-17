@@ -62,3 +62,17 @@ impl CircuitComponents {
         vec![Box::new(self.eq) as Box<dyn Component>, Box::new(self.qm31_ops) as Box<dyn Component>]
     }
 }
+pub mod add_mul_gate;
+pub mod blake_g;
+pub mod blake_gate;
+pub mod blake_output;
+pub mod blake_round;
+pub mod blake_round_sigma;
+pub mod range_check_15;
+pub mod range_check_16;
+pub mod subroutines;
+pub mod triple_xor_32;
+pub mod verify_bitwise_xor_4;
+pub mod verify_bitwise_xor_7;
+pub mod verify_bitwise_xor_8;
+pub mod verify_bitwise_xor_9;

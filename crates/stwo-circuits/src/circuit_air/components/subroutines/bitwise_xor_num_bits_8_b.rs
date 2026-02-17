@@ -1,37 +1,28 @@
 // This file was created by the AIR team.
 
-use crate::circuit_air::components::prelude::*;
+use super::super::prelude::*;
 
-#[derive(Copy, Clone, Serialize)]
-pub struct BitwiseXorNumBits8B {}
+pub const RELATION_USES_PER_ROW: [RelationUse; 1] =
+    [RelationUse { relation_id: "VerifyBitwiseXor_8_B", uses: 1 }];
 
-impl BitwiseXorNumBits8B {
-    #[allow(unused_parens)]
-    #[allow(clippy::double_parens)]
-    #[allow(non_snake_case)]
-    #[allow(clippy::unused_unit)]
-    #[allow(unused_variables)]
-    #[allow(clippy::too_many_arguments)]
-    pub fn evaluate<E: EvalAtRow>(
-        [bitwise_xor_num_bits_8_b_input_limb_0, bitwise_xor_num_bits_8_b_input_limb_1]: [E::F; 2],
-        xor_col0: E::F,
-        common_lookup_elements: &relations::CommonLookupElements,
-        eval: &mut E,
-    ) -> [E::F; 0] {
-        let M31_6 = E::F::from(M31::from(6));
-        // TODO(leo and alon): Change this from 4 to a different one for soundness.
+#[allow(unused_variables)]
+pub fn accumulate_constraints<Value: IValue>(
+    input: &[Var],
+    context: &mut Context<Value>,
+    component_data: &dyn ComponentDataTrait<Value>,
+    acc: &mut CompositionConstraintAccumulator,
+) -> Vec<Var> {
+    let [bitwise_xor_num_bits_8_b_input_limb_0, bitwise_xor_num_bits_8_b_input_limb_1, xor_col0] =
+        input.try_into().unwrap();
 
-        eval.add_to_relation(RelationEntry::new(
-            common_lookup_elements,
-            E::EF::one(),
-            &[
-                M31_6.clone(),
-                bitwise_xor_num_bits_8_b_input_limb_0.clone(),
-                bitwise_xor_num_bits_8_b_input_limb_1.clone(),
-                xor_col0.clone(),
-            ],
-        ));
-
-        []
-    }
+    // Use VerifyBitwiseXor_8_B.
+    let tuple_0 = &[
+        eval!(context, 521092554),
+        eval!(context, bitwise_xor_num_bits_8_b_input_limb_0),
+        eval!(context, bitwise_xor_num_bits_8_b_input_limb_1),
+        eval!(context, xor_col0),
+    ];
+    let numerator_0 = eval!(context, 1);
+    acc.add_to_relation(context, numerator_0, tuple_0);
+    vec![]
 }

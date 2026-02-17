@@ -1,11 +1,12 @@
 pub use crate::cairo_air::component_utils::*;
+pub use crate::circuit_air::components::subroutines::*;
 pub use crate::circuit_air::relations;
 pub use crate::circuits::context::{Context, Var};
 pub use crate::circuits::ivalue::IValue;
 pub use crate::circuits::ops::eq;
 pub use crate::eval;
 pub use crate::stark_verifier::constraint_eval::{
-    CircuitEval, ComponentData, CompositionConstraintAccumulator, RelationUse,
+    CircuitEval, ComponentData, ComponentDataTrait, CompositionConstraintAccumulator, RelationUse,
 };
 pub use itertools::chain;
 pub use num_traits::One;
