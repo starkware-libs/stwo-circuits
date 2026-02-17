@@ -1,8 +1,10 @@
 pub use crate::circuit_air::ClaimedSum;
 pub use crate::circuit_air::ComponentLogSize;
+pub use crate::circuit_air::components::prelude::{PreProcessedColumn, Seq};
 pub use crate::circuit_air::relations;
 pub use crate::circuit_prover::witness::preprocessed::PreProcessedTrace;
 pub use crate::circuit_prover::witness::utils::pack_values;
+use bytemuck::Zeroable;
 pub use itertools::Itertools;
 pub use itertools::multizip;
 pub use num_traits::One;
@@ -13,11 +15,11 @@ pub use rayon::iter::IntoParallelRefIterator;
 pub use rayon::iter::IntoParallelRefMutIterator;
 pub use rayon::iter::ParallelIterator;
 pub use std::array::from_fn;
+pub use std::collections::HashMap;
 pub use std::simd::num::SimdInt;
 pub use std::simd::num::SimdUint;
 pub use std::simd::u32x16;
 pub use std::sync::Arc;
-use stwo::core::fields::m31::BaseField;
 pub use stwo::core::fields::m31::M31;
 pub use stwo::core::fields::qm31::QM31;
 pub use stwo::core::fields::qm31::SecureField;
@@ -27,6 +29,7 @@ pub use stwo::prover::TreeBuilder;
 pub use stwo::prover::backend::Col;
 pub use stwo::prover::backend::simd::SimdBackend;
 pub use stwo::prover::backend::simd::column::BaseColumn;
+use stwo::prover::backend::simd::m31::PackedBaseField;
 pub use stwo::prover::backend::simd::m31::{LOG_N_LANES, N_LANES, PackedM31};
 pub use stwo::prover::backend::simd::qm31::PackedQM31;
 pub use stwo::prover::poly::BitReversedOrder;
@@ -46,6 +49,7 @@ pub use std::sync::atomic::Ordering;
 pub use stwo::prover::backend::simd::conversion::{Pack, Unpack};
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[repr(transparent)]
 pub struct UInt16 {
     pub value: u16,
 }
@@ -115,6 +119,7 @@ impl BitXor for UInt16 {
 }
 
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[repr(transparent)]
 pub struct UInt32 {
     pub value: u32,
 }
@@ -441,29 +446,31 @@ impl Enabler {
 /// A column of multiplicities for lookup arguments. Allows increasing the multiplicity at a given
 /// index. This version uses atomic operations to increase the multiplicity, and is `Send`.
 pub struct AtomicMultiplicityColumn {
-    data: Vec<AtomicU32>,
+    data: Vec<PackedM31>,
 }
 impl AtomicMultiplicityColumn {
     /// Creates a new `AtomicMultiplicityColumn` with the given size. The elements are initialized
     /// to 0.
     pub fn new(size: usize) -> Self {
-        Self { data: (0..size as u32).map(|_| AtomicU32::new(0)).collect() }
+        Self { data: vec![PackedBaseField::zeroed(); size.div_ceil(N_LANES)] }
     }
 
+    /// Atomically increments the multiplicity address by 1.
+    ///
+    /// # Safety
+    /// Caller must ensure `address` is in bounds for the column (no bounds check is performed).
     pub fn increase_at(&self, address: u32) {
-        self.data[address as usize].fetch_add(1, Ordering::Relaxed);
+        let ptr = unsafe { (self.data.as_ptr() as *mut u32).add(address as usize) };
+        unsafe { AtomicU32::from_ptr(ptr).fetch_add(1, Ordering::Relaxed) };
     }
 
-    /// Returns the internal data as a `Vec<PackedM31>`. The last element of the vector is padded
-    /// with zeros if needed.
+    /// Returns the internal data as a Vec<PackedM31>. The last element of the vector is padded with
+    /// zeros if needed. This function performs a copy on the inner data, If atomics are not
+    /// necessary, use [`MultiplicityColumn`] instead.
     pub fn into_simd_vec(self) -> Vec<PackedM31> {
-        // Safe because the data is aligned to the size of PackedM31 and the size of the data is a
-        // multiple of N_LANES.
-        BaseColumn::from_iter(self.data.into_iter().map(|a| M31(a.load(Ordering::Relaxed)))).data
+        self.data
     }
 }
-
-pub use std::collections::HashMap;
 
 /// Create the input_to_row map used in const-size components.
 ///
@@ -620,40 +627,3 @@ impl PackedBlakeRoundSigma {
 
 pub const SIMD_ENUMERATION_0: Simd<u32, N_LANES> =
     Simd::from_array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
-
-/// A column with the numbers [0..(2^log_size)-1].
-#[derive(Debug, Clone)]
-pub struct Seq {
-    pub log_size: u32,
-}
-impl Seq {
-    pub const fn new(log_size: u32) -> Self {
-        Self { log_size }
-    }
-}
-impl PreProcessedColumn for Seq {
-    fn log_size(&self) -> u32 {
-        self.log_size
-    }
-    fn packed_at(&self, vec_row: usize) -> PackedM31 {
-        PackedM31::broadcast(M31::from(vec_row * N_LANES))
-            + unsafe { PackedM31::from_simd_unchecked(SIMD_ENUMERATION_0) }
-    }
-    fn gen_column_simd(&self) -> CircleEvaluation<SimdBackend, BaseField, BitReversedOrder> {
-        let col = Col::<SimdBackend, BaseField>::from_iter(
-            (0..(1 << self.log_size)).map(BaseField::from),
-        );
-        CircleEvaluation::new(CanonicCoset::new(self.log_size).circle_domain(), col)
-    }
-
-    fn id(&self) -> PreProcessedColumnId {
-        PreProcessedColumnId { id: format!("seq_{}", self.log_size) }
-    }
-}
-
-pub trait PreProcessedColumn: Send + Sync {
-    fn packed_at(&self, vec_row: usize) -> PackedM31;
-    fn log_size(&self) -> u32;
-    fn id(&self) -> PreProcessedColumnId;
-    fn gen_column_simd(&self) -> CircleEvaluation<SimdBackend, BaseField, BitReversedOrder>;
-}
