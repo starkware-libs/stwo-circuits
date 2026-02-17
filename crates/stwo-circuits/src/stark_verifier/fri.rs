@@ -127,6 +127,7 @@ pub fn fri_decommit_with_jumps<Value: IValue>(
     // Circle to line.
     fri_data = fold_circle_to_line(fri_data);
     // Line to line.
+    // Prepare variables
     let n_bits = bits.len(); // TODO(Leo): check off by one errors.
     let n_queries = points.x.len();
     let mut base_point = points.clone();
@@ -134,7 +135,7 @@ pub fn fri_decommit_with_jumps<Value: IValue>(
     let mut bit_counter = 0;
 
     for (tree_idx, (root, step)) in
-        zip_eq(layer_commitments, steps).enumerate()
+        zip_eq(layer_commitments, steps).enumerate().skip(1)
     {
         let fri_coset_per_query = &fri_coset_per_query_per_tree[tree_idx];
         let bit_range = (n_bits - bit_counter - step as usize)..(n_bits - bit_counter);
@@ -261,84 +262,6 @@ fn fold_coset<Value: IValue>(
 fn fold_circle_to_line(data: Vec<Var>) -> Vec<Var> {
     todo!()
 }
-// pub fn fold_coset(eval: &[SecureField], domain: LineDomain, alpha: SecureField) -> SecureField {
-//     let mut domain = domain;
-//     let n = domain.log_size();
-//     let mut buffer = vec![];
-//     buffer.extend_from_slice(eval);
-//     let mut random_pow = alpha;
-//     for i in 0..n {
-//         for j in (0..1 << (n - i)).step_by(2) {
-//             let x = domain.at(bit_reverse_index(j, domain.log_size()));
-//             let (mut f0, mut f1) = (buffer[j], buffer[j + 1]);
-//             ibutterfly(&mut f0, &mut f1, x.inverse());
-//             buffer[j >> 1] = f0 + random_pow * f1
-//         }
-//         random_pow = random_pow * random_pow;
-//         domain = domain.double();
-//     }
-//     buffer[0]
-// }
-
-// // TODO(Leo): merge this calculation in select_queries.
-// fn compute_base_points_per_step<Value: IValue>(
-//     context: &mut Context<Value>,
-//     prev_base_point: &CirclePoint<Simd>,
-//     bits: &[Simd],
-//     bit_range: std::ops::Range<usize>, 
-//     step: usize,
-    
-// ) -> CirclePoint<Simd> {
-//     let mut bit_counter = 0;
-//     let n_bits = bits.len();
-//     let n_points = points.x.len();
-//     let mut base_point = prev_base_point.clone();
-//     for i in bit_range {
-//         let cur_gen_pt = generator_point_simd(context, i, n_points);
-//         let minus_y_coord = Simd::sub(context, &zero, &cur_gen_pt.y);
-//         let minus_cur_gen_pt = CirclePoint { x: cur_gen_pt.x, y: minus_y_coord };
-//         // Select between `point` and `point - cur_gen_pt`.
-//         let point_if_bit = add_points_simd(context, &base_point, &minus_cur_gen_pt);
-//         let point = CirclePoint {
-//             x: Simd::select(context, &bits[i], &base_point.x, &point_if_bit.x),
-//             y: Simd::select(context, &bits[i], &base_point.y, &point_if_bit.y),
-//         };
-//         base_point = point.clone();
-//     }
-//     base_point
-// }
-
-// TODO(Leo): merge this calculation in select_queries.
-fn compute_base_points<Value: IValue>(
-    context: &mut Context<Value>,
-    points: &CirclePoint<Simd>,
-    bits: &[Simd],
-    steps: &[u32],
-) -> Vec<CirclePoint<Simd>> {
-    let mut bit_counter = 0;
-    let n_bits = bits.len();
-    let n_points = points.x.len();
-    let mut res = vec![];
-    let mut base_point = points.clone();
-    let zero = Simd::zero(context, n_points);
-    for step in steps.iter() {
-        for i in (n_bits - bit_counter - *step as usize)..(n_bits - bit_counter) {
-            let cur_gen_pt = generator_point_simd(context, i, n_points);
-            let minus_y_coord = Simd::sub(context, &zero, &cur_gen_pt.y);
-            let minus_cur_gen_pt = CirclePoint { x: cur_gen_pt.x, y: minus_y_coord };
-            // Select between `point` and `point - cur_gen_pt`.
-            let point_if_bit = add_points_simd(context, &base_point, &minus_cur_gen_pt);
-            let point = CirclePoint {
-                x: Simd::select(context, &bits[i], &base_point.x, &point_if_bit.x),
-                y: Simd::select(context, &bits[i], &base_point.y, &point_if_bit.y),
-            };
-            base_point = point.clone();
-            res.push(point);
-        }
-        bit_counter += *step as usize;
-    }
-    res
-}
 
 fn compute_coset_points<Value: IValue>(
     context: &mut Context<Value>,
@@ -383,32 +306,4 @@ fn select_by_index<Value: IValue>(
         let m = mul(context, bit, *v);
         add(context, acc, m)
     })
-
-    // // Create one-hot vector with a one at position `index`.
-    // let mut one_hot = vec![Simd::one(context, 1)];
-    // for bit in index_bits.into_iter() {
-    //     let one_minus_bit = M31Wrapper::new_unsafe(sub(context, context.one(), bit.clone()));
-    //     let bit = M31Wrapper::new_unsafe(bit);
-    //     let mut res: Vec<Simd> = vec![];
-    //     res.extend(one_hot.iter().map(|x| Simd::scalar_mul(context, x, &one_minus_bit)));
-    //     res.extend(one_hot.iter().map(|x| Simd::scalar_mul(context, x, &bit)));
-    //     one_hot = res;
-    // }
 }
-
-
-    // for (base_point, step) in zip_eq(&base_points[1..], &steps[1..]) { // The first step is the
-    // circle to line which is hardcoded to 1 for now.     // coset_x_coords[i][j] = the i-th
-    // twiddle of the j-th query.     // coset_x_coord[i].len() == # queries, for all i.
-    //     // coset_x_coords[..][j] == # twiddles, i.e. 2^(step - 1).
-    //     let coset_x_coords: Vec<Vec<Var>> = compute_coset_bitreversed(context, base_point, *step
-    // - 1)         .iter() .map(|p| { let x_inv = p.x.inv(context); Simd::unpack(context, &x_inv)
-    //   }) .collect();
-
-    //     // Transpose
-    //     let mut res = vec![];
-    //     for i in 0..coset_x_coords.len() {
-    //         res.push(coset_x_coords.iter().map(|p| p[i]).collect());
-    //     }
-    //     all_twiddles.push(res);
-    // }
