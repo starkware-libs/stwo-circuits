@@ -101,6 +101,8 @@ impl ProofConfig {
 
         let log_trace_size = (*lifting_log_size - log_blowup_factor) as usize;
 
+        // TODO(Leo): change with true steps.
+        let steps = vec![1; log_trace_size - 1];
         Self {
             n_proof_of_work_bits: *pow_bits,
             n_preprocessed_columns,
@@ -115,6 +117,7 @@ impl ProofConfig {
                 log_blowup_factor: *log_blowup_factor as usize,
                 n_queries: *n_queries,
                 log_n_last_layer_coefs: *log_last_layer_degree_bound as usize,
+                steps
             },
             interaction_pow_bits,
         }

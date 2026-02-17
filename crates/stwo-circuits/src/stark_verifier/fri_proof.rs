@@ -15,6 +15,8 @@ pub struct FriConfig {
     pub n_queries: usize,
     /// Log2 of the number of coefficients in the last layer of FRI.
     pub log_n_last_layer_coefs: usize,
+    // Jumps
+    pub steps: Vec<usize>
 }
 
 impl FriConfig {
@@ -61,14 +63,15 @@ pub struct FriProof<T> {
     pub commit: FriCommitProof<T>,
     /// Authentication paths for all the FRI trees.
     pub auth_paths: AuthPaths<T>,
-    /// For each layer, for each query, the sibling value.
-    pub fri_siblings: Vec<Vec<T>>,
+    pub line_coset_vals_per_query_per_tree: Vec<Vec<Vec<T>>>,
+    /// For each query, the sibling value in the first layer of FRI (circle to line).
+    pub circle_fri_siblings: Vec<T>,
 }
 
 impl<T> FriProof<T> {
     /// Validates that the size of the members of the struct are consistent with the config.
     pub fn validate_structure(&self, config: &FriConfig) {
-        let FriProof { commit, auth_paths, fri_siblings } = self;
+        let FriProof { commit, auth_paths, line_coset_vals_per_query_per_tree, circle_fri_siblings } = self;
         let log_evaluation_domain_size = config.log_evaluation_domain_size();
 
         commit.validate_structure(config);
@@ -85,9 +88,11 @@ impl<T> FriProof<T> {
             }
         }
 
-        assert_eq!(fri_siblings.len(), config.log_trace_size);
-        for siblings in fri_siblings {
-            assert_eq!(siblings.len(), config.n_queries);
+        assert_eq!(circle_fri_siblings.len(), config.n_queries);
+        assert_eq!(line_coset_vals_per_query_per_tree.len(), config.log_trace_size - 1);
+        for fri_coset_per_query in line_coset_vals_per_query_per_tree {
+            assert_eq!(fri_coset_per_query.len(), config.n_queries);
+            // TODO: fri_coset_per_query.iter().all(item.len() == 1 << step).
         }
     }
 }
@@ -99,7 +104,8 @@ impl<Value: IValue> Guess<Value> for FriProof<Value> {
         Self::Target {
             commit: self.commit.guess(context),
             auth_paths: self.auth_paths.guess(context),
-            fri_siblings: self.fri_siblings.guess(context),
+            circle_fri_siblings: self.circle_fri_siblings.guess(context),
+            line_coset_vals_per_query_per_tree: self.line_coset_vals_per_query_per_tree.guess(context)
         }
     }
 }
@@ -119,12 +125,14 @@ pub fn empty_fri_proof(config: &FriConfig) -> FriProof<NoValue> {
             .collect(),
     };
 
+    let line_coset_vals_per_query_per_tree = config.steps.iter().map(|step| vec![vec![NoValue; 1 <<  step]; config.n_queries]).collect();
     FriProof {
         commit: FriCommitProof {
             layer_commitments: vec![empty_hash; config.log_trace_size],
             last_layer_coefs: vec![NoValue; 1 << config.log_n_last_layer_coefs],
         },
         auth_paths,
-        fri_siblings: vec![vec![NoValue; config.n_queries]; config.log_trace_size],
+        circle_fri_siblings: vec![NoValue; config.n_queries],
+        line_coset_vals_per_query_per_tree
     }
 }
