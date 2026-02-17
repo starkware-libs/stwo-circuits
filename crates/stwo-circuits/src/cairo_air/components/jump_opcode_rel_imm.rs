@@ -32,10 +32,11 @@ pub fn accumulate_constraints<Value: IValue>(
         next_pc_limb_2_col9,
         remainder_bits_col10,
         partial_limb_msb_col11,
-        enabler,
+        enabler_col12,
     ] = input.try_into().unwrap();
-    let enabler_constraint_value = eval!(context, ((enabler) * (enabler)) - (enabler));
-    acc.add_constraint(context, enabler_constraint_value);
+
+    let constraint_0_value = eval!(context, ((enabler_col12) * (enabler_col12)) - (enabler_col12));
+    acc.add_constraint(context, constraint_0_value);
 
     decode_instruction_7ebc4::accumulate_constraints(
         &[eval!(context, input_pc_col0), eval!(context, ap_update_add_1_col3)],
@@ -64,24 +65,24 @@ pub fn accumulate_constraints<Value: IValue>(
     .unwrap();
 
     // Use Opcodes.
-    let tuple_2 = &[
+    let tuple_3 = &[
         eval!(context, 428564188),
         eval!(context, input_pc_col0),
         eval!(context, input_ap_col1),
         eval!(context, input_fp_col2),
     ];
-    let numerator_2 = eval!(context, enabler);
-    acc.add_to_relation(context, numerator_2, tuple_2);
+    let numerator_3 = eval!(context, enabler_col12);
+    acc.add_to_relation(context, numerator_3, tuple_3);
 
     // Yield Opcodes.
-    let tuple_3 = &[
+    let tuple_4 = &[
         eval!(context, 428564188),
         eval!(context, (input_pc_col0) + (read_small_output_tmp_81a39_13_limb_0)),
         eval!(context, (input_ap_col1) + (ap_update_add_1_col3)),
         eval!(context, input_fp_col2),
     ];
-    let numerator_3 = eval!(context, -(enabler));
-    acc.add_to_relation(context, numerator_3, tuple_3);
+    let numerator_4 = eval!(context, -(enabler_col12));
+    acc.add_to_relation(context, numerator_4, tuple_4);
 }
 
 pub struct Component {}

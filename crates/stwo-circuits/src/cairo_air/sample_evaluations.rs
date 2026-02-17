@@ -1,4 +1,4 @@
-// AIR version d1f89bb5
+// AIR version 7d40f655
 use stwo::core::fields::{cm31::CM31, m31::M31, qm31::QM31};
 pub const ADD_AP_OPCODE_SAMPLE_EVAL_RESULT: QM31 =
     QM31(CM31(M31(1763229546), M31(1632198791)), CM31(M31(1137649783), M31(1656272739)));

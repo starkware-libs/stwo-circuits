@@ -28,7 +28,7 @@ pub fn accumulate_constraints<Value: IValue>(
         memory_id_to_small_output_col5,
         memory_id_to_small_output_col6,
         memory_id_to_small_output_col7,
-        multiplicity_0,
+        multiplicity_0_col8,
     ] = input.try_into().unwrap();
     let seq = seq_of_component_size(context, component_data, acc);
 
@@ -61,7 +61,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, memory_id_to_small_output_col6),
         eval!(context, memory_id_to_small_output_col7),
     ];
-    let numerator_1 = eval!(context, -(multiplicity_0));
+    let numerator_1 = eval!(context, -(multiplicity_0_col8));
     acc.add_to_relation(context, numerator_1, tuple_1);
 }
 

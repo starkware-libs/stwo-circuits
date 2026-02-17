@@ -190,13 +190,15 @@ pub fn accumulate_constraints<Value: IValue>(
         combination_limb_8_col165,
         combination_limb_9_col166,
         p_coef_col167,
-        enabler,
+        enabler_col168,
     ] = input.try_into().unwrap();
-    let enabler_constraint_value = eval!(context, ((enabler) * (enabler)) - (enabler));
-    acc.add_constraint(context, enabler_constraint_value);
+
+    let constraint_0_value =
+        eval!(context, ((enabler_col168) * (enabler_col168)) - (enabler_col168));
+    acc.add_constraint(context, constraint_0_value);
 
     // Use PoseidonRoundKeys.
-    let tuple_0 = &[
+    let tuple_1 = &[
         eval!(context, 1024310512),
         eval!(context, input_limb_1_col1),
         eval!(context, poseidon_round_keys_output_limb_0_col42),
@@ -230,8 +232,8 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, poseidon_round_keys_output_limb_28_col70),
         eval!(context, poseidon_round_keys_output_limb_29_col71),
     ];
-    let numerator_0 = eval!(context, 1);
-    acc.add_to_relation(context, numerator_0, tuple_0);
+    let numerator_1 = eval!(context, 1);
+    acc.add_to_relation(context, numerator_1, tuple_1);
 
     poseidon_partial_round::accumulate_constraints(
         &[
@@ -504,7 +506,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
 
     // Use Poseidon3PartialRoundsChain.
-    let tuple_4 = &[
+    let tuple_5 = &[
         eval!(context, 1343313504),
         eval!(context, input_limb_0_col0),
         eval!(context, input_limb_1_col1),
@@ -549,11 +551,11 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, input_limb_40_col40),
         eval!(context, input_limb_41_col41),
     ];
-    let numerator_4 = eval!(context, enabler);
-    acc.add_to_relation(context, numerator_4, tuple_4);
+    let numerator_5 = eval!(context, enabler_col168);
+    acc.add_to_relation(context, numerator_5, tuple_5);
 
     // Yield Poseidon3PartialRoundsChain.
-    let tuple_5 = &[
+    let tuple_6 = &[
         eval!(context, 1343313504),
         eval!(context, input_limb_0_col0),
         eval!(context, (input_limb_1_col1) + (1)),
@@ -598,8 +600,8 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, combination_limb_8_col165),
         eval!(context, combination_limb_9_col166),
     ];
-    let numerator_5 = eval!(context, -(enabler));
-    acc.add_to_relation(context, numerator_5, tuple_5);
+    let numerator_6 = eval!(context, -(enabler_col168));
+    acc.add_to_relation(context, numerator_6, tuple_6);
 }
 
 pub struct Component {}

@@ -36,7 +36,7 @@ pub fn accumulate_constraints<Value: IValue>(
         offset2_mid_col13,
         offset2_high_col14,
         instruction_id_col15,
-        multiplicity_0,
+        multiplicity_0_col16,
     ] = input.try_into().unwrap();
 
     let [encode_offsets_output_tmp_16a4f_8_limb_1, encode_offsets_output_tmp_16a4f_8_limb_3] =
@@ -110,7 +110,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, input_inst_felt6_col5),
         eval!(context, input_opcode_extension_col6),
     ];
-    let numerator_2 = eval!(context, -(multiplicity_0));
+    let numerator_2 = eval!(context, -(multiplicity_0_col16));
     acc.add_to_relation(context, numerator_2, tuple_2);
 }
 

@@ -14,7 +14,7 @@ pub fn accumulate_constraints<Value: IValue>(
     component_data: &dyn ComponentDataTrait<Value>,
     acc: &mut CompositionConstraintAccumulator,
 ) {
-    let [multiplicity_0] = input.try_into().unwrap();
+    let [multiplicity_0_col0] = input.try_into().unwrap();
     let range_check_4_4_4_4_column_0 = acc.get_preprocessed_column(&PreProcessedColumnId {
         id: "range_check_4_4_4_4_column_0".to_owned(),
     });
@@ -36,7 +36,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, range_check_4_4_4_4_column_2),
         eval!(context, range_check_4_4_4_4_column_3),
     ];
-    let numerator_0 = eval!(context, -(multiplicity_0));
+    let numerator_0 = eval!(context, -(multiplicity_0_col0));
     acc.add_to_relation(context, numerator_0, tuple_0);
 }
 

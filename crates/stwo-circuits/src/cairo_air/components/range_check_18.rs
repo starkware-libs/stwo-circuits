@@ -14,17 +14,17 @@ pub fn accumulate_constraints<Value: IValue>(
     component_data: &dyn ComponentDataTrait<Value>,
     acc: &mut CompositionConstraintAccumulator,
 ) {
-    let [multiplicity_0, multiplicity_1] = input.try_into().unwrap();
+    let [multiplicity_0_col0, multiplicity_1_col1] = input.try_into().unwrap();
     let seq_18 = acc.get_preprocessed_column(&PreProcessedColumnId { id: "seq_18".to_owned() });
 
     // Yield RangeCheck_18.
     let tuple_0 = &[eval!(context, 1109051422), eval!(context, seq_18)];
-    let numerator_0 = eval!(context, -(multiplicity_0));
+    let numerator_0 = eval!(context, -(multiplicity_0_col0));
     acc.add_to_relation(context, numerator_0, tuple_0);
 
     // Yield RangeCheck_18_B.
     let tuple_1 = &[eval!(context, 1424798916), eval!(context, seq_18)];
-    let numerator_1 = eval!(context, -(multiplicity_1));
+    let numerator_1 = eval!(context, -(multiplicity_1_col1));
     acc.add_to_relation(context, numerator_1, tuple_1);
 }
 

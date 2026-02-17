@@ -38,10 +38,11 @@ pub fn accumulate_constraints<Value: IValue>(
         xor_col17,
         xor_col18,
         xor_col19,
-        enabler,
+        enabler_col20,
     ] = input.try_into().unwrap();
-    let enabler_constraint_value = eval!(context, ((enabler) * (enabler)) - (enabler));
-    acc.add_constraint(context, enabler_constraint_value);
+
+    let constraint_0_value = eval!(context, ((enabler_col20) * (enabler_col20)) - (enabler_col20));
+    acc.add_constraint(context, constraint_0_value);
 
     let [split_16_low_part_size_8_output_tmp_298db_1_limb_0] =
         split_16_low_part_size_8::accumulate_constraints(
@@ -190,7 +191,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, (xor_col17) + ((xor_col19) * (256)));
 
     // Yield TripleXor32.
-    let tuple_16 = &[
+    let tuple_17 = &[
         eval!(context, 990559919),
         eval!(context, input_limb_0_col0),
         eval!(context, input_limb_1_col1),
@@ -201,8 +202,8 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, triple_xor32_output_tmp_298db_28_limb_0),
         eval!(context, triple_xor32_output_tmp_298db_28_limb_1),
     ];
-    let numerator_16 = eval!(context, -(enabler));
-    acc.add_to_relation(context, numerator_16, tuple_16);
+    let numerator_17 = eval!(context, -(enabler_col20));
+    acc.add_to_relation(context, numerator_17, tuple_17);
 }
 
 pub struct Component {}

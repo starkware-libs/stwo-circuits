@@ -38,10 +38,11 @@ pub fn accumulate_constraints<Value: IValue>(
         mem1_base_limb_3_col15,
         partial_limb_msb_col16,
         dst_id_col17,
-        enabler,
+        enabler_col18,
     ] = input.try_into().unwrap();
-    let enabler_constraint_value = eval!(context, ((enabler) * (enabler)) - (enabler));
-    acc.add_constraint(context, enabler_constraint_value);
+
+    let constraint_0_value = eval!(context, ((enabler_col18) * (enabler_col18)) - (enabler_col18));
+    acc.add_constraint(context, constraint_0_value);
 
     let [
         decode_instruction_cb32b_output_tmp_b1151_8_offset0,
@@ -65,22 +66,22 @@ pub fn accumulate_constraints<Value: IValue>(
     .unwrap();
 
     //mem_dst_base.
-    let constraint_1_value = eval!(
+    let constraint_2_value = eval!(
         context,
         (mem_dst_base_col9)
             - (((dst_base_fp_col6) * (input_fp_col2))
                 + (((1) - (dst_base_fp_col6)) * (input_ap_col1)))
     );
-    acc.add_constraint(context, constraint_1_value);
+    acc.add_constraint(context, constraint_2_value);
 
     //mem0_base.
-    let constraint_2_value = eval!(
+    let constraint_3_value = eval!(
         context,
         (mem0_base_col10)
             - (((op0_base_fp_col7) * (input_fp_col2))
                 + (((1) - (op0_base_fp_col7)) * (input_ap_col1)))
     );
-    acc.add_constraint(context, constraint_2_value);
+    acc.add_constraint(context, constraint_3_value);
 
     read_positive_num_bits_29::accumulate_constraints(
         &[
@@ -121,24 +122,24 @@ pub fn accumulate_constraints<Value: IValue>(
     );
 
     // Use Opcodes.
-    let tuple_5 = &[
+    let tuple_6 = &[
         eval!(context, 428564188),
         eval!(context, input_pc_col0),
         eval!(context, input_ap_col1),
         eval!(context, input_fp_col2),
     ];
-    let numerator_5 = eval!(context, enabler);
-    acc.add_to_relation(context, numerator_5, tuple_5);
+    let numerator_6 = eval!(context, enabler_col18);
+    acc.add_to_relation(context, numerator_6, tuple_6);
 
     // Yield Opcodes.
-    let tuple_6 = &[
+    let tuple_7 = &[
         eval!(context, 428564188),
         eval!(context, (input_pc_col0) + (1)),
         eval!(context, (input_ap_col1) + (ap_update_add_1_col8)),
         eval!(context, input_fp_col2),
     ];
-    let numerator_6 = eval!(context, -(enabler));
-    acc.add_to_relation(context, numerator_6, tuple_6);
+    let numerator_7 = eval!(context, -(enabler_col18));
+    acc.add_to_relation(context, numerator_7, tuple_7);
 }
 
 pub struct Component {}

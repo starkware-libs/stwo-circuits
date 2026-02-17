@@ -33,10 +33,11 @@ pub fn accumulate_constraints<Value: IValue>(
         next_pc_limb_2_col10,
         next_pc_limb_3_col11,
         partial_limb_msb_col12,
-        enabler,
+        enabler_col13,
     ] = input.try_into().unwrap();
-    let enabler_constraint_value = eval!(context, ((enabler) * (enabler)) - (enabler));
-    acc.add_constraint(context, enabler_constraint_value);
+
+    let constraint_0_value = eval!(context, ((enabler_col13) * (enabler_col13)) - (enabler_col13));
+    acc.add_constraint(context, constraint_0_value);
 
     let [
         decode_instruction_b1597_output_tmp_39ce3_5_offset2,
@@ -56,13 +57,13 @@ pub fn accumulate_constraints<Value: IValue>(
     .unwrap();
 
     //mem1_base.
-    let constraint_1_value = eval!(
+    let constraint_2_value = eval!(
         context,
         (mem1_base_col6)
             - (((op1_base_fp_col4) * (input_fp_col2))
                 + ((decode_instruction_b1597_output_tmp_39ce3_5_op1_base_ap) * (input_ap_col1)))
     );
-    acc.add_constraint(context, constraint_1_value);
+    acc.add_constraint(context, constraint_2_value);
 
     read_positive_num_bits_29::accumulate_constraints(
         &[
@@ -83,17 +84,17 @@ pub fn accumulate_constraints<Value: IValue>(
     );
 
     // Use Opcodes.
-    let tuple_3 = &[
+    let tuple_4 = &[
         eval!(context, 428564188),
         eval!(context, input_pc_col0),
         eval!(context, input_ap_col1),
         eval!(context, input_fp_col2),
     ];
-    let numerator_3 = eval!(context, enabler);
-    acc.add_to_relation(context, numerator_3, tuple_3);
+    let numerator_4 = eval!(context, enabler_col13);
+    acc.add_to_relation(context, numerator_4, tuple_4);
 
     // Yield Opcodes.
-    let tuple_4 = &[
+    let tuple_5 = &[
         eval!(context, 428564188),
         eval!(
             context,
@@ -104,8 +105,8 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, (input_ap_col1) + (ap_update_add_1_col5)),
         eval!(context, input_fp_col2),
     ];
-    let numerator_4 = eval!(context, -(enabler));
-    acc.add_to_relation(context, numerator_4, tuple_4);
+    let numerator_5 = eval!(context, -(enabler_col13));
+    acc.add_to_relation(context, numerator_5, tuple_5);
 }
 
 pub struct Component {}

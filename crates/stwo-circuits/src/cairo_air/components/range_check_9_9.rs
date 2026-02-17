@@ -15,14 +15,14 @@ pub fn accumulate_constraints<Value: IValue>(
     acc: &mut CompositionConstraintAccumulator,
 ) {
     let [
-        multiplicity_0,
-        multiplicity_1,
-        multiplicity_2,
-        multiplicity_3,
-        multiplicity_4,
-        multiplicity_5,
-        multiplicity_6,
-        multiplicity_7,
+        multiplicity_0_col0,
+        multiplicity_1_col1,
+        multiplicity_2_col2,
+        multiplicity_3_col3,
+        multiplicity_4_col4,
+        multiplicity_5_col5,
+        multiplicity_6_col6,
+        multiplicity_7_col7,
     ] = input.try_into().unwrap();
     let range_check_9_9_column_0 = acc.get_preprocessed_column(&PreProcessedColumnId {
         id: "range_check_9_9_column_0".to_owned(),
@@ -37,7 +37,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, range_check_9_9_column_0),
         eval!(context, range_check_9_9_column_1),
     ];
-    let numerator_0 = eval!(context, -(multiplicity_0));
+    let numerator_0 = eval!(context, -(multiplicity_0_col0));
     acc.add_to_relation(context, numerator_0, tuple_0);
 
     // Yield RangeCheck_9_9_B.
@@ -46,7 +46,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, range_check_9_9_column_0),
         eval!(context, range_check_9_9_column_1),
     ];
-    let numerator_1 = eval!(context, -(multiplicity_1));
+    let numerator_1 = eval!(context, -(multiplicity_1_col1));
     acc.add_to_relation(context, numerator_1, tuple_1);
 
     // Yield RangeCheck_9_9_C.
@@ -55,7 +55,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, range_check_9_9_column_0),
         eval!(context, range_check_9_9_column_1),
     ];
-    let numerator_2 = eval!(context, -(multiplicity_2));
+    let numerator_2 = eval!(context, -(multiplicity_2_col2));
     acc.add_to_relation(context, numerator_2, tuple_2);
 
     // Yield RangeCheck_9_9_D.
@@ -64,7 +64,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, range_check_9_9_column_0),
         eval!(context, range_check_9_9_column_1),
     ];
-    let numerator_3 = eval!(context, -(multiplicity_3));
+    let numerator_3 = eval!(context, -(multiplicity_3_col3));
     acc.add_to_relation(context, numerator_3, tuple_3);
 
     // Yield RangeCheck_9_9_E.
@@ -73,7 +73,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, range_check_9_9_column_0),
         eval!(context, range_check_9_9_column_1),
     ];
-    let numerator_4 = eval!(context, -(multiplicity_4));
+    let numerator_4 = eval!(context, -(multiplicity_4_col4));
     acc.add_to_relation(context, numerator_4, tuple_4);
 
     // Yield RangeCheck_9_9_F.
@@ -82,7 +82,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, range_check_9_9_column_0),
         eval!(context, range_check_9_9_column_1),
     ];
-    let numerator_5 = eval!(context, -(multiplicity_5));
+    let numerator_5 = eval!(context, -(multiplicity_5_col5));
     acc.add_to_relation(context, numerator_5, tuple_5);
 
     // Yield RangeCheck_9_9_G.
@@ -91,7 +91,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, range_check_9_9_column_0),
         eval!(context, range_check_9_9_column_1),
     ];
-    let numerator_6 = eval!(context, -(multiplicity_6));
+    let numerator_6 = eval!(context, -(multiplicity_6_col6));
     acc.add_to_relation(context, numerator_6, tuple_6);
 
     // Yield RangeCheck_9_9_H.
@@ -100,7 +100,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, range_check_9_9_column_0),
         eval!(context, range_check_9_9_column_1),
     ];
-    let numerator_7 = eval!(context, -(multiplicity_7));
+    let numerator_7 = eval!(context, -(multiplicity_7_col7));
     acc.add_to_relation(context, numerator_7, tuple_7);
 }
 

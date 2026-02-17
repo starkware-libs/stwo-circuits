@@ -172,10 +172,12 @@ pub fn accumulate_constraints<Value: IValue>(
         carry_24_col137,
         carry_25_col138,
         carry_26_col139,
-        enabler,
+        enabler_col140,
     ] = input.try_into().unwrap();
-    let enabler_constraint_value = eval!(context, ((enabler) * (enabler)) - (enabler));
-    acc.add_constraint(context, enabler_constraint_value);
+
+    let constraint_0_value =
+        eval!(context, ((enabler_col140) * (enabler_col140)) - (enabler_col140));
+    acc.add_constraint(context, constraint_0_value);
 
     let [
         felt_252_unpack_from_27_range_check_output_output_tmp_fec87_2_limb_2,
@@ -467,7 +469,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
 
     // Yield Cube252.
-    let tuple_3 = &[
+    let tuple_4 = &[
         eval!(context, 1987997202),
         eval!(context, input_limb_0_col0),
         eval!(context, input_limb_1_col1),
@@ -526,8 +528,8 @@ pub fn accumulate_constraints<Value: IValue>(
         ),
         eval!(context, mul_res_limb_27_col111),
     ];
-    let numerator_3 = eval!(context, -(enabler));
-    acc.add_to_relation(context, numerator_3, tuple_3);
+    let numerator_4 = eval!(context, -(enabler_col140));
+    acc.add_to_relation(context, numerator_4, tuple_4);
 }
 
 pub struct Component {}
