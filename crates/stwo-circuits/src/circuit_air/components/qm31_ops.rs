@@ -4,7 +4,6 @@ use crate::circuit_air::components::prelude::*;
 pub const N_PREPROCESSED_COLUMNS: usize = 8;
 pub const N_TRACE_COLUMNS: usize = 12;
 pub const N_INTERACTION_COLUMNS: usize = 8;
-use crate::circuit_air::relations::GATE_RELATION_ID;
 use crate::stark_verifier::constraint_eval::ComponentDataTrait;
 
 pub struct Eval {
@@ -24,7 +23,7 @@ impl FrameworkEval for Eval {
     }
 
     fn evaluate<E: EvalAtRow>(&self, mut eval: E) -> E {
-        let m31_gate_relation_id = E::F::from(GATE_RELATION_ID);
+        let m31_gate_relation_id = E::F::from(M31::from(378353459));
         let add_flag = eval
             .get_preprocessed_column(PreProcessedColumnId { id: "qm31_ops_add_flag".to_owned() });
         let sub_flag = eval
@@ -155,7 +154,7 @@ impl<Value: IValue> CircuitEval<Value> for CircuitQm31OpsComponent {
         component_data: &dyn ComponentDataTrait<Value>,
         acc: &mut CompositionConstraintAccumulator,
     ) {
-        let gate_relation_id = context.constant(SecureField::from(GATE_RELATION_ID));
+        let m31_gate_relation_id = context.constant(SecureField::from(M31::from(378353459)));
         let add_flag = acc
             .get_preprocessed_column(&PreProcessedColumnId { id: "qm31_ops_add_flag".to_owned() });
         let sub_flag = acc
@@ -234,20 +233,20 @@ impl<Value: IValue> CircuitEval<Value> for CircuitQm31OpsComponent {
         acc.add_to_relation(
             context,
             context.one(),
-            &[gate_relation_id, in0_address, in0_col0, in0_col1, in0_col2, in0_col3],
+            &[m31_gate_relation_id, in0_address, in0_col0, in0_col1, in0_col2, in0_col3],
         );
 
         acc.add_to_relation(
             context,
             context.one(),
-            &[gate_relation_id, in1_address, in1_col4, in1_col5, in1_col6, in1_col7],
+            &[m31_gate_relation_id, in1_address, in1_col4, in1_col5, in1_col6, in1_col7],
         );
 
         let neg_mults = eval!(context, (context.zero()) - (mults));
         acc.add_to_relation(
             context,
             neg_mults,
-            &[gate_relation_id, out_address, out_col8, out_col9, out_col10, out_col11],
+            &[m31_gate_relation_id, out_address, out_col8, out_col9, out_col10, out_col11],
         );
     }
 

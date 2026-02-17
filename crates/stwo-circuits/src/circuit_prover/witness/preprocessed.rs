@@ -293,7 +293,8 @@ fn gen_blake_sigma_columns() -> [Vec<usize>; 16] {
     })
 }
 
-const N_BLAKE_PP_COLUMNS: usize = 9 + 1 + 5;
+// 11 columns for blake_gate and 5 columns for blake_output
+const N_BLAKE_PP_COLUMNS: usize = 11 + 5;
 
 fn add_blake_to_preprocessed_trace(
     circuit: &Circuit,
@@ -382,7 +383,7 @@ impl PreProcessedTrace {
         // Add QM31 operations columns.
         let qm31_ops_trace_generator =
             add_qm31_ops_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
-        // TODO(Gali): Add Blake columns.
+        // Add Blake columns.
         add_blake_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
 
         Self::add_non_circuit_preprocessed_columns(&mut pp_trace);
@@ -471,7 +472,8 @@ impl PreProcessedTrace {
     }
 }
 
-// Generates 3 columns of size 2^(2*n_bits) where the third column is the XOR of the first two.
+/// Generates three columns of size (2^n_bits)^2. The first two columns are all ordered pairs of
+/// n-bit values, and the third column contains the bitwise XOR of each pair.
 fn gen_xor_columns(n_bits: usize) -> [Vec<usize>; 3] {
     let size = 1_usize << (2 * n_bits);
     let mask = (1_usize << n_bits) - 1;

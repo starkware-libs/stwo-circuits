@@ -1,6 +1,5 @@
 use crate::{
-    cairo_air::component_utils::RelationUse,
-    circuit_air::{components::prelude::*, relations::GATE_RELATION_ID},
+    cairo_air::component_utils::RelationUse, circuit_air::components::prelude::*,
     stark_verifier::constraint_eval::ComponentDataTrait,
 };
 
@@ -25,7 +24,7 @@ impl FrameworkEval for Eval {
     }
 
     fn evaluate<E: EvalAtRow>(&self, mut eval: E) -> E {
-        let m31_gate_relation_id = E::F::from(GATE_RELATION_ID);
+        let m31_gate_relation_id = E::F::from(M31::from(378353459));
         let in0_address =
             eval.get_preprocessed_column(PreProcessedColumnId { id: "eq_in0_address".to_owned() });
         let in1_address =
@@ -102,7 +101,7 @@ impl<Value: IValue> CircuitEval<Value> for CircuitEqComponent {
         component_data: &dyn ComponentDataTrait<Value>,
         acc: &mut CompositionConstraintAccumulator,
     ) {
-        let gate_relation_id = context.constant(SecureField::from(GATE_RELATION_ID));
+        let m31_gate_relation_id = context.constant(SecureField::from(M31::from(378353459)));
         let in0_address =
             acc.get_preprocessed_column(&PreProcessedColumnId { id: "eq_in0_address".to_owned() });
         let in1_address =
@@ -133,12 +132,12 @@ impl<Value: IValue> CircuitEval<Value> for CircuitEqComponent {
         acc.add_to_relation(
             context,
             context.one(),
-            &[gate_relation_id, in0_address, in0_col0, in0_col1, in0_col2, in0_col3],
+            &[m31_gate_relation_id, in0_address, in0_col0, in0_col1, in0_col2, in0_col3],
         );
         acc.add_to_relation(
             context,
             context.one(),
-            &[gate_relation_id, in1_address, in1_col4, in1_col5, in1_col6, in1_col7],
+            &[m31_gate_relation_id, in1_address, in1_col4, in1_col5, in1_col6, in1_col7],
         );
     }
 

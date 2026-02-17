@@ -3616,6 +3616,7 @@ name = "stwo-circuits"
 version = "0.1.0"
 dependencies = [
  "blake2",
+ "bytemuck",
  "cairo-air",
  "expect-test",
  "hashbrown 0.16.1",

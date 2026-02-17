@@ -9,6 +9,7 @@ version = "0.1.0"
 edition = "2024"
 
 [workspace.dependencies]
+bytemuck = "1.21.0"
 blake2 = { version = "0.10.6", default-features = false }
 hashbrown = ">=0.15.2"
 indexmap = { version = "2.10.0", default-features = false }
