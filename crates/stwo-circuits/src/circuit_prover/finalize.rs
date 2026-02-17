@@ -49,7 +49,8 @@ fn pad_blake(context: &mut Context<impl IValue>) {
         crate::circuits::blake::blake(context, &[zero], 1);
     }
 
-    let n_blake_compress_rows: usize = context.circuit.blake.iter().map(|gate| gate.input.len()).sum();
+    let n_blake_compress_rows: usize =
+        context.circuit.blake.iter().map(|gate| gate.input.len()).sum();
     let target_blake_compress_rows =
         std::cmp::max(n_blake_compress_rows.next_power_of_two(), N_LANES);
     let blake_compress_padding = target_blake_compress_rows - n_blake_compress_rows;

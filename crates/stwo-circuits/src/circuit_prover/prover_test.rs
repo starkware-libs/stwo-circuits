@@ -4,7 +4,6 @@ use crate::circuit_air::{CircuitClaim, CircuitInteractionElements};
 use crate::circuit_prover::prover::{
     CircuitProof, blake_iv_public_logup_sum, finalize_context, prove_circuit,
 };
-use crate::circuit_prover::witness::components::blake_gate::blake2s_initial_state;
 use crate::circuit_prover::witness::components::{
     blake_g, blake_gate, blake_output, blake_round, blake_round_sigma, eq, qm31_ops,
     range_check_15, range_check_16, triple_xor_32, verify_bitwise_xor_4, verify_bitwise_xor_7,
@@ -29,7 +28,6 @@ use std::sync::Arc;
 use stwo::core::air::Component;
 use stwo::core::channel::Blake2sM31Channel;
 use stwo::core::channel::Channel;
-use stwo::core::fields::FieldExpOps;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::{CommitmentSchemeVerifier, PcsConfig, TreeVec};
@@ -41,7 +39,6 @@ use stwo::prover::TreeBuilder;
 use stwo::prover::backend::simd::SimdBackend;
 use stwo::prover::poly::circle::PolyOps;
 use stwo::prover::prove_ex;
-use stwo_constraint_framework::Relation;
 use stwo_constraint_framework::relation_tracker::{RelationSummary, add_to_relation_entries};
 
 // Not a power of 2 so that we can test component padding.
