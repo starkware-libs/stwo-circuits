@@ -2,7 +2,6 @@ use num_traits::Zero;
 use rayon::slice::{ParallelSlice, ParallelSliceMut};
 
 use crate::circuit_air::components::qm31_ops::N_TRACE_COLUMNS;
-use crate::circuit_air::relations::GATE_RELATION_ID;
 use crate::circuit_prover::witness::components::prelude::*;
 
 pub type InputType = [[M31; 4]; 3];
@@ -128,6 +127,7 @@ fn write_trace_simd(
     inputs: Vec<PackedInputType>,
     preprocessed_columns: Vec<Vec<PackedM31>>,
 ) -> (ComponentTrace<N_TRACE_COLUMNS>, LookupData) {
+    let m31_gate_relation_id = PackedM31::broadcast(M31::from(378353459));
     let log_n_packed_rows = inputs.len().ilog2();
     let log_size = log_n_packed_rows + LOG_N_LANES;
     let (mut trace, mut lookup_data) = unsafe {
@@ -185,30 +185,12 @@ fn write_trace_simd(
             *row[10] = out_col10;
             let out_col11 = qm_31_ops_input[2][3];
             *row[11] = out_col11;
-            *lookup_data.in_0 = [
-                PackedM31::from(GATE_RELATION_ID),
-                in0_address,
-                in0_col0,
-                in0_col1,
-                in0_col2,
-                in0_col3,
-            ];
-            *lookup_data.in_1 = [
-                PackedM31::from(GATE_RELATION_ID),
-                in1_address,
-                in1_col4,
-                in1_col5,
-                in1_col6,
-                in1_col7,
-            ];
-            *lookup_data.out = [
-                PackedM31::from(GATE_RELATION_ID),
-                out_address,
-                out_col8,
-                out_col9,
-                out_col10,
-                out_col11,
-            ];
+            *lookup_data.in_0 =
+                [m31_gate_relation_id, in0_address, in0_col0, in0_col1, in0_col2, in0_col3];
+            *lookup_data.in_1 =
+                [m31_gate_relation_id, in1_address, in1_col4, in1_col5, in1_col6, in1_col7];
+            *lookup_data.out =
+                [m31_gate_relation_id, out_address, out_col8, out_col9, out_col10, out_col11];
             *lookup_data.mults = mults;
         });
 
