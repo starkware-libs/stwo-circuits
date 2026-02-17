@@ -4,7 +4,6 @@ use crate::circuits::blake::{HashValue, blake};
 use crate::circuits::context::Context;
 use crate::circuits::context::Var;
 use crate::circuits::ivalue::IValue;
-use crate::circuits::ops::output;
 use crate::eval;
 
 fn pad_qm31_ops(context: &mut Context<impl IValue>) {
@@ -57,6 +56,7 @@ fn pad_blake(context: &mut Context<impl IValue>) {
     let n_last_words = blake_compress_padding * 4;
     crate::circuits::blake::blake(context, &vec![zero; n_last_words], n_last_words * 16);
 }
+#[allow(dead_code)]
 fn hash_constants(context: &mut Context<impl IValue>) -> HashValue<Var> {
     let constants: Vec<_> = context.constants().values().copied().collect();
     let n_bytes = constants.len() * 16;

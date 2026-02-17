@@ -133,7 +133,6 @@ pub fn write_trace(
     trace_evals.extend(blake_output_trace.to_evals());
     trace_evals.extend(triple_xor_32_trace.to_evals());
 
-    // NOTE: Temporarily skip xor and range-check components for debugging.
     // Write xor and range-check components in parallel.
     let (verify_bitwise_xor_8_tx, verify_bitwise_xor_8_rx) = mpsc::channel();
     let (verify_bitwise_xor_12_tx, verify_bitwise_xor_12_rx) = mpsc::channel();

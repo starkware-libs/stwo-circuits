@@ -1,6 +1,7 @@
 // This file was created by the AIR team.
 
 #![allow(unused_parens)]
+#![allow(clippy::too_many_arguments)]
 use cairo_air::components::blake_g::{Claim, InteractionClaim, N_TRACE_COLUMNS};
 
 use crate::circuit_prover::witness::components::prelude::*;
@@ -43,11 +44,6 @@ impl ClaimGenerator {
         let (trace, lookup_data, sub_component_inputs) = write_trace_simd(
             self.packed_inputs,
             n_rows,
-            verify_bitwise_xor_8_state,
-            verify_bitwise_xor_12_state,
-            verify_bitwise_xor_4_state,
-            verify_bitwise_xor_7_state,
-            verify_bitwise_xor_9_state,
         );
         for inputs in sub_component_inputs.verify_bitwise_xor_8 {
             verify_bitwise_xor_8_state.add_packed_inputs(&inputs, 0);
@@ -91,12 +87,7 @@ struct SubComponentInputs {
 #[allow(non_snake_case)]
 fn write_trace_simd(
     inputs: Vec<PackedInputType>,
-    n_rows: usize,
-    verify_bitwise_xor_8_state: &verify_bitwise_xor_8::ClaimGenerator,
-    verify_bitwise_xor_12_state: &verify_bitwise_xor_12::ClaimGenerator,
-    verify_bitwise_xor_4_state: &verify_bitwise_xor_4::ClaimGenerator,
-    verify_bitwise_xor_7_state: &verify_bitwise_xor_7::ClaimGenerator,
-    verify_bitwise_xor_9_state: &verify_bitwise_xor_9::ClaimGenerator,
+    n_rows: usize
 ) -> (ComponentTrace<N_TRACE_COLUMNS>, LookupData, SubComponentInputs) {
     let log_n_packed_rows = inputs.len().ilog2();
     let log_size = log_n_packed_rows + LOG_N_LANES;
@@ -631,7 +622,6 @@ fn write_trace_simd(
                 ((xor_col49) + ((xor_col50) * (M31_512))),
                 ((xor_col51) + ((xor_col48) * (M31_512))),
             ]);
-            let xor_rot_32_r_7_output_tmp_f72c8_87 = xor_rot_7_output_tmp_f72c8_86;
 
             *lookup_data.blake_g_0 = [
                 M31_1139985212,

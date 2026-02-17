@@ -585,7 +585,6 @@ pub const BLAKE_SIGMA: [[u32; N_BLAKE_SIGMA_COLS]; N_BLAKE_ROUNDS] = [
 ];
 
 pub const BLAKE_SIGMA_TABLE: &str = "blake_sigma";
-const LOG_N_ROWS: u32 = (N_BLAKE_ROUNDS as u32).next_power_of_two().ilog2();
 
 pub fn sigma(round: usize) -> [u32; N_BLAKE_SIGMA_COLS] {
     BLAKE_SIGMA[round]

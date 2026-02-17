@@ -95,6 +95,7 @@ pub fn build_blake_gate_context() -> Context<QM31> {
     context
 }
 
+#[allow(dead_code)]
 fn evals_to_cols(
     evals: &[stwo::prover::poly::circle::CircleEvaluation<
         SimdBackend,
@@ -105,6 +106,7 @@ fn evals_to_cols(
     evals.iter().map(|eval| eval.to_cpu().values.clone()).collect()
 }
 
+#[allow(dead_code)]
 fn write_trace_with_cols(
     context_values: &[QM31],
     preprocessed_trace: Arc<PreProcessedTrace>,
@@ -326,6 +328,7 @@ fn write_trace_with_cols(
     )
 }
 
+#[allow(dead_code)]
 fn prove_circuit_with_relation_tracker(
     context: &mut Context<QM31>,
 ) -> (CircuitProof, RelationSummary) {
@@ -620,7 +623,7 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
             stark_proof,
             channel_salt,
         },
-        preprocessed_trace_sizes,
+        _preprocessed_trace_sizes,
     ) = prove_circuit(&mut fibonacci_context);
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();

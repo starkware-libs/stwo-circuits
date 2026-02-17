@@ -1,6 +1,7 @@
 // This file was created by the AIR team.
 
 #![allow(unused_parens)]
+#![allow(clippy::too_many_arguments)]
 use crate::circuit_air::components::blake_gate::{InteractionClaim, N_TRACE_COLUMNS};
 
 use crate::circuit_air::relations::GATE_RELATION_ID;
@@ -56,8 +57,7 @@ fn blake2s_compress(
         v[14] ^= 0xFFFF_FFFF;
     }
 
-    for round in 0..10 {
-        let sigma = BLAKE_SIGMA[round];
+    for sigma in BLAKE_SIGMA.iter().take(10).copied() {
         blake2s_g(&mut v, 0, 4, 8, 12, message[sigma[0] as usize], message[sigma[1] as usize]);
         blake2s_g(&mut v, 1, 5, 9, 13, message[sigma[2] as usize], message[sigma[3] as usize]);
         blake2s_g(&mut v, 2, 6, 10, 14, message[sigma[4] as usize], message[sigma[5] as usize]);
@@ -169,11 +169,7 @@ impl ClaimGenerator {
             packed_inputs,
             &self.preprocessed_trace,
             n_rows,
-            verify_bitwise_xor_8_state,
-            range_check_16_state,
-            range_check_15_state,
             blake_round_state,
-            triple_xor_32_state,
             &mut blake_message_state,
         );
         for inputs in sub_component_inputs.verify_bitwise_xor_8 {
@@ -212,11 +208,7 @@ fn write_trace_simd(
     inputs: Vec<PackedInputType>,
     preprocessed_trace: &PreProcessedTrace,
     n_rows: usize,
-    verify_bitwise_xor_8_state: &verify_bitwise_xor_8::ClaimGenerator,
-    range_check_16_state: &range_check_16::ClaimGenerator,
-    range_check_15_state: &range_check_15::ClaimGenerator,
     blake_round_state: &mut blake_round::ClaimGenerator,
-    triple_xor_32_state: &mut triple_xor_32::ClaimGenerator,
     blake_message_state: &mut blake_message::ClaimGenerator,
 ) -> (
     ComponentTrace<N_TRACE_COLUMNS>,
@@ -308,12 +300,8 @@ fn write_trace_simd(
     let message3_addr = preprocessed_trace
         .get_packed_column(&PreProcessedColumnId { id: "message3_addr".to_owned() });
 
-    let enabler_col = Enabler::new(n_rows);
     let mut blake_message_inputs: Vec<(PackedM31, [PackedUInt32; 16])> =
-        Vec::with_capacity(n_packed_rows);
-    unsafe {
-        blake_message_inputs.set_len(n_packed_rows);
-    }
+        vec![(PackedM31::zero(), [PackedUInt32::default(); 16]); n_packed_rows];
 
     // Pre-populate blake_round_state.blake_message before the parallel loop
     // so that deduce_output can look up message data.
@@ -1700,16 +1688,6 @@ fn write_trace_simd(
                     input_state_before_limb7_limb_1_col15,
                     triple_xor_32_output_limb_0_col133,
                     triple_xor_32_output_limb_1_col134,
-                ];
-                let create_blake_output_output_tmp_8e0ec_65 = [
-                    triple_xor_32_output_tmp_8e0ec_57,
-                    triple_xor_32_output_tmp_8e0ec_58,
-                    triple_xor_32_output_tmp_8e0ec_59,
-                    triple_xor_32_output_tmp_8e0ec_60,
-                    triple_xor_32_output_tmp_8e0ec_61,
-                    triple_xor_32_output_tmp_8e0ec_62,
-                    triple_xor_32_output_tmp_8e0ec_63,
-                    triple_xor_32_output_tmp_8e0ec_64,
                 ];
 
                 *lookup_data.blake_output_0 = [

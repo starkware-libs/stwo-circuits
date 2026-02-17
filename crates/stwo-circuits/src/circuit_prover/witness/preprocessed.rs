@@ -130,19 +130,19 @@ fn add_qm31_ops_to_preprocessed_trace(
     let Circuit { n_vars, add, sub, mul, pointwise_mul, eq: _, blake: _, permutation, output: _ } =
         circuit;
     let mut qm31_ops_columns: [_; N_QM31_OPS_PP_COLUMNS] = std::array::from_fn(|_| vec![]);
-    fill_binary_op_columns(add, OpCode::Add, &multiplicities, &mut qm31_ops_columns);
-    fill_binary_op_columns(sub, OpCode::Sub, &multiplicities, &mut qm31_ops_columns);
-    fill_binary_op_columns(mul, OpCode::Mul, &multiplicities, &mut qm31_ops_columns);
+    fill_binary_op_columns(add, OpCode::Add, multiplicities, &mut qm31_ops_columns);
+    fill_binary_op_columns(sub, OpCode::Sub, multiplicities, &mut qm31_ops_columns);
+    fill_binary_op_columns(mul, OpCode::Mul, multiplicities, &mut qm31_ops_columns);
     fill_binary_op_columns(
         pointwise_mul,
         OpCode::PointwiseMul,
-        &multiplicities,
+        multiplicities,
         &mut qm31_ops_columns,
     );
     let qm31_ops_trace_generator =
         qm31_ops::TraceGenerator { first_permutation_row: qm31_ops_columns[0].len() };
 
-    fill_permutation_columns(permutation, &multiplicities, &mut qm31_ops_columns, *n_vars);
+    fill_permutation_columns(permutation, multiplicities, &mut qm31_ops_columns, *n_vars);
 
     let n_columns = pp_trace.columns.len();
     pp_trace.column_indices.extend([
@@ -276,8 +276,8 @@ fn fill_blake_columns(
 fn gen_blake_sigma_columns() -> [Vec<usize>; 16] {
     std::array::from_fn(|i| {
         let mut col = Vec::with_capacity(16);
-        for round in 0..10 {
-            col.push(BLAKE_SIGMA[round][i] as usize);
+        for sigma_row in BLAKE_SIGMA.iter().take(10) {
+            col.push(sigma_row[i] as usize);
         }
         // Pad rows 10..15 with round 0 values.
         for _ in 10..16 {
