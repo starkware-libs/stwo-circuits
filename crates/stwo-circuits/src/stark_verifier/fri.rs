@@ -1,5 +1,6 @@
 
 use itertools::{Itertools, chain, zip, zip_eq};
+use std::ops::Range;
 use stwo::core::circle::CirclePoint;
 
 use crate::circuits::context::{Context, Var};
@@ -138,7 +139,7 @@ pub fn fri_decommit_with_jumps<Value: IValue>(
         zip_eq(layer_commitments, steps).enumerate().skip(1)
     {
         let fri_coset_per_query = &fri_coset_per_query_per_tree[tree_idx];
-        let bit_range = (n_bits - bit_counter - step as usize)..(n_bits - bit_counter);
+        let bit_range = (1 + bit_counter)..(1 + bit_counter + step);
 
         // Validate that the fri query is in the correct poisition inside the guessed `fri_coset_per_query`.
         validate_query_position_in_coset(
@@ -154,18 +155,7 @@ pub fn fri_decommit_with_jumps<Value: IValue>(
         }
 
         // Update base point.
-        for i in bit_range {
-            let cur_gen_pt = generator_point_simd(context, i, n_queries);
-            let minus_y_coord = Simd::sub(context, &zero, &cur_gen_pt.y);
-            let minus_cur_gen_pt = CirclePoint { x: cur_gen_pt.x, y: minus_y_coord };
-            // Select between `point` and `point - cur_gen_pt`.
-            let point_if_bit = add_points_simd(context, &base_point, &minus_cur_gen_pt);
-            let point = CirclePoint {
-                x: Simd::select(context, &packed_bits[i], &base_point.x, &point_if_bit.x),
-                y: Simd::select(context, &packed_bits[i], &base_point.y, &point_if_bit.y),
-            };
-            base_point = point.clone();
-        }
+        base_point = update_base_point(context, base_point, packed_bits, bit_range);
 
         // Compute twiddles.
         let twiddles_per_fold_per_query = compute_twiddles_from_base_point(context, &base_point, step);
@@ -222,6 +212,28 @@ fn compute_twiddles_from_base_point<Value: IValue>(context: &mut Context<Value>,
         twiddles_per_fold_per_query.push(res);
     }
     twiddles_per_fold_per_query
+}
+
+fn update_base_point<Value: IValue>(
+    context: &mut Context<Value>,
+    mut base_point: CirclePoint<Simd>,
+    packed_bits: &[Simd],
+    bit_range: Range<usize>,
+) -> CirclePoint<Simd> {
+    let n_queries = base_point.x.len();
+    let zero = Simd::zero(context, n_queries);
+    for i in bit_range {
+        let cur_gen_pt = generator_point_simd(context, i, n_queries);
+        let minus_y_coord = Simd::sub(context, &zero, &cur_gen_pt.y);
+        let minus_cur_gen_pt = CirclePoint { x: cur_gen_pt.x, y: minus_y_coord };
+        // Select between `point` and `point - cur_gen_pt`.
+        let point_if_bit = add_points_simd(context, &base_point, &minus_cur_gen_pt);
+        base_point = CirclePoint {
+            x: Simd::select(context, &packed_bits[i], &base_point.x, &point_if_bit.x),
+            y: Simd::select(context, &packed_bits[i], &base_point.y, &point_if_bit.y),
+        };
+    }
+    base_point
 }
 
 fn validate_query_position_in_coset<Value: IValue>(

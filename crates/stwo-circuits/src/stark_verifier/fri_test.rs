@@ -2,11 +2,14 @@ use crate::circuits::blake::HashValue;
 use crate::circuits::context::TraceContext;
 use crate::circuits::ivalue::qm31_from_u32s;
 use crate::circuits::ops::Guess;
+use crate::circuits::simd::Simd;
+use crate::circuits::test_utils::{packed_values, simd_from_u32s};
 use crate::stark_verifier::channel::Channel;
 use crate::stark_verifier::fri_proof::FriCommitProof;
+use crate::stark_verifier::select_queries::select_queries;
 use rstest::rstest;
 
-use super::{fri_commit, validate_query_position_in_coset};
+use super::{fri_commit, update_base_point, validate_query_position_in_coset};
 
 #[test]
 fn test_fri_commit_regression() {
@@ -97,4 +100,44 @@ fn test_validate_query_position_in_coset(#[case] success: bool) {
 
     validate_query_position_in_coset(&mut context, &fri_coset_per_query, &fri_data, &bits);
     assert_eq!(context.is_circuit_valid(), success);
+}
+
+fn simd_lanes(context: &TraceContext, simd: &Simd) -> Vec<u32> {
+    let packed = packed_values(context, simd);
+    (0..simd.len()).map(|i| packed[i / 4].to_m31_array()[i % 4].0).collect()
+}
+
+#[test]
+fn test_update_base_point_logic() {
+    let mut context = TraceContext::default();
+    const LOG_DOMAIN_SIZE: usize = 7;
+
+    // Query indices are interpreted by `select_queries`.
+    let query_indices = vec![0b1001111_u32, 0b0110101_u32, 0b1100010_u32];
+    let input = simd_from_u32s(&mut context, query_indices.clone());
+    let queries = select_queries(&mut context, &input, LOG_DOMAIN_SIZE);
+
+    // Test several jump windows: each should clear the corresponding consumed bits.
+    let jump_windows = [(0_usize, 2_usize), (2, 2), (1, 3)];
+    for (bit_counter, step) in jump_windows {
+        let bit_range = (1 + bit_counter)..(1 + bit_counter + step);
+        let updated_base_point =
+            update_base_point(&mut context, queries.points.clone(), &queries.bits, bit_range.clone());
+
+        let mask = bit_range.clone().fold(0_u32, |acc, i| acc | (1_u32 << i));
+        let expected_indices = query_indices.iter().map(|q| *q & !mask).collect::<Vec<_>>();
+        let expected_input = simd_from_u32s(&mut context, expected_indices);
+        let expected_queries = select_queries(&mut context, &expected_input, LOG_DOMAIN_SIZE);
+
+        assert_eq!(
+            simd_lanes(&context, &updated_base_point.x),
+            simd_lanes(&context, &expected_queries.points.x)
+        );
+        assert_eq!(
+            simd_lanes(&context, &updated_base_point.y),
+            simd_lanes(&context, &expected_queries.points.y)
+        );
+    }
+
+    context.validate_circuit();
 }
