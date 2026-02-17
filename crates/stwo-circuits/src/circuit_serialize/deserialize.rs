@@ -222,5 +222,10 @@ fn deserialize_fri_proof(
     //     fri_siblings.push(deserialize_vec(data, config.n_queries)?);
     // }
 
-    Ok(FriProof { commit, auth_paths, circle_fri_siblings: vec![], line_coset_vals_per_query_per_tree: vec![] })
+    Ok(FriProof {
+        commit,
+        auth_paths,
+        circle_fri_siblings: vec![],
+        line_coset_vals_per_query_per_tree: vec![],
+    })
 }

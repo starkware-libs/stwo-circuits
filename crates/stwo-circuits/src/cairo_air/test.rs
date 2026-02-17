@@ -18,10 +18,10 @@ use crate::{
 };
 use cairo_air::PreProcessedTraceVariant;
 use dev_utils::utils::get_compiled_cairo_program_path;
+use dev_utils::vm_utils::{ProgramType, run_and_adapt};
 use stwo::core::fri::FriConfig;
 use stwo::core::{pcs::PcsConfig, vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel};
 use stwo_cairo_prover::prover::{ChannelHash, ProverParameters, prove_cairo};
-use stwo_cairo_utils::vm_utils::{ProgramType, run_and_adapt};
 
 /// Logup security is defined by the `QM31` space (~124 bits) + `INTERACTION_POW_BITS` -
 /// log2(number of relation terms).
@@ -80,7 +80,7 @@ fn test_verify_all_opcodes() {
             channel_hash: ChannelHash::Blake2sM31,
             pcs_config: PcsConfig {
                 pow_bits: 26,
-                fri_config: FriConfig::new(0, low_blowup_factor, 70),
+                fri_config: FriConfig::new(0, low_blowup_factor, 70, 1),
                 lifting_log_size: Some(20 + low_blowup_factor),
             },
             preprocessed_trace: PreProcessedTraceVariant::CanonicalSmall,

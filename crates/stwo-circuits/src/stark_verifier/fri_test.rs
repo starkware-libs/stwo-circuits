@@ -7,23 +7,33 @@ use crate::circuits::test_utils::{packed_values, simd_from_u32s};
 use crate::stark_verifier::channel::Channel;
 use crate::stark_verifier::circle::repeated_double_point_simd;
 use crate::stark_verifier::fri::fri_decommit;
-use crate::stark_verifier::fri_proof::FriCommitProof;
+use crate::stark_verifier::fri_proof::{FriCommitProof, FriProof};
+use crate::stark_verifier::merkle::{AuthPath, AuthPaths};
+use crate::stark_verifier::proof::ProofConfig;
+use crate::stark_verifier::proof_from_stark_proof::construct_fri_auth_paths;
 use crate::stark_verifier::select_queries::select_queries;
-use itertools::zip_eq;
+use itertools::{chain, zip_eq};
 use num_traits::One;
 use rstest::rstest;
+use stwo::core::channel::{Blake2sChannel, Blake2sM31Channel};
 use stwo::core::circle::Coset;
 use stwo::core::fields::m31::BaseField;
 use stwo::core::fields::qm31::{QM31, SecureField};
-use stwo::core::fri::{FriConfig, fold_coset as stwo_fold_coset, fold_line as stwo_fold_line};
+use stwo::core::fri::{
+    ExtendedFriProof, FriConfig, fold_coset as stwo_fold_coset, fold_line as stwo_fold_line,
+};
 use stwo::core::poly::circle::CircleDomain;
 use stwo::core::poly::line::LineDomain;
+use stwo::core::queries::Queries;
 use stwo::core::utils::bit_reverse_index;
-use stwo::core::vcs_lifted::blake2_merkle::Blake2sMerkleChannel;
+use stwo::core::vcs::blake2_hash::Blake2sM31Hasher;
+use stwo::core::vcs_lifted::blake2_merkle::{
+    Blake2sM31MerkleChannel, Blake2sM31MerkleHasher, Blake2sMerkleChannel,
+};
 use stwo::prover::backend::CpuBackend;
 use stwo::prover::backend::cpu::CpuCirclePoly;
 use stwo::prover::poly::BitReversedOrder;
-use stwo::prover::poly::circle::SecureEvaluation;
+use stwo::prover::poly::circle::{PolyOps, SecureEvaluation};
 
 use super::{
     compute_twiddles_from_base_point, fold_coset, fri_commit, translate_base_point,
@@ -126,67 +136,117 @@ fn simd_lanes(context: &TraceContext, simd: &Simd) -> Vec<u32> {
     (0..simd.len()).map(|i| packed[i / 4].to_m31_array()[i % 4].0).collect()
 }
 
+#[test]
+fn test_jump_folding_matches_stwo_reference() {
+    let fri_proof = stwo_jumps();
 
-// #[test]
-// fn test_jump_folding_matches_stwo_reference() {
-//     let mut context = TraceContext::default();
-//     const LOG_DOMAIN_SIZE: usize = 8;
-//     let steps = [2_usize, 1_usize, 2_usize];
+    let config = ProofConfig {};
 
-//     // Query indices in the circle evaluation domain.
-//     let query_indices = vec![0b0101_1011_u32, 0b1010_0110_u32, 0b0011_1100_u32, 0b1110_0001_u32];
-//     let input = simd_from_u32s(&mut context, query_indices.clone());
-//     let queries = select_queries(&mut context, &input, LOG_DOMAIN_SIZE);
+    let mut context = TraceContext::default();
+    const LOG_DOMAIN_SIZE: usize = 8;
+    let steps = [2_usize, 1_usize, 2_usize];
 
-//     // Start from the first line layer (after circle->line fold).
-//     let mut query_positions: Vec<usize> =
-//         query_indices.iter().map(|q| (*q as usize) >> 1).collect();
-//     let mut line_domain = LineDomain::new(Coset::half_odds((LOG_DOMAIN_SIZE - 1) as u32));
+    // Query indices in the circle evaluation domain.
+    let query_indices = vec![0b0101_1011_u32, 0b1010_0110_u32, 0b0011_1100_u32, 0b1110_0001_u32];
+    let input = simd_from_u32s(&mut context, query_indices.clone());
+    let queries = select_queries(&mut context, &input, LOG_DOMAIN_SIZE);
 
-//     // Deterministic layer values.
-//     let mut layer_values_qm31: Vec<QM31> = (0..(1 << (LOG_DOMAIN_SIZE - 1)))
-//         .map(|i| qm31_from_u32s(i as u32 + 1, 2 * i as u32 + 3, 3 * i as u32 + 5, 5 * i as u32 + 7))
-//         .collect();
-//     let mut layer_values_vars: Vec<_> =
-//         layer_values_qm31.iter().map(|x| context.constant(*x)).collect();
+    // Start from the first line layer (after circle->line fold).
+    let mut query_positions: Vec<usize> =
+        query_indices.iter().map(|q| (*q as usize) >> 1).collect();
+    let mut line_domain = LineDomain::new(Coset::half_odds((LOG_DOMAIN_SIZE - 1) as u32));
 
-//     let alpha_values = [
-//         qm31_from_u32s(17, 3, 5, 7),
-//         qm31_from_u32s(11, 13, 2, 9),
-//         qm31_from_u32s(19, 4, 1, 6),
-//     ];
-//     let alphas: Vec<_> = alpha_values.iter().map(|x| context.constant(*x)).collect();
+    // Deterministic layer values.
+    let mut layer_values_qm31: Vec<QM31> = (0..(1 << (LOG_DOMAIN_SIZE - 1)))
+        .map(|i| qm31_from_u32s(i as u32 + 1, 2 * i as u32 + 3, 3 * i as u32 + 5, 5 * i as u32 + 7))
+        .collect();
+    let mut layer_values_vars: Vec<_> =
+        layer_values_qm31.iter().map(|x| context.constant(*x)).collect();
 
-//     let mut base_point = queries.points.clone();
-//     let mut bit_counter = 0usize;
+    let alpha_values =
+        [qm31_from_u32s(17, 3, 5, 7), qm31_from_u32s(11, 13, 2, 9), qm31_from_u32s(19, 4, 1, 6)];
+    let alphas: Vec<_> = alpha_values.iter().map(|x| context.constant(*x)).collect();
 
-//     fri_decommit(context, proof, config, fri_input, bits, packed_bits, points, &alphas);
+    let mut base_point = queries.points.clone();
+    let mut bit_counter = 0usize;
 
-//     context.validate_circuit();
-// }
-    /// Returns an evaluation of a random polynomial with degree `2^log_degree`.
-    ///
-    /// The evaluation domain size is `2^(log_degree + log_blowup_factor)`.
-    fn polynomial_evaluation(
-        log_degree: u32,
-        log_blowup_factor: u32,
-    ) -> SecureEvaluation<CpuBackend, BitReversedOrder> {
-        let poly = CpuCirclePoly::new(vec![BaseField::one(); 1 << log_degree]);
-        let coset = Coset::half_odds(log_degree + log_blowup_factor - 1);
-        let domain = CircleDomain::new(coset);
-        let values = poly.evaluate(domain);
-        SecureEvaluation::new(domain, values.into_iter().map(SecureField::from).collect())
+    let siblings = test_construct_fri_siblings(&fri_proof, &config, &query_indices.iter().map(|x| *x as usize).collect::<Vec<_>>());
+
+    let circuit_fri_proof = FriProof {
+        commit: FriCommitProof {
+            layer_commitments: chain!(
+                [fri_proof.proof.first_layer.commitment.into()],
+                fri_proof.proof.inner_layers.iter().map(|layer| layer.commitment.into()),
+            )
+            .collect(),
+            last_layer_coefs: (*fri_proof.proof.last_layer_poly).to_vec(),
+        },
+        auth_paths: AuthPaths { data: vec![vec![AuthPath(vec![])]]},
+        circle_fri_siblings: siblings.0,
+        line_coset_vals_per_query_per_tree: siblings.1,
+    };
+    fri_decommit(
+        &mut context,
+        circuit_fri_proof,
+        config,
+        fri_input,
+        bits,
+        packed_bits,
+        points,
+        &alphas,
+    );
+
+    context.validate_circuit();
+}
+/// Returns an evaluation of a random polynomial with degree `2^log_degree`.
+///
+/// The evaluation domain size is `2^(log_degree + log_blowup_factor)`.
+fn polynomial_evaluation(
+    log_degree: u32,
+    log_blowup_factor: u32,
+) -> SecureEvaluation<CpuBackend, BitReversedOrder> {
+    let poly = CpuCirclePoly::new(vec![BaseField::one(); 1 << log_degree]);
+    let coset = Coset::half_odds(log_degree + log_blowup_factor - 1);
+    let domain = CircleDomain::new(coset);
+    let values = poly.evaluate(domain);
+    SecureEvaluation::new(domain, values.into_iter().map(SecureField::from).collect())
+}
+
+type FriProver<'a> = stwo::prover::fri::FriProver<'a, CpuBackend, Blake2sM31MerkleChannel>;
+
+fn stwo_jumps() -> ExtendedFriProof<Blake2sM31Hasher> {
+    const LOG_BLOWUP_FACTOR: u32 = 2;
+
+    let config = FriConfig::new(0, LOG_BLOWUP_FACTOR, 3, 2);
+    let column = polynomial_evaluation(6, LOG_BLOWUP_FACTOR);
+    let twiddles = CpuBackend::precompute_twiddles(column.domain.half_coset);
+
+    let prover = FriProver::commit(&mut Blake2sM31Channel::default(), config, &column, &twiddles);
+    let queries = Queries::new(&vec![0, 11, 23], 6 + LOG_BLOWUP_FACTOR);
+    let proof = prover.decommit_on_queries(&queries);
+    eprintln!("{:?}", proof);
+    proof
+}
+
+pub fn test_construct_fri_siblings(
+    proof: &ExtendedFriProof<Blake2sM31MerkleHasher>,
+    config: &ProofConfig,
+    query_locations: &[usize],
+) -> (Vec<QM31>, Vec<Vec<Vec<QM31>>>) {
+    let mut line_coset_vals_per_query_per_tree = vec![vec![]; config.log_trace_size() - 1];
+    let mut circle_fri_siblings = vec![];
+    for query in query_locations {
+        circle_fri_siblings.push(proof.aux.first_layer.all_values[0][&(query ^ 1)]);
+        let mut pos = query >> 1;
+        for (tree_idx, (layer, step)) in
+            zip_eq(&proof.aux.inner_layers, &config.fri.steps).enumerate()
+        {
+            let start = (pos >> step) << step;
+            let line_coset_vals: Vec<_> =
+                (start..start + (1 << step)).map(|i| layer.all_values[0][&i]).collect();
+            line_coset_vals_per_query_per_tree[tree_idx].push(line_coset_vals);
+            pos >>= step;
+        }
     }
-
-type FriProver<'a> = stwo::prover::fri::FriProver<'a, CpuBackend, Blake2sMerkleChannel>;
-fn stwo_jumps() {
-        const LOG_BLOWUP_FACTOR: u32 = 2;
-
-        let config = FriConfig::new(2, LOG_BLOWUP_FACTOR, 3, 2);
-        let column = polynomial_evaluation(6, LOG_BLOWUP_FACTOR);
-        let twiddles = CpuBackend::precompute_twiddles(column.domain.half_coset);
-
-        let prover = FriProver::commit(&mut test_channel(), config, &column, &twiddles);
-        let queries = Queries::from_positions(vec![0, 3], 6 + LOG_BLOWUP_FACTOR);
-        prover.decommit_on_queries(&queries);
-    }
+    (circle_fri_siblings, line_coset_vals_per_query_per_tree)
+}

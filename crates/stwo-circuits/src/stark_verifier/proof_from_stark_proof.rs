@@ -87,7 +87,7 @@ fn as_single_row(values: &[Vec<QM31>]) -> Vec<QM31> {
 }
 
 /// Constructs [EvalDomainSamples] with the values from the given proof ([ExtendedStarkProof]).
-fn construct_eval_domain_samples(
+pub fn construct_eval_domain_samples(
     proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
     config: &ProofConfig,
 ) -> EvalDomainSamples<QM31> {
@@ -127,7 +127,7 @@ fn construct_eval_domain_samples(
 
 /// Constructs [AuthPaths] for the evaluation domain queries (the in-domain queries) with the values
 /// from the given proof ([ExtendedStarkProof]).
-fn construct_eval_domain_auth_paths(
+pub fn construct_eval_domain_auth_paths(
     proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
     config: &ProofConfig,
 ) -> AuthPaths<QM31> {
@@ -158,7 +158,7 @@ fn construct_eval_domain_auth_paths(
 
 /// Constructs [AuthPaths] for the FRI trees with the values from the given proof
 /// ([ExtendedStarkProof]).
-fn construct_fri_auth_paths(
+pub fn construct_fri_auth_paths(
     proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
     config: &ProofConfig,
 ) -> AuthPaths<QM31> {
@@ -194,7 +194,7 @@ fn construct_fri_auth_paths(
 /// ([ExtendedStarkProof]).
 ///
 /// For each tree, for each query, the sibling of the relevant node in FRI.
-fn construct_fri_siblings(
+pub fn construct_fri_siblings(
     proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
     config: &ProofConfig,
 ) -> (Vec<QM31>, Vec<Vec<Vec<QM31>>>) {
