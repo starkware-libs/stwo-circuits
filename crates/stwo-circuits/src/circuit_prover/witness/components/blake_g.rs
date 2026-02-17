@@ -41,10 +41,8 @@ impl ClaimGenerator {
         let log_size = packed_size.ilog2() + LOG_N_LANES;
         self.packed_inputs.resize(packed_size, *self.packed_inputs.first().unwrap());
 
-        let (trace, lookup_data, sub_component_inputs) = write_trace_simd(
-            self.packed_inputs,
-            n_rows,
-        );
+        let (trace, lookup_data, sub_component_inputs) =
+            write_trace_simd(self.packed_inputs, n_rows);
         for inputs in sub_component_inputs.verify_bitwise_xor_8 {
             verify_bitwise_xor_8_state.add_packed_inputs(&inputs, 0);
         }
@@ -87,7 +85,7 @@ struct SubComponentInputs {
 #[allow(non_snake_case)]
 fn write_trace_simd(
     inputs: Vec<PackedInputType>,
-    n_rows: usize
+    n_rows: usize,
 ) -> (ComponentTrace<N_TRACE_COLUMNS>, LookupData, SubComponentInputs) {
     let log_n_packed_rows = inputs.len().ilog2();
     let log_size = log_n_packed_rows + LOG_N_LANES;

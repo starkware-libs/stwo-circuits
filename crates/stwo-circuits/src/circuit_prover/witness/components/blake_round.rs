@@ -37,11 +37,8 @@ impl ClaimGenerator {
         let log_size = packed_size.ilog2() + LOG_N_LANES;
         self.packed_inputs.resize(packed_size, *self.packed_inputs.first().unwrap());
 
-        let (trace, lookup_data, sub_component_inputs) = write_trace_simd(
-            self.packed_inputs,
-            n_rows,
-            blake_message_state,
-        );
+        let (trace, lookup_data, sub_component_inputs) =
+            write_trace_simd(self.packed_inputs, n_rows, blake_message_state);
         for inputs in sub_component_inputs.blake_round_sigma {
             blake_round_sigma_state.add_packed_inputs(&inputs, 0);
         }
