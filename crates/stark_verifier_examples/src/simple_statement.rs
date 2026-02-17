@@ -17,6 +17,7 @@ use circuits_stark_verifier::constraint_eval::{
 use circuits_stark_verifier::logup::combine_term;
 use circuits_stark_verifier::proof::Claim;
 use circuits_stark_verifier::statement::Statement;
+use circuits_stark_verifier::empty_component::EmptyComponent;
 
 /// This is currently hardcoded in the simple air.
 /// Fixing it is not worth the effort since it doesn't happen in a real AIR.
@@ -41,11 +42,7 @@ impl<Value: IValue> Default for SimpleStatement<Value> {
                         id: "row_const_short".to_string(),
                     },
                 }),
-                Box::new(SquaredFibonacciComponent {
-                    preprocessed_column_id: PreProcessedColumnId {
-                        id: "row_const_long".to_string(),
-                    },
-                }),
+                Box::new(EmptyComponent {}),
             ],
         }
     }

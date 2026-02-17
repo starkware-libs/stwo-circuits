@@ -47,7 +47,6 @@ pub fn verify<Value: IValue>(
     statement: &impl Statement<Value>,
 ) {
     proof.validate_structure(config);
-
     let mut channel = Channel::new(context);
 
     // Mix the channel salt.
@@ -105,7 +104,18 @@ pub fn verify<Value: IValue>(
     let simd_enable_bits =
         Simd::from_packed(proof.claim.packed_enable_bits.clone(), config.n_components);
     simd_enable_bits.assert_bits(context);
+
+    // TODO(ilya): Consider removing claim.packed_enable_bits and deriving them from
+    // config.enabled_components directly.
     let enable_bits = Simd::unpack(context, &simd_enable_bits);
+    for (enabled_bit, expected_enable_bit) in zip_eq(&enable_bits, config.enabled_components()) {
+        let expect_const = match expected_enable_bit {
+            true => context.one(),
+            false => context.zero(),
+        };
+        eq(context, *enabled_bit, expect_const);
+    }
+
     let public_logup_sum =
         statement.public_logup_sum(context, [interaction_z, interaction_alpha], &proof.claim);
     validate_logup_sum(context, public_logup_sum, &proof.claim.claimed_sums, &enable_bits);
