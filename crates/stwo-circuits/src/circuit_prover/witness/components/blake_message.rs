@@ -25,9 +25,9 @@ impl ClaimGenerator {
     pub fn add_packed_inputs(&mut self, id: PackedM31, messages: [PackedUInt32; 16]) {
         let ids = id.into_simd().to_array();
 
-        // TODO: we assume it comes in order, if we want to parallelize need to start a new vec with
-        // capacity initialized to 0 when creating the ClaimGenerator and then push to the vec when
-        // adding the inputs.
+        // TODO(alonf): we assume it comes in order, if we want to parallelize need to start a new
+        // vec with capacity initialized to 0 when creating the ClaimGenerator and then push
+        // to the vec when adding the inputs.
         for (j, _id) in ids.iter().enumerate() {
             let mut vec: [u32; 16] = [0; 16];
             for i in 0..16 {
