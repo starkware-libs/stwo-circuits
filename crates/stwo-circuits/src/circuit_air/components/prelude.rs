@@ -45,29 +45,12 @@ impl PreProcessedColumn for Seq {
     fn log_size(&self) -> u32 {
         self.log_size
     }
-    #[cfg(feature = "prover")]
-    fn packed_at(&self, vec_row: usize) -> PackedM31 {
-        PackedM31::broadcast(M31::from(vec_row * N_LANES))
-            + unsafe { PackedM31::from_simd_unchecked(SIMD_ENUMERATION_0) }
-    }
-    #[cfg(feature = "prover")]
-    fn gen_column_simd(&self) -> CircleEvaluation<SimdBackend, BaseField, BitReversedOrder> {
-        let col = Col::<SimdBackend, BaseField>::from_iter(
-            (0..(1 << self.log_size)).map(BaseField::from),
-        );
-        CircleEvaluation::new(CanonicCoset::new(self.log_size).circle_domain(), col)
-    }
-
     fn id(&self) -> PreProcessedColumnId {
         PreProcessedColumnId { id: format!("seq_{}", self.log_size) }
     }
 }
 
 pub trait PreProcessedColumn: Send + Sync {
-    #[cfg(feature = "prover")]
-    fn packed_at(&self, vec_row: usize) -> PackedM31;
     fn log_size(&self) -> u32;
     fn id(&self) -> PreProcessedColumnId;
-    #[cfg(feature = "prover")]
-    fn gen_column_simd(&self) -> CircleEvaluation<SimdBackend, BaseField, BitReversedOrder>;
 }
