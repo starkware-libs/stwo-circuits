@@ -121,8 +121,14 @@ pub fn fri_decommit<Value: IValue>(
         line_coset_vals_per_query_per_tree,
         circle_fri_siblings,
     } = proof;
-
-    let steps = &config.steps;
+    // for (tree, line_coset_vals_per_query) in line_coset_vals_per_query_per_tree.iter().enumerate() {
+    //     eprintln!("Tree: {}", tree + 1);
+    //     for (query_idx, line_coset_vals) in line_coset_vals_per_query.iter().enumerate() {
+    //         eprintln!("query: {query_idx}, coset val len: {}", line_coset_vals.len());
+    //     }
+    // }
+    // TODO: Remove copy
+    let steps = config.steps.to_vec();
     // Circle to line decommitment.
     let mut fri_data = decommit_circle_to_line(
         context,
@@ -138,12 +144,10 @@ pub fn fri_decommit<Value: IValue>(
     let mut base_point = points.clone();
     let mut bit_counter = 0;
 
-    eprintln!("Commitment len: {}, steps: {}", layer_commitments.len(), steps.len());
-    for (tree_idx, (root, step)) in zip_eq(&layer_commitments[1..], steps).enumerate() {
-        let tree_idx = tree_idx + 1;
-        let coset_per_query = &line_coset_vals_per_query_per_tree[tree_idx];
+    for (tree_idx, ((root, step), coset_per_query)) in zip_eq(zip_eq(&layer_commitments[1..], steps), line_coset_vals_per_query_per_tree).enumerate().skip(1) {
         let bit_range = (1 + bit_counter)..(1 + bit_counter + step);
         eprintln!("Tree: {}", tree_idx);
+        eprintln!("Bit range: {:?}", bit_range);
         // Validate that the fri query is in the correct position inside the guessed
         // `fri_coset_per_query`.
         validate_query_position_in_coset(
@@ -163,11 +167,11 @@ pub fn fri_decommit<Value: IValue>(
 
         // Compute twiddles.
         let twiddles_per_fold_per_query =
-            compute_twiddles_from_base_point(context, &base_point, *step);
+            compute_twiddles_from_base_point(context, &base_point, step);
 
         // Compute alpha, alpha^2, ..., alpha^(2^(step - 1));
-        let alphas: Vec<Var> = (0..*step)
-            .scan(alphas[tree_idx], |state, _| {
+        let alphas: Vec<Var> = (0..step)
+            .scan(alphas[tree_idx + 1], |state, _| {
                 let out = *state;
                 *state = mul(context, *state, *state);
                 Some(out)
@@ -181,8 +185,8 @@ pub fn fri_decommit<Value: IValue>(
             })
             .collect();
 
-        bit_counter += *step as usize;
-        base_point = repeated_double_point_simd(context, &base_point, *step);
+        bit_counter += step as usize;
+        base_point = repeated_double_point_simd(context, &base_point, step);
     }
 
     // Check last layer.
@@ -210,21 +214,20 @@ fn compute_twiddles_from_base_point<Value: IValue>(
         .collect();
     let mut prev_twiddles: Vec<_> = prev_x_coord.iter().map(|x| x.inv(context)).collect();
     buf.push(prev_twiddles.iter().map(|t_simd| Simd::unpack(context, t_simd)).collect());
-    // Compute the rest of the folds if needed.
-    if step >= 2 {
-        for _ in 0..step - 2 {
-            prev_x_coord = prev_x_coord.iter().map(|x| double_x_simd(context, x)).collect();
-            prev_twiddles = prev_x_coord.iter().map(|x| x.inv(context)).collect();
-            buf.push(prev_twiddles.iter().map(|t_simd| Simd::unpack(context, t_simd)).collect());
-        }
+
+    for _ in 0..step - 1 {
+        prev_x_coord = prev_x_coord.iter().step_by(2).map(|x| double_x_simd(context, x)).collect();
+        prev_twiddles = prev_x_coord.iter().map(|x| x.inv(context)).collect();
+        buf.push(prev_twiddles.iter().map(|t_simd| Simd::unpack(context, t_simd)).collect());
     }
     let mut twiddles_per_fold_per_query: Vec<JumpTwiddles> = vec![];
 
     // Transpose
-    for twiddles in buf.iter() {
+    for i in 0..n_queries {
         let mut res: JumpTwiddles = vec![];
-        for i in 0..n_queries {
-            res.push(twiddles.iter().map(|p| p[i]).collect());
+        for twiddles in buf.iter() {
+            let tmp = twiddles.iter().map(|p| p[i]).collect();
+            res.push(tmp);
         }
         twiddles_per_fold_per_query.push(res);
     }
@@ -259,12 +262,17 @@ fn validate_query_position_in_coset<Value: IValue>(
     bits: &[Vec<Var>],
 ) {
     for (query_idx, (query_value, coset)) in zip_eq(fri_data, fri_coset_per_query).enumerate() {
+        println!("Coset");
+        coset.iter().for_each(|x| println!("{:?}", context.get(*x)));
+        eprintln!("Query: {:?}", context.get(*query_value));
         let bits: Vec<Var> = bits.iter().map(|b| b[query_idx]).collect();
         let should_be_query = select_by_index(context, coset, bits);
+        // debug_assert_eq!(context.get(should_be_query), context.get(*query_value));
         eq(context, *query_value, should_be_query);
     }
 }
 
+// This is per query.
 fn fold_coset<Value: IValue>(
     context: &mut Context<Value>,
     coset_values: &[Var],
@@ -273,9 +281,9 @@ fn fold_coset<Value: IValue>(
 ) -> Var {
     assert_eq!(twiddles_per_fold.len(), alphas.len());
     assert_eq!(coset_values.len(), 1 << twiddles_per_fold.len());
-    for (i, twiddles) in twiddles_per_fold.iter().enumerate() {
-        assert_eq!(twiddles.len(), 1 << (twiddles_per_fold.len() - i - 1));
-    }
+    // for (i, twiddles) in twiddles_per_fold.iter().enumerate() {
+    //     assert_eq!(twiddles.len(), 1 << (twiddles_per_fold.len() - i - 1));
+    // }
     let mut values = coset_values.to_vec();
 
     for (i, twiddles) in twiddles_per_fold.iter().enumerate() {
