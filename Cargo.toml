@@ -1,6 +1,11 @@
 [workspace]
 members = [
-    "crates/stwo-circuits",
+    "crates/cairo_air",
+    "crates/circuits",
+    "crates/circuit_air",
+    "crates/circuit_serialize",
+    "crates/circuit_prover",
+    "crates/stark_verifier",
 ]
 resolver = "2"
 
@@ -31,6 +36,9 @@ cairo-air = { git = "https://github.com/starkware-libs/stwo-cairo", rev = "cf18b
 stwo_cairo_prover = { package = "stwo-cairo-prover", git = "https://github.com/starkware-libs/stwo-cairo", rev = "cf18bdf4" }
 dev_utils = { package = "stwo-cairo-dev-utils", git = "https://github.com/starkware-libs/stwo-cairo", rev = "cf18bdf4" }
 stwo_cairo_utils = { package = "stwo-cairo-utils", git = "https://github.com/starkware-libs/stwo-cairo", rev = "cf18bdf4" }
+circuits = { path = "crates/circuits"}
+circuit-air = { path = "crates/circuit_air"}
+circuits-stark-verifier = { path = "crates/stark_verifier"}
 rstest = "0.26.1"
 expect-test = "1.5.1"
 rayon = "1.10.0"
