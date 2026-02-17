@@ -50,10 +50,8 @@ pub mod test;
 
 pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     finalize_context(context);
-
     let (preprocessed_trace, params) =
         PreProcessedTrace::generate_preprocessed_trace(&context.circuit);
-
     prove_circuit_assignment(context.values(), preprocessed_trace, &params)
 }
 

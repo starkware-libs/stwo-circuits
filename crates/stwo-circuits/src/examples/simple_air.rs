@@ -242,18 +242,7 @@ pub fn create_proof() -> (
     let trace_1 = generate_trace(LOG_SIZE_LONG);
     let trace_2 = generate_trace(LOG_SIZE_SHORT);
     let mut tree_builder = commitment_scheme.tree_builder();
-    tree_builder.extend_evals(
-        [
-            trace_1.clone(),
-            trace_2.clone(),
-            // Zero-filled for component_3
-            vec![
-                CircleEvaluation::<SimdBackend, _, BitReversedOrder>::zero_padding();
-                trace_1.len()
-            ],
-        ]
-        .concat(),
-    );
+    tree_builder.extend_evals([trace_1.clone(), trace_2.clone()].concat());
     tree_builder.commit(prover_channel);
 
     let interaction_pow_nonce = SimdBackend::grind(prover_channel, INTERACTION_POW_BITS);
@@ -270,18 +259,7 @@ pub fn create_proof() -> (
     let claimed_sums = vec![claimed_sum_1, claimed_sum_2, QM31::zero()];
     prover_channel.mix_felts(&claimed_sums);
     let mut tree_builder = commitment_scheme.tree_builder();
-    let n_interaction_columns = interaction_trace_1.len();
-    tree_builder.extend_evals(
-        [
-            interaction_trace_1,
-            interaction_trace_2,
-            vec![
-                CircleEvaluation::<SimdBackend, _, BitReversedOrder>::zero_padding();
-                n_interaction_columns
-            ],
-        ]
-        .concat(),
-    );
+    tree_builder.extend_evals([interaction_trace_1, interaction_trace_2].concat());
     tree_builder.commit(prover_channel);
 
     let short_preprocessed_column = PreProcessedColumnId { id: "row_const_short".into() };
@@ -314,25 +292,16 @@ pub fn create_proof() -> (
         },
         claimed_sum_2,
     );
-    let component_3 = SimpleComponent::disabled(
-        &mut trace_location_allocator,
-        Eval {
-            lookup_elements,
-            preprocessed_column_id: long_preprocessed_column,
-            log_n_instances: 0,
-        },
-    );
 
     let proof = prove_ex::<SimdBackend, Blake2sM31MerkleChannel>(
-        &[&component_1, &component_2, &component_3],
+        &[&component_1, &component_2],
         prover_channel,
         commitment_scheme,
         true,
     )
     .unwrap();
 
-    let components: Vec<Box<dyn Component>> =
-        vec![Box::new(component_1), Box::new(component_2), Box::new(component_3)];
+    let components: Vec<Box<dyn Component>> = vec![Box::new(component_1), Box::new(component_2)];
 
     (
         components,

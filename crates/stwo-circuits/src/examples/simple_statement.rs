@@ -14,6 +14,7 @@ use crate::stark_verifier::constraint_eval::RelationUse;
 use crate::stark_verifier::constraint_eval::{
     CircuitEval, ComponentDataTrait, CompositionConstraintAccumulator,
 };
+use crate::stark_verifier::empty_component::EmptyComponent;
 use crate::stark_verifier::logup::combine_term;
 use crate::stark_verifier::proof::Claim;
 use crate::stark_verifier::statement::Statement;
@@ -41,11 +42,7 @@ impl<Value: IValue> Default for SimpleStatement<Value> {
                         id: "row_const_short".to_string(),
                     },
                 }),
-                Box::new(SquaredFibonacciComponent {
-                    preprocessed_column_id: PreProcessedColumnId {
-                        id: "row_const_long".to_string(),
-                    },
-                }),
+                Box::new(EmptyComponent {}),
             ],
         }
     }

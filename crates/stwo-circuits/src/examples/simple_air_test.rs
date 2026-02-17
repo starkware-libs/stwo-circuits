@@ -37,7 +37,7 @@ fn verify_simple_proof() {
         verifier_channel,
     );
 
-    verifier_channel.mix_felts(&[qm31_from_u32s(components.len() as u32, 0, 0, 0)]);
+    verifier_channel.mix_felts(&[qm31_from_u32s(claimed_sums.len() as u32, 0, 0, 0)]);
     verifier_channel.mix_felts(&packed_enable_bits);
     verifier_channel.mix_felts(&packed_component_log_sizes);
     verifier_channel.mix_felts(&[]);

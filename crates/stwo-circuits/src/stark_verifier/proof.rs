@@ -9,6 +9,7 @@ use crate::stark_verifier::oods::{
 };
 use crate::stark_verifier::statement::Statement;
 use itertools::{Itertools, zip_eq};
+
 use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
 use stwo::core::pcs::PcsConfig;
 
@@ -59,6 +60,15 @@ impl ProofConfig {
             pcs_config,
             interaction_pow_bits,
         )
+    }
+
+    /// Returns an iterator over the enabled components.
+    pub fn enabled_components(&self) -> impl Iterator<Item = bool> {
+        // A real component need to interact with the other components or the public logup sum and
+        // therefore it must have some interaction columns.
+        self.interaction_columns_per_component
+            .iter()
+            .map(|interaction_columns| *interaction_columns > 0)
     }
 
     pub fn new(
