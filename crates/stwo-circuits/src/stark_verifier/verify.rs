@@ -53,6 +53,7 @@ pub fn verify<Value: IValue>(
     statement: &impl Statement<Value>,
 ) {
     proof.validate_structure(config);
+    config.validate_enable_bits(enable_bits.iter());
 
     let mut channel = Channel::new(context);
 

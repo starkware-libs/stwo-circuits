@@ -9,7 +9,8 @@ use crate::stark_verifier::oods::{
 };
 use crate::stark_verifier::statement::Statement;
 use itertools::{Itertools, zip_eq};
-use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
+use num_traits::{One, Zero};
+use stwo::core::fields::qm31::{QM31, SECURE_EXTENSION_DEGREE};
 use stwo::core::pcs::PcsConfig;
 
 pub const N_TRACES: usize = 4;
@@ -59,6 +60,29 @@ impl ProofConfig {
             pcs_config,
             interaction_pow_bits,
         )
+    }
+
+    pub fn enabled_components(&self) -> impl Iterator<Item = bool> {
+        self.interaction_columns_per_component
+            .iter()
+            .map(|interaction_columns| *interaction_columns > 0)
+    }
+
+    pub fn validate_enable_bits(&self, packed_enable_bits: &[QM31]) {
+        assert_eq!(packed_enable_bits.len(), self.n_components.div_ceil(4));
+
+        let enable_bits = packed_enable_bits.iter().flat_map(|x| x.to_m31_array());
+        enable_bits.zip(self.enabled_components()).enumerate().for_each(
+            |(i, (enable_bit, enabled_component))| {
+                if enabled_component {
+                    // The index of the current enable_bit is i
+                    assert!(enable_bit.is_one(), "enable_bit at index {} should be one", i);
+                } else {
+                    // The index of the current enable_bit is i
+                    assert!(enable_bit.is_zero(), "enable_bit at index {} should be zero", i);
+                }
+            },
+        );
     }
 
     pub fn new(

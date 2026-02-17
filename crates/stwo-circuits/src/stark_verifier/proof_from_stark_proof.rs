@@ -3,6 +3,8 @@ use std::array;
 use hashbrown::HashMap;
 use itertools::Itertools;
 use itertools::chain;
+use itertools::zip_eq;
+use num_traits::One;
 use num_traits::Zero;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
