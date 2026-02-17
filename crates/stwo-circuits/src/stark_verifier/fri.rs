@@ -122,8 +122,7 @@ pub fn fri_decommit<Value: IValue>(
         circle_fri_siblings,
     } = proof;
 
-    let steps: Vec<usize> = vec![]; // TODO: part of config?
-
+    let steps = &config.steps;
     // Circle to line decommitment.
     let mut fri_data = decommit_circle_to_line(
         context,
@@ -139,10 +138,12 @@ pub fn fri_decommit<Value: IValue>(
     let mut base_point = points.clone();
     let mut bit_counter = 0;
 
-    for (tree_idx, (root, step)) in zip_eq(&layer_commitments[1..], steps).enumerate().skip(1) {
+    eprintln!("Commitment len: {}, steps: {}", layer_commitments.len(), steps.len());
+    for (tree_idx, (root, step)) in zip_eq(&layer_commitments[1..], steps).enumerate() {
+        let tree_idx = tree_idx + 1;
         let coset_per_query = &line_coset_vals_per_query_per_tree[tree_idx];
         let bit_range = (1 + bit_counter)..(1 + bit_counter + step);
-
+        eprintln!("Tree: {}", tree_idx);
         // Validate that the fri query is in the correct position inside the guessed
         // `fri_coset_per_query`.
         validate_query_position_in_coset(
@@ -154,7 +155,7 @@ pub fn fri_decommit<Value: IValue>(
 
         // Check merkle decommitment.
         for (query_idx, coset_values) in coset_per_query.iter().enumerate() {
-            todo!()
+            println!("Inside merkle decommitment");
         }
 
         // Translate base_point to the base of the current coset.
@@ -162,10 +163,10 @@ pub fn fri_decommit<Value: IValue>(
 
         // Compute twiddles.
         let twiddles_per_fold_per_query =
-            compute_twiddles_from_base_point(context, &base_point, step);
+            compute_twiddles_from_base_point(context, &base_point, *step);
 
         // Compute alpha, alpha^2, ..., alpha^(2^(step - 1));
-        let alphas: Vec<Var> = (0..step)
+        let alphas: Vec<Var> = (0..*step)
             .scan(alphas[tree_idx], |state, _| {
                 let out = *state;
                 *state = mul(context, *state, *state);
@@ -180,8 +181,8 @@ pub fn fri_decommit<Value: IValue>(
             })
             .collect();
 
-        bit_counter += step as usize;
-        base_point = repeated_double_point_simd(context, &base_point, step);
+        bit_counter += *step as usize;
+        base_point = repeated_double_point_simd(context, &base_point, *step);
     }
 
     // Check last layer.
@@ -270,8 +271,13 @@ fn fold_coset<Value: IValue>(
     twiddles_per_fold: &[Vec<Var>],
     alphas: &[Var],
 ) -> Var {
-    // TODO: add asserts on lengths.
+    assert_eq!(twiddles_per_fold.len(), alphas.len());
+    assert_eq!(coset_values.len(), 1 << twiddles_per_fold.len());
+    for (i, twiddles) in twiddles_per_fold.iter().enumerate() {
+        assert_eq!(twiddles.len(), 1 << (twiddles_per_fold.len() - i - 1));
+    }
     let mut values = coset_values.to_vec();
+
     for (i, twiddles) in twiddles_per_fold.iter().enumerate() {
         let mut buf = vec![];
         for (v, t) in zip_eq(values.chunks_exact(2), twiddles) {
