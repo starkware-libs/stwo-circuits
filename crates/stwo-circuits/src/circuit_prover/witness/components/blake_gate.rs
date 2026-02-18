@@ -4,7 +4,6 @@
 #![allow(clippy::too_many_arguments)]
 use crate::circuit_air::components::blake_gate::{InteractionClaim, N_TRACE_COLUMNS};
 
-use crate::circuit_air::relations::GATE_RELATION_ID;
 use crate::circuit_prover::witness::components::prelude::*;
 use crate::circuit_prover::witness::components::{
     blake_message, blake_output, blake_round, range_check_15, range_check_16, triple_xor_32,
@@ -248,8 +247,10 @@ fn write_trace_simd(
     let M31_26764 = PackedM31::broadcast(M31::from(26764));
     let M31_27145 = PackedM31::broadcast(M31::from(27145));
     let M31_3 = PackedM31::broadcast(M31::from(3));
+    let M31_378353459 = PackedM31::broadcast(M31::from(378353459));
     let M31_39685 = PackedM31::broadcast(M31::from(39685));
     let M31_40528774 = PackedM31::broadcast(M31::from(40528774));
+    let M31_112558620 = PackedM31::broadcast(M31::from(112558620));
     let M31_42319 = PackedM31::broadcast(M31::from(42319));
     let M31_44677 = PackedM31::broadcast(M31::from(44677));
     let M31_47975 = PackedM31::broadcast(M31::from(47975));
@@ -489,8 +490,12 @@ fn write_trace_simd(
                 *row[50] = xor_col50;
                 *sub_component_inputs.verify_bitwise_xor_8[0] =
                     [split_16_low_part_size_8_output_tmp_8e0ec_1[0], M31_127, xor_col50];
-                *lookup_data.verify_bitwise_xor_8_0 =
-                    [M31_4, split_16_low_part_size_8_output_tmp_8e0ec_1[0], M31_127, xor_col50];
+                *lookup_data.verify_bitwise_xor_8_0 = [
+                    M31_112558620,
+                    split_16_low_part_size_8_output_tmp_8e0ec_1[0],
+                    M31_127,
+                    xor_col50,
+                ];
 
                 // Bitwise Xor Num Bits 8.
 
@@ -499,7 +504,8 @@ fn write_trace_simd(
                 *row[51] = xor_col51;
                 *sub_component_inputs.verify_bitwise_xor_8[1] =
                     [ms_8_bits_col48, M31_82, xor_col51];
-                *lookup_data.verify_bitwise_xor_8_1 = [M31_4, ms_8_bits_col48, M31_82, xor_col51];
+                *lookup_data.verify_bitwise_xor_8_1 =
+                    [M31_112558620, ms_8_bits_col48, M31_82, xor_col51];
 
                 // Bitwise Xor Num Bits 8.
 
@@ -510,8 +516,12 @@ fn write_trace_simd(
                 *row[52] = xor_col52;
                 *sub_component_inputs.verify_bitwise_xor_8[2] =
                     [split_16_low_part_size_8_output_tmp_8e0ec_3[0], M31_14, xor_col52];
-                *lookup_data.verify_bitwise_xor_8_2 =
-                    [M31_4, split_16_low_part_size_8_output_tmp_8e0ec_3[0], M31_14, xor_col52];
+                *lookup_data.verify_bitwise_xor_8_2 = [
+                    M31_112558620,
+                    split_16_low_part_size_8_output_tmp_8e0ec_3[0],
+                    M31_14,
+                    xor_col52,
+                ];
 
                 // Bitwise Xor Num Bits 8.
 
@@ -520,7 +530,8 @@ fn write_trace_simd(
                 *row[53] = xor_col53;
                 *sub_component_inputs.verify_bitwise_xor_8[3] =
                     [ms_8_bits_col49, M31_81, xor_col53];
-                *lookup_data.verify_bitwise_xor_8_3 = [M31_4, ms_8_bits_col49, M31_81, xor_col53];
+                *lookup_data.verify_bitwise_xor_8_3 =
+                    [M31_112558620, ms_8_bits_col49, M31_81, xor_col53];
 
                 let create_blake_round_input_output_tmp_8e0ec_12 = [
                     blake_gate_input.0[0][0],
@@ -1731,7 +1742,7 @@ fn write_trace_simd(
                     input_state_after_limb7_limb_1_col31,
                 ];
                 *lookup_data.gate_0 = [
-                    PackedM31::broadcast(GATE_RELATION_ID),
+                    M31_378353459,
                     message0_addr,
                     input_message_limb0_col32,
                     input_message_limb1_col33,
@@ -1739,7 +1750,7 @@ fn write_trace_simd(
                     input_message_limb3_col35,
                 ];
                 *lookup_data.gate_1 = [
-                    PackedM31::broadcast(GATE_RELATION_ID),
+                    M31_378353459,
                     message1_addr,
                     input_message_limb4_col36,
                     input_message_limb5_col37,
@@ -1747,7 +1758,7 @@ fn write_trace_simd(
                     input_message_limb7_col39,
                 ];
                 *lookup_data.gate_2 = [
-                    PackedM31::broadcast(GATE_RELATION_ID),
+                    M31_378353459,
                     message2_addr,
                     input_message_limb8_col40,
                     input_message_limb9_col41,
@@ -1755,7 +1766,7 @@ fn write_trace_simd(
                     input_message_limb11_col43,
                 ];
                 *lookup_data.gate_3 = [
-                    PackedM31::broadcast(GATE_RELATION_ID),
+                    M31_378353459,
                     message3_addr,
                     input_message_limb12_col44,
                     input_message_limb13_col45,

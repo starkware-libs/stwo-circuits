@@ -52,7 +52,7 @@ fn write_trace_simd(
         )
     };
 
-    let M31_0 = PackedM31::broadcast(M31::from(0));
+    let M31_378353459 = PackedM31::broadcast(M31::from(378353459));
     let M31_1061955672 = PackedM31::broadcast(M31::from(1061955672));
     let M31_65536 = PackedM31::broadcast(M31::from(65536));
     let final_state_addr = preprocessed_trace
@@ -150,7 +150,7 @@ fn write_trace_simd(
                 input_final_state_limb7_limb_1_col15,
             ];
             *lookup_data.gate_0 = [
-                M31_0,
+                M31_378353459,
                 blake_output0_addr,
                 output_limb0_col16,
                 output_limb1_col17,
@@ -158,7 +158,7 @@ fn write_trace_simd(
                 output_limb3_col19,
             ];
             *lookup_data.gate_1 = [
-                M31_0,
+                M31_378353459,
                 blake_output1_addr,
                 output_limb4_col20,
                 output_limb5_col21,

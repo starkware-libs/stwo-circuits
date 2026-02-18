@@ -1,5 +1,6 @@
 pub use crate::cairo_air::component_utils::*;
 pub use crate::circuit_air::relations;
+use crate::circuit_prover::witness::components::prelude::SIMD_ENUMERATION_0;
 pub use crate::circuits::context::{Context, Var};
 pub use crate::circuits::ivalue::IValue;
 pub use crate::circuits::ops::eq;
@@ -13,24 +14,24 @@ pub use num_traits::Zero;
 pub use serde::{Deserialize, Serialize};
 pub use stwo::core::air::Component;
 pub use stwo::core::channel::Channel;
+use stwo::core::fields::m31::BaseField;
 pub use stwo::core::fields::m31::M31;
 pub use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
 pub use stwo::core::fields::qm31::SecureField;
 pub use stwo::core::pcs::TreeVec;
+use stwo::core::poly::circle::CanonicCoset;
 pub use stwo::prover::ComponentProver;
+use stwo::prover::backend::Col;
 pub use stwo::prover::backend::simd::SimdBackend;
+pub use stwo::prover::backend::simd::m31::{LOG_N_LANES, N_LANES, PackedM31};
+pub use stwo::prover::poly::BitReversedOrder;
+pub use stwo::prover::poly::circle::CircleEvaluation;
 pub use stwo_constraint_framework::EvalAtRow;
 pub use stwo_constraint_framework::FrameworkComponent;
 pub use stwo_constraint_framework::FrameworkEval;
 pub use stwo_constraint_framework::RelationEntry;
 pub use stwo_constraint_framework::TraceLocationAllocator;
 pub use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
-
-#[derive(Clone)]
-pub struct RelationUse {
-    pub relation_id: &'static str,
-    pub uses: u64,
-}
 
 /// A column with the numbers [0..(2^log_size)-1].
 #[derive(Debug, Clone)]
@@ -46,12 +47,25 @@ impl PreProcessedColumn for Seq {
     fn log_size(&self) -> u32 {
         self.log_size
     }
+    fn packed_at(&self, vec_row: usize) -> PackedM31 {
+        PackedM31::broadcast(M31::from(vec_row * N_LANES))
+            + unsafe { PackedM31::from_simd_unchecked(SIMD_ENUMERATION_0) }
+    }
+    fn gen_column_simd(&self) -> CircleEvaluation<SimdBackend, BaseField, BitReversedOrder> {
+        let col = Col::<SimdBackend, BaseField>::from_iter(
+            (0..(1 << self.log_size)).map(BaseField::from),
+        );
+        CircleEvaluation::new(CanonicCoset::new(self.log_size).circle_domain(), col)
+    }
+
     fn id(&self) -> PreProcessedColumnId {
         PreProcessedColumnId { id: format!("seq_{}", self.log_size) }
     }
 }
 
 pub trait PreProcessedColumn: Send + Sync {
+    fn packed_at(&self, vec_row: usize) -> PackedM31;
     fn log_size(&self) -> u32;
     fn id(&self) -> PreProcessedColumnId;
+    fn gen_column_simd(&self) -> CircleEvaluation<SimdBackend, BaseField, BitReversedOrder>;
 }
