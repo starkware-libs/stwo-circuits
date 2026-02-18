@@ -15,6 +15,8 @@ pub struct FriConfig {
     pub n_queries: usize,
     /// Log2 of the number of coefficients in the last layer of FRI.
     pub log_n_last_layer_coefs: usize,
+    /// The step of the line fold.
+    pub line_fold_step: usize,
 }
 
 impl FriConfig {
