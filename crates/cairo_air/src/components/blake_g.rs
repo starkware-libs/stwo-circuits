@@ -77,9 +77,6 @@ pub fn accumulate_constraints<Value: IValue>(
         enabler_col52,
     ] = input.try_into().unwrap();
 
-    let constraint_0_value = eval!(context, ((enabler_col52) * (enabler_col52)) - (enabler_col52));
-    acc.add_constraint(context, constraint_0_value);
-
     triple_sum_32::accumulate_constraints(
         &[
             eval!(context, input_limb_0_col0),
@@ -236,6 +233,10 @@ pub fn accumulate_constraints<Value: IValue>(
         .try_into()
         .unwrap();
 
+    //Enabler is a bit.
+    let constraint_8_value = eval!(context, ((enabler_col52) * (enabler_col52)) - (enabler_col52));
+    acc.add_constraint(context, constraint_8_value);
+
     // Yield BlakeG.
     let tuple_9 = &[
         eval!(context, 1139985212),
@@ -360,7 +361,7 @@ mod tests {
             qm31_from_u32s(1113827613, 1316166574, 1321038498, 343880061),
             qm31_from_u32s(241305891, 1718819697, 448623205, 343880041),
             qm31_from_u32s(308415070, 1853037425, 515732069, 343880041),
-            qm31_from_u32s(902525010, 1115155995, 130434373, 2116865290),
+            qm31_from_u32s(375524249, 1987255153, 582840933, 343880041),
         ];
         let interaction_columns = [
             qm31_from_u32s(1005168032, 79980996, 1847888101, 1941984119),

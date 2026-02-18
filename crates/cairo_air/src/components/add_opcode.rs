@@ -125,10 +125,6 @@ pub fn accumulate_constraints<Value: IValue>(
         enabler_col102,
     ] = input.try_into().unwrap();
 
-    let constraint_0_value =
-        eval!(context, ((enabler_col102) * (enabler_col102)) - (enabler_col102));
-    acc.add_constraint(context, constraint_0_value);
-
     let [
         decode_instruction_bc3cd_output_tmp_3fa46_11_offset0,
         decode_instruction_bc3cd_output_tmp_3fa46_11_offset1,
@@ -154,38 +150,38 @@ pub fn accumulate_constraints<Value: IValue>(
     .unwrap();
 
     //if imm then offset2 is 1.
-    let constraint_2_value = eval!(
+    let constraint_1_value = eval!(
         context,
         (op1_imm_col8) * ((1) - (decode_instruction_bc3cd_output_tmp_3fa46_11_offset2))
     );
-    acc.add_constraint(context, constraint_2_value);
+    acc.add_constraint(context, constraint_1_value);
 
     //mem_dst_base.
-    let constraint_3_value = eval!(
+    let constraint_2_value = eval!(
         context,
         (mem_dst_base_col11)
             - (((dst_base_fp_col6) * (input_fp_col2))
                 + (((1) - (dst_base_fp_col6)) * (input_ap_col1)))
     );
-    acc.add_constraint(context, constraint_3_value);
+    acc.add_constraint(context, constraint_2_value);
 
     //mem0_base.
-    let constraint_4_value = eval!(
+    let constraint_3_value = eval!(
         context,
         (mem0_base_col12)
             - (((op0_base_fp_col7) * (input_fp_col2))
                 + (((1) - (op0_base_fp_col7)) * (input_ap_col1)))
     );
-    acc.add_constraint(context, constraint_4_value);
+    acc.add_constraint(context, constraint_3_value);
 
     //mem1_base.
-    let constraint_5_value = eval!(
+    let constraint_4_value = eval!(
         context,
         (mem1_base_col13)
             - ((((op1_imm_col8) * (input_pc_col0)) + ((op1_base_fp_col9) * (input_fp_col2)))
                 + ((decode_instruction_bc3cd_output_tmp_3fa46_11_op1_base_ap) * (input_ap_col1)))
     );
-    acc.add_constraint(context, constraint_5_value);
+    acc.add_constraint(context, constraint_4_value);
 
     read_positive_num_bits_252::accumulate_constraints(
         &[
@@ -403,6 +399,11 @@ pub fn accumulate_constraints<Value: IValue>(
         acc,
     );
 
+    //Enabler is a bit.
+    let constraint_9_value =
+        eval!(context, ((enabler_col102) * (enabler_col102)) - (enabler_col102));
+    acc.add_constraint(context, constraint_9_value);
+
     // Use Opcodes.
     let tuple_10 = &[
         eval!(context, 428564188),
@@ -570,7 +571,7 @@ mod tests {
             qm31_from_u32s(1383350350, 1853038134, 1589474602, 343880277),
             qm31_from_u32s(1340598866, 536394231, 1198633759, 502514173),
             qm31_from_u32s(1407708045, 670611959, 1265742623, 502514173),
-            qm31_from_u32s(902525010, 1115155995, 130434373, 2116865290),
+            qm31_from_u32s(1474817224, 804829687, 1332851487, 502514173),
         ];
         let interaction_columns = [
             qm31_from_u32s(1005168032, 79980996, 1847888101, 1941984119),

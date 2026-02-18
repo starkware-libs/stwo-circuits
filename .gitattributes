@@ -1,1 +1,4 @@
 crates/stwo-circuits/all_opcode_components.bin -text
+test_data/all_opcode_components/proof.bin binary
+test_data/privacy/proof.bin binary
+test_data/privacy/privacy_tx_cairo_pie.zip binary

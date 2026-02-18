@@ -236,12 +236,8 @@ pub fn accumulate_constraints<Value: IValue>(
         enabler_col211,
     ] = input.try_into().unwrap();
 
-    let constraint_0_value =
-        eval!(context, ((enabler_col211) * (enabler_col211)) - (enabler_col211));
-    acc.add_constraint(context, constraint_0_value);
-
     // Use BlakeRoundSigma.
-    let tuple_1 = &[
+    let tuple_0 = &[
         eval!(context, 1805967942),
         eval!(context, input_limb_1_col1),
         eval!(context, blake_round_sigma_output_limb_0_col35),
@@ -261,8 +257,8 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, blake_round_sigma_output_limb_14_col49),
         eval!(context, blake_round_sigma_output_limb_15_col50),
     ];
-    let numerator_1 = eval!(context, 1);
-    acc.add_to_relation(context, numerator_1, tuple_1);
+    let numerator_0 = eval!(context, 1);
+    acc.add_to_relation(context, numerator_0, tuple_0);
 
     read_u_32::accumulate_constraints(
         &[
@@ -505,7 +501,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
 
     // Use BlakeG.
-    let tuple_18 = &[
+    let tuple_17 = &[
         eval!(context, 1139985212),
         eval!(context, input_limb_2_col2),
         eval!(context, input_limb_3_col3),
@@ -528,11 +524,11 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, blake_g_output_limb_6_col153),
         eval!(context, blake_g_output_limb_7_col154),
     ];
-    let numerator_18 = eval!(context, 1);
-    acc.add_to_relation(context, numerator_18, tuple_18);
+    let numerator_17 = eval!(context, 1);
+    acc.add_to_relation(context, numerator_17, tuple_17);
 
     // Use BlakeG.
-    let tuple_19 = &[
+    let tuple_18 = &[
         eval!(context, 1139985212),
         eval!(context, input_limb_4_col4),
         eval!(context, input_limb_5_col5),
@@ -555,11 +551,11 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, blake_g_output_limb_6_col161),
         eval!(context, blake_g_output_limb_7_col162),
     ];
-    let numerator_19 = eval!(context, 1);
-    acc.add_to_relation(context, numerator_19, tuple_19);
+    let numerator_18 = eval!(context, 1);
+    acc.add_to_relation(context, numerator_18, tuple_18);
 
     // Use BlakeG.
-    let tuple_20 = &[
+    let tuple_19 = &[
         eval!(context, 1139985212),
         eval!(context, input_limb_6_col6),
         eval!(context, input_limb_7_col7),
@@ -582,11 +578,11 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, blake_g_output_limb_6_col169),
         eval!(context, blake_g_output_limb_7_col170),
     ];
-    let numerator_20 = eval!(context, 1);
-    acc.add_to_relation(context, numerator_20, tuple_20);
+    let numerator_19 = eval!(context, 1);
+    acc.add_to_relation(context, numerator_19, tuple_19);
 
     // Use BlakeG.
-    let tuple_21 = &[
+    let tuple_20 = &[
         eval!(context, 1139985212),
         eval!(context, input_limb_8_col8),
         eval!(context, input_limb_9_col9),
@@ -609,11 +605,11 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, blake_g_output_limb_6_col177),
         eval!(context, blake_g_output_limb_7_col178),
     ];
-    let numerator_21 = eval!(context, 1);
-    acc.add_to_relation(context, numerator_21, tuple_21);
+    let numerator_20 = eval!(context, 1);
+    acc.add_to_relation(context, numerator_20, tuple_20);
 
     // Use BlakeG.
-    let tuple_22 = &[
+    let tuple_21 = &[
         eval!(context, 1139985212),
         eval!(context, blake_g_output_limb_0_col147),
         eval!(context, blake_g_output_limb_1_col148),
@@ -636,11 +632,11 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, blake_g_output_limb_6_col185),
         eval!(context, blake_g_output_limb_7_col186),
     ];
-    let numerator_22 = eval!(context, 1);
-    acc.add_to_relation(context, numerator_22, tuple_22);
+    let numerator_21 = eval!(context, 1);
+    acc.add_to_relation(context, numerator_21, tuple_21);
 
     // Use BlakeG.
-    let tuple_23 = &[
+    let tuple_22 = &[
         eval!(context, 1139985212),
         eval!(context, blake_g_output_limb_0_col155),
         eval!(context, blake_g_output_limb_1_col156),
@@ -663,11 +659,11 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, blake_g_output_limb_6_col193),
         eval!(context, blake_g_output_limb_7_col194),
     ];
-    let numerator_23 = eval!(context, 1);
-    acc.add_to_relation(context, numerator_23, tuple_23);
+    let numerator_22 = eval!(context, 1);
+    acc.add_to_relation(context, numerator_22, tuple_22);
 
     // Use BlakeG.
-    let tuple_24 = &[
+    let tuple_23 = &[
         eval!(context, 1139985212),
         eval!(context, blake_g_output_limb_0_col163),
         eval!(context, blake_g_output_limb_1_col164),
@@ -690,11 +686,11 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, blake_g_output_limb_6_col201),
         eval!(context, blake_g_output_limb_7_col202),
     ];
-    let numerator_24 = eval!(context, 1);
-    acc.add_to_relation(context, numerator_24, tuple_24);
+    let numerator_23 = eval!(context, 1);
+    acc.add_to_relation(context, numerator_23, tuple_23);
 
     // Use BlakeG.
-    let tuple_25 = &[
+    let tuple_24 = &[
         eval!(context, 1139985212),
         eval!(context, blake_g_output_limb_0_col171),
         eval!(context, blake_g_output_limb_1_col172),
@@ -717,8 +713,13 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, blake_g_output_limb_6_col209),
         eval!(context, blake_g_output_limb_7_col210),
     ];
-    let numerator_25 = eval!(context, 1);
-    acc.add_to_relation(context, numerator_25, tuple_25);
+    let numerator_24 = eval!(context, 1);
+    acc.add_to_relation(context, numerator_24, tuple_24);
+
+    //Enabler is a bit.
+    let constraint_25_value =
+        eval!(context, ((enabler_col211) * (enabler_col211)) - (enabler_col211));
+    acc.add_constraint(context, constraint_25_value);
 
     // Use BlakeRound.
     let tuple_26 = &[
@@ -1060,7 +1061,7 @@ mod tests {
             qm31_from_u32s(955082178, 1744431827, 728949755, 502540188),
             qm31_from_u32s(887972999, 1610214099, 661840891, 502540188),
             qm31_from_u32s(15491601, 2012867234, 1936909257, 502540171),
-            qm31_from_u32s(902525010, 1115155995, 130434373, 2116865290),
+            qm31_from_u32s(82600780, 2147084962, 2004018121, 502540171),
         ];
         let interaction_columns = [
             qm31_from_u32s(1005168032, 79980996, 1847888101, 1941984119),

@@ -193,12 +193,8 @@ pub fn accumulate_constraints<Value: IValue>(
         enabler_col168,
     ] = input.try_into().unwrap();
 
-    let constraint_0_value =
-        eval!(context, ((enabler_col168) * (enabler_col168)) - (enabler_col168));
-    acc.add_constraint(context, constraint_0_value);
-
     // Use PoseidonRoundKeys.
-    let tuple_1 = &[
+    let tuple_0 = &[
         eval!(context, 1024310512),
         eval!(context, input_limb_1_col1),
         eval!(context, poseidon_round_keys_output_limb_0_col42),
@@ -232,8 +228,8 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, poseidon_round_keys_output_limb_28_col70),
         eval!(context, poseidon_round_keys_output_limb_29_col71),
     ];
-    let numerator_1 = eval!(context, 1);
-    acc.add_to_relation(context, numerator_1, tuple_1);
+    let numerator_0 = eval!(context, 1);
+    acc.add_to_relation(context, numerator_0, tuple_0);
 
     poseidon_partial_round::accumulate_constraints(
         &[
@@ -504,6 +500,11 @@ pub fn accumulate_constraints<Value: IValue>(
         component_data,
         acc,
     );
+
+    //Enabler is a bit.
+    let constraint_4_value =
+        eval!(context, ((enabler_col168) * (enabler_col168)) - (enabler_col168));
+    acc.add_constraint(context, constraint_4_value);
 
     // Use Poseidon3PartialRoundsChain.
     let tuple_5 = &[
@@ -816,7 +817,7 @@ mod tests {
             qm31_from_u32s(333766472, 670611841, 192000681, 502514134),
             qm31_from_u32s(132438935, 267958657, 2138157736, 502514133),
             qm31_from_u32s(199548114, 402176385, 57782953, 502514134),
-            qm31_from_u32s(902525010, 1115155995, 130434373, 2116865290),
+            qm31_from_u32s(2145704224, 2147006847, 2003940007, 502514133),
         ];
         let interaction_columns = [
             qm31_from_u32s(1005168032, 79980996, 1847888101, 1941984119),

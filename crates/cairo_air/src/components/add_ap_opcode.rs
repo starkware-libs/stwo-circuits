@@ -41,9 +41,6 @@ pub fn accumulate_constraints<Value: IValue>(
         enabler_col16,
     ] = input.try_into().unwrap();
 
-    let constraint_0_value = eval!(context, ((enabler_col16) * (enabler_col16)) - (enabler_col16));
-    acc.add_constraint(context, constraint_0_value);
-
     let [
         decode_instruction_d2a10_output_tmp_c921e_6_offset2,
         decode_instruction_d2a10_output_tmp_c921e_6_op1_base_ap,
@@ -62,20 +59,20 @@ pub fn accumulate_constraints<Value: IValue>(
     .unwrap();
 
     //if imm then offset2 is 1.
-    let constraint_2_value = eval!(
+    let constraint_1_value = eval!(
         context,
         (op1_imm_col4) * ((1) - (decode_instruction_d2a10_output_tmp_c921e_6_offset2))
     );
-    acc.add_constraint(context, constraint_2_value);
+    acc.add_constraint(context, constraint_1_value);
 
     //mem1_base.
-    let constraint_3_value = eval!(
+    let constraint_2_value = eval!(
         context,
         (mem1_base_col6)
             - ((((op1_imm_col4) * (input_pc_col0)) + ((op1_base_fp_col5) * (input_fp_col2)))
                 + ((decode_instruction_d2a10_output_tmp_c921e_6_op1_base_ap) * (input_ap_col1)))
     );
-    acc.add_constraint(context, constraint_3_value);
+    acc.add_constraint(context, constraint_2_value);
 
     let [read_small_output_tmp_c921e_16_limb_0] = read_small::accumulate_constraints(
         &[
@@ -108,6 +105,10 @@ pub fn accumulate_constraints<Value: IValue>(
         component_data,
         acc,
     );
+
+    //Enabler is a bit.
+    let constraint_6_value = eval!(context, ((enabler_col16) * (enabler_col16)) - (enabler_col16));
+    acc.add_constraint(context, constraint_6_value);
 
     // Use Opcodes.
     let tuple_7 = &[
@@ -190,7 +191,7 @@ mod tests {
             qm31_from_u32s(2053663304, 1047731299, 113079128, 343880122),
             qm31_from_u32s(1583899051, 108207203, 1790800727, 343880121),
             qm31_from_u32s(1651008230, 242424931, 1857909591, 343880121),
-            qm31_from_u32s(902525010, 1115155995, 130434373, 2116865290),
+            qm31_from_u32s(1718117409, 376642659, 1925018455, 343880121),
         ];
         let interaction_columns = [
             qm31_from_u32s(1005168032, 79980996, 1847888101, 1941984119),
