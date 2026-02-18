@@ -333,12 +333,8 @@ pub fn accumulate_constraints<Value: IValue>(
         enabler_col296,
     ] = input.try_into().unwrap();
 
-    let constraint_0_value =
-        eval!(context, ((enabler_col296) * (enabler_col296)) - (enabler_col296));
-    acc.add_constraint(context, constraint_0_value);
-
     // Use PedersenPointsTableWindowBits18.
-    let tuple_1 = &[
+    let tuple_0 = &[
         eval!(context, 1444721856),
         eval!(context, ((262144) * (input_limb_1_col1)) + (input_limb_2_col2)),
         eval!(context, pedersen_points_table_window_bits_18_output_limb_0_col72),
@@ -398,8 +394,8 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, pedersen_points_table_window_bits_18_output_limb_54_col126),
         eval!(context, pedersen_points_table_window_bits_18_output_limb_55_col127),
     ];
-    let numerator_1 = eval!(context, 1);
-    acc.add_to_relation(context, numerator_1, tuple_1);
+    let numerator_0 = eval!(context, 1);
+    acc.add_to_relation(context, numerator_0, tuple_0);
 
     ec_add::accumulate_constraints(
         &[
@@ -688,6 +684,11 @@ pub fn accumulate_constraints<Value: IValue>(
         component_data,
         acc,
     );
+
+    //Enabler is a bit.
+    let constraint_2_value =
+        eval!(context, ((enabler_col296) * (enabler_col296)) - (enabler_col296));
+    acc.add_constraint(context, constraint_2_value);
 
     // Use PartialEcMulWindowBits18.
     let tuple_3 = &[
@@ -1188,7 +1189,7 @@ mod tests {
             qm31_from_u32s(1289746842, 268036292, 1064493548, 502540012),
             qm31_from_u32s(819982589, 1475995843, 594731499, 502540012),
             qm31_from_u32s(887091768, 1610213571, 661840363, 502540012),
-            qm31_from_u32s(902525010, 1115155995, 130434373, 2116865290),
+            qm31_from_u32s(954200947, 1744431299, 728949227, 502540012),
         ];
         let interaction_columns = [
             qm31_from_u32s(1005168032, 79980996, 1847888101, 1941984119),

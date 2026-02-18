@@ -201,10 +201,6 @@ pub fn accumulate_constraints<Value: IValue>(
     ] = input.try_into().unwrap();
     let seq = seq_of_component_size(context, component_data, acc);
 
-    let constraint_0_value =
-        eval!(context, ((enabler_col173) * (enabler_col173)) - (enabler_col173));
-    acc.add_constraint(context, constraint_0_value);
-
     let [
         decode_blake_opcode_output_tmp_53f39_42_limb_0,
         decode_blake_opcode_output_tmp_53f39_42_limb_1,
@@ -332,7 +328,7 @@ pub fn accumulate_constraints<Value: IValue>(
     .unwrap();
 
     // Yield BlakeRound.
-    let tuple_3 = &[
+    let tuple_2 = &[
         eval!(context, 40528774),
         eval!(context, seq),
         eval!(context, 0),
@@ -370,11 +366,11 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, 23520),
         eval!(context, decode_blake_opcode_output_tmp_53f39_42_limb_1),
     ];
-    let numerator_3 = eval!(context, -(1));
-    acc.add_to_relation(context, numerator_3, tuple_3);
+    let numerator_2 = eval!(context, -(1));
+    acc.add_to_relation(context, numerator_2, tuple_2);
 
     // Use BlakeRound.
-    let tuple_4 = &[
+    let tuple_3 = &[
         eval!(context, 40528774),
         eval!(context, seq),
         eval!(context, 10),
@@ -412,8 +408,8 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, blake_round_output_limb_31_col123),
         eval!(context, blake_round_output_limb_32_col124),
     ];
-    let numerator_4 = eval!(context, 1);
-    acc.add_to_relation(context, numerator_4, tuple_4);
+    let numerator_3 = eval!(context, 1);
+    acc.add_to_relation(context, numerator_3, tuple_3);
 
     create_blake_output::accumulate_constraints(
         &[
@@ -606,6 +602,11 @@ pub fn accumulate_constraints<Value: IValue>(
         component_data,
         acc,
     );
+
+    //Enabler is a bit.
+    let constraint_13_value =
+        eval!(context, ((enabler_col173) * (enabler_col173)) - (enabler_col173));
+    acc.add_constraint(context, constraint_13_value);
 
     // Use Opcodes.
     let tuple_14 = &[
@@ -845,7 +846,7 @@ mod tests {
             qm31_from_u32s(2011588261, 1878571451, 1869722339, 502514153),
             qm31_from_u32s(1944479082, 1744353723, 1802613475, 502514153),
             qm31_from_u32s(2145806619, 2147006907, 2003940067, 502514153),
-            qm31_from_u32s(902525010, 1115155995, 130434373, 2116865290),
+            qm31_from_u32s(2078697440, 2012789179, 1936831203, 502514153),
         ];
         let interaction_columns = [
             qm31_from_u32s(1005168032, 79980996, 1847888101, 1941984119),

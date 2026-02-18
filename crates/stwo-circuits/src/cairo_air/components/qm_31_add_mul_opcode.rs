@@ -96,9 +96,6 @@ pub fn accumulate_constraints<Value: IValue>(
         enabler_col72,
     ] = input.try_into().unwrap();
 
-    let constraint_0_value = eval!(context, ((enabler_col72) * (enabler_col72)) - (enabler_col72));
-    acc.add_constraint(context, constraint_0_value);
-
     let [
         decode_instruction_3802d_output_tmp_fa85a_12_offset0,
         decode_instruction_3802d_output_tmp_fa85a_12_offset1,
@@ -126,39 +123,39 @@ pub fn accumulate_constraints<Value: IValue>(
     .unwrap();
 
     //Either flag op1_imm is off or offset2 is equal to 1.
-    let constraint_2_value = eval!(
+    let constraint_1_value = eval!(
         context,
         (op1_imm_col8) * ((decode_instruction_3802d_output_tmp_fa85a_12_offset2) - (1))
     );
-    acc.add_constraint(context, constraint_2_value);
+    acc.add_constraint(context, constraint_1_value);
 
     //mem_dst_base.
-    let constraint_3_value = eval!(
+    let constraint_2_value = eval!(
         context,
         (mem_dst_base_col12)
             - (((dst_base_fp_col6) * (input_fp_col2))
                 + (((1) - (dst_base_fp_col6)) * (input_ap_col1)))
     );
-    acc.add_constraint(context, constraint_3_value);
+    acc.add_constraint(context, constraint_2_value);
 
     //mem0_base.
-    let constraint_4_value = eval!(
+    let constraint_3_value = eval!(
         context,
         (mem0_base_col13)
             - (((op0_base_fp_col7) * (input_fp_col2))
                 + (((1) - (op0_base_fp_col7)) * (input_ap_col1)))
     );
-    acc.add_constraint(context, constraint_4_value);
+    acc.add_constraint(context, constraint_3_value);
 
     //mem1_base.
-    let constraint_5_value = eval!(
+    let constraint_4_value = eval!(
         context,
         (mem1_base_col14)
             - ((((op1_base_fp_col9) * (input_fp_col2))
                 + ((decode_instruction_3802d_output_tmp_fa85a_12_op1_base_ap) * (input_ap_col1)))
                 + ((op1_imm_col8) * (input_pc_col0)))
     );
-    acc.add_constraint(context, constraint_5_value);
+    acc.add_constraint(context, constraint_4_value);
 
     let [
         qm_31_read_reduced_output_tmp_fa85a_18_limb_0,
@@ -275,7 +272,7 @@ pub fn accumulate_constraints<Value: IValue>(
     .unwrap();
 
     //dst equals (op0 * op1)*flag_res_mul + (op0 + op1)*(1-flag_res_mul).
-    let constraint_9_value = eval!(
+    let constraint_8_value = eval!(
         context,
         ((qm_31_read_reduced_output_tmp_fa85a_18_limb_0)
             - (((((((qm_31_read_reduced_output_tmp_fa85a_24_limb_0)
@@ -296,10 +293,10 @@ pub fn accumulate_constraints<Value: IValue>(
                 + (qm_31_read_reduced_output_tmp_fa85a_30_limb_0))
                 * (res_add_col10))
     );
-    acc.add_constraint(context, constraint_9_value);
+    acc.add_constraint(context, constraint_8_value);
 
     //dst equals (op0 * op1)*flag_res_mul + (op0 + op1)*(1-flag_res_mul).
-    let constraint_10_value = eval!(
+    let constraint_9_value = eval!(
         context,
         ((qm_31_read_reduced_output_tmp_fa85a_18_limb_1)
             - (((((((qm_31_read_reduced_output_tmp_fa85a_24_limb_0)
@@ -320,10 +317,10 @@ pub fn accumulate_constraints<Value: IValue>(
                 + (qm_31_read_reduced_output_tmp_fa85a_30_limb_1))
                 * (res_add_col10))
     );
-    acc.add_constraint(context, constraint_10_value);
+    acc.add_constraint(context, constraint_9_value);
 
     //dst equals (op0 * op1)*flag_res_mul + (op0 + op1)*(1-flag_res_mul).
-    let constraint_11_value = eval!(
+    let constraint_10_value = eval!(
         context,
         ((qm_31_read_reduced_output_tmp_fa85a_18_limb_2)
             - ((((((qm_31_read_reduced_output_tmp_fa85a_24_limb_0)
@@ -339,10 +336,10 @@ pub fn accumulate_constraints<Value: IValue>(
                 + (qm_31_read_reduced_output_tmp_fa85a_30_limb_2))
                 * (res_add_col10))
     );
-    acc.add_constraint(context, constraint_11_value);
+    acc.add_constraint(context, constraint_10_value);
 
     //dst equals (op0 * op1)*flag_res_mul + (op0 + op1)*(1-flag_res_mul).
-    let constraint_12_value = eval!(
+    let constraint_11_value = eval!(
         context,
         ((qm_31_read_reduced_output_tmp_fa85a_18_limb_3)
             - ((((((qm_31_read_reduced_output_tmp_fa85a_24_limb_0)
@@ -358,6 +355,10 @@ pub fn accumulate_constraints<Value: IValue>(
                 + (qm_31_read_reduced_output_tmp_fa85a_30_limb_3))
                 * (res_add_col10))
     );
+    acc.add_constraint(context, constraint_11_value);
+
+    //Enabler is a bit.
+    let constraint_12_value = eval!(context, ((enabler_col72) * (enabler_col72)) - (enabler_col72));
     acc.add_constraint(context, constraint_12_value);
 
     // Use Opcodes.
@@ -497,7 +498,7 @@ mod tests {
             qm31_from_u32s(845595687, 779295782, 1052603162, 343880101),
             qm31_from_u32s(1046820829, 1181948906, 1253929694, 343880081),
             qm31_from_u32s(1113930008, 1316166634, 1321038558, 343880081),
-            qm31_from_u32s(902525010, 1115155995, 130434373, 2116865290),
+            qm31_from_u32s(912602471, 913513450, 1119711966, 343880081),
         ];
         let interaction_columns = [
             qm31_from_u32s(1005168032, 79980996, 1847888101, 1941984119),

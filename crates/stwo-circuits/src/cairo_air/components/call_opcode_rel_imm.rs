@@ -46,9 +46,6 @@ pub fn accumulate_constraints<Value: IValue>(
         enabler_col23,
     ] = input.try_into().unwrap();
 
-    let constraint_0_value = eval!(context, ((enabler_col23) * (enabler_col23)) - (enabler_col23));
-    acc.add_constraint(context, constraint_0_value);
-
     decode_instruction_2a7a2::accumulate_constraints(
         &[eval!(context, input_pc_col0)],
         context,
@@ -72,14 +69,14 @@ pub fn accumulate_constraints<Value: IValue>(
     );
 
     //[ap] = fp.
-    let constraint_3_value = eval!(
+    let constraint_2_value = eval!(
         context,
         ((((stored_fp_limb_0_col4) + ((stored_fp_limb_1_col5) * (512)))
             + ((stored_fp_limb_2_col6) * (262144)))
             + ((stored_fp_limb_3_col7) * (134217728)))
             - (input_fp_col2)
     );
-    acc.add_constraint(context, constraint_3_value);
+    acc.add_constraint(context, constraint_2_value);
 
     read_positive_num_bits_29::accumulate_constraints(
         &[
@@ -97,14 +94,14 @@ pub fn accumulate_constraints<Value: IValue>(
     );
 
     //[ap+1] = return_pc.
-    let constraint_5_value = eval!(
+    let constraint_4_value = eval!(
         context,
         ((((stored_ret_pc_limb_0_col10) + ((stored_ret_pc_limb_1_col11) * (512)))
             + ((stored_ret_pc_limb_2_col12) * (262144)))
             + ((stored_ret_pc_limb_3_col13) * (134217728)))
             - ((input_pc_col0) + (2))
     );
-    acc.add_constraint(context, constraint_5_value);
+    acc.add_constraint(context, constraint_4_value);
 
     let [read_small_output_tmp_9db06_26_limb_0] = read_small::accumulate_constraints(
         &[
@@ -124,6 +121,10 @@ pub fn accumulate_constraints<Value: IValue>(
     )
     .try_into()
     .unwrap();
+
+    //Enabler is a bit.
+    let constraint_6_value = eval!(context, ((enabler_col23) * (enabler_col23)) - (enabler_col23));
+    acc.add_constraint(context, constraint_6_value);
 
     // Use Opcodes.
     let tuple_7 = &[
@@ -213,7 +214,7 @@ mod tests {
             qm31_from_u32s(1986820986, 913513739, 45970432, 343880178),
             qm31_from_u32s(1919711807, 779296011, 2126345215, 343880177),
             qm31_from_u32s(2121039344, 1181949195, 180188160, 343880178),
-            qm31_from_u32s(902525010, 1115155995, 130434373, 2116865290),
+            qm31_from_u32s(2053930165, 1047731467, 113079296, 343880178),
         ];
         let interaction_columns = [
             qm31_from_u32s(1005168032, 79980996, 1847888101, 1941984119),

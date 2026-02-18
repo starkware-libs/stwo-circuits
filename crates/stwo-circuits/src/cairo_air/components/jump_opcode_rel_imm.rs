@@ -35,9 +35,6 @@ pub fn accumulate_constraints<Value: IValue>(
         enabler_col12,
     ] = input.try_into().unwrap();
 
-    let constraint_0_value = eval!(context, ((enabler_col12) * (enabler_col12)) - (enabler_col12));
-    acc.add_constraint(context, constraint_0_value);
-
     decode_instruction_7ebc4::accumulate_constraints(
         &[eval!(context, input_pc_col0), eval!(context, ap_update_add_1_col3)],
         context,
@@ -63,6 +60,10 @@ pub fn accumulate_constraints<Value: IValue>(
     )
     .try_into()
     .unwrap();
+
+    //Enabler is a bit.
+    let constraint_2_value = eval!(context, ((enabler_col12) * (enabler_col12)) - (enabler_col12));
+    acc.add_constraint(context, constraint_2_value);
 
     // Use Opcodes.
     let tuple_3 = &[
@@ -141,7 +142,7 @@ mod tests {
             qm31_from_u32s(2128863553, 1845082826, 1120961721, 1375009625),
             qm31_from_u32s(1852335767, 645078115, 2059236183, 343880121),
             qm31_from_u32s(1919444946, 779295843, 2126345047, 343880121),
-            qm31_from_u32s(902525010, 1115155995, 130434373, 2116865290),
+            qm31_from_u32s(1986554125, 913513571, 45970264, 343880122),
         ];
         let interaction_columns = [
             qm31_from_u32s(1005168032, 79980996, 1847888101, 1941984119),

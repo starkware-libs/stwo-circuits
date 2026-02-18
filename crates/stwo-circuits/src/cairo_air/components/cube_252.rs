@@ -175,10 +175,6 @@ pub fn accumulate_constraints<Value: IValue>(
         enabler_col140,
     ] = input.try_into().unwrap();
 
-    let constraint_0_value =
-        eval!(context, ((enabler_col140) * (enabler_col140)) - (enabler_col140));
-    acc.add_constraint(context, constraint_0_value);
-
     let [
         felt_252_unpack_from_27_range_check_output_output_tmp_fec87_2_limb_2,
         felt_252_unpack_from_27_range_check_output_output_tmp_fec87_2_limb_5,
@@ -468,6 +464,11 @@ pub fn accumulate_constraints<Value: IValue>(
         acc,
     );
 
+    //Enabler is a bit.
+    let constraint_3_value =
+        eval!(context, ((enabler_col140) * (enabler_col140)) - (enabler_col140));
+    acc.add_constraint(context, constraint_3_value);
+
     // Yield Cube252.
     let tuple_4 = &[
         eval!(context, 1987997202),
@@ -716,7 +717,7 @@ mod tests {
             qm31_from_u32s(1273796872, 402176683, 1131525075, 502514233),
             qm31_from_u32s(2011997841, 1878571691, 1869722579, 502514233),
             qm31_from_u32s(1944888662, 1744353963, 1802613715, 502514233),
-            qm31_from_u32s(902525010, 1115155995, 130434373, 2116865290),
+            qm31_from_u32s(1877062718, 1610135815, 1735504431, 502514093),
         ];
         let interaction_columns = [
             qm31_from_u32s(1005168032, 79980996, 1847888101, 1941984119),

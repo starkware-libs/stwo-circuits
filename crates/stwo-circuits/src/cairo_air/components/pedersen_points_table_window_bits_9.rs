@@ -296,7 +296,7 @@ mod tests {
         let component = Component {};
         let mut context: Context<QM31> = Default::default();
         context.enable_assert_eq_on_eval();
-        let trace_columns = [qm31_from_u32s(700269555, 307766862, 1685683780, 745982081)];
+        let trace_columns = [qm31_from_u32s(1659099300, 905558730, 651199673, 1375009625)];
         let interaction_columns = [qm31_from_u32s(1005168032, 79980996, 1847888101, 1941984119)];
         let component_data = TestComponentData::from_values(
             &mut context,
