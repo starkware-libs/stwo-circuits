@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use itertools::{Itertools, chain, izip, zip_eq};
 use stwo::core::circle::CirclePoint;
 use stwo::core::fields::m31::P;
-use stwo::core::fields::qm31::QM31;
 use stwo::core::verifier::COMPOSITION_LOG_SPLIT;
 
 use crate::channel::Channel;
@@ -15,6 +14,7 @@ use crate::oods::{
     collect_oods_responses, compute_fri_input, extract_expected_composition_eval, period_generators,
 };
 use crate::proof::{Proof, ProofConfig};
+use crate::proof_from_stark_proof::pack_into_qm31s;
 use crate::select_queries::{get_query_selection_input_from_channel, select_queries};
 use crate::statement::{EvaluateArgs, OodsSamples, Statement};
 use circuits::context::{Context, Var};
@@ -56,22 +56,23 @@ pub fn verify<Value: IValue>(
 
     // Mix the channel salt.
     channel.mix_qm31s(context, [proof.channel_salt]);
-    let pcs_config = context.constant(QM31::from_u32_unchecked(
+
+    let line_fold_step = 1;
+    let lifting_log_size = config.log_trace_size() + config.fri.log_blowup_factor;
+    let pcs_config_values = vec![
         config.n_proof_of_work_bits,
         config.fri.log_blowup_factor as u32,
         config.fri.n_queries as u32,
         config.fri.log_n_last_layer_coefs as u32,
-    ));
-    channel.mix_qm31s(context, [pcs_config]);
+        line_fold_step,
+        lifting_log_size as u32,
+    ];
 
-    // TODO(ilya): Can we remove the following?.
-    let lifting_log_size = context.constant(QM31::from_u32_unchecked(
-        (config.log_trace_size() + config.fri.log_blowup_factor) as u32,
-        0,
-        0,
-        0,
-    ));
-    channel.mix_qm31s(context, [lifting_log_size]);
+    let pcs_config_vars = pack_into_qm31s(pcs_config_values.into_iter())
+        .into_iter()
+        .map(|qm31| context.constant(qm31))
+        .collect_vec();
+    channel.mix_qm31s(context, pcs_config_vars);
 
     // Mix the trace commitments into the channel.
     channel.mix_commitment(context, proof.preprocessed_root);
