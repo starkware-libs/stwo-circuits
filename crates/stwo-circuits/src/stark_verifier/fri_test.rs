@@ -1,6 +1,6 @@
 use crate::circuits::blake::HashValue;
-use crate::circuits::context::TraceContext;
-use crate::circuits::ivalue::qm31_from_u32s;
+use crate::circuits::context::{Context, TraceContext};
+use crate::circuits::ivalue::{IValue, qm31_from_u32s};
 use crate::circuits::ops::{Guess, mul};
 use crate::circuits::simd::Simd;
 use crate::circuits::test_utils::{packed_values, simd_from_u32s};
@@ -184,7 +184,7 @@ fn test_jump_folding_matches_stwo_reference() {
     const LOG_DOMAIN_SIZE: usize = 8;
     // Keep the same query structure, but use a repeated index so `fri_decommit` can check a
     // constant last layer even with only the circle->line phase enabled.
-    let query_indices = vec![0_u32];
+    let query_indices = vec![0_u32, 1, 10, 11, 98, 99];
 
     let config = ProofConfig {
         n_proof_of_work_bits: 0,
@@ -206,7 +206,15 @@ fn test_jump_folding_matches_stwo_reference() {
     };
 
     let input = simd_from_u32s(&mut context, query_indices.clone());
+    println!("{:?}", context.get(input.get_packed()[0]));
     let queries = select_queries(&mut context, &input, LOG_DOMAIN_SIZE);
+    // 
+
+    println!("Query points: x");
+    print_simd(&context, &queries.points.x);
+    println!("\nQuery points: y");
+    println!("{:?}", &queries.points.y);
+    print_simd(&context, &queries.points.y);
     let alpha_values = [
         qm31_from_u32s(1011730217, 238354028, 1321702146, 1634795701),
         qm31_from_u32s(1690232064, 1294671291, 1616406021, 525755234),
@@ -289,9 +297,9 @@ fn stwo_jumps() -> ExtendedFriProof<Blake2sM31Hasher> {
     let column = polynomial_evaluation(6, LOG_BLOWUP_FACTOR);
     let twiddles = CpuBackend::precompute_twiddles(column.domain.half_coset);
     let prover = FriProver::commit(&mut Blake2sM31Channel::default(), config, &column, &twiddles);
-    let queries = Queries::new(&vec![0], 6 + LOG_BLOWUP_FACTOR);
-    let point = CanonicCoset::new(8).at(bit_reverse_index(0, 8));
-    // println!("{:?}", point);
+    let queries = Queries::new(&vec![0, 1,10,11, 98, 99], 6 + LOG_BLOWUP_FACTOR);
+    let point = CanonicCoset::new(8).at(bit_reverse_index(1, 8));
+    println!("Query point 1 {:?}", point);
     let proof = prover.decommit_on_queries(&queries);
     proof
 }
@@ -340,4 +348,12 @@ pub fn test_construct_first_fri_auth_paths(
         })
         .collect();
     AuthPaths { data: vec![first_layer_paths] }
+}
+
+
+pub fn print_simd(context: &Context<impl IValue>, val: &Simd) {
+    let v = val.get_packed();
+    for var in v.iter() {
+        println!("{:?}", context.get(*var));
+    }
 }

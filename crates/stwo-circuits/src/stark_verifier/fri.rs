@@ -141,7 +141,7 @@ pub fn fri_decommit<Value: IValue>(
         alphas[0],
     );
     // Line to line decommitment.
-    let mut base_point = points.clone();
+    let mut base_point = translate_base_point_2(context, points, &packed_bits[0]);
     let mut bit_counter = 0;
 
     for (tree_idx, ((root, step), coset_per_query)) in zip_eq(zip_eq(&layer_commitments[1..], steps), line_coset_vals_per_query_per_tree).enumerate() {
@@ -210,7 +210,7 @@ fn compute_twiddles_from_base_point<Value: IValue>(
 ) -> Vec<JumpTwiddles> {
     let mut buf: Vec<Vec<Vec<Var>>> = vec![];
     let n_queries = base_point.x.len();
-    let mut prev_x_coord: Vec<_> = compute_half_coset_points(context, base_point, step as u32)
+    let mut prev_x_coord: Vec<Simd> = compute_half_coset_points(context, base_point, step as u32)
         .iter()
         .map(|p| p.x.clone())
         .collect();
@@ -259,6 +259,22 @@ fn translate_base_point<Value: IValue>(
     base_point
 }
 
+fn translate_base_point_2<Value: IValue>(
+    context: &mut Context<Value>,
+    point: &CirclePoint<Simd>,
+    bit: &Simd,
+) -> CirclePoint<Simd> {
+    let n_queries = point.x.len();
+    let zero = Simd::zero(context, n_queries);
+    let minus_y_coord = Simd::sub(context, &zero, &point.y);
+    let minus_y_point = CirclePoint { x: point.x.clone(), y: minus_y_coord };
+    // Select between `point` and `point - cur_gen_pt`.
+    CirclePoint {
+            x: Simd::select(context, &bit, &point.x, &minus_y_point.x),
+            y: Simd::select(context, &bit, &point.y, &minus_y_point.y),
+        }
+
+}
 
 
 // This is per query.
