@@ -8,5 +8,6 @@ pub mod ivalue;
 pub mod ops;
 pub mod simd;
 pub mod stats;
+pub mod utils;
 pub mod test_utils;
 pub mod wrappers;
