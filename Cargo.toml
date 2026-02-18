@@ -29,6 +29,7 @@ stwo-air-utils-derive = { git = "https://github.com/starkware-libs/stwo", rev = 
 stwo-air-utils = { git = "https://github.com/starkware-libs/stwo", rev = "dcc899bc" }
 cairo-air = { git = "https://github.com/starkware-libs/stwo-cairo", rev = "cf18bdf4" }
 stwo_cairo_prover = { package = "stwo-cairo-prover", git = "https://github.com/starkware-libs/stwo-cairo", rev = "cf18bdf4" }
+stwo_cairo_common = { package = "stwo-cairo-common", git = "https://github.com/starkware-libs/stwo-cairo", rev = "cf18bdf4", features = ["prover"] }
 dev_utils = { package = "stwo-cairo-dev-utils", git = "https://github.com/starkware-libs/stwo-cairo", rev = "cf18bdf4" }
 stwo_cairo_utils = { package = "stwo-cairo-utils", git = "https://github.com/starkware-libs/stwo-cairo", rev = "cf18bdf4" }
 rstest = "0.26.1"
