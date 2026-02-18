@@ -1,6 +1,7 @@
 // This file was created by the AIR team.
 
 #![allow(unused_parens)]
+#![allow(dead_code)]
 use circuit_air::components::blake_output::{Claim, InteractionClaim, N_TRACE_COLUMNS};
 
 use crate::witness::components::prelude::*;
@@ -51,7 +52,7 @@ fn write_trace_simd(
         )
     };
 
-    let M31_0 = PackedM31::broadcast(M31::from(0));
+    let M31_378353459 = PackedM31::broadcast(M31::from(378353459));
     let M31_1061955672 = PackedM31::broadcast(M31::from(1061955672));
     let M31_65536 = PackedM31::broadcast(M31::from(65536));
     let final_state_addr = preprocessed_trace
@@ -149,7 +150,7 @@ fn write_trace_simd(
                 input_final_state_limb7_limb_1_col15,
             ];
             *lookup_data.gate_0 = [
-                M31_0,
+                M31_378353459,
                 blake_output0_addr,
                 output_limb0_col16,
                 output_limb1_col17,
@@ -157,7 +158,7 @@ fn write_trace_simd(
                 output_limb3_col19,
             ];
             *lookup_data.gate_1 = [
-                M31_0,
+                M31_378353459,
                 blake_output1_addr,
                 output_limb4_col20,
                 output_limb5_col21,
@@ -170,12 +171,15 @@ fn write_trace_simd(
     (trace, lookup_data)
 }
 
+#[allow(dead_code)]
 #[derive(Uninitialized, IterMut, ParIterMut)]
 struct LookupData {
     blake_output_0: Vec<[PackedM31; 18]>,
     gate_0: Vec<[PackedM31; 6]>,
     gate_1: Vec<[PackedM31; 6]>,
+    #[allow(dead_code)]
     mults_0: Vec<PackedM31>,
+    #[allow(dead_code)]
     mults_1: Vec<PackedM31>,
 }
 

@@ -1,17 +1,21 @@
 use crate::finalize::finalize_context;
+use crate::witness::components::blake_gate::blake2s_initial_state;
 use crate::witness::components::qm31_ops;
 use crate::witness::preprocessed::PreProcessedTrace;
 use crate::witness::trace::TraceGenerator;
 use crate::witness::trace::write_interaction_trace;
 use crate::witness::trace::write_trace;
 use circuit_air::components::CircuitComponents;
+use circuit_air::relations::CommonLookupElements;
 use circuit_air::statement::INTERACTION_POW_BITS;
 use circuit_air::{CircuitClaim, CircuitInteractionClaim, CircuitInteractionElements, lookup_sum};
 use circuits::context::Context;
-use num_traits::Zero;
+use std::sync::Arc;
 use stwo::core::air::Component;
 use stwo::core::channel::Blake2sM31Channel;
 use stwo::core::channel::Channel;
+use stwo::core::fields::FieldExpOps;
+use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::fields::qm31::SecureField;
 use stwo::core::pcs::PcsConfig;
@@ -24,12 +28,14 @@ use stwo::prover::CommitmentSchemeProver;
 use stwo::prover::backend::simd::SimdBackend;
 use stwo::prover::poly::circle::PolyOps;
 use stwo::prover::{ProvingError, prove_ex};
+use stwo_constraint_framework::Relation;
 
 const COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND: u32 = 1;
 
 pub struct CircuitParams {
     pub trace_log_size: u32,
     pub first_permutation_row: usize,
+    pub n_blake_gates: usize,
 }
 
 pub struct CircuitProof {
@@ -46,7 +52,56 @@ pub struct CircuitProof {
 #[path = "prover_test.rs"]
 pub mod test;
 
-pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
+fn blake_iv_public_logup_sum(
+    n_blake_gates: usize,
+    common_lookup_elements: &CommonLookupElements,
+) -> SecureField {
+    let state_id = M31::from(1061955672);
+    let initial_state = blake2s_initial_state();
+    let initial_state_limbs = [
+        M31::from(initial_state[0] & 0xffff),
+        M31::from((initial_state[0] >> 16) & 0xffff),
+        M31::from(initial_state[1] & 0xffff),
+        M31::from((initial_state[1] >> 16) & 0xffff),
+        M31::from(initial_state[2] & 0xffff),
+        M31::from((initial_state[2] >> 16) & 0xffff),
+        M31::from(initial_state[3] & 0xffff),
+        M31::from((initial_state[3] >> 16) & 0xffff),
+        M31::from(initial_state[4] & 0xffff),
+        M31::from((initial_state[4] >> 16) & 0xffff),
+        M31::from(initial_state[5] & 0xffff),
+        M31::from((initial_state[5] >> 16) & 0xffff),
+        M31::from(initial_state[6] & 0xffff),
+        M31::from((initial_state[6] >> 16) & 0xffff),
+        M31::from(initial_state[7] & 0xffff),
+        M31::from((initial_state[7] >> 16) & 0xffff),
+    ];
+
+    let limbs = [
+        state_id,
+        M31::from(0u32),
+        initial_state_limbs[0],
+        initial_state_limbs[1],
+        initial_state_limbs[2],
+        initial_state_limbs[3],
+        initial_state_limbs[4],
+        initial_state_limbs[5],
+        initial_state_limbs[6],
+        initial_state_limbs[7],
+        initial_state_limbs[8],
+        initial_state_limbs[9],
+        initial_state_limbs[10],
+        initial_state_limbs[11],
+        initial_state_limbs[12],
+        initial_state_limbs[13],
+        initial_state_limbs[14],
+        initial_state_limbs[15],
+    ];
+    let denom: SecureField = common_lookup_elements.combine(&limbs);
+    denom.inverse() * M31::from(n_blake_gates)
+}
+
+pub fn prove_circuit(context: &mut Context<QM31>) -> (CircuitProof, Vec<u32>) {
     finalize_context(context);
 
     let (preprocessed_trace, params) =
@@ -59,7 +114,7 @@ pub fn prove_circuit_assignment(
     values: &[QM31],
     preprocessed_trace: PreProcessedTrace,
     params: &CircuitParams,
-) -> CircuitProof {
+) -> (CircuitProof, Vec<u32>) {
     let trace_generator = TraceGenerator {
         qm31_ops_trace_generator: qm31_ops::TraceGenerator {
             first_permutation_row: params.first_permutation_row,
@@ -86,7 +141,6 @@ pub fn prove_circuit_assignment(
         .circle_domain()
         .half_coset,
     );
-
     // Setup protocol.
     let channel = &mut Blake2sM31Channel::default();
 
@@ -97,6 +151,8 @@ pub fn prove_circuit_assignment(
     let mut commitment_scheme =
         CommitmentSchemeProver::<SimdBackend, Blake2sM31MerkleChannel>::new(pcs_config, &twiddles);
 
+    commitment_scheme.set_store_polynomials_coefficients();
+
     // Preprocessed trace.
     let mut tree_builder = commitment_scheme.tree_builder();
     tree_builder.extend_evals(preprocessed_trace.get_trace::<SimdBackend>());
@@ -104,8 +160,9 @@ pub fn prove_circuit_assignment(
 
     // Base trace.
     let mut tree_builder = commitment_scheme.tree_builder();
+    let preprocessed_trace_arc = Arc::new(preprocessed_trace);
     let (claim, interaction_generator) =
-        write_trace(values, &preprocessed_trace, &mut tree_builder, &trace_generator);
+        write_trace(values, preprocessed_trace_arc.clone(), &mut tree_builder, &trace_generator);
     claim.mix_into(channel);
     tree_builder.commit(channel);
 
@@ -122,32 +179,35 @@ pub fn prove_circuit_assignment(
         &mut tree_builder,
         &interaction_elements,
     );
-
-    // Validate lookup argument.
-    debug_assert_eq!(lookup_sum(&interaction_claim), SecureField::zero());
+    let public_logup_sum = blake_iv_public_logup_sum(
+        params.n_blake_gates,
+        &interaction_elements.common_lookup_elements,
+    );
+    assert_eq!(lookup_sum(&interaction_claim), public_logup_sum);
 
     interaction_claim.mix_into(channel);
     tree_builder.commit(channel);
-
     // Component provers.
     let component_builder = CircuitComponents::new(
         &claim,
         &interaction_elements,
         &interaction_claim,
-        &preprocessed_trace.ids(),
+        &preprocessed_trace_arc.ids(),
     );
-
     let components = component_builder.provers();
 
     // Prove stark.
     let proof = prove_ex::<SimdBackend, _>(&components, channel, commitment_scheme, true);
-    CircuitProof {
-        pcs_config,
-        claim,
-        interaction_pow_nonce,
-        interaction_claim,
-        components: component_builder.components(),
-        stark_proof: proof,
-        channel_salt,
-    }
+    (
+        CircuitProof {
+            pcs_config,
+            claim,
+            interaction_pow_nonce,
+            interaction_claim,
+            components: component_builder.components(),
+            stark_proof: proof,
+            channel_salt,
+        },
+        preprocessed_trace_arc.log_sizes(),
+    )
 }

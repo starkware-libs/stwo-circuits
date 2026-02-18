@@ -1,6 +1,6 @@
 // This file was created by the AIR team.
 
-use crate::circuit_air::components::prelude::*;
+use crate::components::prelude::*;
 
 #[derive(Copy, Clone, Serialize)]
 pub struct BitwiseXorNumBits8B {}
@@ -18,14 +18,13 @@ impl BitwiseXorNumBits8B {
         common_lookup_elements: &relations::CommonLookupElements,
         eval: &mut E,
     ) -> [E::F; 0] {
-        let M31_6 = E::F::from(M31::from(6));
-        // TODO(leo and alon): Change this from 4 to a different one for soundness.
+        let M31_521092554 = E::F::from(M31::from(521092554));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
             E::EF::one(),
             &[
-                M31_6.clone(),
+                M31_521092554.clone(),
                 bitwise_xor_num_bits_8_b_input_limb_0.clone(),
                 bitwise_xor_num_bits_8_b_input_limb_1.clone(),
                 xor_col0.clone(),

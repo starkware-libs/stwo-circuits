@@ -1,6 +1,6 @@
 // This file was created by the AIR team.
 
-use crate::circuit_air::components::prelude::*;
+use crate::components::prelude::*;
 
 #[derive(Copy, Clone, Serialize)]
 pub struct Split16LowPartSize12 {}

@@ -1,8 +1,8 @@
 // This file was created by the AIR team.
 
-use crate::circuit_air::components::prelude::*;
-use crate::circuit_air::components::subroutines::bitwise_xor_num_bits_8::BitwiseXorNumBits8;
-use crate::circuit_air::components::subroutines::split_16_low_part_size_8::Split16LowPartSize8;
+use crate::components::prelude::*;
+use crate::components::subroutines::bitwise_xor_num_bits_8::BitwiseXorNumBits8;
+use crate::components::subroutines::split_16_low_part_size_8::Split16LowPartSize8;
 
 #[derive(Copy, Clone, Serialize)]
 pub struct CreateBlakeRoundInput {}
