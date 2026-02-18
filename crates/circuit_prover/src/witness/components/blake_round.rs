@@ -1,6 +1,7 @@
 // This file was created by the AIR team.
 
 #![allow(unused_parens)]
+#![allow(clippy::too_many_arguments)]
 use circuit_air::components::blake_round::{Claim, InteractionClaim, N_TRACE_COLUMNS};
 
 use crate::witness::components::prelude::*;
@@ -36,13 +37,8 @@ impl ClaimGenerator {
         let log_size = packed_size.ilog2() + LOG_N_LANES;
         self.packed_inputs.resize(packed_size, *self.packed_inputs.first().unwrap());
 
-        let (trace, lookup_data, sub_component_inputs) = write_trace_simd(
-            self.packed_inputs,
-            n_rows,
-            blake_round_sigma_state,
-            blake_message_state,
-            blake_g_state,
-        );
+        let (trace, lookup_data, sub_component_inputs) =
+            write_trace_simd(self.packed_inputs, n_rows, blake_message_state);
         for inputs in sub_component_inputs.blake_round_sigma {
             blake_round_sigma_state.add_packed_inputs(&inputs, 0);
         }
@@ -93,7 +89,7 @@ impl ClaimGenerator {
         let message: [_; 16] = from_fn(|i| {
             u32x16::from(from_fn(|j| {
                 let row = self.blake_message.msg_per_id.get(message_id[j] as usize).unwrap();
-                row[sigma[i][j] as usize] as u32
+                row[sigma[i][j] as usize]
             }))
         });
 
@@ -125,9 +121,7 @@ struct SubComponentInputs {
 fn write_trace_simd(
     inputs: Vec<PackedInputType>,
     n_rows: usize,
-    blake_round_sigma_state: &blake_round_sigma::ClaimGenerator,
     blake_message_state: &blake_message::ClaimGenerator,
-    blake_g_state: &mut blake_g::ClaimGenerator,
 ) -> (ComponentTrace<N_TRACE_COLUMNS>, LookupData, SubComponentInputs) {
     let log_n_packed_rows = inputs.len().ilog2();
     let log_size = log_n_packed_rows + LOG_N_LANES;

@@ -1,6 +1,5 @@
 use crate::witness::components::prelude::*;
 use circuit_air::components::eq::N_TRACE_COLUMNS;
-use circuit_air::relations::GATE_RELATION_ID;
 
 pub type InputType = [[M31; 4]; 2];
 pub type PackedInputType = [[PackedM31; 4]; 2];
@@ -36,8 +35,7 @@ pub fn extract_component_inputs(
 pub fn write_trace(
     context_values: &[QM31],
     preprocessed_trace: &PreProcessedTrace,
-    tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, Blake2sM31MerkleChannel>,
-) -> (u32, LookupData) {
+) -> (ComponentTrace<N_TRACE_COLUMNS>, u32, LookupData) {
     let in0_address =
         preprocessed_trace.get_column(&PreProcessedColumnId { id: "eq_in0_address".to_owned() });
     let in1_address =
@@ -59,15 +57,15 @@ pub fn write_trace(
         .collect_vec();
 
     let (trace, lookup_data) = write_trace_simd(packed_inputs, preprocessed_columns);
-    tree_builder.extend_evals(trace.to_evals());
 
-    (log_size, lookup_data)
+    (trace, log_size, lookup_data)
 }
 
 fn write_trace_simd(
     inputs: Vec<PackedInputType>,
     preprocessed_columns: Vec<Vec<PackedM31>>,
 ) -> (ComponentTrace<N_TRACE_COLUMNS>, LookupData) {
+    let m31_gate_relation_id = PackedM31::broadcast(M31::from(378353459));
     let log_n_packed_rows = inputs.len().ilog2();
     let log_size = log_n_packed_rows + LOG_N_LANES;
     let (mut trace, mut lookup_data) = unsafe {
@@ -102,22 +100,10 @@ fn write_trace_simd(
             *row[6] = in1_col6;
             let in1_col7 = qm_31_ops_input[1][3];
             *row[7] = in1_col7;
-            *lookup_data.in_0 = [
-                PackedM31::from(GATE_RELATION_ID),
-                in0_address,
-                in0_col0,
-                in0_col1,
-                in0_col2,
-                in0_col3,
-            ];
-            *lookup_data.in_1 = [
-                PackedM31::from(GATE_RELATION_ID),
-                in1_address,
-                in1_col4,
-                in1_col5,
-                in1_col6,
-                in1_col7,
-            ];
+            *lookup_data.in_0 =
+                [m31_gate_relation_id, in0_address, in0_col0, in0_col1, in0_col2, in0_col3];
+            *lookup_data.in_1 =
+                [m31_gate_relation_id, in1_address, in1_col4, in1_col5, in1_col6, in1_col7];
         });
 
     (trace, lookup_data)
@@ -132,9 +118,8 @@ pub struct LookupData {
 pub fn write_interaction_trace(
     log_size: u32,
     lookup_data: LookupData,
-    tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, Blake2sM31MerkleChannel>,
     common_lookup_elements: &relations::CommonLookupElements,
-) -> SecureField {
+) -> (Vec<CircleEvaluation<SimdBackend, M31, BitReversedOrder>>, SecureField) {
     let mut logup_gen = LogupTraceGenerator::new(log_size);
 
     // Sum logup terms in pairs.
@@ -149,7 +134,6 @@ pub fn write_interaction_trace(
     col_gen.finalize_col();
 
     let (trace, claimed_sum) = logup_gen.finalize_last();
-    tree_builder.extend_evals(trace);
 
-    claimed_sum
+    (trace, claimed_sum)
 }

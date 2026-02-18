@@ -1,5 +1,5 @@
 use crate::witness::preprocessed::PreProcessedTrace;
-use circuits::circuit::{Add, Circuit, Eq, Mul, PointwiseMul, Sub};
+use circuits::circuit::{Add, Blake, Circuit, Eq, Mul, PointwiseMul, Sub};
 use expect_test::expect;
 use itertools::Itertools;
 use stwo::prover::backend::Column;
@@ -18,39 +18,101 @@ fn test_generate_preprocessed_trace() {
     circuit.pointwise_mul.push(PointwiseMul { in0: 21, in1: 22, out: 23 });
     circuit.eq.push(Eq { in0: 0, in1: 1 });
     circuit.eq.push(Eq { in0: 0, in1: 2 });
-    circuit.n_vars = 24;
-    // TODO(Gali): Add blake gates
+    for i in 0..16 {
+        let in0 = (i * 4) % 24;
+        let in1 = (i * 4 + 1) % 24;
+        let in2 = (i * 4 + 2) % 24;
+        let in3 = (i * 4 + 3) % 24;
+        circuit.blake.push(Blake {
+            input: vec![[in0, in1, in2, in3]],
+            n_bytes: 64,
+            out0: 24 + 2 * i,
+            out1: 24 + 2 * i + 1,
+        });
+    }
+    circuit.n_vars = 56;
 
     let preprocessed_trace =
         PreProcessedTrace::generate_preprocessed_trace(&circuit).0.get_trace::<SimdBackend>();
 
-    assert_eq!(preprocessed_trace.len(), 10);
-    assert_eq!(preprocessed_trace[0].values.len(), 2);
-    assert_eq!(preprocessed_trace[1].values.len(), 2);
-    assert_eq!(preprocessed_trace[2].values.len(), 8);
-    assert_eq!(preprocessed_trace[3].values.len(), 8);
-    assert_eq!(preprocessed_trace[4].values.len(), 8);
-    assert_eq!(preprocessed_trace[5].values.len(), 8);
-    assert_eq!(preprocessed_trace[6].values.len(), 8);
-    assert_eq!(preprocessed_trace[7].values.len(), 8);
-    assert_eq!(preprocessed_trace[8].values.len(), 8);
-    assert_eq!(preprocessed_trace[9].values.len(), 8);
+    assert_eq!(preprocessed_trace.len(), 73);
+    let lengths = preprocessed_trace.iter().map(|column| column.values.len()).collect_vec();
     expect![[r#"
-        [M31(0), M31(0)]
-        [M31(1), M31(2)]
-        [M31(1), M31(1), M31(0), M31(0), M31(0), M31(0), M31(0), M31(0)]
-        [M31(0), M31(0), M31(1), M31(1), M31(0), M31(0), M31(0), M31(0)]
-        [M31(0), M31(0), M31(0), M31(0), M31(1), M31(1), M31(0), M31(0)]
-        [M31(0), M31(0), M31(0), M31(0), M31(0), M31(0), M31(1), M31(1)]
-        [M31(0), M31(3), M31(6), M31(9), M31(12), M31(15), M31(18), M31(21)]
-        [M31(1), M31(4), M31(7), M31(10), M31(13), M31(16), M31(19), M31(22)]
-        [M31(2), M31(5), M31(8), M31(11), M31(14), M31(17), M31(20), M31(23)]
-        [M31(1), M31(0), M31(0), M31(0), M31(0), M31(0), M31(0), M31(0)]"#]]
-    .assert_eq(
-        &preprocessed_trace
-            .into_iter()
-            .map(|eval| format!("{:?}", eval.values.clone().into_cpu_vec()))
-            .collect_vec()
-            .join("\n"),
-    );
+        [
+            2,
+            2,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            32,
+            64,
+            128,
+            256,
+            512,
+            1024,
+            2048,
+            4096,
+            8192,
+            16384,
+            32768,
+            65536,
+            131072,
+            262144,
+            524288,
+            1048576,
+            256,
+            256,
+            256,
+            16384,
+            16384,
+            16384,
+            65536,
+            65536,
+            65536,
+            262144,
+            262144,
+            262144,
+            1048576,
+            1048576,
+            1048576,
+        ]
+    "#]]
+    .assert_debug_eq(&lengths);
 }

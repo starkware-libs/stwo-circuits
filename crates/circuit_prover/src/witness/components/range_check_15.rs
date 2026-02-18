@@ -1,9 +1,7 @@
 // This file was created by the AIR team.
 
 #![allow(unused_parens)]
-use circuit_air::components::range_check_15::{
-    Claim, InteractionClaim, LOG_SIZE, N_TRACE_COLUMNS,
-};
+use circuit_air::components::range_check_15::{Claim, InteractionClaim, LOG_SIZE, N_TRACE_COLUMNS};
 
 use crate::witness::components::prelude::*;
 

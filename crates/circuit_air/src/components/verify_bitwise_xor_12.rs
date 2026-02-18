@@ -1,5 +1,4 @@
-use crate::circuit_air::components::prelude::*;
-use crate::circuit_air::relations::VERIFY_BITWISE_XOR_12_RELATION_ID;
+use crate::components::prelude::*;
 pub const ELEM_BITS: u32 = 12;
 pub const EXPAND_BITS: u32 = 2;
 pub const LIMB_BITS: u32 = ELEM_BITS - EXPAND_BITS;
@@ -47,6 +46,7 @@ impl FrameworkEval for Eval {
     }
 
     fn evaluate<E: EvalAtRow>(&self, mut eval: E) -> E {
+        let relation_id = E::F::from(M31::from(648362599));
         // al, bl are the constant columns for the inputs: All pairs of elements in [0,
         // 2^LIMB_BITS).
         // cl is the constant column for the xor: al ^ bl.
@@ -68,7 +68,7 @@ impl FrameworkEval for Eval {
                 eval.add_to_relation(RelationEntry::new(
                     &self.common_lookup_elements,
                     -E::EF::from(multiplicity),
-                    &[VERIFY_BITWISE_XOR_12_RELATION_ID.into(), a, b, c],
+                    &[relation_id.clone(), a, b, c],
                 ));
             }
         }

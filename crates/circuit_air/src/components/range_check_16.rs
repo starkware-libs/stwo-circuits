@@ -1,6 +1,6 @@
 // This file was created by the AIR team.
 
-use crate::circuit_air::components::prelude::*;
+use crate::components::prelude::*;
 
 pub const N_TRACE_COLUMNS: usize = 1;
 pub const LOG_SIZE: u32 = 16;

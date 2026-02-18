@@ -1,6 +1,6 @@
 // This file was created by the AIR team.
 
-use crate::circuit_air::{components::prelude::*, relations::GATE_RELATION_ID};
+use crate::components::prelude::*;
 
 pub const N_TRACE_COLUMNS: usize = 24;
 pub const RELATION_USES_PER_ROW: [RelationUse; 1] =
@@ -53,6 +53,7 @@ impl FrameworkEval for Eval {
     #[allow(non_snake_case)]
     fn evaluate<E: EvalAtRow>(&self, mut eval: E) -> E {
         let M31_1061955672 = E::F::from(M31::from(1061955672));
+        let M31_378353459 = E::F::from(M31::from(378353459));
         let M31_65536 = E::F::from(M31::from(65536));
         let final_state_addr = eval
             .get_preprocessed_column(PreProcessedColumnId { id: "final_state_addr".to_owned() });
@@ -168,7 +169,7 @@ impl FrameworkEval for Eval {
             &self.common_lookup_elements,
             -E::EF::from(blake_output0_mults),
             &[
-                E::F::from(GATE_RELATION_ID),
+                M31_378353459.clone(),
                 blake_output0_addr.clone(),
                 output_limb0_col16.clone(),
                 output_limb1_col17.clone(),
@@ -181,7 +182,7 @@ impl FrameworkEval for Eval {
             &self.common_lookup_elements,
             -E::EF::from(blake_output1_mults),
             &[
-                E::F::from(GATE_RELATION_ID),
+                M31_378353459,
                 blake_output1_addr.clone(),
                 output_limb4_col20.clone(),
                 output_limb5_col21.clone(),

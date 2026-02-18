@@ -1,6 +1,6 @@
 // This file was created by the AIR team.
 
-use crate::circuit_air::components::prelude::*;
+use crate::components::prelude::*;
 
 pub const N_TRACE_COLUMNS: usize = 1;
 pub const LOG_SIZE: u32 = 14;
@@ -48,7 +48,7 @@ impl FrameworkEval for Eval {
     #[allow(clippy::double_parens)]
     #[allow(non_snake_case)]
     fn evaluate<E: EvalAtRow>(&self, mut eval: E) -> E {
-        let relation_id = E::F::from(relations::VERIFY_BITWISE_XOR_7_RELATION_ID);
+        let relation_id = E::F::from(M31::from(62225763));
         let bitwise_xor_7_0 =
             eval.get_preprocessed_column(PreProcessedColumnId { id: "bitwise_xor_7_0".to_owned() });
         let bitwise_xor_7_1 =

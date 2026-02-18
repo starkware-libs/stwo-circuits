@@ -1,14 +1,13 @@
 // This file was created by the AIR team.
 
 #![allow(unused_parens)]
-use circuit_air::components::blake_gate::{InteractionClaim, N_TRACE_COLUMNS};
-
-use circuit_air::relations::GATE_RELATION_ID;
+#![allow(clippy::too_many_arguments)]
 use crate::witness::components::prelude::*;
 use crate::witness::components::{
     blake_message, blake_output, blake_round, range_check_15, range_check_16, triple_xor_32,
     verify_bitwise_xor_8,
 };
+use circuit_air::components::blake_gate::{InteractionClaim, N_TRACE_COLUMNS};
 
 pub type InputType = ([[UInt32; 8]; 2], [M31; 16]);
 pub type PackedInputType = ([[PackedUInt32; 8]; 2], [PackedM31; 16]);
@@ -20,19 +19,6 @@ pub struct ClaimGenerator {
 
 const BLAKE2S_IV: [u32; 8] = [
     0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19,
-];
-
-const BLAKE2S_SIGMA: [[usize; 16]; 10] = [
-    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
-    [14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3],
-    [11, 8, 12, 0, 5, 2, 15, 13, 10, 14, 3, 6, 7, 1, 9, 4],
-    [7, 9, 3, 1, 13, 12, 11, 14, 2, 6, 5, 10, 4, 0, 15, 8],
-    [9, 0, 5, 7, 2, 4, 10, 15, 14, 1, 11, 12, 6, 8, 3, 13],
-    [2, 12, 6, 10, 0, 11, 8, 3, 4, 13, 7, 5, 15, 14, 1, 9],
-    [12, 5, 1, 15, 14, 13, 4, 10, 0, 7, 6, 3, 9, 2, 8, 11],
-    [13, 11, 7, 14, 12, 1, 3, 9, 5, 0, 15, 4, 8, 6, 2, 10],
-    [6, 15, 14, 9, 11, 3, 0, 8, 12, 2, 13, 7, 1, 4, 10, 5],
-    [10, 2, 8, 4, 7, 6, 1, 5, 15, 11, 9, 14, 3, 12, 13, 0],
 ];
 
 pub fn blake2s_initial_state() -> [u32; 8] {
@@ -69,16 +55,15 @@ fn blake2s_compress(
         v[14] ^= 0xFFFF_FFFF;
     }
 
-    for round in 0..10 {
-        let sigma = &BLAKE2S_SIGMA[round];
-        blake2s_g(&mut v, 0, 4, 8, 12, message[sigma[0]], message[sigma[1]]);
-        blake2s_g(&mut v, 1, 5, 9, 13, message[sigma[2]], message[sigma[3]]);
-        blake2s_g(&mut v, 2, 6, 10, 14, message[sigma[4]], message[sigma[5]]);
-        blake2s_g(&mut v, 3, 7, 11, 15, message[sigma[6]], message[sigma[7]]);
-        blake2s_g(&mut v, 0, 5, 10, 15, message[sigma[8]], message[sigma[9]]);
-        blake2s_g(&mut v, 1, 6, 11, 12, message[sigma[10]], message[sigma[11]]);
-        blake2s_g(&mut v, 2, 7, 8, 13, message[sigma[12]], message[sigma[13]]);
-        blake2s_g(&mut v, 3, 4, 9, 14, message[sigma[14]], message[sigma[15]]);
+    for sigma in BLAKE_SIGMA.iter().take(10).copied() {
+        blake2s_g(&mut v, 0, 4, 8, 12, message[sigma[0] as usize], message[sigma[1] as usize]);
+        blake2s_g(&mut v, 1, 5, 9, 13, message[sigma[2] as usize], message[sigma[3] as usize]);
+        blake2s_g(&mut v, 2, 6, 10, 14, message[sigma[4] as usize], message[sigma[5] as usize]);
+        blake2s_g(&mut v, 3, 7, 11, 15, message[sigma[6] as usize], message[sigma[7] as usize]);
+        blake2s_g(&mut v, 0, 5, 10, 15, message[sigma[8] as usize], message[sigma[9] as usize]);
+        blake2s_g(&mut v, 1, 6, 11, 12, message[sigma[10] as usize], message[sigma[11] as usize]);
+        blake2s_g(&mut v, 2, 7, 8, 13, message[sigma[12] as usize], message[sigma[13] as usize]);
+        blake2s_g(&mut v, 3, 4, 9, 14, message[sigma[14] as usize], message[sigma[15] as usize]);
     }
 
     let mut out = [0u32; 8];
@@ -182,11 +167,7 @@ impl ClaimGenerator {
             packed_inputs,
             &self.preprocessed_trace,
             n_rows,
-            verify_bitwise_xor_8_state,
-            range_check_16_state,
-            range_check_15_state,
             blake_round_state,
-            triple_xor_32_state,
             &mut blake_message_state,
         );
         for inputs in sub_component_inputs.verify_bitwise_xor_8 {
@@ -225,11 +206,7 @@ fn write_trace_simd(
     inputs: Vec<PackedInputType>,
     preprocessed_trace: &PreProcessedTrace,
     n_rows: usize,
-    verify_bitwise_xor_8_state: &verify_bitwise_xor_8::ClaimGenerator,
-    range_check_16_state: &range_check_16::ClaimGenerator,
-    range_check_15_state: &range_check_15::ClaimGenerator,
     blake_round_state: &mut blake_round::ClaimGenerator,
-    triple_xor_32_state: &mut triple_xor_32::ClaimGenerator,
     blake_message_state: &mut blake_message::ClaimGenerator,
 ) -> (
     ComponentTrace<N_TRACE_COLUMNS>,
@@ -269,8 +246,10 @@ fn write_trace_simd(
     let M31_26764 = PackedM31::broadcast(M31::from(26764));
     let M31_27145 = PackedM31::broadcast(M31::from(27145));
     let M31_3 = PackedM31::broadcast(M31::from(3));
+    let M31_378353459 = PackedM31::broadcast(M31::from(378353459));
     let M31_39685 = PackedM31::broadcast(M31::from(39685));
     let M31_40528774 = PackedM31::broadcast(M31::from(40528774));
+    let M31_112558620 = PackedM31::broadcast(M31::from(112558620));
     let M31_42319 = PackedM31::broadcast(M31::from(42319));
     let M31_44677 = PackedM31::broadcast(M31::from(44677));
     let M31_47975 = PackedM31::broadcast(M31::from(47975));
@@ -321,12 +300,8 @@ fn write_trace_simd(
     let message3_addr = preprocessed_trace
         .get_packed_column(&PreProcessedColumnId { id: "message3_addr".to_owned() });
 
-    let enabler_col = Enabler::new(n_rows);
     let mut blake_message_inputs: Vec<(PackedM31, [PackedUInt32; 16])> =
-        Vec::with_capacity(n_packed_rows);
-    unsafe {
-        blake_message_inputs.set_len(n_packed_rows);
-    }
+        vec![(PackedM31::zero(), [PackedUInt32::default(); 16]); n_packed_rows];
 
     // Pre-populate blake_round_state.blake_message before the parallel loop
     // so that deduce_output can look up message data.
@@ -363,7 +338,6 @@ fn write_trace_simd(
                 })
             })
             .collect();
-    eprintln!("{padding}");
     (
         trace.par_iter_mut(),
         lookup_data.par_iter_mut(),
@@ -515,8 +489,12 @@ fn write_trace_simd(
                 *row[50] = xor_col50;
                 *sub_component_inputs.verify_bitwise_xor_8[0] =
                     [split_16_low_part_size_8_output_tmp_8e0ec_1[0], M31_127, xor_col50];
-                *lookup_data.verify_bitwise_xor_8_0 =
-                    [M31_4, split_16_low_part_size_8_output_tmp_8e0ec_1[0], M31_127, xor_col50];
+                *lookup_data.verify_bitwise_xor_8_0 = [
+                    M31_112558620,
+                    split_16_low_part_size_8_output_tmp_8e0ec_1[0],
+                    M31_127,
+                    xor_col50,
+                ];
 
                 // Bitwise Xor Num Bits 8.
 
@@ -525,7 +503,8 @@ fn write_trace_simd(
                 *row[51] = xor_col51;
                 *sub_component_inputs.verify_bitwise_xor_8[1] =
                     [ms_8_bits_col48, M31_82, xor_col51];
-                *lookup_data.verify_bitwise_xor_8_1 = [M31_4, ms_8_bits_col48, M31_82, xor_col51];
+                *lookup_data.verify_bitwise_xor_8_1 =
+                    [M31_112558620, ms_8_bits_col48, M31_82, xor_col51];
 
                 // Bitwise Xor Num Bits 8.
 
@@ -536,8 +515,12 @@ fn write_trace_simd(
                 *row[52] = xor_col52;
                 *sub_component_inputs.verify_bitwise_xor_8[2] =
                     [split_16_low_part_size_8_output_tmp_8e0ec_3[0], M31_14, xor_col52];
-                *lookup_data.verify_bitwise_xor_8_2 =
-                    [M31_4, split_16_low_part_size_8_output_tmp_8e0ec_3[0], M31_14, xor_col52];
+                *lookup_data.verify_bitwise_xor_8_2 = [
+                    M31_112558620,
+                    split_16_low_part_size_8_output_tmp_8e0ec_3[0],
+                    M31_14,
+                    xor_col52,
+                ];
 
                 // Bitwise Xor Num Bits 8.
 
@@ -546,7 +529,8 @@ fn write_trace_simd(
                 *row[53] = xor_col53;
                 *sub_component_inputs.verify_bitwise_xor_8[3] =
                     [ms_8_bits_col49, M31_81, xor_col53];
-                *lookup_data.verify_bitwise_xor_8_3 = [M31_4, ms_8_bits_col49, M31_81, xor_col53];
+                *lookup_data.verify_bitwise_xor_8_3 =
+                    [M31_112558620, ms_8_bits_col49, M31_81, xor_col53];
 
                 let create_blake_round_input_output_tmp_8e0ec_12 = [
                     blake_gate_input.0[0][0],
@@ -1715,16 +1699,6 @@ fn write_trace_simd(
                     triple_xor_32_output_limb_0_col133,
                     triple_xor_32_output_limb_1_col134,
                 ];
-                let create_blake_output_output_tmp_8e0ec_65 = [
-                    triple_xor_32_output_tmp_8e0ec_57,
-                    triple_xor_32_output_tmp_8e0ec_58,
-                    triple_xor_32_output_tmp_8e0ec_59,
-                    triple_xor_32_output_tmp_8e0ec_60,
-                    triple_xor_32_output_tmp_8e0ec_61,
-                    triple_xor_32_output_tmp_8e0ec_62,
-                    triple_xor_32_output_tmp_8e0ec_63,
-                    triple_xor_32_output_tmp_8e0ec_64,
-                ];
 
                 *lookup_data.blake_output_0 = [
                     M31_1061955672,
@@ -1767,7 +1741,7 @@ fn write_trace_simd(
                     input_state_after_limb7_limb_1_col31,
                 ];
                 *lookup_data.gate_0 = [
-                    PackedM31::broadcast(GATE_RELATION_ID),
+                    M31_378353459,
                     message0_addr,
                     input_message_limb0_col32,
                     input_message_limb1_col33,
@@ -1775,7 +1749,7 @@ fn write_trace_simd(
                     input_message_limb3_col35,
                 ];
                 *lookup_data.gate_1 = [
-                    PackedM31::broadcast(GATE_RELATION_ID),
+                    M31_378353459,
                     message1_addr,
                     input_message_limb4_col36,
                     input_message_limb5_col37,
@@ -1783,7 +1757,7 @@ fn write_trace_simd(
                     input_message_limb7_col39,
                 ];
                 *lookup_data.gate_2 = [
-                    PackedM31::broadcast(GATE_RELATION_ID),
+                    M31_378353459,
                     message2_addr,
                     input_message_limb8_col40,
                     input_message_limb9_col41,
@@ -1791,7 +1765,7 @@ fn write_trace_simd(
                     input_message_limb11_col43,
                 ];
                 *lookup_data.gate_3 = [
-                    PackedM31::broadcast(GATE_RELATION_ID),
+                    M31_378353459,
                     message3_addr,
                     input_message_limb12_col44,
                     input_message_limb13_col45,

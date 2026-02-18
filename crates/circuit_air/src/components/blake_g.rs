@@ -1,11 +1,11 @@
 // This file was created by the AIR team.
 
-use crate::circuit_air::components::prelude::*;
-use crate::circuit_air::components::subroutines::triple_sum_32::TripleSum32;
-use crate::circuit_air::components::subroutines::xor_rot_32_r_7::XorRot32R7;
-use crate::circuit_air::components::subroutines::xor_rot_32_r_8::XorRot32R8;
-use crate::circuit_air::components::subroutines::xor_rot_32_r_12::XorRot32R12;
-use crate::circuit_air::components::subroutines::xor_rot_32_r_16::XorRot32R16;
+use crate::components::prelude::*;
+use crate::components::subroutines::triple_sum_32::TripleSum32;
+use crate::components::subroutines::xor_rot_32_r_7::XorRot32R7;
+use crate::components::subroutines::xor_rot_32_r_8::XorRot32R8;
+use crate::components::subroutines::xor_rot_32_r_12::XorRot32R12;
+use crate::components::subroutines::xor_rot_32_r_16::XorRot32R16;
 
 pub const N_TRACE_COLUMNS: usize = 53;
 pub const RELATION_USES_PER_ROW: [RelationUse; 6] = [
