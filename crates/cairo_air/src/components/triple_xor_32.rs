@@ -41,9 +41,6 @@ pub fn accumulate_constraints<Value: IValue>(
         enabler_col20,
     ] = input.try_into().unwrap();
 
-    let constraint_0_value = eval!(context, ((enabler_col20) * (enabler_col20)) - (enabler_col20));
-    acc.add_constraint(context, constraint_0_value);
-
     let [split_16_low_part_size_8_output_tmp_298db_1_limb_0] =
         split_16_low_part_size_8::accumulate_constraints(
             &[eval!(context, input_limb_0_col0), eval!(context, ms_8_bits_col6)],
@@ -190,6 +187,10 @@ pub fn accumulate_constraints<Value: IValue>(
     let triple_xor32_output_tmp_298db_28_limb_1 =
         eval!(context, (xor_col17) + ((xor_col19) * (256)));
 
+    //Enabler is a bit.
+    let constraint_16_value = eval!(context, ((enabler_col20) * (enabler_col20)) - (enabler_col20));
+    acc.add_constraint(context, constraint_16_value);
+
     // Yield TripleXor32.
     let tuple_17 = &[
         eval!(context, 990559919),
@@ -270,7 +271,7 @@ mod tests {
             qm31_from_u32s(1785226588, 510860387, 1992127319, 343880121),
             qm31_from_u32s(1315462335, 1718819938, 1522365270, 343880121),
             qm31_from_u32s(1382571514, 1853037666, 1589474134, 343880121),
-            qm31_from_u32s(902525010, 1115155995, 130434373, 2116865290),
+            qm31_from_u32s(1986820986, 913513739, 45970432, 343880178),
         ];
         let interaction_columns = [
             qm31_from_u32s(1005168032, 79980996, 1847888101, 1941984119),

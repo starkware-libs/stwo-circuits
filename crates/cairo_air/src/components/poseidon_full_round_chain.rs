@@ -148,12 +148,8 @@ pub fn accumulate_constraints<Value: IValue>(
         enabler_col125,
     ] = input.try_into().unwrap();
 
-    let constraint_0_value =
-        eval!(context, ((enabler_col125) * (enabler_col125)) - (enabler_col125));
-    acc.add_constraint(context, constraint_0_value);
-
     // Use Cube252.
-    let tuple_1 = &[
+    let tuple_0 = &[
         eval!(context, 1987997202),
         eval!(context, input_limb_2_col2),
         eval!(context, input_limb_3_col3),
@@ -176,11 +172,11 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, cube_252_output_limb_8_col40),
         eval!(context, cube_252_output_limb_9_col41),
     ];
-    let numerator_1 = eval!(context, 1);
-    acc.add_to_relation(context, numerator_1, tuple_1);
+    let numerator_0 = eval!(context, 1);
+    acc.add_to_relation(context, numerator_0, tuple_0);
 
     // Use Cube252.
-    let tuple_2 = &[
+    let tuple_1 = &[
         eval!(context, 1987997202),
         eval!(context, input_limb_12_col12),
         eval!(context, input_limb_13_col13),
@@ -203,11 +199,11 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, cube_252_output_limb_8_col50),
         eval!(context, cube_252_output_limb_9_col51),
     ];
-    let numerator_2 = eval!(context, 1);
-    acc.add_to_relation(context, numerator_2, tuple_2);
+    let numerator_1 = eval!(context, 1);
+    acc.add_to_relation(context, numerator_1, tuple_1);
 
     // Use Cube252.
-    let tuple_3 = &[
+    let tuple_2 = &[
         eval!(context, 1987997202),
         eval!(context, input_limb_22_col22),
         eval!(context, input_limb_23_col23),
@@ -230,11 +226,11 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, cube_252_output_limb_8_col60),
         eval!(context, cube_252_output_limb_9_col61),
     ];
-    let numerator_3 = eval!(context, 1);
-    acc.add_to_relation(context, numerator_3, tuple_3);
+    let numerator_2 = eval!(context, 1);
+    acc.add_to_relation(context, numerator_2, tuple_2);
 
     // Use PoseidonRoundKeys.
-    let tuple_4 = &[
+    let tuple_3 = &[
         eval!(context, 1024310512),
         eval!(context, input_limb_1_col1),
         eval!(context, poseidon_round_keys_output_limb_0_col62),
@@ -268,8 +264,8 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, poseidon_round_keys_output_limb_28_col90),
         eval!(context, poseidon_round_keys_output_limb_29_col91),
     ];
-    let numerator_4 = eval!(context, 1);
-    acc.add_to_relation(context, numerator_4, tuple_4);
+    let numerator_3 = eval!(context, 1);
+    acc.add_to_relation(context, numerator_3, tuple_3);
 
     linear_combination_n_4_coefs_3_1_1_1::accumulate_constraints(
         &[
@@ -447,6 +443,11 @@ pub fn accumulate_constraints<Value: IValue>(
         component_data,
         acc,
     );
+
+    //Enabler is a bit.
+    let constraint_7_value =
+        eval!(context, ((enabler_col125) * (enabler_col125)) - (enabler_col125));
+    acc.add_constraint(context, constraint_7_value);
 
     // Use PoseidonFullRoundChain.
     let tuple_8 = &[
@@ -696,7 +697,7 @@ mod tests {
             qm31_from_u32s(2011895446, 1878571631, 1869722519, 502514213),
             qm31_from_u32s(2079004625, 2012789359, 1936831383, 502514213),
             qm31_from_u32s(267066873, 536394353, 124892057, 502514214),
-            qm31_from_u32s(902525010, 1115155995, 130434373, 2116865290),
+            qm31_from_u32s(334176052, 670612081, 192000921, 502514214),
         ];
         let interaction_columns = [
             qm31_from_u32s(1005168032, 79980996, 1847888101, 1941984119),

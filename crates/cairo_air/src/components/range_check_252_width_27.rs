@@ -45,14 +45,19 @@ pub fn accumulate_constraints<Value: IValue>(
         enabler_col19,
     ] = input.try_into().unwrap();
 
-    let constraint_0_value = eval!(context, ((enabler_col19) * (enabler_col19)) - (enabler_col19));
-    acc.add_constraint(context, constraint_0_value);
-
     // Use RangeCheck_9_9.
-    let tuple_1 = &[
+    let tuple_0 = &[
         eval!(context, 517791011),
         eval!(context, limb_0_high_part_col10),
         eval!(context, limb_1_low_part_col11),
+    ];
+    let numerator_0 = eval!(context, 1);
+    acc.add_to_relation(context, numerator_0, tuple_0);
+
+    // Use RangeCheck_18.
+    let tuple_1 = &[
+        eval!(context, 1109051422),
+        eval!(context, (input_limb_0_col0) - ((limb_0_high_part_col10) * (262144))),
     ];
     let numerator_1 = eval!(context, 1);
     acc.add_to_relation(context, numerator_1, tuple_1);
@@ -60,49 +65,49 @@ pub fn accumulate_constraints<Value: IValue>(
     // Use RangeCheck_18.
     let tuple_2 = &[
         eval!(context, 1109051422),
-        eval!(context, (input_limb_0_col0) - ((limb_0_high_part_col10) * (262144))),
+        eval!(context, ((input_limb_1_col1) - (limb_1_low_part_col11)) * (4194304)),
     ];
     let numerator_2 = eval!(context, 1);
     acc.add_to_relation(context, numerator_2, tuple_2);
 
-    // Use RangeCheck_18.
-    let tuple_3 = &[
-        eval!(context, 1109051422),
-        eval!(context, ((input_limb_1_col1) - (limb_1_low_part_col11)) * (4194304)),
-    ];
-    let numerator_3 = eval!(context, 1);
-    acc.add_to_relation(context, numerator_3, tuple_3);
-
     // Use RangeCheck_9_9_B.
-    let tuple_4 = &[
+    let tuple_3 = &[
         eval!(context, 1897792095),
         eval!(context, limb_2_high_part_col12),
         eval!(context, limb_3_low_part_col13),
     ];
+    let numerator_3 = eval!(context, 1);
+    acc.add_to_relation(context, numerator_3, tuple_3);
+
+    // Use RangeCheck_18_B.
+    let tuple_4 = &[
+        eval!(context, 1424798916),
+        eval!(context, (input_limb_2_col2) - ((limb_2_high_part_col12) * (262144))),
+    ];
     let numerator_4 = eval!(context, 1);
     acc.add_to_relation(context, numerator_4, tuple_4);
 
-    // Use RangeCheck_18_B.
+    // Use RangeCheck_18.
     let tuple_5 = &[
-        eval!(context, 1424798916),
-        eval!(context, (input_limb_2_col2) - ((limb_2_high_part_col12) * (262144))),
+        eval!(context, 1109051422),
+        eval!(context, ((input_limb_3_col3) - (limb_3_low_part_col13)) * (4194304)),
     ];
     let numerator_5 = eval!(context, 1);
     acc.add_to_relation(context, numerator_5, tuple_5);
 
-    // Use RangeCheck_18.
+    // Use RangeCheck_9_9_C.
     let tuple_6 = &[
-        eval!(context, 1109051422),
-        eval!(context, ((input_limb_3_col3) - (limb_3_low_part_col13)) * (4194304)),
+        eval!(context, 1881014476),
+        eval!(context, limb_4_high_part_col14),
+        eval!(context, limb_5_low_part_col15),
     ];
     let numerator_6 = eval!(context, 1);
     acc.add_to_relation(context, numerator_6, tuple_6);
 
-    // Use RangeCheck_9_9_C.
+    // Use RangeCheck_18.
     let tuple_7 = &[
-        eval!(context, 1881014476),
-        eval!(context, limb_4_high_part_col14),
-        eval!(context, limb_5_low_part_col15),
+        eval!(context, 1109051422),
+        eval!(context, (input_limb_4_col4) - ((limb_4_high_part_col14) * (262144))),
     ];
     let numerator_7 = eval!(context, 1);
     acc.add_to_relation(context, numerator_7, tuple_7);
@@ -110,60 +115,56 @@ pub fn accumulate_constraints<Value: IValue>(
     // Use RangeCheck_18.
     let tuple_8 = &[
         eval!(context, 1109051422),
-        eval!(context, (input_limb_4_col4) - ((limb_4_high_part_col14) * (262144))),
+        eval!(context, ((input_limb_5_col5) - (limb_5_low_part_col15)) * (4194304)),
     ];
     let numerator_8 = eval!(context, 1);
     acc.add_to_relation(context, numerator_8, tuple_8);
 
-    // Use RangeCheck_18.
-    let tuple_9 = &[
-        eval!(context, 1109051422),
-        eval!(context, ((input_limb_5_col5) - (limb_5_low_part_col15)) * (4194304)),
-    ];
-    let numerator_9 = eval!(context, 1);
-    acc.add_to_relation(context, numerator_9, tuple_9);
-
     // Use RangeCheck_9_9_D.
-    let tuple_10 = &[
+    let tuple_9 = &[
         eval!(context, 1864236857),
         eval!(context, limb_6_high_part_col16),
         eval!(context, limb_7_low_part_col17),
     ];
+    let numerator_9 = eval!(context, 1);
+    acc.add_to_relation(context, numerator_9, tuple_9);
+
+    // Use RangeCheck_18_B.
+    let tuple_10 = &[
+        eval!(context, 1424798916),
+        eval!(context, (input_limb_6_col6) - ((limb_6_high_part_col16) * (262144))),
+    ];
     let numerator_10 = eval!(context, 1);
     acc.add_to_relation(context, numerator_10, tuple_10);
 
-    // Use RangeCheck_18_B.
+    // Use RangeCheck_18.
     let tuple_11 = &[
-        eval!(context, 1424798916),
-        eval!(context, (input_limb_6_col6) - ((limb_6_high_part_col16) * (262144))),
+        eval!(context, 1109051422),
+        eval!(context, ((input_limb_7_col7) - (limb_7_low_part_col17)) * (4194304)),
     ];
     let numerator_11 = eval!(context, 1);
     acc.add_to_relation(context, numerator_11, tuple_11);
 
-    // Use RangeCheck_18.
-    let tuple_12 = &[
-        eval!(context, 1109051422),
-        eval!(context, ((input_limb_7_col7) - (limb_7_low_part_col17)) * (4194304)),
-    ];
-    let numerator_12 = eval!(context, 1);
-    acc.add_to_relation(context, numerator_12, tuple_12);
-
     // Use RangeCheck_9_9_E.
-    let tuple_13 = &[
+    let tuple_12 = &[
         eval!(context, 1847459238),
         eval!(context, limb_8_high_part_col18),
         eval!(context, input_limb_9_col9),
     ];
-    let numerator_13 = eval!(context, 1);
-    acc.add_to_relation(context, numerator_13, tuple_13);
+    let numerator_12 = eval!(context, 1);
+    acc.add_to_relation(context, numerator_12, tuple_12);
 
     // Use RangeCheck_18.
-    let tuple_14 = &[
+    let tuple_13 = &[
         eval!(context, 1109051422),
         eval!(context, (input_limb_8_col8) - ((limb_8_high_part_col18) * (262144))),
     ];
-    let numerator_14 = eval!(context, 1);
-    acc.add_to_relation(context, numerator_14, tuple_14);
+    let numerator_13 = eval!(context, 1);
+    acc.add_to_relation(context, numerator_13, tuple_13);
+
+    //Enabler is a bit.
+    let constraint_14_value = eval!(context, ((enabler_col19) * (enabler_col19)) - (enabler_col19));
+    acc.add_constraint(context, constraint_14_value);
 
     // Yield RangeCheck252Width27.
     let tuple_15 = &[
@@ -246,7 +247,7 @@ mod tests {
             qm31_from_u32s(1718117409, 376642659, 1925018455, 343880121),
             qm31_from_u32s(1785226588, 510860387, 1992127319, 343880121),
             qm31_from_u32s(1315462335, 1718819938, 1522365270, 343880121),
-            qm31_from_u32s(902525010, 1115155995, 130434373, 2116865290),
+            qm31_from_u32s(1382571514, 1853037666, 1589474134, 343880121),
         ];
         let interaction_columns = [
             qm31_from_u32s(1005168032, 79980996, 1847888101, 1941984119),

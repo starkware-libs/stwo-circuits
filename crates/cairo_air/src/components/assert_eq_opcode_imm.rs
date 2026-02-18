@@ -30,9 +30,6 @@ pub fn accumulate_constraints<Value: IValue>(
         enabler_col8,
     ] = input.try_into().unwrap();
 
-    let constraint_0_value = eval!(context, ((enabler_col8) * (enabler_col8)) - (enabler_col8));
-    acc.add_constraint(context, constraint_0_value);
-
     let [decode_instruction_161c9_output_tmp_bb09e_5_offset0] =
         decode_instruction_161c9::accumulate_constraints(
             &[
@@ -49,13 +46,13 @@ pub fn accumulate_constraints<Value: IValue>(
         .unwrap();
 
     //mem_dst_base.
-    let constraint_2_value = eval!(
+    let constraint_1_value = eval!(
         context,
         (mem_dst_base_col6)
             - (((dst_base_fp_col4) * (input_fp_col2))
                 + (((1) - (dst_base_fp_col4)) * (input_ap_col1)))
     );
-    acc.add_constraint(context, constraint_2_value);
+    acc.add_constraint(context, constraint_1_value);
 
     mem_verify_equal::accumulate_constraints(
         &[
@@ -70,6 +67,10 @@ pub fn accumulate_constraints<Value: IValue>(
         component_data,
         acc,
     );
+
+    //Enabler is a bit.
+    let constraint_3_value = eval!(context, ((enabler_col8) * (enabler_col8)) - (enabler_col8));
+    acc.add_constraint(context, constraint_3_value);
 
     // Use Opcodes.
     let tuple_4 = &[
@@ -144,7 +145,7 @@ mod tests {
             qm31_from_u32s(1323553405, 234470090, 315655353, 1375009625),
             qm31_from_u32s(1524880942, 637123274, 516981945, 1375009625),
             qm31_from_u32s(1457771763, 502905546, 449873081, 1375009625),
-            qm31_from_u32s(902525010, 1115155995, 130434373, 2116865290),
+            qm31_from_u32s(48489085, 1979300555, 1188070585, 1375009625),
         ];
         let interaction_columns = [
             qm31_from_u32s(1005168032, 79980996, 1847888101, 1941984119),
