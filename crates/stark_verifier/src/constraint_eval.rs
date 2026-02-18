@@ -226,6 +226,8 @@ impl CompositionConstraintAccumulator {
 
 /// A trait for evaluating at some point or row.
 pub trait CircuitEval<Value: IValue> {
+    fn name(&self) -> String;
+
     /// Evaluates the composition polynomial at the OODS point (after dividing by the domain
     /// polynomial).
     fn evaluate(

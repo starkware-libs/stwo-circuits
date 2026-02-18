@@ -55,6 +55,10 @@ pub struct SquaredFibonacciComponent {
     pub preprocessed_column_id: PreProcessedColumnId,
 }
 impl<Value: IValue> CircuitEval<Value> for SquaredFibonacciComponent {
+    fn name(&self) -> String {
+        "squared_fibonacci".to_string()
+    }
+
     fn trace_columns(&self) -> usize {
         4
     }
