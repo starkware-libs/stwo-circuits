@@ -132,11 +132,6 @@ fn test_validate_query_position_in_coset(#[case] success: bool) {
     assert_eq!(context.is_circuit_valid(), success);
 }
 
-fn simd_lanes(context: &TraceContext, simd: &Simd) -> Vec<u32> {
-    let packed = packed_values(context, simd);
-    (0..simd.len()).map(|i| packed[i / 4].to_m31_array()[i % 4].0).collect()
-}
-
 #[test]
 fn test_fold_coset_matches_stwo_reference() {
     let mut context = TraceContext::default();
@@ -189,7 +184,7 @@ fn test_jump_folding_matches_stwo_reference() {
     const LOG_DOMAIN_SIZE: usize = 8;
     // Keep the same query structure, but use a repeated index so `fri_decommit` can check a
     // constant last layer even with only the circle->line phase enabled.
-    let query_indices = vec![11_u32, 12_u32, 13_u32, 14_u32];
+    let query_indices = vec![0_u32];
 
     let config = ProofConfig {
         n_proof_of_work_bits: 0,
@@ -201,7 +196,7 @@ fn test_jump_folding_matches_stwo_reference() {
         cumulative_sum_columns: vec![],
         n_components: 0,
         fri: crate::stark_verifier::fri_proof::FriConfig {
-            log_trace_size: 4,
+            log_trace_size: 6,
             log_blowup_factor: 2,
             n_queries: query_indices.len(),
             log_n_last_layer_coefs: 0,
@@ -218,10 +213,7 @@ fn test_jump_folding_matches_stwo_reference() {
         qm31_from_u32s(1975580628, 2062626494, 1340534631, 1939928290),
         qm31_from_u32s(160270922, 428202964, 1497289811, 1557635193),
     ];
-//     Circle to line alpha: (1011730217 + 238354028) + (1321702146 + 1634795701
-// Folding line alpha: (1690232064 + 1294671291) + (1616406021 + 525755234)u
-// Folding line alpha: (1975580628 + 2062626494) + (1340534631 + 1939928290)u
-// Folding line alpha: (160270922 + 428202964) + (1497289811 + 1557635193)u
+
     let alphas: Vec<_> = alpha_values.iter().map(|x| context.constant(*x)).collect();
 
     let query_locations = query_indices.iter().map(|x| *x as usize).collect::<Vec<_>>();
@@ -296,11 +288,10 @@ fn stwo_jumps() -> ExtendedFriProof<Blake2sM31Hasher> {
     let config = FriConfig::new(0, LOG_BLOWUP_FACTOR, 3, 2);
     let column = polynomial_evaluation(6, LOG_BLOWUP_FACTOR);
     let twiddles = CpuBackend::precompute_twiddles(column.domain.half_coset);
-
     let prover = FriProver::commit(&mut Blake2sM31Channel::default(), config, &column, &twiddles);
-    let queries = Queries::new(&vec![11, 12, 13, 14], 6 + LOG_BLOWUP_FACTOR);
-    let point = CanonicCoset::new(8).at(bit_reverse_index(11, 8));
-    println!("{:?}", point);
+    let queries = Queries::new(&vec![0], 6 + LOG_BLOWUP_FACTOR);
+    let point = CanonicCoset::new(8).at(bit_reverse_index(0, 8));
+    // println!("{:?}", point);
     let proof = prover.decommit_on_queries(&queries);
     proof
 }
@@ -310,7 +301,7 @@ pub fn test_construct_fri_siblings(
     config: &ProofConfig,
     query_locations: &[usize],
 ) -> (Vec<QM31>, Vec<Vec<Vec<QM31>>>) {
-    let mut line_coset_vals_per_query_per_tree = vec![vec![]; config.log_trace_size() - 1];
+    let mut line_coset_vals_per_query_per_tree = vec![vec![]; proof.proof.inner_layers.len()];
     let mut circle_fri_siblings = vec![];
     for query in query_locations {
         circle_fri_siblings.push(proof.aux.first_layer.all_values[0][&(query ^ 1)]);

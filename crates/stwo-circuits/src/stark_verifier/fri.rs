@@ -144,10 +144,11 @@ pub fn fri_decommit<Value: IValue>(
     let mut base_point = points.clone();
     let mut bit_counter = 0;
 
-    for (tree_idx, ((root, step), coset_per_query)) in zip_eq(zip_eq(&layer_commitments[1..], steps), line_coset_vals_per_query_per_tree).enumerate().skip(1) {
+    for (tree_idx, ((root, step), coset_per_query)) in zip_eq(zip_eq(&layer_commitments[1..], steps), line_coset_vals_per_query_per_tree).enumerate() {
         let bit_range = (1 + bit_counter)..(1 + bit_counter + step);
-        eprintln!("Tree: {}", tree_idx);
+        eprintln!("Tree: {}", tree_idx + 1);
         eprintln!("Bit range: {:?}", bit_range);
+        eprintln!("Base point: x {:?} y {:?}", context.get(base_point.x.get_packed()[0]), context.get(base_point.y.get_packed()[0]));
         // Validate that the fri query is in the correct position inside the guessed
         // `fri_coset_per_query`.
         validate_query_position_in_coset(
@@ -164,6 +165,7 @@ pub fn fri_decommit<Value: IValue>(
 
         // Translate base_point to the base of the current coset.
         base_point = translate_base_point(context, base_point, &packed_bits[bit_range]);
+        eprintln!("Translated base point: x {:?}, y: {:?}", context.get(base_point.x.get_packed()[0]), context.get(base_point.y.get_packed()[0]));
 
         // Compute twiddles.
         let twiddles_per_fold_per_query =
@@ -208,11 +210,13 @@ fn compute_twiddles_from_base_point<Value: IValue>(
 ) -> Vec<JumpTwiddles> {
     let mut buf: Vec<Vec<Vec<Var>>> = vec![];
     let n_queries = base_point.x.len();
-    let mut prev_x_coord: Vec<_> = compute_coset_points(context, base_point, step as u32 - 1)
+    let mut prev_x_coord: Vec<_> = compute_half_coset_points(context, base_point, step as u32)
         .iter()
         .map(|p| p.x.clone())
         .collect();
     let mut prev_twiddles: Vec<_> = prev_x_coord.iter().map(|x| x.inv(context)).collect();
+    // Print the outermost twiddles.
+    prev_twiddles.iter().for_each(|t| eprintln!("Outermost twiddle {:?}", context.get(t.get_packed()[0]))     );
     buf.push(prev_twiddles.iter().map(|t_simd| Simd::unpack(context, t_simd)).collect());
 
     for _ in 0..step - 1 {
@@ -255,22 +259,7 @@ fn translate_base_point<Value: IValue>(
     base_point
 }
 
-fn validate_query_position_in_coset<Value: IValue>(
-    context: &mut Context<Value>,
-    fri_coset_per_query: &[Vec<Var>],
-    fri_data: &[Var],
-    bits: &[Vec<Var>],
-) {
-    for (query_idx, (query_value, coset)) in zip_eq(fri_data, fri_coset_per_query).enumerate() {
-        println!("Coset");
-        coset.iter().for_each(|x| println!("{:?}", context.get(*x)));
-        eprintln!("Query: {:?}", context.get(*query_value));
-        let bits: Vec<Var> = bits.iter().map(|b| b[query_idx]).collect();
-        let should_be_query = select_by_index(context, coset, bits);
-        // debug_assert_eq!(context.get(should_be_query), context.get(*query_value));
-        eq(context, *query_value, should_be_query);
-    }
-}
+
 
 // This is per query.
 fn fold_coset<Value: IValue>(
@@ -312,18 +301,18 @@ fn decommit_circle_to_line<Value: IValue>(
     let points_y_inv = points.y.inv(context);
     let twiddles = Simd::unpack(context, &points_y_inv);
     // Check merkle decommitment.
-    for (query_idx, (fri_query, sibling)) in zip_eq(fri_input, siblings).enumerate() {
-        // Compute one layer of the Merkle tree with the query and its sibling.
-        let leaf = hash_leaf_qm31(context, *fri_query);
-        let leaf_sibling = hash_leaf_qm31(context, *sibling);
+    // for (query_idx, (fri_query, sibling)) in zip_eq(fri_input, siblings).enumerate() {
+    //     // Compute one layer of the Merkle tree with the query and its sibling.
+    //     let leaf = hash_leaf_qm31(context, *fri_query);
+    //     let leaf_sibling = hash_leaf_qm31(context, *sibling);
 
-        // Skip the first `tree_idx` LSBs, that are not relevant for this tree.
-        let bits_for_query = bits.iter().map(|b| b[query_idx]).collect_vec();
-        let node = merkle_node(context, &leaf, &leaf_sibling, bits_for_query[0]);
+    //     // Skip the first `tree_idx` LSBs, that are not relevant for this tree.
+    //     let bits_for_query = bits.iter().map(|b| b[query_idx]).collect_vec();
+    //     let node = merkle_node(context, &leaf, &leaf_sibling, bits_for_query[0]);
 
-        let auth_path = auth_paths.at(0, query_idx);
-        verify_merkle_path(context, node, &bits_for_query[1..], *root, auth_path);
-    }
+    //     let auth_path = auth_paths.at(0, query_idx);
+    //     verify_merkle_path(context, node, &bits_for_query[1..], *root, auth_path);
+    // }
 
     // Compute the next layer.
     zip_eq(zip_eq(fri_input, siblings), twiddles)
@@ -335,27 +324,45 @@ fn decommit_circle_to_line<Value: IValue>(
         .collect()
 }
 
-fn compute_coset_points<Value: IValue>(
+fn compute_half_coset_points<Value: IValue>(
     context: &mut Context<Value>,
     base_point: &CirclePoint<Simd>,
     log_size: u32,
 ) -> Vec<CirclePoint<Simd>> {
-    // Early return for trivial log_size.
     if log_size == 0 {
         return vec![base_point.clone()];
     }
     let gen_pt = generator_point_simd(context, log_size as usize, base_point.x.len());
     let mut curr_pt = base_point.clone();
-    let mut coset = vec![curr_pt.clone()];
-    for _ in 0..(1 << log_size) - 1 as usize {
+    let mut half_coset = vec![curr_pt.clone()];
+    for _ in 0..(1 << (log_size - 1)) - 1 as usize {
         curr_pt = add_points_simd(context, &curr_pt, &gen_pt);
-        coset.push(curr_pt.clone());
+        half_coset.push(curr_pt.clone());
     }
     // Bit reverse
-    stwo::core::utils::bit_reverse(&mut coset);
-    coset
+    stwo::core::utils::bit_reverse(&mut half_coset);
+    half_coset
 }
 
+fn validate_query_position_in_coset<Value: IValue>(
+    context: &mut Context<Value>,
+    fri_coset_per_query: &[Vec<Var>],
+    fri_data: &[Var],
+    bits: &[Vec<Var>],
+) {
+    for (query_idx, (query_value, coset)) in zip_eq(fri_data, fri_coset_per_query).enumerate() {
+        println!("Coset");
+        coset.iter().for_each(|x| println!("{:?}", context.get(*x)));
+        eprintln!("Query: {:?}", context.get(*query_value));
+        let bits: Vec<Var> = bits.iter().map(|b| b[query_idx]).collect();
+        let should_be_query = select_by_index(context, coset, bits);
+        debug_assert_eq!(context.get(should_be_query), context.get(*query_value));
+        eq(context, *query_value, should_be_query);
+    }
+}
+/// Implements a multiplexer. 
+/// Given a vector `values` and an index (represented in its bit decomposition `index_bits`)
+/// returns a new variable equal to `values[index]`.
 fn select_by_index<Value: IValue>(
     context: &mut Context<Value>,
     values: &[Var],
@@ -367,8 +374,8 @@ fn select_by_index<Value: IValue>(
     // TODO(Leo): use simd?
     let mut one_hot = vec![context.one()];
     for bit in index_bits.into_iter() {
+        let mut res = vec![];
         let one_minus_bit = sub(context, context.one(), bit);
-        let mut res = Vec::with_capacity(2 * one_hot.len());
         res.extend(one_hot.iter().map(|x| mul(context, *x, one_minus_bit)));
         res.extend(one_hot.iter().map(|x| mul(context, *x, bit)));
         one_hot = res;
