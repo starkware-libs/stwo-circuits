@@ -206,8 +206,7 @@ fn test_fri_decommit_with_jumps() {
 
     // Compute the circuit FriProof.
     let siblings = test_construct_fri_siblings(&fri_proof, &config, &query_indices);
-    let auth_paths =
-        test_construct_first_fri_auth_paths(&fri_proof, log_domain_size, &query_indices);
+    let auth_paths = test_construct_fri_auth_paths(&fri_proof, &config, &query_indices);
     let circuit_fri_proof = FriProof {
         commit: FriCommitProof {
             layer_commitments: chain!(
@@ -300,25 +299,44 @@ fn test_construct_fri_siblings(
     (circle_fri_siblings, line_coset_vals_per_query_per_tree)
 }
 
-fn test_construct_first_fri_auth_paths(
+
+/// Constructs [AuthPaths] for the FRI trees with the values from the given proof
+/// ([ExtendedStarkProof]).
+pub fn test_construct_fri_auth_paths(
     proof: &ExtendedFriProof<Blake2sM31MerkleHasher>,
-    log_domain_size: usize,
+    config: &ProofConfig,
     query_locations: &[usize],
 ) -> AuthPaths<QM31> {
-    let first_layer_paths = query_locations
-        .iter()
-        .map(|query| {
-            let mut auth_path = AuthPath(vec![]);
-            let mut pos = *query;
-            for j in 0..log_domain_size {
-                let hash = proof.aux.first_layer.decommitment.all_node_values[j][&(pos ^ 1)];
-                if j > 0 {
-                    auth_path.0.push(hash.into());
-                }
-                pos >>= 1;
-            }
-            auth_path
+    let unsorted_query_locations = &query_locations;
+    let layers = chain!([&proof.aux.first_layer], &proof.aux.inner_layers);
+    let n = config.log_evaluation_domain_size();
+    // Gather the layer log sizes.
+    let mut layer_log_sizes = vec![n, n-1];
+    for i in 0..proof.aux.inner_layers.len() - 1 {
+        layer_log_sizes.push(layer_log_sizes.last().unwrap() - config.fri.steps[i]);
+    }
+
+    let res = zip_eq(layer_log_sizes, layers)
+        .map(|(log_size, aux)| {
+            unsorted_query_locations
+                .iter()
+                .map(|query| {
+                    let mut pos = *query;
+                    pos >>= n - log_size;
+                    let mut auth_path: AuthPath<QM31> = AuthPath(vec![]);
+                    for j in 0..log_size {
+                        let hash = aux.decommitment.all_node_values[j][&(pos ^ 1)];
+                        if j > 0 {
+                            // Don't add the first hash because it's computed from the fri sibling.
+                            auth_path.0.push(hash.into());
+                        }
+                        pos >>= 1;
+                    }
+                    auth_path
+                })
+                .collect()
         })
         .collect();
-    AuthPaths { data: vec![first_layer_paths] }
+
+    AuthPaths { data: res }
 }

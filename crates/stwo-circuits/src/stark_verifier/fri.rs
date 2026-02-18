@@ -12,7 +12,7 @@ use crate::stark_verifier::circle::{
     add_points_simd, double_x_simd, generator_point_simd, repeated_double_point_simd,
 };
 use crate::stark_verifier::fri_proof::{FriCommitProof, FriConfig, FriProof};
-use crate::stark_verifier::merkle::{AuthPaths, hash_leaf_qm31, merkle_node, verify_merkle_path};
+use crate::stark_verifier::merkle::{AuthPath, AuthPaths, hash_leaf_qm31, hash_node, merkle_node, verify_merkle_path};
 
 #[cfg(test)]
 #[path = "fri_test.rs"]
@@ -74,6 +74,7 @@ pub fn fri_decommit<Value: IValue>(
         zip_eq(zip_eq(&layer_commitments[1..], steps), line_coset_vals_per_query_per_tree)
             .enumerate()
     {
+        println!("Tree idx: {tree_idx}");
         let bit_range = (1 + bit_counter)..(1 + bit_counter + step);
         // Validate that the fri query is in the correct position inside the guessed
         // `fri_coset_per_query`.
@@ -86,7 +87,21 @@ pub fn fri_decommit<Value: IValue>(
 
         // Check merkle decommitment.
         for (query_idx, coset_values) in coset_per_query.iter().enumerate() {
-            // TODO: verify auth paths.
+            // Compute the leaves.
+            let mut buf: Vec<HashValue<Var>> = coset_values.iter().map(|val| hash_leaf_qm31(context, *val)).collect();
+            // Compute the internal nodes.
+            for _ in 0..step {
+                buf = buf.chunks_exact(2).map(|chunk| {
+                    let [left, right] = chunk.try_into().unwrap();
+                    hash_node(context, left, right)
+                }).collect();
+            }
+            // Verify the rest of the authentication path.
+            let auth_path = auth_paths.at(tree_idx + 1, query_idx); // We add 1 because the outer loop is 0 based.
+            let auth_path = AuthPath(auth_path.0[step - 1..].to_vec());
+            
+            let bits_for_query = bits.iter().skip(bit_counter + step).map(|b| b[query_idx]).collect_vec();
+            verify_merkle_path(context, buf[0], &bits_for_query[1..], *root, &auth_path);
         }
 
         // Translate base_point to the base of the current coset.
@@ -239,7 +254,6 @@ fn decommit_circle_to_line<Value: IValue>(
         let leaf = hash_leaf_qm31(context, *fri_query);
         let leaf_sibling = hash_leaf_qm31(context, *sibling);
 
-        // Skip the first `tree_idx` LSBs, that are not relevant for this tree.
         let bits_for_query = bits.iter().map(|b| b[query_idx]).collect_vec();
         let node = merkle_node(context, &leaf, &leaf_sibling, bits_for_query[0]);
 
