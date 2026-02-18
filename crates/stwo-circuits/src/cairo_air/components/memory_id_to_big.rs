@@ -128,6 +128,14 @@ pub struct Component {
     pub index: u32,
 }
 impl<Value: IValue> CircuitEval<Value> for Component {
+    fn name(&self) -> String {
+        if self.index == 0 {
+            "memory_id_to_big".to_string()
+        } else {
+            format!("memory_id_to_big_{}", self.index)
+        }
+    }
+
     fn evaluate(
         &self,
         context: &mut Context<Value>,

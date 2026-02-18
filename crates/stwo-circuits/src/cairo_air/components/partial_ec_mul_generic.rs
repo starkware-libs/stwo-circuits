@@ -2435,6 +2435,10 @@ pub fn accumulate_constraints<Value: IValue>(
 
 pub struct Component {}
 impl<Value: IValue> CircuitEval<Value> for Component {
+    fn name(&self) -> String {
+        "partial_ec_mul_generic".to_string()
+    }
+
     fn evaluate(
         &self,
         context: &mut Context<Value>,

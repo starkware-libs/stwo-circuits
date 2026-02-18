@@ -141,6 +141,10 @@ pub struct CircuitQm31OpsComponent {
 }
 
 impl<Value: IValue> CircuitEval<Value> for CircuitQm31OpsComponent {
+    fn name(&self) -> String {
+        "qm31_ops".to_string()
+    }
+
     fn trace_columns(&self) -> usize {
         N_TRACE_COLUMNS
     }

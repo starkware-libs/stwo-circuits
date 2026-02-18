@@ -9,6 +9,10 @@ use crate::{
 // An empty component that can be used when a component is disabled.
 pub struct EmptyComponent {}
 impl<Value: IValue> CircuitEval<Value> for EmptyComponent {
+    fn name(&self) -> String {
+        "empty_component".to_string()
+    }
+
     fn trace_columns(&self) -> usize {
         0
     }

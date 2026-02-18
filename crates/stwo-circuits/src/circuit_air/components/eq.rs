@@ -88,6 +88,10 @@ pub struct CircuitEqComponent {
 }
 
 impl<Value: IValue> CircuitEval<Value> for CircuitEqComponent {
+    fn name(&self) -> String {
+        "eq".to_string()
+    }
+
     fn trace_columns(&self) -> usize {
         N_TRACE_COLUMNS
     }
