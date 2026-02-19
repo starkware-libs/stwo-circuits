@@ -4,17 +4,19 @@ use stwo::core::fields::m31::M31;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 use super::simple_air::FIB_SEQUENCE_LENGTH;
-use crate::constraint_eval::RelationUse;
-use crate::constraint_eval::{CircuitEval, ComponentDataTrait, CompositionConstraintAccumulator};
-use crate::examples::simple_air::{FIB_PREPROCESSED_COLUMNS, LOG_SIZE_LONG, LOG_SIZE_SHORT};
-use crate::logup::combine_term;
-use crate::proof::Claim;
-use crate::statement::Statement;
+use crate::simple_air::{FIB_PREPROCESSED_COLUMNS, LOG_SIZE_LONG, LOG_SIZE_SHORT};
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::ivalue::IValue;
 use circuits::ops::div;
 use circuits::simd::Simd;
+use circuits_stark_verifier::constraint_eval::RelationUse;
+use circuits_stark_verifier::constraint_eval::{
+    CircuitEval, ComponentDataTrait, CompositionConstraintAccumulator,
+};
+use circuits_stark_verifier::logup::combine_term;
+use circuits_stark_verifier::proof::Claim;
+use circuits_stark_verifier::statement::Statement;
 
 /// This is currently hardcoded in the simple air.
 /// Fixing it is not worth the effort since it doesn't happen in a real AIR.
