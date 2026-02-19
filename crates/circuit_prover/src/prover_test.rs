@@ -7,6 +7,7 @@ use crate::witness::components::{
 };
 use crate::witness::preprocessed::PreProcessedTrace;
 use crate::witness::trace::{TraceGenerator, write_interaction_trace};
+use circuit_air::components::N_COMPONENTS;
 use circuit_air::statement::{CircuitStatement, INTERACTION_POW_BITS};
 use circuit_air::{CircuitClaim, CircuitInteractionElements};
 use circuits::blake::blake;
@@ -625,15 +626,15 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
             stark_proof,
             channel_salt,
         },
-        _preprocessed_trace_sizes,
+        preprocessed_trace_sizes,
     ) = prove_circuit(&mut fibonacci_context);
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
 
     // Verify.
-    let statement = CircuitStatement::default();
+    let statement = CircuitStatement::with_preprocessed_trace_sizes(&preprocessed_trace_sizes);
     let claim = Claim {
-        packed_enable_bits: pack_enable_bits(&[true, true]),
+        packed_enable_bits: pack_enable_bits(&[true; N_COMPONENTS]),
         packed_component_log_sizes: pack_component_log_sizes(&claim.log_sizes),
         claimed_sums: interaction_claim.claimed_sums.to_vec(),
     };
