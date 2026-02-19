@@ -1,10 +1,11 @@
 use crate::channel::Channel;
-use crate::fri::fold_coset;
+use crate::fri::{fold_coset, validate_query_position_in_coset};
 use crate::fri_proof::FriCommitProof;
 use circuits::blake::HashValue;
 use circuits::context::TraceContext;
 use circuits::ivalue::qm31_from_u32s;
 use circuits::ops::Guess;
+use rstest::rstest;
 use stwo::core::circle::Coset;
 use stwo::core::fields::qm31::SecureField;
 use stwo::core::fri::fold_coset as stwo_fold_coset;
@@ -114,4 +115,32 @@ fn test_fold_coset() {
 
     assert_eq!(context.get(actual), expected);
     context.validate_circuit();
+}
+
+#[rstest]
+#[case::success(true)]
+#[case::failure(false)]
+fn test_validate_query_position_in_coset(#[case] success: bool) {
+    let mut context = TraceContext::default();
+    let mut const_var = |value: u32| context.constant(qm31_from_u32s(value, 0, 0, 0));
+
+    // 3 queries, layer step = 2 (hence coset size = 2^2).
+    let fri_coset_per_query = vec![
+        vec![const_var(10), const_var(11), const_var(12), const_var(13)],
+        vec![const_var(20), const_var(21), const_var(22), const_var(23)],
+        vec![const_var(30), const_var(31), const_var(32), const_var(33)],
+    ];
+
+    let bits = vec![
+        vec![const_var(0), const_var(1), const_var(0)],
+        vec![const_var(0), const_var(0), const_var(1)],
+    ];
+
+    let mut fri_data = vec![const_var(10), const_var(21), const_var(32)];
+    if !success {
+        fri_data[2] = const_var(33);
+    }
+
+    validate_query_position_in_coset(&mut context, &fri_coset_per_query, &fri_data, &bits);
+    assert_eq!(context.is_circuit_valid(), success);
 }
