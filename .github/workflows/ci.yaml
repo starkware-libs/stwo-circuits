@@ -76,3 +76,16 @@ jobs:
         uses: re-actors/alls-green@v1.2.2
         with:
           jobs: ${{ toJSON(needs) }}
+
+  verifier-stable:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.STABLE_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Check verifier compiles on stable
+        env:
+          RUSTUP_TOOLCHAIN: ${{ env.STABLE_VERSION }}
+        run: cargo check --workspace --exclude circuit-prover --exclude circuits-stark-verifier-examples
