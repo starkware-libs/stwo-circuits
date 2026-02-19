@@ -89,3 +89,16 @@ jobs:
         env:
           RUSTUP_TOOLCHAIN: ${{ env.STABLE_VERSION }}
         run: cargo check --workspace --exclude circuit-prover --exclude circuits-stark-verifier-examples
+  
+  machete:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.NIGHTLY_VERSION }}
+      - uses: Swatinem/rust-cache@v2
+      - name: Install Machete
+        run: cargo install --locked cargo-machete
+      - name: Run Machete (detect unused dependencies)
+        run: cargo machete
