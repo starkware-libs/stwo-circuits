@@ -22,21 +22,21 @@ itertools = { version = "0.12", default-features = false, features = [
     "use_alloc",
 ] }
 num-traits = { version = "0.2.19", default-features = false }
-stwo = { git = "https://github.com/starkware-libs/stwo", rev = "dcc899bc", features = [
+stwo = { git = "https://github.com/starkware-libs/stwo", rev = "b70dbd31", features = [
     "parallel",
     "prover",
 ], default-features = false }
-stwo-constraint-framework = { git = "https://github.com/starkware-libs/stwo", rev = "dcc899bc", features = [
+stwo-constraint-framework = { git = "https://github.com/starkware-libs/stwo", rev = "b70dbd31", features = [
     "parallel",
     "prover",
 ] }
-stwo-air-utils-derive = { git = "https://github.com/starkware-libs/stwo", rev = "dcc899bc" }
-stwo-air-utils = { git = "https://github.com/starkware-libs/stwo", rev = "dcc899bc" }
-cairo-air = { git = "https://github.com/starkware-libs/stwo-cairo", rev = "cf18bdf4" }
-stwo_cairo_prover = { package = "stwo-cairo-prover", git = "https://github.com/starkware-libs/stwo-cairo", rev = "cf18bdf4" }
-stwo_cairo_common = { package = "stwo-cairo-common", git = "https://github.com/starkware-libs/stwo-cairo", rev = "cf18bdf4", features = ["prover"] }
-dev_utils = { package = "stwo-cairo-dev-utils", git = "https://github.com/starkware-libs/stwo-cairo", rev = "cf18bdf4" }
-stwo_cairo_utils = { package = "stwo-cairo-utils", git = "https://github.com/starkware-libs/stwo-cairo", rev = "cf18bdf4" }
+stwo-air-utils-derive = { git = "https://github.com/starkware-libs/stwo", rev = "b70dbd31" }
+stwo-air-utils = { git = "https://github.com/starkware-libs/stwo", rev = "b70dbd31" }
+cairo-air = { git = "https://github.com/starkware-libs/stwo-cairo", rev = "dc653e77" }
+stwo_cairo_prover = { package = "stwo-cairo-prover", git = "https://github.com/starkware-libs/stwo-cairo", rev = "dc653e77" }
+stwo_cairo_common = { package = "stwo-cairo-common", git = "https://github.com/starkware-libs/stwo-cairo", rev = "dc653e77", features = ["prover"] }
+stwo_cairo_dev_utils = { package = "stwo-cairo-dev-utils", git = "https://github.com/starkware-libs/stwo-cairo", rev = "dc653e77" }
+stwo_cairo_utils = { package = "stwo-cairo-utils", git = "https://github.com/starkware-libs/stwo-cairo", rev = "dc653e77" }
 circuits = { path = "crates/circuits"}
 circuit-air = { path = "crates/circuit_air"}
 circuits-stark-verifier = { path = "crates/stark_verifier"}
@@ -44,3 +44,7 @@ rstest = "0.26.1"
 expect-test = "1.5.1"
 rayon = "1.10.0"
 serde = "1.0.219"
+
+# Compile the circuit-prover crate with optimization level 3 to speed up the blake related tests.
+[profile.test.package.circuit-prover]
+opt-level = 3

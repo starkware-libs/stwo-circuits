@@ -1,7 +1,6 @@
 use crate::statement::{CairoStatement, MEMORY_VALUES_LIMBS, all_components};
 use cairo_air::CairoProof;
 use cairo_air::flat_claims::FlatClaim;
-use cairo_air::flat_claims::flatten_interaction_claim;
 use circuits::context::{Context, TraceContext};
 use circuits::ops::Guess;
 use circuits_stark_verifier::empty_component::EmptyComponent;
@@ -29,7 +28,7 @@ pub fn verify_cairo(proof: &CairoProof<Blake2sM31MerkleHasher>) -> Context<QM31>
     } = proof;
 
     let FlatClaim { component_enable_bits, component_log_sizes, public_data } =
-        FlatClaim::from_cairo_claim(claim);
+        claim.flatten_claim();
 
     let (public_claim, outputs, program) = public_data.pack_into_u32s();
 
@@ -59,7 +58,7 @@ pub fn verify_cairo(proof: &CairoProof<Blake2sM31MerkleHasher>) -> Context<QM31>
     let config =
         ProofConfig::from_statement(&statement, &proof.extended_stark_proof.proof.config, 24);
     assert_eq!(component_enable_bits.len(), config.n_components);
-    let component_claimed_sums = flatten_interaction_claim(interaction_claim);
+    let component_claimed_sums = interaction_claim.flatten_interaction_claim();
     assert_eq!(component_claimed_sums.len(), config.n_components);
     let claim = Claim {
         packed_enable_bits: pack_enable_bits(&component_enable_bits),

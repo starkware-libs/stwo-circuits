@@ -16,7 +16,7 @@ stwo-air-utils.workspace = true
 cairo-air.workspace = true
 rayon.workspace = true
 stwo_cairo_prover.workspace = true
-dev_utils.workspace = true
+stwo_cairo_dev_utils.workspace = true
 stwo_cairo_utils.workspace = true
 circuits.workspace = true
 
