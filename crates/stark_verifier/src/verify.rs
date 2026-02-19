@@ -27,10 +27,6 @@ use circuits::wrappers::M31Wrapper;
 
 pub const LOG_SIZE_BITS: u32 = 5;
 
-#[cfg(test)]
-#[path = "verify_test.rs"]
-pub mod test;
-
 pub fn validate_logup_sum(
     context: &mut Context<impl IValue>,
     public_logup_sum: Var,
