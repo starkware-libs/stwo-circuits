@@ -1,3 +1,4 @@
+use circuits::utils::select_by_index;
 use itertools::{Itertools, zip_eq};
 use stwo::core::circle::CirclePoint;
 
@@ -100,8 +101,7 @@ pub fn fri_decommit<Value: IValue>(
 
 /// Folds a coset of log size n to a point using the folding coefficients `alphas`.
 /// `twiddles_per_fold[i]` contains the twiddles needed at fold i, and has length 2^(n - 1 - i).
-// TODO(Leo): remove the allow.
-#[allow(dead_code)]
+#[expect(dead_code)]
 fn fold_coset<Value: IValue>(
     context: &mut Context<Value>,
     coset_values: &[Var],
@@ -121,4 +121,27 @@ fn fold_coset<Value: IValue>(
         }
     }
     values[0]
+}
+
+/// Verifies that the query value is in the correct position among the guessed coset values.
+///
+/// # Arguments
+///
+/// - `context`: the circuit's context.
+/// - `fri_coset_per_query`: for each query, the values of the layer's polynomial on the "line
+///   coset" containing the query point. The coset log size is equal to this layer's fri fold step.
+/// - `fri_data`: the query values.
+/// - `bits`: for each query, the coset log size-many lowest significant bits of the query position.
+#[expect(dead_code)]
+fn validate_query_position_in_coset<Value: IValue>(
+    context: &mut Context<Value>,
+    fri_coset_per_query: &[Vec<Var>],
+    fri_data: &[Var],
+    bits: &[Vec<Var>],
+) {
+    for (query_idx, (query_value, coset)) in zip_eq(fri_data, fri_coset_per_query).enumerate() {
+        let bits: Vec<Var> = bits.iter().map(|b| b[query_idx]).collect();
+        let expected_query_value = select_by_index(context, coset, &bits);
+        eq(context, *query_value, expected_query_value);
+    }
 }
