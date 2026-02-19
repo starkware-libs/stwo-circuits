@@ -12,7 +12,6 @@ pub use rayon::iter::IntoParallelIterator;
 pub use rayon::iter::IntoParallelRefIterator;
 pub use rayon::iter::IntoParallelRefMutIterator;
 pub use rayon::iter::ParallelIterator;
-pub use serde::{Deserialize, Serialize};
 pub use std::array::from_fn;
 pub use std::collections::HashMap;
 pub use std::simd::Simd;

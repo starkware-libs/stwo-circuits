@@ -1271,21 +1271,15 @@ checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
 name = "circuit-air"
 version = "0.1.0"
 dependencies = [
- "blake2",
- "cairo-air",
  "circuits",
  "circuits-stark-verifier",
  "expect-test",
- "hashbrown 0.15.5",
- "indexmap",
  "indoc",
  "itertools 0.12.1",
  "num-traits",
- "rayon",
  "rstest",
  "serde",
  "stwo",
- "stwo-air-utils-derive",
  "stwo-cairo-common",
  "stwo-constraint-framework",
 ]
@@ -1294,20 +1288,12 @@ dependencies = [
 name = "circuit-cairo-air"
 version = "0.1.0"
 dependencies = [
- "blake2",
  "cairo-air",
  "circuits",
  "circuits-stark-verifier",
- "expect-test",
- "hashbrown 0.15.5",
- "indexmap",
- "indoc",
  "itertools 0.12.1",
  "num-traits",
- "rayon",
- "rstest",
  "stwo",
- "stwo-air-utils-derive",
  "stwo-cairo-dev-utils",
  "stwo-cairo-prover",
  "stwo-cairo-utils",
@@ -1318,20 +1304,14 @@ dependencies = [
 name = "circuit-prover"
 version = "0.1.0"
 dependencies = [
- "blake2",
  "cairo-air",
  "circuit-air",
  "circuits",
  "circuits-stark-verifier",
  "expect-test",
- "hashbrown 0.15.5",
- "indexmap",
- "indoc",
  "itertools 0.12.1",
  "num-traits",
  "rayon",
- "rstest",
- "serde",
  "stwo",
  "stwo-air-utils",
  "stwo-air-utils-derive",
@@ -1344,22 +1324,13 @@ dependencies = [
 name = "circuit-serialize"
 version = "0.1.0"
 dependencies = [
- "blake2",
- "cairo-air",
  "circuits",
  "circuits-stark-verifier",
  "circuits-stark-verifier-examples",
  "expect-test",
- "hashbrown 0.15.5",
- "indexmap",
  "indoc",
- "itertools 0.12.1",
- "num-traits",
- "rayon",
  "rstest",
  "stwo",
- "stwo-air-utils-derive",
- "stwo-constraint-framework",
 ]
 
 [[package]]
@@ -1367,27 +1338,20 @@ name = "circuits"
 version = "0.1.0"
 dependencies = [
  "blake2",
- "cairo-air",
  "expect-test",
  "hashbrown 0.15.5",
  "indexmap",
  "indoc",
  "itertools 0.12.1",
  "num-traits",
- "rayon",
  "rstest",
- "serde",
  "stwo",
- "stwo-air-utils-derive",
- "stwo-constraint-framework",
 ]
 
 [[package]]
 name = "circuits-stark-verifier"
 version = "0.1.0"
 dependencies = [
- "blake2",
- "cairo-air",
  "circuits",
  "expect-test",
  "hashbrown 0.15.5",
@@ -1395,10 +1359,8 @@ dependencies = [
  "indoc",
  "itertools 0.12.1",
  "num-traits",
- "rayon",
  "rstest",
  "stwo",
- "stwo-air-utils-derive",
  "stwo-constraint-framework",
 ]
 
@@ -1408,7 +1370,6 @@ version = "0.1.0"
 dependencies = [
  "circuits",
  "circuits-stark-verifier",
- "expect-test",
  "itertools 0.12.1",
  "num-traits",
  "rstest",
