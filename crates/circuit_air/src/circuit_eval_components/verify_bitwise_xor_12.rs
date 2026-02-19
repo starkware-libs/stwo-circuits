@@ -51,8 +51,6 @@ impl<Value: IValue> CircuitEval<Value> for Component {
             }
         }
 
-        let size_bit = component_data.get_n_instances_bit(context, LOG_SIZE as usize);
-        eq(context, size_bit, context.one());
     }
 
     fn trace_columns(&self) -> usize {

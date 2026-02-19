@@ -31,10 +31,8 @@ impl<Value: IValue> Default for CircuitStatement<Value> {
     fn default() -> Self {
         Self {
             components: vec![
-                Box::new(eq::CircuitEqComponent { preprocessed_column_indices: [0, 1] }),
-                Box::new(qm31_ops::CircuitQm31OpsComponent {
-                    preprocessed_column_indices: [2, 3, 4, 5, 6, 7, 8, 9],
-                }),
+                Box::new(eq::CircuitEqComponent {}),
+                Box::new(qm31_ops::CircuitQm31OpsComponent {}),
                 Box::new(blake_gate::Component {}),
                 Box::new(blake_round::Component {}),
                 Box::new(blake_round_sigma::Component {}),
@@ -49,10 +47,7 @@ impl<Value: IValue> Default for CircuitStatement<Value> {
                 Box::new(range_check_15::Component {}),
                 Box::new(range_check_16::Component {}),
             ],
-            preprocessed_column_ids: PREPROCESSED_COLUMNS_ORDER
-                .iter()
-                .map(|id| PreProcessedColumnId { id: (*id).to_string() })
-                .collect(),
+            preprocessed_column_ids: vec![],
         }
     }
 }

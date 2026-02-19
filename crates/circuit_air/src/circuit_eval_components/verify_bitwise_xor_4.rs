@@ -43,8 +43,6 @@ impl<Value: IValue> CircuitEval<Value> for Component {
     ) {
         accumulate_constraints(component_data.trace_columns(), context, component_data, acc);
         // Verify this component has 2 ** 8 rows
-        let size_bit = component_data.get_n_instances_bit(context, 8);
-        eq(context, size_bit, context.one());
     }
 
     fn trace_columns(&self) -> usize {

@@ -55,10 +55,20 @@ macro_rules! eval {
 }
 
 /// Adds an equality gate to the circuit.
+#[track_caller]
 pub fn eq<Value: IValue>(context: &mut Context<Value>, a: Var, b: Var) {
     context.stats.equals += 1;
     if context.assert_eq_on_eval {
-        assert_eq!(context.get(a), context.get(b), "Eq failed: Vars {a:?} and {b:?}");
+        let caller = std::panic::Location::caller();
+        let gate_idx = context.circuit.eq.len();
+        assert_eq!(
+            context.get(a),
+            context.get(b),
+            "Eq failed: gate_idx={gate_idx}, caller={}:{}:{}, vars {a:?} and {b:?}",
+            caller.file(),
+            caller.line(),
+            caller.column()
+        );
     }
     context.circuit.eq.push(Eq { in0: a.idx, in1: b.idx });
 }

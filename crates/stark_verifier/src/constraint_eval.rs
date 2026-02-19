@@ -325,6 +325,13 @@ pub fn compute_composition_polynomial<Value: IValue>(
             interaction_columns,
             &component_data,
         );
+        if std::env::var("CIRCUIT_DEBUG_DUMP_COMPONENT_ACCUM").is_ok() {
+            eprintln!(
+                "circuit_accum[{}]={:?}",
+                component_index,
+                context.get(evaluation_accumulator.accumulation)
+            );
+        }
     }
 
     assert!(oods_samples.trace.is_empty(), "unconsumed trace columns");

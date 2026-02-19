@@ -40,6 +40,10 @@ impl Channel {
         self.digest
     }
 
+    pub fn debug_digest(&self) -> HashValue<Var> {
+        self.digest
+    }
+
     #[cfg(test)]
     pub fn from_digest(
         context: &mut circuits::context::TraceContext,
