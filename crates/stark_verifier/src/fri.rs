@@ -1,3 +1,4 @@
+use circuits::utils::select_by_index;
 use itertools::{Itertools, zip_eq};
 use stwo::core::circle::CirclePoint;
 
@@ -121,4 +122,28 @@ fn fold_coset<Value: IValue>(
         }
     }
     values[0]
+}
+
+/// Verifies that the query value is in the correct position among the guessed coset values.
+///
+/// # Arguments
+///
+/// - `context`: the circuit's context.
+/// - `fri_coset_per_query`: for each query, the values of the layer's polynomial on the "line
+///   coset" containing the query point. The coset log size is equal to this layer's fri fold step.
+/// - `fri_data`: the query values.
+/// - `bits`: for each query, the coset log size-many lowest significant bits of the query position.
+// TODO(Leo): remove the allow.
+#[allow(dead_code)]
+fn validate_query_position_in_coset<Value: IValue>(
+    context: &mut Context<Value>,
+    fri_coset_per_query: &[Vec<Var>],
+    fri_data: &[Var],
+    bits: &[Vec<Var>],
+) {
+    for (query_idx, (query_value, coset)) in zip_eq(fri_data, fri_coset_per_query).enumerate() {
+        let bits: Vec<Var> = bits.iter().map(|b| b[query_idx]).collect();
+        let should_be_query = select_by_index(context, coset, &bits);
+        eq(context, *query_value, should_be_query);
+    }
 }
