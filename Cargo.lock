@@ -1285,12 +1285,8 @@ dependencies = [
  "rstest",
  "serde",
  "stwo",
- "stwo-air-utils",
  "stwo-air-utils-derive",
  "stwo-cairo-common",
- "stwo-cairo-dev-utils",
- "stwo-cairo-prover",
- "stwo-cairo-utils",
  "stwo-constraint-framework",
 ]
 
@@ -1311,7 +1307,6 @@ dependencies = [
  "rayon",
  "rstest",
  "stwo",
- "stwo-air-utils",
  "stwo-air-utils-derive",
  "stwo-cairo-dev-utils",
  "stwo-cairo-prover",
@@ -1341,9 +1336,7 @@ dependencies = [
  "stwo-air-utils",
  "stwo-air-utils-derive",
  "stwo-cairo-common",
- "stwo-cairo-dev-utils",
  "stwo-cairo-prover",
- "stwo-cairo-utils",
  "stwo-constraint-framework",
 ]
 
@@ -1365,11 +1358,7 @@ dependencies = [
  "rayon",
  "rstest",
  "stwo",
- "stwo-air-utils",
  "stwo-air-utils-derive",
- "stwo-cairo-dev-utils",
- "stwo-cairo-prover",
- "stwo-cairo-utils",
  "stwo-constraint-framework",
 ]
 
@@ -1389,12 +1378,7 @@ dependencies = [
  "rstest",
  "serde",
  "stwo",
- "stwo-air-utils",
  "stwo-air-utils-derive",
- "stwo-cairo-common",
- "stwo-cairo-dev-utils",
- "stwo-cairo-prover",
- "stwo-cairo-utils",
  "stwo-constraint-framework",
 ]
 
@@ -1414,11 +1398,7 @@ dependencies = [
  "rayon",
  "rstest",
  "stwo",
- "stwo-air-utils",
  "stwo-air-utils-derive",
- "stwo-cairo-dev-utils",
- "stwo-cairo-prover",
- "stwo-cairo-utils",
  "stwo-constraint-framework",
 ]
 

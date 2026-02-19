@@ -12,14 +12,9 @@ num-traits.workspace = true
 stwo.workspace = true
 stwo-constraint-framework.workspace = true
 stwo-air-utils-derive.workspace = true
-stwo-air-utils.workspace = true
 cairo-air.workspace = true
 rayon.workspace = true
 serde.workspace = true
-stwo_cairo_prover.workspace = true
-stwo_cairo_common.workspace = true
-stwo_cairo_dev_utils.workspace = true
-stwo_cairo_utils.workspace = true
 
 [dev-dependencies]
 indoc.workspace = true

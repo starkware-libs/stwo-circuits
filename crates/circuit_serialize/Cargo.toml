@@ -12,12 +12,8 @@ num-traits.workspace = true
 stwo.workspace = true
 stwo-constraint-framework.workspace = true
 stwo-air-utils-derive.workspace = true
-stwo-air-utils.workspace = true
 cairo-air.workspace = true
 rayon.workspace = true
-stwo_cairo_prover.workspace = true
-stwo_cairo_dev_utils.workspace = true
-stwo_cairo_utils.workspace = true
 circuits.workspace = true
 circuits-stark-verifier.workspace = true
 
