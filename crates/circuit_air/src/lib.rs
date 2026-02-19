@@ -1,5 +1,3 @@
-#![feature(variant_count)]
-
 pub mod component_utils;
 pub mod components;
 pub mod preprocessed_columns;
