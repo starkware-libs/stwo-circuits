@@ -62,7 +62,7 @@ jobs:
         with:
           toolchain: ${{ env.NIGHTLY_VERSION }}
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test
+      - run: cargo test -r
 
   all-tests:
     runs-on: ubuntu-latest
