@@ -56,10 +56,6 @@ pub fn verify<Value: IValue>(
 
     // Mix the channel salt.
     channel.mix_qm31s(context, [proof.channel_salt]);
-    if std::env::var("CIRCUIT_DEBUG_TRANSCRIPT").is_ok() {
-        let d = channel.debug_digest();
-        eprintln!("circuit_digest[salt]={:?} {:?}", context.get(d.0), context.get(d.1));
-    }
     let pcs_config = context.constant(QM31::from_u32_unchecked(
         config.n_proof_of_work_bits,
         config.fri.log_blowup_factor as u32,
@@ -67,10 +63,6 @@ pub fn verify<Value: IValue>(
         config.fri.log_n_last_layer_coefs as u32,
     ));
     channel.mix_qm31s(context, [pcs_config]);
-    if std::env::var("CIRCUIT_DEBUG_TRANSCRIPT").is_ok() {
-        let d = channel.debug_digest();
-        eprintln!("circuit_digest[pcs]={:?} {:?}", context.get(d.0), context.get(d.1));
-    }
 
     // TODO(ilya): Can we remove the following?.
     let lifting_log_size = context.constant(QM31::from_u32_unchecked(
@@ -80,17 +72,9 @@ pub fn verify<Value: IValue>(
         0,
     ));
     channel.mix_qm31s(context, [lifting_log_size]);
-    if std::env::var("CIRCUIT_DEBUG_TRANSCRIPT").is_ok() {
-        let d = channel.debug_digest();
-        eprintln!("circuit_digest[lift]={:?} {:?}", context.get(d.0), context.get(d.1));
-    }
 
     // Mix the trace commitments into the channel.
     channel.mix_commitment(context, proof.preprocessed_root);
-    if std::env::var("CIRCUIT_DEBUG_TRANSCRIPT").is_ok() {
-        let d = channel.debug_digest();
-        eprintln!("circuit_digest[pp_root]={:?} {:?}", context.get(d.0), context.get(d.1));
-    }
 
     let component_log_sizes =
         Simd::from_packed(proof.claim.packed_component_log_sizes.clone(), config.n_components);
@@ -114,23 +98,11 @@ pub fn verify<Value: IValue>(
     for claim_to_mix in statement.claims_to_mix(context) {
         channel.mix_qm31s(context, claim_to_mix.iter().cloned());
     }
-    if std::env::var("CIRCUIT_DEBUG_TRANSCRIPT").is_ok() {
-        let d = channel.debug_digest();
-        eprintln!("circuit_digest[claim]={:?} {:?}", context.get(d.0), context.get(d.1));
-    }
 
     // Mix the trace commitments into the channel.
     channel.mix_commitment(context, proof.trace_root);
-    if std::env::var("CIRCUIT_DEBUG_TRANSCRIPT").is_ok() {
-        let d = channel.debug_digest();
-        eprintln!("circuit_digest[trace_root]={:?} {:?}", context.get(d.0), context.get(d.1));
-    }
 
     channel.proof_of_work(context, config.interaction_pow_bits, proof.interaction_pow_nonce);
-    if std::env::var("CIRCUIT_DEBUG_TRANSCRIPT").is_ok() {
-        let d = channel.debug_digest();
-        eprintln!("circuit_digest[i_pow]={:?} {:?}", context.get(d.0), context.get(d.1));
-    }
     // Pick the interaction elements.
     let [interaction_z, interaction_alpha] = channel.draw_two_qm31s(context);
 
@@ -143,15 +115,7 @@ pub fn verify<Value: IValue>(
     validate_logup_sum(context, public_logup_sum, &proof.claim.claimed_sums, &enable_bits);
 
     channel.mix_qm31s(context, proof.claim.claimed_sums.iter().cloned());
-    if std::env::var("CIRCUIT_DEBUG_TRANSCRIPT").is_ok() {
-        let d = channel.debug_digest();
-        eprintln!("circuit_digest[claimed_sums]={:?} {:?}", context.get(d.0), context.get(d.1));
-    }
     channel.mix_commitment(context, proof.interaction_root);
-    if std::env::var("CIRCUIT_DEBUG_TRANSCRIPT").is_ok() {
-        let d = channel.debug_digest();
-        eprintln!("circuit_digest[interaction_root]={:?} {:?}", context.get(d.0), context.get(d.1));
-    }
 
     // Draw a random QM31 coefficient for the composition polynomial.
     let composition_polynomial_coeff = channel.draw_qm31(context);
@@ -160,43 +124,12 @@ pub fn verify<Value: IValue>(
 
     // Draw a random point for the OODS.
     let oods_point = channel.draw_point(context);
-    if std::env::var("CIRCUIT_DEBUG_DUMP_COMPONENT_ACCUM").is_ok() {
-        eprintln!(
-            "circuit_chal coeff={:?} oods_x={:?} oods_y={:?}",
-            context.get(composition_polynomial_coeff),
-            context.get(oods_point.x),
-            context.get(oods_point.y)
-        );
-    }
 
     let unpacked_component_sizes = Simd::unpack(context, &component_sizes);
-    if std::env::var("CIRCUIT_DEBUG_DUMP_COMPONENT_ACCUM").is_ok() {
-        let unpacked_log_sizes = Simd::unpack(context, &component_log_sizes);
-        for (idx, ((size, log_size), claimed_sum)) in unpacked_component_sizes
-            .iter()
-            .zip(unpacked_log_sizes.iter())
-            .zip(proof.claim.claimed_sums.iter())
-            .enumerate()
-        {
-            eprintln!(
-                "circuit_component[{idx}] log_size={:?} size={:?} claimed_sum={:?}",
-                context.get(*log_size),
-                context.get(*size),
-                context.get(*claimed_sum)
-            );
-        }
-    }
     check_relation_uses(context, statement, &component_sizes_bits);
 
     // Compute the composition evaluation at the OODS point from `proof.*_at_oods` and compare
     // to `proof.composition_eval_at_oods`.
-    let mut debug_enable_bits = enable_bits.clone();
-    if let Ok(disabled_idx) = std::env::var("CIRCUIT_DEBUG_DISABLE_COMPONENT") {
-        let idx: usize = disabled_idx.parse().expect("invalid component index");
-        if idx < debug_enable_bits.len() {
-            debug_enable_bits[idx] = context.zero();
-        }
-    }
     let composition_eval = compute_composition_polynomial(
         context,
         config,
@@ -212,21 +145,16 @@ pub fn verify<Value: IValue>(
             composition_polynomial_coeff,
             interaction_elements: [interaction_z, interaction_alpha],
             claimed_sums: &proof.claim.claimed_sums,
-            enable_bits: &debug_enable_bits,
+            enable_bits: &enable_bits,
             component_sizes: &unpacked_component_sizes,
             n_instances_bits: &component_sizes_bits,
         },
     );
-    let mut max_log_degree_bound = config.log_trace_size() + COMPOSITION_LOG_SPLIT as usize;
-    if let Ok(extra) = std::env::var("CIRCUIT_DEBUG_MAX_LOG_DEGREE_EXTRA") {
-        let extra: usize = extra.parse().expect("invalid max log degree extra");
-        max_log_degree_bound += extra;
-    }
     let expected_composition_eval = extract_expected_composition_eval(
         context,
         &proof.composition_eval_at_oods,
         oods_point,
-        max_log_degree_bound,
+        config.log_trace_size() + COMPOSITION_LOG_SPLIT as usize,
     );
     eq(context, composition_eval, expected_composition_eval);
 

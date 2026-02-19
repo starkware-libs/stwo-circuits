@@ -25,16 +25,12 @@ use circuits_stark_verifier::statement::Statement;
 use expect_test::expect;
 use num_traits::{One, Zero};
 use std::sync::Arc;
-use stwo::core::air::accumulation::PointEvaluationAccumulator;
-use stwo::core::air::{Component, Components as NativeComponents};
+use stwo::core::air::Component;
 use stwo::core::channel::Blake2sM31Channel;
 use stwo::core::channel::Channel;
-use stwo::core::circle::CirclePoint;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
-use stwo::core::pcs::utils::get_lifting_log_size;
 use stwo::core::pcs::{CommitmentSchemeVerifier, PcsConfig, TreeVec};
-use stwo::core::verifier::COMPOSITION_LOG_SPLIT;
 use stwo::core::poly::circle::CanonicCoset;
 use stwo::core::proof_of_work::GrindOps;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
@@ -626,93 +622,15 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
             claim,
             interaction_pow_nonce,
             interaction_claim,
-            components,
+            components: _,
             stark_proof,
             channel_salt,
         },
-        preprocessed_trace_sizes,
+        _preprocessed_trace_sizes,
     ) = prove_circuit(&mut fibonacci_context);
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
-    if std::env::var("CIRCUIT_DEBUG_DUMP_COMPONENT_ACCUM").is_ok() {
-        let mut verifier_channel = Blake2sM31Channel::default();
-        verifier_channel.mix_felts(&[channel_salt.into()]);
-        if std::env::var("CIRCUIT_DEBUG_TRANSCRIPT").is_ok() {
-            eprintln!("native_digest[salt]={:?}", verifier_channel.digest());
-        }
-        pcs_config.mix_into(&mut verifier_channel);
-        if std::env::var("CIRCUIT_DEBUG_TRANSCRIPT").is_ok() {
-            eprintln!("native_digest[pcs]={:?}", verifier_channel.digest());
-            eprintln!(
-                "native_digest[lift]={:?}",
-                verifier_channel.digest()
-            );
-        }
-        let mut commitment_scheme =
-            CommitmentSchemeVerifier::<Blake2sM31MerkleChannel>::new(pcs_config);
-        let sizes = TreeVec::concat_cols(components.iter().map(|c| c.trace_log_degree_bounds()));
-        commitment_scheme.commit(
-            proof.proof.commitments[0],
-            &preprocessed_trace_sizes,
-            &mut verifier_channel,
-        );
-        if std::env::var("CIRCUIT_DEBUG_TRANSCRIPT").is_ok() {
-            eprintln!("native_digest[pp_root]={:?}", verifier_channel.digest());
-        }
-        claim.mix_into(&mut verifier_channel);
-        if std::env::var("CIRCUIT_DEBUG_TRANSCRIPT").is_ok() {
-            eprintln!("native_digest[claim]={:?}", verifier_channel.digest());
-        }
-        commitment_scheme.commit(proof.proof.commitments[1], &sizes[1], &mut verifier_channel);
-        if std::env::var("CIRCUIT_DEBUG_TRANSCRIPT").is_ok() {
-            eprintln!("native_digest[trace_root]={:?}", verifier_channel.digest());
-        }
-        verifier_channel.verify_pow_nonce(INTERACTION_POW_BITS, interaction_pow_nonce);
-        verifier_channel.mix_u64(interaction_pow_nonce);
-        if std::env::var("CIRCUIT_DEBUG_TRANSCRIPT").is_ok() {
-            eprintln!("native_digest[i_pow]={:?}", verifier_channel.digest());
-        }
-        let _native_interaction_elements = CircuitInteractionElements::draw(&mut verifier_channel);
-        interaction_claim.mix_into(&mut verifier_channel);
-        if std::env::var("CIRCUIT_DEBUG_TRANSCRIPT").is_ok() {
-            eprintln!("native_digest[claimed_sums]={:?}", verifier_channel.digest());
-        }
-        commitment_scheme.commit(proof.proof.commitments[2], &sizes[2], &mut verifier_channel);
-        if std::env::var("CIRCUIT_DEBUG_TRANSCRIPT").is_ok() {
-            eprintln!("native_digest[interaction_root]={:?}", verifier_channel.digest());
-        }
 
-        let native_components = NativeComponents {
-            components: components.iter().map(|c| c.as_ref()).collect(),
-            n_preprocessed_columns: preprocessed_trace_sizes.len(),
-        };
-        let split_composition_log_degree_bound =
-            native_components.composition_log_degree_bound() - COMPOSITION_LOG_SPLIT;
-        let lifting_log_size = get_lifting_log_size(
-            &commitment_scheme.config,
-            split_composition_log_degree_bound + commitment_scheme.config.fri_config.log_blowup_factor,
-        );
-        let max_log_degree_bound =
-            lifting_log_size - commitment_scheme.config.fri_config.log_blowup_factor;
-        let random_coeff = verifier_channel.draw_secure_felt();
-        commitment_scheme.commit(
-            proof.proof.commitments[3],
-            &[max_log_degree_bound; 2 * stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE],
-            &mut verifier_channel,
-        );
-        let oods_point = CirclePoint::get_random_point(&mut verifier_channel);
-        eprintln!("native_chal coeff={random_coeff:?} oods_x={:?} oods_y={:?}", oods_point.x, oods_point.y);
-        let mut native_acc = PointEvaluationAccumulator::new(random_coeff);
-        for (idx, component) in native_components.components.iter().enumerate() {
-            component.evaluate_constraint_quotients_at_point(
-                oods_point,
-                &proof.proof.sampled_values,
-                &mut native_acc,
-                max_log_degree_bound,
-            );
-            eprintln!("native_accum[{idx}]={:?}", native_acc.clone().finalize());
-        }
-    }
     // Verify.
     let statement = CircuitStatement::with_component_log_sizes(&claim.log_sizes);
     let (pp_trace_for_order, _) =
