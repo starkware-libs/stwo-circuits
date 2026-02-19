@@ -97,3 +97,28 @@ pub fn fri_decommit<Value: IValue>(
         eq(context, value, last_layer_val);
     }
 }
+
+/// Folds a coset of log size n to a point using the folding coefficients `alphas`.
+/// `twiddles_per_fold[i]` contains the twiddles needed at fold i, and has length 2^(n - 1 - i).
+// TODO(Leo): remove the allow.
+#[allow(dead_code)]
+fn fold_coset<Value: IValue>(
+    context: &mut Context<Value>,
+    coset_values: &[Var],
+    twiddles_per_fold: &[Vec<Var>],
+    alphas: &[Var],
+) -> Var {
+    assert_eq!(twiddles_per_fold.len(), alphas.len());
+    assert_eq!(coset_values.len(), 1 << twiddles_per_fold.len());
+    let mut values = coset_values.to_vec();
+
+    for (i, twiddles) in twiddles_per_fold.iter().enumerate() {
+        for (j, t) in twiddles.iter().enumerate() {
+            let (even, odd) = (values[2 * j], values[2 * j + 1]);
+            let g = eval!(context, (even) + (odd));
+            let h = eval!(context, ((even) - (odd)) * (*t));
+            values[j] = eval!(context, (g) + ((alphas[i]) * (h)));
+        }
+    }
+    values[0]
+}
