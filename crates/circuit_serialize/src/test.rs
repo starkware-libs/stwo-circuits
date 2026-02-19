@@ -2,10 +2,10 @@ use stwo::core::fields::qm31::QM31;
 
 use crate::deserialize::deserialize_proof_with_config;
 use crate::serialize::CircuitSerialize;
-use circuits_stark_verifier::examples::simple_air::create_proof;
-use circuits_stark_verifier::examples::simple_statement::SimpleStatement;
 use circuits_stark_verifier::proof::ProofConfig;
 use circuits_stark_verifier::proof_from_stark_proof::proof_from_stark_proof;
+use circuits_stark_verifier_examples::simple_air::create_proof;
+use circuits_stark_verifier_examples::simple_statement::SimpleStatement;
 
 #[test]
 fn test_serialize_deserialize() {

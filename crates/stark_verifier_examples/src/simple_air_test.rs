@@ -4,11 +4,9 @@ use stwo::core::pcs::{CommitmentSchemeVerifier, TreeVec};
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::core::verifier::verify;
 
-use crate::examples::simple_air::{
-    INTERACTION_POW_BITS, LOG_SIZE_LONG, LOG_SIZE_SHORT, create_proof,
-};
-use crate::proof::Claim;
+use crate::simple_air::{INTERACTION_POW_BITS, LOG_SIZE_LONG, LOG_SIZE_SHORT, create_proof};
 use circuits::ivalue::qm31_from_u32s;
+use circuits_stark_verifier::proof::Claim;
 
 #[test]
 fn verify_simple_proof() {

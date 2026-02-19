@@ -3,14 +3,14 @@ use rstest::rstest;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::vcs::blake2_hash::Blake2sHash;
 
-use crate::examples::simple_air::create_proof;
-use crate::examples::simple_statement::SimpleStatement;
-use crate::proof::{ProofConfig, empty_proof};
-use crate::proof_from_stark_proof::proof_from_stark_proof;
-use crate::verify::verify;
+use crate::simple_air::create_proof;
+use crate::simple_statement::SimpleStatement;
 use circuits::context::{Context, TraceContext};
 use circuits::ivalue::NoValue;
 use circuits::ops::Guess;
+use circuits_stark_verifier::proof::{ProofConfig, empty_proof};
+use circuits_stark_verifier::proof_from_stark_proof::proof_from_stark_proof;
+use circuits_stark_verifier::verify::verify;
 
 enum ProofModifier {
     /// Keep the proof unchanged.

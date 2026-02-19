@@ -1355,6 +1355,7 @@ dependencies = [
  "cairo-air",
  "circuits",
  "circuits-stark-verifier",
+ "circuits-stark-verifier-examples",
  "expect-test",
  "hashbrown 0.15.5",
  "indexmap",
@@ -1418,6 +1419,20 @@ dependencies = [
  "stwo-cairo-dev-utils",
  "stwo-cairo-prover",
  "stwo-cairo-utils",
+ "stwo-constraint-framework",
+]
+
+[[package]]
+name = "circuits-stark-verifier-examples"
+version = "0.1.0"
+dependencies = [
+ "circuits",
+ "circuits-stark-verifier",
+ "expect-test",
+ "itertools 0.12.1",
+ "num-traits",
+ "rstest",
+ "stwo",
  "stwo-constraint-framework",
 ]
 
