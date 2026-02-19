@@ -39,6 +39,27 @@ pub fn double_point(
     }
 }
 
+/// Computes `2^n_doubles * p`.
+pub fn repeated_double_point_simd(
+    context: &mut Context<impl IValue>,
+    p: &CirclePoint<Simd>,
+    n_doubles: usize,
+) -> CirclePoint<Simd> {
+    let one = Simd::one(context, p.x.len());
+    let mut p = p.clone();
+    for _ in 0..n_doubles {
+        // Compute 2*xy.
+        let xy = Simd::mul(context, &p.x, &p.y);
+        let new_y = Simd::add(context, &xy, &xy);
+        // Compute 2*x^2 - 1.
+        let x_sqr = Simd::mul(context, &p.x, &p.x);
+        let x_sqr_times2 = Simd::add(context, &x_sqr, &x_sqr);
+        let new_x = Simd::sub(context, &x_sqr_times2, &one);
+        p = CirclePoint { x: new_x, y: new_y }
+    }
+    p
+}
+
 /// Computes `point0 + point1` on the circle.
 pub fn add_points(
     context: &mut Context<impl IValue>,
