@@ -10,6 +10,7 @@ use circuit_air::relations::CommonLookupElements;
 use circuit_air::statement::INTERACTION_POW_BITS;
 use circuit_air::{CircuitClaim, CircuitInteractionClaim, CircuitInteractionElements, lookup_sum};
 use circuits::context::Context;
+use itertools::chain;
 use std::sync::Arc;
 use stwo::core::air::Component;
 use stwo::core::channel::Blake2sM31Channel;
@@ -25,6 +26,7 @@ use stwo::core::proof_of_work::GrindOps;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 use stwo::prover::CommitmentSchemeProver;
+use stwo::prover::ComponentProver;
 use stwo::prover::backend::simd::SimdBackend;
 use stwo::prover::poly::circle::PolyOps;
 use stwo::prover::{ProvingError, prove_ex};
@@ -99,6 +101,29 @@ fn blake_iv_public_logup_sum(
     ];
     let denom: SecureField = common_lookup_elements.combine(&limbs);
     denom.inverse() * M31::from(n_blake_gates)
+}
+
+pub fn to_component_provers(
+    components: &CircuitComponents,
+) -> Vec<&dyn ComponentProver<SimdBackend>> {
+    chain!([
+        &components.eq as &dyn ComponentProver<SimdBackend>,
+        &components.qm31_ops as &dyn ComponentProver<SimdBackend>,
+        &components.blake_gate as &dyn ComponentProver<SimdBackend>,
+        &components.blake_round as &dyn ComponentProver<SimdBackend>,
+        &components.blake_round_sigma as &dyn ComponentProver<SimdBackend>,
+        &components.blake_g as &dyn ComponentProver<SimdBackend>,
+        &components.blake_output as &dyn ComponentProver<SimdBackend>,
+        &components.triple_xor_32 as &dyn ComponentProver<SimdBackend>,
+        &components.verify_bitwise_xor_8 as &dyn ComponentProver<SimdBackend>,
+        &components.verify_bitwise_xor_12 as &dyn ComponentProver<SimdBackend>,
+        &components.verify_bitwise_xor_4 as &dyn ComponentProver<SimdBackend>,
+        &components.verify_bitwise_xor_7 as &dyn ComponentProver<SimdBackend>,
+        &components.verify_bitwise_xor_9 as &dyn ComponentProver<SimdBackend>,
+        &components.range_check_15 as &dyn ComponentProver<SimdBackend>,
+        &components.range_check_16 as &dyn ComponentProver<SimdBackend>,
+    ])
+    .collect()
 }
 
 pub fn prove_circuit(context: &mut Context<QM31>) -> (CircuitProof, Vec<u32>) {
@@ -188,13 +213,13 @@ pub fn prove_circuit_assignment(
     interaction_claim.mix_into(channel);
     tree_builder.commit(channel);
     // Component provers.
-    let component_builder = CircuitComponents::new(
+    let circuit_components = CircuitComponents::new(
         &claim,
         &interaction_elements,
         &interaction_claim,
         &preprocessed_trace_arc.ids(),
     );
-    let components = component_builder.provers();
+    let components = to_component_provers(&circuit_components);
 
     // Prove stark.
     let proof = prove_ex::<SimdBackend, _>(&components, channel, commitment_scheme, true);
@@ -204,7 +229,7 @@ pub fn prove_circuit_assignment(
             claim,
             interaction_pow_nonce,
             interaction_claim,
-            components: component_builder.components(),
+            components: circuit_components.components(),
             stark_proof: proof,
             channel_salt,
         },

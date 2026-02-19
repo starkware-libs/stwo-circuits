@@ -1,5 +1,5 @@
-use crate::prover::blake_iv_public_logup_sum;
 use crate::prover::{CircuitProof, finalize_context, prove_circuit};
+use crate::prover::{blake_iv_public_logup_sum, to_component_provers};
 use crate::witness::components::{
     blake_g, blake_gate, blake_output, blake_round, blake_round_sigma, eq, qm31_ops,
     range_check_15, range_check_16, triple_xor_32, verify_bitwise_xor_4, verify_bitwise_xor_7,
@@ -393,7 +393,7 @@ fn prove_circuit_with_relation_tracker(
         &interaction_claim,
         &preprocessed_trace_arc.ids(),
     );
-    let components = component_builder.provers();
+    let components = to_component_provers(&component_builder);
 
     // Relation tracker (all components).
     let preprocessed_cols_m31: Vec<Vec<M31>> = preprocessed_trace_arc

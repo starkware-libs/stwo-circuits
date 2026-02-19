@@ -17,8 +17,6 @@ pub use stwo::core::fields::qm31::QM31;
 pub use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
 pub use stwo::core::fields::qm31::SecureField;
 pub use stwo::core::pcs::TreeVec;
-pub use stwo::prover::ComponentProver;
-pub use stwo::prover::backend::simd::SimdBackend;
 pub use stwo_constraint_framework::EvalAtRow;
 pub use stwo_constraint_framework::FrameworkComponent;
 pub use stwo_constraint_framework::FrameworkEval;
