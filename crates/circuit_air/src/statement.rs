@@ -57,6 +57,68 @@ impl<Value: IValue> Default for CircuitStatement<Value> {
     }
 }
 impl<Value: IValue> CircuitStatement<Value> {
+    pub fn with_component_log_sizes(
+        component_log_sizes: &[u32; crate::components::N_COMPONENTS],
+    ) -> Self {
+        let eq_log_size = component_log_sizes[crate::components::ComponentList::Eq as usize];
+        let qm31_ops_log_size =
+            component_log_sizes[crate::components::ComponentList::Qm31Ops as usize];
+        let blake_gate_log_size =
+            component_log_sizes[crate::components::ComponentList::BlakeGate as usize];
+        let blake_output_log_size =
+            component_log_sizes[crate::components::ComponentList::BlakeOutput as usize];
+
+        let mut by_size_then_original = PREPROCESSED_COLUMNS_ORDER
+            .iter()
+            .enumerate()
+            .map(|(idx, id)| {
+                let size = match *id {
+                    "eq_in0_address" | "eq_in1_address" => eq_log_size,
+                    "qm31_ops_add_flag"
+                    | "qm31_ops_sub_flag"
+                    | "qm31_ops_mul_flag"
+                    | "qm31_ops_pointwise_mul_flag"
+                    | "qm31_ops_in0_address"
+                    | "qm31_ops_in1_address"
+                    | "qm31_ops_out_address"
+                    | "qm31_ops_mults" => qm31_ops_log_size,
+                    "t0"
+                    | "t1"
+                    | "finalize_flag"
+                    | "state_before_addr"
+                    | "state_after_addr"
+                    | "message0_addr"
+                    | "message1_addr"
+                    | "message2_addr"
+                    | "message3_addr"
+                    | "compress_enabler" => blake_gate_log_size,
+                    "final_state_addr"
+                    | "blake_output0_addr"
+                    | "blake_output1_addr"
+                    | "blake_output0_mults"
+                    | "blake_output1_mults" => blake_output_log_size,
+                    _ if id.starts_with("blake_sigma_") => 4,
+                    _ if id.starts_with("seq_") => id.strip_prefix("seq_").unwrap().parse().unwrap(),
+                    _ if id.starts_with("bitwise_xor_4_") => 8,
+                    _ if id.starts_with("bitwise_xor_7_") => 14,
+                    _ if id.starts_with("bitwise_xor_8_") => 16,
+                    _ if id.starts_with("bitwise_xor_9_") => 18,
+                    _ if id.starts_with("bitwise_xor_10_") => 20,
+                    _ => panic!("Unsupported preprocessed column id: {id}"),
+                };
+                (idx, *id, size)
+            })
+            .collect::<Vec<_>>();
+        by_size_then_original.sort_by_key(|(idx, _, size)| (*size, *idx));
+
+        let mut statement = Self::default();
+        statement.preprocessed_column_ids = by_size_then_original
+            .into_iter()
+            .map(|(_, id, _)| PreProcessedColumnId { id: id.to_string() })
+            .collect();
+        statement
+    }
+
     pub fn with_preprocessed_trace_sizes(preprocessed_trace_sizes: &[u32]) -> Self {
         assert_eq!(
             preprocessed_trace_sizes.len(),
@@ -114,6 +176,11 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
         let component_sizes = Simd::pow2(context, &component_log_size_bits);
         let n_blake_gates =
             Simd::unpack_idx(context, &component_sizes, crate::components::ComponentList::BlakeGate as usize);
+        Simd::mark_partly_used(context, &component_log_sizes);
+        for bit_simd in &component_log_size_bits {
+            Simd::mark_partly_used(context, bit_simd);
+        }
+        Simd::mark_partly_used(context, &component_sizes);
 
         let mut element = vec![state_id, zero];
         for word in initial_state {
@@ -122,7 +189,7 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
         }
 
         let iv_use_term = logup_use_term(context, &element, interaction_elements);
-        eval!(context, (n_blake_gates) * (iv_use_term))
+        eval!(context, -((n_blake_gates) * (iv_use_term)))
     }
 
     fn get_preprocessed_column_ids(&self) -> Vec<PreProcessedColumnId> {

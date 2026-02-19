@@ -626,13 +626,12 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
             stark_proof,
             channel_salt,
         },
-        preprocessed_trace_sizes,
+        _preprocessed_trace_sizes,
     ) = prove_circuit(&mut fibonacci_context);
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
-
     // Verify.
-    let statement = CircuitStatement::with_preprocessed_trace_sizes(&preprocessed_trace_sizes);
+    let statement = CircuitStatement::with_component_log_sizes(&claim.log_sizes);
     let claim = Claim {
         packed_enable_bits: pack_enable_bits(&[true; N_COMPONENTS]),
         packed_component_log_sizes: pack_component_log_sizes(&claim.log_sizes),
