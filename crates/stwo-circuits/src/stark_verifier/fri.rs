@@ -314,19 +314,17 @@ fn validate_query_position_in_coset<Value: IValue>(
   ) -> Var {
       assert!(values.len().is_power_of_two());
       assert_eq!(values.len(), 1 << index_bits.len());
+    let one = context.one();
+    let mut layer = values.to_vec();
+    let mut curr_layer_len = layer.len();
 
-      let one = context.one();
-      let mut layer = values.to_vec();
-
-      for &bit in index_bits {
-          let one_minus_bit = sub(context, one, bit);
-          let mut next = Vec::with_capacity(layer.len() / 2);
-          for pair in layer.chunks_exact(2) {
-              let left = pair[0];
-              let right = pair[1];
-              next.push(eval!(context, ((one_minus_bit) * (left)) + ((bit) * (right))));
-          }
-          layer = next;
-      }
-      layer[0]
+    for &bit in index_bits {
+        let one_minus_bit = sub(context, one, bit);
+        for i in (0..curr_layer_len).step_by(2) {
+            let (left, right) = (layer[i], layer[i + 1]);
+            layer[i >> 1] = eval!(context, ((one_minus_bit) * (left)) + ((bit) * (right)));
+        }
+        curr_layer_len >>= 1;
+    }
+    layer[0]
   }
