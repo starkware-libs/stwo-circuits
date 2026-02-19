@@ -17,14 +17,20 @@ pub mod verify_bitwise_xor_8;
 pub mod verify_bitwise_xor_9;
 
 use crate::{CircuitClaim, CircuitInteractionClaim, CircuitInteractionElements};
-use itertools::chain;
 use stwo::core::air::Component;
-use stwo::prover::ComponentProver;
-use stwo::prover::backend::simd::SimdBackend;
 use stwo_constraint_framework::TraceLocationAllocator;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
-pub enum ComponentList {
+macro_rules! define_component_list {
+    ($($variant:ident),* $(,)?) => {
+        pub enum ComponentList {
+            $($variant),*
+        }
+        pub const N_COMPONENTS: usize = [$(stringify!($variant)),*].len();
+    };
+}
+
+define_component_list! {
     Eq,
     Qm31Ops,
     BlakeGate,
@@ -41,7 +47,6 @@ pub enum ComponentList {
     RangeCheck15,
     RangeCheck16,
 }
-pub const N_COMPONENTS: usize = std::mem::variant_count::<ComponentList>();
 
 pub struct CircuitComponents {
     pub eq: eq::Component,
@@ -218,27 +223,6 @@ impl CircuitComponents {
             range_check_15: range_check_15_component,
             range_check_16: range_check_16_component,
         }
-    }
-
-    pub fn provers(&self) -> Vec<&dyn ComponentProver<SimdBackend>> {
-        chain!([
-            &self.eq as &dyn ComponentProver<SimdBackend>,
-            &self.qm31_ops as &dyn ComponentProver<SimdBackend>,
-            &self.blake_gate as &dyn ComponentProver<SimdBackend>,
-            &self.blake_round as &dyn ComponentProver<SimdBackend>,
-            &self.blake_round_sigma as &dyn ComponentProver<SimdBackend>,
-            &self.blake_g as &dyn ComponentProver<SimdBackend>,
-            &self.blake_output as &dyn ComponentProver<SimdBackend>,
-            &self.triple_xor_32 as &dyn ComponentProver<SimdBackend>,
-            &self.verify_bitwise_xor_8 as &dyn ComponentProver<SimdBackend>,
-            &self.verify_bitwise_xor_12 as &dyn ComponentProver<SimdBackend>,
-            &self.verify_bitwise_xor_4 as &dyn ComponentProver<SimdBackend>,
-            &self.verify_bitwise_xor_7 as &dyn ComponentProver<SimdBackend>,
-            &self.verify_bitwise_xor_9 as &dyn ComponentProver<SimdBackend>,
-            &self.range_check_15 as &dyn ComponentProver<SimdBackend>,
-            &self.range_check_16 as &dyn ComponentProver<SimdBackend>,
-        ])
-        .collect()
     }
 
     pub fn components(self) -> Vec<Box<dyn Component>> {
