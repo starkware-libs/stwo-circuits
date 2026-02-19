@@ -10,11 +10,6 @@ indexmap.workspace = true
 itertools.workspace = true
 num-traits.workspace = true
 stwo.workspace = true
-stwo-constraint-framework.workspace = true
-stwo-air-utils-derive.workspace = true
-cairo-air.workspace = true
-rayon.workspace = true
-serde.workspace = true
 
 [dev-dependencies]
 indoc.workspace = true

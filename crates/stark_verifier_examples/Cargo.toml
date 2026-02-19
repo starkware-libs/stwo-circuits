@@ -13,4 +13,3 @@ stwo-constraint-framework = { workspace = true, features = ["prover"] }
 
 [dev-dependencies]
 rstest.workspace = true
-expect-test.workspace = true
