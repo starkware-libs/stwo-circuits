@@ -1,20 +1,22 @@
+use crate::circuit_eval_components::{
+    blake_g, blake_gate, blake_output, blake_round, blake_round_sigma, range_check_15,
+    range_check_16, triple_xor_32, verify_bitwise_xor_4, verify_bitwise_xor_7,
+    verify_bitwise_xor_8, verify_bitwise_xor_9, verify_bitwise_xor_12,
+};
 use crate::components::{eq, qm31_ops};
+use circuits::context::{Context, Var};
 use circuits::eval;
+use circuits::ivalue::IValue;
 use circuits::ops::{Guess, div};
 use circuits::simd::Simd;
 use circuits::wrappers::M31Wrapper;
+use circuits_stark_verifier::constraint_eval::CircuitEval;
+use circuits_stark_verifier::logup::{combine_term, logup_use_term};
+use circuits_stark_verifier::proof::Claim;
+use circuits_stark_verifier::statement::Statement;
 use itertools::{Itertools, zip_eq};
 use stwo::core::fields::qm31::QM31;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
-
-use crate::preprocessed_columns::PREPROCESSED_COLUMNS_ORDER;
-use circuits::context::{Context, Var};
-use circuits::ivalue::IValue;
-use circuits_stark_verifier::logup::{combine_term, logup_use_term};
-use circuits_stark_verifier::proof::Claim;
-
-use circuits_stark_verifier::constraint_eval::CircuitEval;
-use circuits_stark_verifier::statement::Statement;
 
 // TODO(ilya): Update this to to correct values.
 pub const INTERACTION_POW_BITS: u32 = 8;
@@ -27,6 +29,8 @@ pub struct CircuitStatement<Value: IValue> {
     pub output_values: Vec<Var>,
     /// The number of blake gates in the circuit.
     pub n_blake_gates: usize,
+    /// Preprocessed column ids in the exact order used by the prover's preprocessed trace.
+    pub preprocessed_column_ids: Vec<PreProcessedColumnId>,
 }
 impl<Value: IValue> CircuitStatement<Value> {
     pub fn new(
@@ -34,6 +38,7 @@ impl<Value: IValue> CircuitStatement<Value> {
         output_addresses: &[usize],
         output_values: &[QM31],
         n_blake_gates: usize,
+        preprocessed_column_ids: Vec<PreProcessedColumnId>,
     ) -> Self {
         let output_addresses = output_addresses
             .iter()
@@ -45,10 +50,24 @@ impl<Value: IValue> CircuitStatement<Value> {
             components: vec![
                 Box::new(eq::CircuitEqComponent {}),
                 Box::new(qm31_ops::CircuitQm31OpsComponent {}),
+                Box::new(blake_gate::Component {}),
+                Box::new(blake_round::Component {}),
+                Box::new(blake_round_sigma::Component {}),
+                Box::new(blake_g::Component {}),
+                Box::new(blake_output::Component {}),
+                Box::new(triple_xor_32::Component {}),
+                Box::new(verify_bitwise_xor_8::Component {}),
+                Box::new(verify_bitwise_xor_12::Component {}),
+                Box::new(verify_bitwise_xor_4::Component {}),
+                Box::new(verify_bitwise_xor_7::Component {}),
+                Box::new(verify_bitwise_xor_9::Component {}),
+                Box::new(range_check_15::Component {}),
+                Box::new(range_check_16::Component {}),
             ],
             output_addresses,
             output_values,
             n_blake_gates,
+            preprocessed_column_ids,
         }
     }
 }
@@ -97,7 +116,7 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
             let iv_state_id = context.constant(1061955672.into());
             let iv_state_address = context.zero();
             let mut blake_iv_elements = vec![iv_state_id, iv_state_address];
-            for &word in initial_state.iter() {
+            for &word in &initial_state {
                 let low = context.constant((word & 0xffff).into());
                 let high = context.constant(((word >> 16) & 0xffff).into());
                 blake_iv_elements.push(low);
@@ -113,9 +132,6 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
     }
 
     fn get_preprocessed_column_ids(&self) -> Vec<PreProcessedColumnId> {
-        PREPROCESSED_COLUMNS_ORDER
-            .iter()
-            .map(|id| PreProcessedColumnId { id: id.to_string() })
-            .collect()
+        self.preprocessed_column_ids.clone()
     }
 }

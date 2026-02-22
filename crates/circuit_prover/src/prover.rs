@@ -26,6 +26,7 @@ use stwo::prover::ComponentProver;
 use stwo::prover::backend::simd::SimdBackend;
 use stwo::prover::poly::circle::PolyOps;
 use stwo::prover::{ProvingError, prove_ex};
+use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 const COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND: u32 = 1;
 
@@ -45,6 +46,11 @@ pub struct CircuitProof {
     pub components: Vec<Box<dyn Component>>,
     pub stark_proof: Result<ExtendedStarkProof<Blake2sM31MerkleHasher>, ProvingError>,
     pub channel_salt: u32,
+}
+
+pub struct PreprocessedTraceInfo {
+    pub log_sizes: Vec<u32>,
+    pub column_ids: Vec<PreProcessedColumnId>,
 }
 
 #[cfg(test)]
@@ -74,7 +80,7 @@ pub fn to_component_provers(
     .collect()
 }
 
-pub fn prove_circuit(context: &mut Context<QM31>) -> (CircuitProof, Vec<u32>) {
+pub fn prove_circuit(context: &mut Context<QM31>) -> (CircuitProof, PreprocessedTraceInfo) {
     finalize_context(context);
 
     let (preprocessed_trace, params) =
@@ -88,7 +94,7 @@ pub fn prove_circuit_assignment(
     values: &[QM31],
     preprocessed_trace: PreProcessedTrace,
     params: CircuitParams,
-) -> (CircuitProof, Vec<u32>) {
+) -> (CircuitProof, PreprocessedTraceInfo) {
     let CircuitParams {
         trace_log_size,
         first_permutation_row,
@@ -187,6 +193,10 @@ pub fn prove_circuit_assignment(
 
     // Prove stark.
     let proof = prove_ex::<SimdBackend, _>(&components, channel, commitment_scheme, true);
+    let preprocessed_trace_info = PreprocessedTraceInfo {
+        log_sizes: preprocessed_trace_arc.log_sizes(),
+        column_ids: preprocessed_trace_arc.ids(),
+    };
     (
         CircuitProof {
             pcs_config,
@@ -198,6 +208,6 @@ pub fn prove_circuit_assignment(
             stark_proof: proof,
             channel_salt,
         },
-        preprocessed_trace_arc.log_sizes(),
+        preprocessed_trace_info,
     )
 }
