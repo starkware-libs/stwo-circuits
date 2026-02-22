@@ -19,10 +19,8 @@ impl<Value: IValue> Default for CircuitStatement<Value> {
     fn default() -> Self {
         Self {
             components: vec![
-                Box::new(eq::CircuitEqComponent { preprocessed_column_indices: [0, 1] }),
-                Box::new(qm31_ops::CircuitQm31OpsComponent {
-                    preprocessed_column_indices: [2, 3, 4, 5, 6, 7, 8, 9],
-                }),
+                Box::new(eq::CircuitEqComponent {}),
+                Box::new(qm31_ops::CircuitQm31OpsComponent {}),
             ],
         }
     }

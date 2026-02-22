@@ -80,9 +80,7 @@ impl FrameworkEval for Eval {
     }
 }
 
-pub struct CircuitEqComponent {
-    pub preprocessed_column_indices: [usize; N_PREPROCESSED_COLUMNS],
-}
+pub struct CircuitEqComponent {}
 
 impl<Value: IValue> CircuitEval<Value> for CircuitEqComponent {
     fn name(&self) -> String {
