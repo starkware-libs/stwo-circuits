@@ -1,4 +1,6 @@
 use rstest::rstest;
+use stwo::core::channel::Blake2sM31Channel as NativeBlake2sM31Channel;
+use stwo::core::channel::Channel as NativeChannelTrait;
 
 use circuits::blake::HashValue;
 use circuits::context::TraceContext;
