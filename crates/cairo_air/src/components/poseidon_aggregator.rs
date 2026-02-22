@@ -1138,6 +1138,10 @@ pub fn accumulate_constraints<Value: IValue>(
 
 pub struct Component {}
 impl<Value: IValue> CircuitEval<Value> for Component {
+    fn name(&self) -> String {
+        "poseidon_aggregator".to_string()
+    }
+
     fn evaluate(
         &self,
         context: &mut Context<Value>,

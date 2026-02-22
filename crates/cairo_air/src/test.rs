@@ -8,6 +8,7 @@ use cairo_air::utils::{binary_deserialize_from_file, binary_serialize_to_file};
 use std::fs::{File, OpenOptions};
 use std::path::PathBuf;
 
+use crate::all_components::all_components;
 use crate::preprocessed_columns::MAX_SEQUENCE_LOG_SIZE;
 use crate::statement::CairoStatement;
 use crate::statement::{MEMORY_VALUES_LIMBS, PUBLIC_DATA_LEN};
@@ -15,6 +16,7 @@ use crate::verify::verify_cairo;
 use cairo_air::PreProcessedTraceVariant;
 use circuits::{context::Context, ivalue::NoValue, ops::Guess};
 use circuits_stark_verifier::{
+    empty_component::EmptyComponent,
     proof::{ProofConfig, empty_proof},
     verify::verify,
 };
@@ -124,7 +126,12 @@ fn test_verify() {
     let flat_claim = vec![M31::zero(); PUBLIC_DATA_LEN + output_len + program_len];
     let outputs = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; output_len];
     let program = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; program_len];
-    let statement = CairoStatement::new(&mut novalue_context, flat_claim, outputs, program);
+    let mut statement = CairoStatement::new(&mut novalue_context, flat_claim, outputs, program);
+    // Remove the pedersen points table component since it requires long preprocessed columns, which
+    // are not supported.
+    let pedersen_points_index =
+        all_components::<NoValue>().get_full("pedersen_points_table_window_bits_18").unwrap().0;
+    statement.components[pedersen_points_index] = Box::new(EmptyComponent {});
 
     let config = ProofConfig::from_statement(&statement, &pcs_config, INTERACTION_POW_BITS);
 
