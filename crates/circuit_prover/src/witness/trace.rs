@@ -19,6 +19,7 @@ use crate::witness::preprocessed::PreProcessedTrace;
 use circuit_air::CircuitClaim;
 use circuit_air::CircuitInteractionClaim;
 use circuit_air::CircuitInteractionElements;
+use itertools::Itertools;
 use rayon::join;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
@@ -32,6 +33,7 @@ pub struct TraceGenerator {
 pub fn write_trace(
     context_values: &[QM31],
     preprocessed_trace: Arc<PreProcessedTrace>,
+    output_addresses: &[usize],
     tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, Blake2sM31MerkleChannel>,
     trace_generator: &TraceGenerator,
 ) -> (CircuitClaim, CircuitInteractionClaimGenerator) {
@@ -208,6 +210,8 @@ pub fn write_trace(
 
     tree_builder.extend_evals(trace_evals);
 
+    let output_values = output_addresses.iter().map(|addr| context_values[*addr]).collect_vec();
+
     (
         CircuitClaim {
             log_sizes: [
@@ -227,6 +231,7 @@ pub fn write_trace(
                 circuit_air::components::range_check_15::LOG_SIZE,
                 circuit_air::components::range_check_16::LOG_SIZE,
             ],
+            output_values,
         },
         CircuitInteractionClaimGenerator {
             eq_lookup_data,
@@ -272,7 +277,7 @@ pub fn write_interaction_trace(
     tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, Blake2sM31MerkleChannel>,
     interaction_elements: &CircuitInteractionElements,
 ) -> CircuitInteractionClaim {
-    let CircuitClaim { log_sizes } = circuit_claim;
+    let CircuitClaim { log_sizes, output_values: _ } = circuit_claim;
     let mut component_log_size_iter = log_sizes.iter();
 
     let (eq_trace, eq_claimed_sum) = eq::write_interaction_trace(
