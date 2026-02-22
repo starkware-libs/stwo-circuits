@@ -45,6 +45,8 @@ expect-test = "1.5.1"
 rayon = "1.10.0"
 serde = "1.0.219"
 
-# Compile the circuit-prover crate with optimization level 3 to speed up the blake related tests.
+# Compile the circuit-prover and stwo crates with optimization level 3 to speed up the blake related tests.
 [profile.test.package.circuit-prover]
+opt-level = 3
+[profile.test.package.stwo]
 opt-level = 3
