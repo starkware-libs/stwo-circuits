@@ -57,7 +57,7 @@ pub fn build_blake_gate_context() -> Context<QM31> {
     context.enable_assert_eq_on_eval();
 
     let mut inputs: Vec<Var> = vec![];
-    let n_inputs = 4;
+    let n_inputs = 9;
     let n_bytes = n_inputs * 16;
     let n_blake_gates = 10;
     for i in 0..n_inputs {
@@ -67,7 +67,8 @@ pub fn build_blake_gate_context() -> Context<QM31> {
         ));
     }
     for _ in 0..n_blake_gates {
-        let _output = blake(&mut context, &inputs, n_bytes as usize);
+        let output = blake(&mut context, &inputs, n_bytes as usize);
+        eval!(&mut context, (output.0) + (output.1));
     }
 
     context
