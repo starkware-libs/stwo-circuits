@@ -12,6 +12,10 @@ pub const RELATION_USES_PER_ROW: [RelationUse; 0] = [];
 
 pub struct Component {}
 impl<Value: IValue> CircuitEval<Value> for Component {
+    fn name(&self) -> String {
+        "verify_bitwise_xor_12".to_string()
+    }
+
     fn evaluate(
         &self,
         context: &mut Context<Value>,
@@ -20,12 +24,12 @@ impl<Value: IValue> CircuitEval<Value> for Component {
     ) {
         let relation_id = context.constant(M31::from(648362599).into());
 
-        let a_low =
-            acc.get_preprocessed_column(&PreProcessedColumnId { id: "bitwise_xor_10_0".to_owned() });
-        let b_low =
-            acc.get_preprocessed_column(&PreProcessedColumnId { id: "bitwise_xor_10_1".to_owned() });
-        let c_low =
-            acc.get_preprocessed_column(&PreProcessedColumnId { id: "bitwise_xor_10_2".to_owned() });
+        let a_low = acc
+            .get_preprocessed_column(&PreProcessedColumnId { id: "bitwise_xor_10_0".to_owned() });
+        let b_low = acc
+            .get_preprocessed_column(&PreProcessedColumnId { id: "bitwise_xor_10_1".to_owned() });
+        let c_low = acc
+            .get_preprocessed_column(&PreProcessedColumnId { id: "bitwise_xor_10_2".to_owned() });
 
         let mut trace_cols = component_data.trace_columns().iter();
         for i in 0..1 << EXPAND_BITS {
@@ -42,15 +46,13 @@ impl<Value: IValue> CircuitEval<Value> for Component {
                 );
                 let c = eval!(
                     context,
-                    (c_low)
-                        + (context.constant(M31::from(((i ^ j) << LIMB_BITS) as u32).into()))
+                    (c_low) + (context.constant(M31::from(((i ^ j) << LIMB_BITS) as u32).into()))
                 );
 
                 let neg_multiplicity = eval!(context, (context.zero()) - (multiplicity));
                 acc.add_to_relation(context, neg_multiplicity, &[relation_id, a, b, c]);
             }
         }
-
     }
 
     fn trace_columns(&self) -> usize {

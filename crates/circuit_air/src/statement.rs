@@ -1,7 +1,7 @@
 use crate::circuit_eval_components::{
     blake_g, blake_gate, blake_output, blake_round, blake_round_sigma, range_check_15,
-    range_check_16, triple_xor_32, verify_bitwise_xor_12, verify_bitwise_xor_4,
-    verify_bitwise_xor_7, verify_bitwise_xor_8, verify_bitwise_xor_9,
+    range_check_16, triple_xor_32, verify_bitwise_xor_4, verify_bitwise_xor_7,
+    verify_bitwise_xor_8, verify_bitwise_xor_9, verify_bitwise_xor_12,
 };
 use crate::components::{eq, qm31_ops};
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
@@ -27,6 +27,52 @@ pub struct CircuitStatement<Value: IValue> {
     pub components: Vec<Box<dyn CircuitEval<Value>>>,
     pub preprocessed_column_ids: Vec<PreProcessedColumnId>,
 }
+
+fn preprocessed_size_for_id(
+    id: &str,
+    eq_log_size: u32,
+    qm31_ops_log_size: u32,
+    blake_gate_log_size: u32,
+    blake_output_log_size: u32,
+) -> u32 {
+    match id {
+        "eq_in0_address" | "eq_in1_address" => eq_log_size,
+        "qm31_ops_add_flag"
+        | "qm31_ops_sub_flag"
+        | "qm31_ops_mul_flag"
+        | "qm31_ops_pointwise_mul_flag"
+        | "qm31_ops_in0_address"
+        | "qm31_ops_in1_address"
+        | "qm31_ops_out_address"
+        | "qm31_ops_mults" => qm31_ops_log_size,
+        "t0" | "t1" | "finalize_flag" | "state_before_addr" | "state_after_addr"
+        | "message0_addr" | "message1_addr" | "message2_addr" | "message3_addr"
+        | "compress_enabler" => blake_gate_log_size,
+        "final_state_addr"
+        | "blake_output0_addr"
+        | "blake_output1_addr"
+        | "blake_output0_mults"
+        | "blake_output1_mults" => blake_output_log_size,
+        _ if id.starts_with("blake_sigma_") => 4,
+        _ if id.starts_with("seq_") => id.strip_prefix("seq_").unwrap().parse().unwrap(),
+        _ if id.starts_with("bitwise_xor_4_") => 8,
+        _ if id.starts_with("bitwise_xor_7_") => 14,
+        _ if id.starts_with("bitwise_xor_8_") => 16,
+        _ if id.starts_with("bitwise_xor_9_") => 18,
+        _ if id.starts_with("bitwise_xor_10_") => 20,
+        _ => panic!("Unsupported preprocessed column id: {id}"),
+    }
+}
+
+fn sort_preprocessed_ids_by_size<'a>(
+    ids_and_sizes: impl IntoIterator<Item = (&'a str, u32)>,
+) -> Vec<PreProcessedColumnId> {
+    let mut ids_and_sizes = ids_and_sizes.into_iter().collect::<Vec<_>>();
+    // Stable sort keeps original declaration order for equal-size columns.
+    ids_and_sizes.sort_by_key(|(_, size)| *size);
+    ids_and_sizes.into_iter().map(|(id, _)| PreProcessedColumnId { id: id.to_string() }).collect()
+}
+
 impl<Value: IValue> Default for CircuitStatement<Value> {
     fn default() -> Self {
         Self {
@@ -63,55 +109,23 @@ impl<Value: IValue> CircuitStatement<Value> {
         let blake_output_log_size =
             component_log_sizes[crate::components::ComponentList::BlakeOutput as usize];
 
-        let mut by_size_then_original = PREPROCESSED_COLUMNS_ORDER
-            .iter()
-            .enumerate()
-            .map(|(idx, id)| {
-                let size = match *id {
-                    "eq_in0_address" | "eq_in1_address" => eq_log_size,
-                    "qm31_ops_add_flag"
-                    | "qm31_ops_sub_flag"
-                    | "qm31_ops_mul_flag"
-                    | "qm31_ops_pointwise_mul_flag"
-                    | "qm31_ops_in0_address"
-                    | "qm31_ops_in1_address"
-                    | "qm31_ops_out_address"
-                    | "qm31_ops_mults" => qm31_ops_log_size,
-                    "t0"
-                    | "t1"
-                    | "finalize_flag"
-                    | "state_before_addr"
-                    | "state_after_addr"
-                    | "message0_addr"
-                    | "message1_addr"
-                    | "message2_addr"
-                    | "message3_addr"
-                    | "compress_enabler" => blake_gate_log_size,
-                    "final_state_addr"
-                    | "blake_output0_addr"
-                    | "blake_output1_addr"
-                    | "blake_output0_mults"
-                    | "blake_output1_mults" => blake_output_log_size,
-                    _ if id.starts_with("blake_sigma_") => 4,
-                    _ if id.starts_with("seq_") => id.strip_prefix("seq_").unwrap().parse().unwrap(),
-                    _ if id.starts_with("bitwise_xor_4_") => 8,
-                    _ if id.starts_with("bitwise_xor_7_") => 14,
-                    _ if id.starts_with("bitwise_xor_8_") => 16,
-                    _ if id.starts_with("bitwise_xor_9_") => 18,
-                    _ if id.starts_with("bitwise_xor_10_") => 20,
-                    _ => panic!("Unsupported preprocessed column id: {id}"),
-                };
-                (idx, *id, size)
-            })
-            .collect::<Vec<_>>();
-        by_size_then_original.sort_by_key(|(idx, _, size)| (*size, *idx));
-
-        let mut statement = Self::default();
-        statement.preprocessed_column_ids = by_size_then_original
-            .into_iter()
-            .map(|(_, id, _)| PreProcessedColumnId { id: id.to_string() })
-            .collect();
-        statement
+        Self {
+            preprocessed_column_ids: sort_preprocessed_ids_by_size(
+                PREPROCESSED_COLUMNS_ORDER.iter().map(|id| {
+                    (
+                        *id,
+                        preprocessed_size_for_id(
+                            id,
+                            eq_log_size,
+                            qm31_ops_log_size,
+                            blake_gate_log_size,
+                            blake_output_log_size,
+                        ),
+                    )
+                }),
+            ),
+            ..Self::default()
+        }
     }
 
     pub fn with_preprocessed_trace_sizes(preprocessed_trace_sizes: &[u32]) -> Self {
@@ -121,20 +135,15 @@ impl<Value: IValue> CircuitStatement<Value> {
             "Invalid number of preprocessed columns"
         );
 
-        let mut by_size_then_original = PREPROCESSED_COLUMNS_ORDER
-            .iter()
-            .zip(preprocessed_trace_sizes.iter().copied())
-            .enumerate()
-            .map(|(idx, (id, size))| (idx, *id, size))
-            .collect::<Vec<_>>();
-        by_size_then_original.sort_by_key(|(idx, _, size)| (*size, *idx));
-
-        let mut statement = Self::default();
-        statement.preprocessed_column_ids = by_size_then_original
-            .into_iter()
-            .map(|(_, id, _)| PreProcessedColumnId { id: id.to_string() })
-            .collect();
-        statement
+        Self {
+            preprocessed_column_ids: sort_preprocessed_ids_by_size(
+                PREPROCESSED_COLUMNS_ORDER
+                    .iter()
+                    .zip(preprocessed_trace_sizes.iter().copied())
+                    .map(|(id, size)| (*id, size)),
+            ),
+            ..Self::default()
+        }
     }
 }
 impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
@@ -165,12 +174,17 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
         let state_id = context.constant(M31::from(1061955672).into());
         let zero = context.zero();
 
-        let component_log_sizes =
-            Simd::from_packed(claim.packed_component_log_sizes.clone(), crate::components::N_COMPONENTS);
+        let component_log_sizes = Simd::from_packed(
+            claim.packed_component_log_sizes.clone(),
+            crate::components::N_COMPONENTS,
+        );
         let component_log_size_bits = extract_bits(context, &component_log_sizes, LOG_SIZE_BITS);
         let component_sizes = Simd::pow2(context, &component_log_size_bits);
-        let n_blake_gates =
-            Simd::unpack_idx(context, &component_sizes, crate::components::ComponentList::BlakeGate as usize);
+        let n_blake_gates = Simd::unpack_idx(
+            context,
+            &component_sizes,
+            crate::components::ComponentList::BlakeGate as usize,
+        );
         Simd::mark_partly_used(context, &component_log_sizes);
         for bit_simd in &component_log_size_bits {
             Simd::mark_partly_used(context, bit_simd);

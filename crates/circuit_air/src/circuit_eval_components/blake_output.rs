@@ -43,14 +43,12 @@ pub fn accumulate_constraints<Value: IValue>(
     ] = input.try_into().unwrap();
     let blake_output0_addr =
         acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_output0_addr".to_owned() });
-    let blake_output0_multiplicity = acc.get_preprocessed_column(&PreProcessedColumnId {
-        id: "blake_output0_mults".to_owned(),
-    });
+    let blake_output0_multiplicity =
+        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_output0_mults".to_owned() });
     let blake_output1_addr =
         acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_output1_addr".to_owned() });
-    let blake_output1_multiplicity = acc.get_preprocessed_column(&PreProcessedColumnId {
-        id: "blake_output1_mults".to_owned(),
-    });
+    let blake_output1_multiplicity =
+        acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_output1_mults".to_owned() });
     let final_state_addr =
         acc.get_preprocessed_column(&PreProcessedColumnId { id: "final_state_addr".to_owned() });
 
@@ -58,56 +56,64 @@ pub fn accumulate_constraints<Value: IValue>(
     let constraint_0_value = eval!(
         context,
         (output_limb0_col16)
-            - ((input_final_state_limb0_limb_0_col0) + ((input_final_state_limb0_limb_1_col1) * (65536)))
+            - ((input_final_state_limb0_limb_0_col0)
+                + ((input_final_state_limb0_limb_1_col1) * (65536)))
     );
     acc.add_constraint(context, constraint_0_value);
     // output_limb1.
     let constraint_1_value = eval!(
         context,
         (output_limb1_col17)
-            - ((input_final_state_limb1_limb_0_col2) + ((input_final_state_limb1_limb_1_col3) * (65536)))
+            - ((input_final_state_limb1_limb_0_col2)
+                + ((input_final_state_limb1_limb_1_col3) * (65536)))
     );
     acc.add_constraint(context, constraint_1_value);
     // output_limb2.
     let constraint_2_value = eval!(
         context,
         (output_limb2_col18)
-            - ((input_final_state_limb2_limb_0_col4) + ((input_final_state_limb2_limb_1_col5) * (65536)))
+            - ((input_final_state_limb2_limb_0_col4)
+                + ((input_final_state_limb2_limb_1_col5) * (65536)))
     );
     acc.add_constraint(context, constraint_2_value);
     // output_limb3.
     let constraint_3_value = eval!(
         context,
         (output_limb3_col19)
-            - ((input_final_state_limb3_limb_0_col6) + ((input_final_state_limb3_limb_1_col7) * (65536)))
+            - ((input_final_state_limb3_limb_0_col6)
+                + ((input_final_state_limb3_limb_1_col7) * (65536)))
     );
     acc.add_constraint(context, constraint_3_value);
     // output_limb4.
     let constraint_4_value = eval!(
         context,
         (output_limb4_col20)
-            - ((input_final_state_limb4_limb_0_col8) + ((input_final_state_limb4_limb_1_col9) * (65536)))
+            - ((input_final_state_limb4_limb_0_col8)
+                + ((input_final_state_limb4_limb_1_col9) * (65536)))
     );
     acc.add_constraint(context, constraint_4_value);
     // output_limb5.
     let constraint_5_value = eval!(
         context,
         (output_limb5_col21)
-            - ((input_final_state_limb5_limb_0_col10) + ((input_final_state_limb5_limb_1_col11) * (65536)))
+            - ((input_final_state_limb5_limb_0_col10)
+                + ((input_final_state_limb5_limb_1_col11) * (65536)))
     );
     acc.add_constraint(context, constraint_5_value);
     // output_limb6.
     let constraint_6_value = eval!(
         context,
         (output_limb6_col22)
-            - ((input_final_state_limb6_limb_0_col12) + ((input_final_state_limb6_limb_1_col13) * (65536)))
+            - ((input_final_state_limb6_limb_0_col12)
+                + ((input_final_state_limb6_limb_1_col13) * (65536)))
     );
     acc.add_constraint(context, constraint_6_value);
     // output_limb7.
     let constraint_7_value = eval!(
         context,
         (output_limb7_col23)
-            - ((input_final_state_limb7_limb_0_col14) + ((input_final_state_limb7_limb_1_col15) * (65536)))
+            - ((input_final_state_limb7_limb_0_col14)
+                + ((input_final_state_limb7_limb_1_col15) * (65536)))
     );
     acc.add_constraint(context, constraint_7_value);
 
@@ -162,6 +168,10 @@ pub fn accumulate_constraints<Value: IValue>(
 
 pub struct Component {}
 impl<Value: IValue> CircuitEval<Value> for Component {
+    fn name(&self) -> String {
+        "blake_output".to_string()
+    }
+
     fn evaluate(
         &self,
         context: &mut Context<Value>,
