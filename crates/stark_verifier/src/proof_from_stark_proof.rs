@@ -202,7 +202,7 @@ pub fn construct_fri_siblings(
     proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
     config: &ProofConfig,
 ) -> (Vec<QM31>, Vec<Vec<Vec<QM31>>>) {
-    let mut line_coset_vals_per_query_per_tree = vec![vec![]; config.log_trace_size() - 1];
+    let mut line_coset_vals_per_query_per_tree = vec![vec![]; config.fri.line_fold_steps_aux.len()];
     let mut circle_fri_siblings = vec![];
     for query in &proof.aux.unsorted_query_locations {
         circle_fri_siblings.push(proof.aux.fri.first_layer.all_values[0][&(query ^ 1)]);

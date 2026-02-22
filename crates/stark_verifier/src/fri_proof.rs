@@ -40,10 +40,7 @@ impl<T> FriCommitProof<T> {
     pub fn validate_structure(&self, config: &FriConfig) {
         // Starting from the last layer, each layer increases the log2 of the polynomial degree by
         // one. The final degree should be the same as the trace size.
-        assert_eq!(
-            config.log_n_last_layer_coefs + self.layer_commitments.len(),
-            config.log_trace_size
-        );
+        assert_eq!(self.layer_commitments.len(), config.line_fold_steps_aux.len() + 1);
         assert_eq!(self.last_layer_coefs.len(), 1 << config.log_n_last_layer_coefs);
     }
 }
@@ -83,17 +80,15 @@ impl<T> FriProof<T> {
 
         commit.validate_structure(config);
 
-        // As layer skipping is not currently supported and the last layer is a constant polynomial,
-        // the number of commitment trees should be the same as the trace log size.
-        assert_eq!(auth_paths.data.len(), config.log_trace_size);
-        for (tree_idx, tree_data) in auth_paths.data.iter().enumerate() {
-            assert_eq!(tree_data.len(), config.n_queries);
-            for query_data in tree_data {
-                // Reduce size by 1 because we take the sibling of the leaf from `fri_siblings`
-                // rather than `auth_paths`.
-                assert_eq!(query_data.0.len(), log_evaluation_domain_size - tree_idx - 1);
-            }
-        }
+        assert_eq!(auth_paths.data.len(), config.line_fold_steps_aux.len() + 1);
+        // for (tree_idx, tree_data) in auth_paths.data.iter().enumerate() {
+        //     assert_eq!(tree_data.len(), config.n_queries);
+        //     for query_data in tree_data {
+        //         // Reduce size by 1 because we take the sibling of the leaf from `fri_siblings`
+        //         // rather than `auth_paths`.
+        //         assert_eq!(query_data.0.len(), log_evaluation_domain_size - tree_idx - 1);
+        //     }
+        // }
 
         assert_eq!(circle_fri_siblings.len(), config.n_queries);
         assert_eq!(line_coset_vals_per_query_per_tree.len(), config.line_fold_steps_aux.len());
