@@ -395,6 +395,7 @@ impl PreProcessedTrace {
             trace_log_size,
             first_permutation_row: qm31_ops_trace_generator.first_permutation_row,
             n_blake_gates: circuit.blake.len(),
+            output_addresses: vec![],
         };
         (pp_trace, params)
     }

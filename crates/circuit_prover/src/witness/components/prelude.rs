@@ -3,6 +3,7 @@ pub use crate::witness::utils::pack_values;
 pub use circuit_air::ClaimedSum;
 pub use circuit_air::ComponentLogSize;
 pub use circuit_air::relations;
+pub use circuit_air::{BLAKE2S_IV, blake2s_initial_state};
 pub use itertools::Itertools;
 pub use itertools::multizip;
 pub use num_traits::One;

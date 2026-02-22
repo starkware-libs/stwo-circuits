@@ -32,6 +32,7 @@ pub struct TraceGenerator {
 pub fn write_trace(
     context_values: &[QM31],
     preprocessed_trace: Arc<PreProcessedTrace>,
+    output_values: &[QM31],
     tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, Blake2sM31MerkleChannel>,
     trace_generator: &TraceGenerator,
 ) -> (CircuitClaim, CircuitInteractionClaimGenerator) {
@@ -227,6 +228,7 @@ pub fn write_trace(
                 circuit_air::components::range_check_15::LOG_SIZE,
                 circuit_air::components::range_check_16::LOG_SIZE,
             ],
+            output_values: output_values.to_vec(),
         },
         CircuitInteractionClaimGenerator {
             eq_lookup_data,
@@ -272,7 +274,7 @@ pub fn write_interaction_trace(
     tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, Blake2sM31MerkleChannel>,
     interaction_elements: &CircuitInteractionElements,
 ) -> CircuitInteractionClaim {
-    let CircuitClaim { log_sizes } = circuit_claim;
+    let CircuitClaim { log_sizes, output_values: _ } = circuit_claim;
     let mut component_log_size_iter = log_sizes.iter();
 
     let (eq_trace, eq_claimed_sum) = eq::write_interaction_trace(
