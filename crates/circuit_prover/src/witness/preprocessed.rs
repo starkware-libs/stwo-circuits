@@ -367,6 +367,29 @@ pub struct PreProcessedTrace {
 }
 
 impl PreProcessedTrace {
+    /// Sorts preprocessed columns by size (ascending), preserving original order for ties.
+    fn sort_by_size(&mut self) {
+        let mut ordered = self
+            .column_indices
+            .iter()
+            .map(|(id, idx)| (id.clone(), *idx))
+            .collect_vec();
+        ordered.sort_by_key(|(_, idx)| *idx);
+
+        let mut sorted = ordered
+            .into_iter()
+            .map(|(id, idx)| (id, idx, std::mem::take(&mut self.columns[idx])))
+            .collect_vec();
+        sorted.sort_by_key(|(_, original_idx, col)| (col.len(), *original_idx));
+
+        self.columns = sorted.iter_mut().map(|(_, _, col)| std::mem::take(col)).collect();
+        self.column_indices = sorted
+            .into_iter()
+            .enumerate()
+            .map(|(idx, (id, _, _))| (id, idx))
+            .collect();
+    }
+
     /// Generates the preprocessed trace for the circuit, assuming it is already finalized.
     pub fn generate_preprocessed_trace(circuit: &Circuit) -> (Self, CircuitParams) {
         let mut pp_trace = Self { columns: vec![], column_indices: HashMap::new() };
@@ -387,6 +410,7 @@ impl PreProcessedTrace {
         add_blake_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
 
         Self::add_non_circuit_preprocessed_columns(&mut pp_trace);
+        pp_trace.sort_by_size();
 
         // The trace size is the size of the largest column in the preprocessed trace (since all
         // components have preprocessed columns).

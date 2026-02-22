@@ -1,7 +1,6 @@
 use crate::components::prelude::*;
 use circuits_stark_verifier::constraint_eval::RelationUse;
 
-pub const N_PREPROCESSED_COLUMNS: usize = 8;
 pub const N_TRACE_COLUMNS: usize = 12;
 pub const N_INTERACTION_COLUMNS: usize = 8;
 use circuits_stark_verifier::constraint_eval::ComponentDataTrait;
@@ -135,9 +134,7 @@ impl FrameworkEval for Eval {
     }
 }
 
-pub struct CircuitQm31OpsComponent {
-    pub preprocessed_column_indices: [usize; N_PREPROCESSED_COLUMNS],
-}
+pub struct CircuitQm31OpsComponent {}
 
 impl<Value: IValue> CircuitEval<Value> for CircuitQm31OpsComponent {
     fn name(&self) -> String {
