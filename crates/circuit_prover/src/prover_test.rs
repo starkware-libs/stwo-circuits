@@ -1,6 +1,7 @@
 use crate::prover::blake_iv_public_logup_sum;
 use crate::prover::{CircuitProof, finalize_context, prove_circuit};
 use circuit_air::CircuitInteractionElements;
+use circuit_air::components::N_COMPONENTS;
 use circuit_air::statement::{CircuitStatement, INTERACTION_POW_BITS};
 use circuits::blake::blake;
 use circuits::context::{TraceContext, Var};
@@ -12,6 +13,7 @@ use circuits_stark_verifier::proof::{Claim, ProofConfig};
 use circuits_stark_verifier::proof_from_stark_proof::{
     pack_component_log_sizes, pack_enable_bits, proof_from_stark_proof,
 };
+use circuits_stark_verifier::statement::Statement;
 use expect_test::expect;
 use num_traits::{One, Zero};
 use stwo::core::air::Component;

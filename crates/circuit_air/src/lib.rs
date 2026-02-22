@@ -1,6 +1,6 @@
+pub mod circuit_eval_components;
 pub mod component_utils;
 pub mod components;
-pub mod circuit_eval_components;
 pub mod preprocessed_columns;
 pub mod relations;
 pub mod statement;
@@ -26,7 +26,7 @@ impl CircuitClaim {
         channel.mix_felts(&[qm31_from_u32s(n_components as u32, 0, 0, 0)]);
 
         // mix the enable bits into the channel.
-        channel.mix_felts(&pack_enable_bits(&vec![true; N_COMPONENTS]));
+        channel.mix_felts(&pack_enable_bits(&[true; N_COMPONENTS]));
         channel.mix_felts(&pack_component_log_sizes(log_sizes));
         // public claim is empty.
         channel.mix_felts(&[]);
