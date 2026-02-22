@@ -1,7 +1,6 @@
 use crate::components::prelude::*;
 use circuits_stark_verifier::constraint_eval::{ComponentDataTrait, RelationUse};
 
-pub const N_PREPROCESSED_COLUMNS: usize = 2;
 pub const N_TRACE_COLUMNS: usize = 8;
 pub const N_INTERACTION_COLUMNS: usize = 4;
 

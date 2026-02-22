@@ -1,10 +1,10 @@
-use crate::prover::CircuitParams;
+use crate::prover::{CircuitParams, PreprocessedTraceInfo};
 use crate::witness::components::prelude::BLAKE_SIGMA;
 use crate::witness::components::qm31_ops;
 use circuits::circuit::Blake;
 use circuits::circuit::{Circuit, Permutation};
 use circuits::circuit::{Eq, Gate};
-use itertools::{Itertools, chain, zip_eq};
+use itertools::{Itertools, zip_eq};
 use std::collections::HashMap;
 use stwo::core::fields::m31::BaseField;
 use stwo::core::poly::circle::CanonicCoset;
@@ -145,18 +145,19 @@ fn add_qm31_ops_to_preprocessed_trace(
 
     fill_permutation_columns(permutation, multiplicities, &mut qm31_ops_columns, *n_vars);
 
-    let n_columns = pp_trace.columns.len();
-    pp_trace.column_indices.extend([
-        (PreProcessedColumnId { id: "qm31_ops_add_flag".to_owned() }, n_columns),
-        (PreProcessedColumnId { id: "qm31_ops_sub_flag".to_owned() }, n_columns + 1),
-        (PreProcessedColumnId { id: "qm31_ops_mul_flag".to_owned() }, n_columns + 2),
-        (PreProcessedColumnId { id: "qm31_ops_pointwise_mul_flag".to_owned() }, n_columns + 3),
-        (PreProcessedColumnId { id: "qm31_ops_in0_address".to_owned() }, n_columns + 4),
-        (PreProcessedColumnId { id: "qm31_ops_in1_address".to_owned() }, n_columns + 5),
-        (PreProcessedColumnId { id: "qm31_ops_out_address".to_owned() }, n_columns + 6),
-        (PreProcessedColumnId { id: "qm31_ops_mults".to_owned() }, n_columns + 7),
-    ]);
-    pp_trace.columns.extend(qm31_ops_columns);
+    let ids = [
+        "qm31_ops_add_flag",
+        "qm31_ops_sub_flag",
+        "qm31_ops_mul_flag",
+        "qm31_ops_pointwise_mul_flag",
+        "qm31_ops_in0_address",
+        "qm31_ops_in1_address",
+        "qm31_ops_out_address",
+        "qm31_ops_mults",
+    ];
+    for (id, column) in zip_eq(ids, qm31_ops_columns) {
+        pp_trace.push_column(PreProcessedColumnId { id: id.to_owned() }, column);
+    }
     qm31_ops_trace_generator
 }
 
@@ -178,12 +179,10 @@ fn add_eq_to_preprocessed_trace(circuit: &Circuit, pp_trace: &mut PreProcessedTr
     let mut eq_columns: [_; N_EQ_PP_COLUMNS] = std::array::from_fn(|_| vec![]);
     fill_eq_columns(eq, &mut eq_columns);
 
-    let n_columns = pp_trace.columns.len();
-    pp_trace.column_indices.extend([
-        (PreProcessedColumnId { id: "eq_in0_address".to_owned() }, n_columns),
-        (PreProcessedColumnId { id: "eq_in1_address".to_owned() }, n_columns + 1),
-    ]);
-    pp_trace.columns.extend(eq_columns);
+    let ids = ["eq_in0_address", "eq_in1_address"];
+    for (id, column) in zip_eq(ids, eq_columns) {
+        pp_trace.push_column(PreProcessedColumnId { id: id.to_owned() }, column);
+    }
 }
 
 // TODO(alonf): Parallelize.
@@ -315,101 +314,96 @@ fn add_blake_to_preprocessed_trace(
     let mut blake_columns: [_; N_BLAKE_PP_COLUMNS] = std::array::from_fn(|_| vec![]);
     fill_blake_columns(blake, multiplicities, &mut blake_columns);
 
-    let n_columns = pp_trace.columns.len();
-    pp_trace.column_indices.extend([
-        (PreProcessedColumnId { id: "t0".to_owned() }, n_columns),
-        (PreProcessedColumnId { id: "t1".to_owned() }, n_columns + 1),
-        (PreProcessedColumnId { id: "finalize_flag".to_owned() }, n_columns + 2),
-        (PreProcessedColumnId { id: "state_before_addr".to_owned() }, n_columns + 3),
-        (PreProcessedColumnId { id: "state_after_addr".to_owned() }, n_columns + 4),
-        (PreProcessedColumnId { id: "message0_addr".to_owned() }, n_columns + 5),
-        (PreProcessedColumnId { id: "message1_addr".to_owned() }, n_columns + 6),
-        (PreProcessedColumnId { id: "message2_addr".to_owned() }, n_columns + 7),
-        (PreProcessedColumnId { id: "message3_addr".to_owned() }, n_columns + 8),
-        (PreProcessedColumnId { id: "compress_enabler".to_owned() }, n_columns + 9),
-        (PreProcessedColumnId { id: "final_state_addr".to_owned() }, n_columns + 10),
-        (PreProcessedColumnId { id: "blake_output0_addr".to_owned() }, n_columns + 11),
-        (PreProcessedColumnId { id: "blake_output1_addr".to_owned() }, n_columns + 12),
-        (PreProcessedColumnId { id: "blake_output0_mults".to_owned() }, n_columns + 13),
-        (PreProcessedColumnId { id: "blake_output1_mults".to_owned() }, n_columns + 14),
-    ]);
-    pp_trace.columns.extend(blake_columns);
+    let blake_ids = [
+        "t0",
+        "t1",
+        "finalize_flag",
+        "state_before_addr",
+        "state_after_addr",
+        "message0_addr",
+        "message1_addr",
+        "message2_addr",
+        "message3_addr",
+        "compress_enabler",
+        "final_state_addr",
+        "blake_output0_addr",
+        "blake_output1_addr",
+        "blake_output0_mults",
+        "blake_output1_mults",
+    ];
+    for (id, column) in zip_eq(blake_ids, blake_columns) {
+        pp_trace.push_column(PreProcessedColumnId { id: id.to_owned() }, column);
+    }
 
     // Add blake sigma columns (16 columns of 16 rows each).
     let blake_sigma = gen_blake_sigma_columns();
-    let n_columns = pp_trace.columns.len();
-    pp_trace.column_indices.extend([
-        (PreProcessedColumnId { id: "blake_sigma_0".to_owned() }, n_columns),
-        (PreProcessedColumnId { id: "blake_sigma_1".to_owned() }, n_columns + 1),
-        (PreProcessedColumnId { id: "blake_sigma_2".to_owned() }, n_columns + 2),
-        (PreProcessedColumnId { id: "blake_sigma_3".to_owned() }, n_columns + 3),
-        (PreProcessedColumnId { id: "blake_sigma_4".to_owned() }, n_columns + 4),
-        (PreProcessedColumnId { id: "blake_sigma_5".to_owned() }, n_columns + 5),
-        (PreProcessedColumnId { id: "blake_sigma_6".to_owned() }, n_columns + 6),
-        (PreProcessedColumnId { id: "blake_sigma_7".to_owned() }, n_columns + 7),
-        (PreProcessedColumnId { id: "blake_sigma_8".to_owned() }, n_columns + 8),
-        (PreProcessedColumnId { id: "blake_sigma_9".to_owned() }, n_columns + 9),
-        (PreProcessedColumnId { id: "blake_sigma_10".to_owned() }, n_columns + 10),
-        (PreProcessedColumnId { id: "blake_sigma_11".to_owned() }, n_columns + 11),
-        (PreProcessedColumnId { id: "blake_sigma_12".to_owned() }, n_columns + 12),
-        (PreProcessedColumnId { id: "blake_sigma_13".to_owned() }, n_columns + 13),
-        (PreProcessedColumnId { id: "blake_sigma_14".to_owned() }, n_columns + 14),
-        (PreProcessedColumnId { id: "blake_sigma_15".to_owned() }, n_columns + 15),
-    ]);
-    pp_trace.columns.extend(blake_sigma);
+    for (i, column) in blake_sigma.into_iter().enumerate() {
+        pp_trace.push_column(PreProcessedColumnId { id: format!("blake_sigma_{i}") }, column);
+    }
 }
 
 /// A collection of preprocessed columns, whose values are publicly acknowledged, and independent of
 /// the proof.
 pub struct PreProcessedTrace {
     pub columns: Vec<Vec<usize>>,
+    column_ids: Vec<PreProcessedColumnId>,
     column_indices: HashMap<PreProcessedColumnId, usize>,
 }
 
 impl PreProcessedTrace {
+    fn push_column(&mut self, id: PreProcessedColumnId, column: Vec<usize>) {
+        let idx = self.columns.len();
+        assert!(
+            self.column_indices.insert(id.clone(), idx).is_none(),
+            "Duplicate preprocessed column id: {id:?}"
+        );
+        self.column_ids.push(id);
+        self.columns.push(column);
+    }
+
+    /// Sorts preprocessed columns by size (ascending), preserving original order for ties.
+    fn sort_by_size(&mut self) {
+        let mut entries = std::mem::take(&mut self.columns)
+            .into_iter()
+            .zip(std::mem::take(&mut self.column_ids))
+            .collect_vec();
+        // Stable sort keeps original insertion order for equal-length columns.
+        entries.sort_by_key(|(column, _)| column.len());
+
+        self.columns = entries.iter_mut().map(|(column, _)| std::mem::take(column)).collect();
+        self.column_ids = entries.into_iter().map(|(_, id)| id).collect();
+        self.column_indices =
+            self.column_ids.iter().cloned().enumerate().map(|(idx, id)| (id, idx)).collect();
+    }
     fn add_non_circuit_preprocessed_columns(pp_trace: &mut PreProcessedTrace) {
-        let n_columns = pp_trace.columns.len();
         let seq: [Vec<usize>; 17] = std::array::from_fn(|i| (0..1_usize << (i + 4)).collect());
         let bitwise_xor: Vec<Vec<usize>> = [4, 7, 8, 9, 10]
             .into_iter()
             .flat_map(|n_bits| gen_xor_columns(n_bits).into_iter())
             .collect();
-        pp_trace.columns.extend(chain!(seq, bitwise_xor));
-        pp_trace.column_indices.extend([
-            (PreProcessedColumnId { id: "seq_4".to_owned() }, n_columns),
-            (PreProcessedColumnId { id: "seq_5".to_owned() }, n_columns + 1),
-            (PreProcessedColumnId { id: "seq_6".to_owned() }, n_columns + 2),
-            (PreProcessedColumnId { id: "seq_7".to_owned() }, n_columns + 3),
-            (PreProcessedColumnId { id: "seq_8".to_owned() }, n_columns + 4),
-            (PreProcessedColumnId { id: "seq_9".to_owned() }, n_columns + 5),
-            (PreProcessedColumnId { id: "seq_10".to_owned() }, n_columns + 6),
-            (PreProcessedColumnId { id: "seq_11".to_owned() }, n_columns + 7),
-            (PreProcessedColumnId { id: "seq_12".to_owned() }, n_columns + 8),
-            (PreProcessedColumnId { id: "seq_13".to_owned() }, n_columns + 9),
-            (PreProcessedColumnId { id: "seq_14".to_owned() }, n_columns + 10),
-            (PreProcessedColumnId { id: "seq_15".to_owned() }, n_columns + 11),
-            (PreProcessedColumnId { id: "seq_16".to_owned() }, n_columns + 12),
-            (PreProcessedColumnId { id: "seq_17".to_owned() }, n_columns + 13),
-            (PreProcessedColumnId { id: "seq_18".to_owned() }, n_columns + 14),
-            (PreProcessedColumnId { id: "seq_19".to_owned() }, n_columns + 15),
-            (PreProcessedColumnId { id: "seq_20".to_owned() }, n_columns + 16),
-            // bitwise_xor columns start after 17 seq columns
-            (PreProcessedColumnId { id: "bitwise_xor_4_0".to_owned() }, n_columns + 17),
-            (PreProcessedColumnId { id: "bitwise_xor_4_1".to_owned() }, n_columns + 18),
-            (PreProcessedColumnId { id: "bitwise_xor_4_2".to_owned() }, n_columns + 19),
-            (PreProcessedColumnId { id: "bitwise_xor_7_0".to_owned() }, n_columns + 20),
-            (PreProcessedColumnId { id: "bitwise_xor_7_1".to_owned() }, n_columns + 21),
-            (PreProcessedColumnId { id: "bitwise_xor_7_2".to_owned() }, n_columns + 22),
-            (PreProcessedColumnId { id: "bitwise_xor_8_0".to_owned() }, n_columns + 23),
-            (PreProcessedColumnId { id: "bitwise_xor_8_1".to_owned() }, n_columns + 24),
-            (PreProcessedColumnId { id: "bitwise_xor_8_2".to_owned() }, n_columns + 25),
-            (PreProcessedColumnId { id: "bitwise_xor_9_0".to_owned() }, n_columns + 26),
-            (PreProcessedColumnId { id: "bitwise_xor_9_1".to_owned() }, n_columns + 27),
-            (PreProcessedColumnId { id: "bitwise_xor_9_2".to_owned() }, n_columns + 28),
-            (PreProcessedColumnId { id: "bitwise_xor_10_0".to_owned() }, n_columns + 29),
-            (PreProcessedColumnId { id: "bitwise_xor_10_1".to_owned() }, n_columns + 30),
-            (PreProcessedColumnId { id: "bitwise_xor_10_2".to_owned() }, n_columns + 31),
-        ]);
+        for (i, column) in seq.into_iter().enumerate() {
+            pp_trace.push_column(PreProcessedColumnId { id: format!("seq_{}", i + 4) }, column);
+        }
+        let xor_col_ids = [
+            "bitwise_xor_4_0",
+            "bitwise_xor_4_1",
+            "bitwise_xor_4_2",
+            "bitwise_xor_7_0",
+            "bitwise_xor_7_1",
+            "bitwise_xor_7_2",
+            "bitwise_xor_8_0",
+            "bitwise_xor_8_1",
+            "bitwise_xor_8_2",
+            "bitwise_xor_9_0",
+            "bitwise_xor_9_1",
+            "bitwise_xor_9_2",
+            "bitwise_xor_10_0",
+            "bitwise_xor_10_1",
+            "bitwise_xor_10_2",
+        ];
+        for (id, column) in zip_eq(xor_col_ids, bitwise_xor) {
+            pp_trace.push_column(PreProcessedColumnId { id: id.to_owned() }, column);
+        }
     }
 
     pub fn log_sizes(&self) -> Vec<u32> {
@@ -417,7 +411,7 @@ impl PreProcessedTrace {
     }
 
     pub fn ids(&self) -> Vec<PreProcessedColumnId> {
-        self.column_indices.keys().cloned().sorted_by_key(|k| self.column_indices[k]).collect()
+        self.column_ids.clone()
     }
 
     pub fn get_trace<B: Backend>(&self) -> Vec<CircleEvaluation<B, BaseField, BitReversedOrder>> {
@@ -448,7 +442,8 @@ pub struct PreprocessedCircuit {
 impl PreprocessedCircuit {
     /// Builds the preprocessed circuit data (trace + params) from a finalized circuit.
     pub fn preprocess_circuit(circuit: &Circuit) -> Self {
-        let mut pp_trace = PreProcessedTrace { columns: vec![], column_indices: HashMap::new() };
+        let mut pp_trace =
+            PreProcessedTrace { columns: vec![], column_ids: vec![], column_indices: HashMap::new() };
 
         // Adjust multiplicities to account for the use of the constant 0 in the permutation gate
         // implementation. See `fill_permutation_columns` for details.
@@ -466,6 +461,7 @@ impl PreprocessedCircuit {
         add_blake_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
 
         PreProcessedTrace::add_non_circuit_preprocessed_columns(&mut pp_trace);
+        pp_trace.sort_by_size();
 
         // The trace size is the size of the largest column in the preprocessed trace (since all
         // components have preprocessed columns).
@@ -475,6 +471,10 @@ impl PreprocessedCircuit {
             first_permutation_row: qm31_ops_trace_generator.first_permutation_row,
             n_blake_gates: circuit.blake.len(),
             output_addresses: circuit.output.iter().map(|out| out.in0).collect(),
+            preprocessed_trace_info: PreprocessedTraceInfo {
+                log_sizes: pp_trace.log_sizes(),
+                column_ids: pp_trace.ids(),
+            },
         };
 
         Self { preprocessed_trace: pp_trace, params }
