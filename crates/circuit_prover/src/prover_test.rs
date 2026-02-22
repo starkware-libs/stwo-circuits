@@ -1,12 +1,12 @@
-use crate::prover::blake_iv_public_logup_sum;
 use crate::prover::{CircuitProof, finalize_context, prove_circuit};
 use circuit_air::CircuitInteractionElements;
+use circuit_air::lookup_sum;
 use circuit_air::statement::{CircuitStatement, INTERACTION_POW_BITS};
 use circuits::blake::blake;
 use circuits::context::{TraceContext, Var};
 use circuits::eval;
 use circuits::ivalue::{IValue, qm31_from_u32s};
-use circuits::ops::{Guess, permute};
+use circuits::ops::{Guess, output, permute};
 use circuits::{context::Context, ops::guess};
 use circuits_stark_verifier::proof::{Claim, ProofConfig};
 use circuits_stark_verifier::proof_from_stark_proof::{
@@ -36,6 +36,7 @@ pub fn build_fibonacci_context() -> Context<QM31> {
         (809871181 + 0i) + (0 + 0i)u
     "#]]
     .assert_debug_eq(&context.get(b));
+    output(&mut context, b);
 
     context
 }
@@ -82,6 +83,7 @@ fn test_prove_and_stark_verify_blake_gate_context() {
     let (
         CircuitProof {
             components,
+            circuit_params,
             claim,
             interaction_claim,
             pcs_config,
@@ -109,13 +111,13 @@ fn test_prove_and_stark_verify_blake_gate_context() {
         verifier_channel,
     );
     claim.mix_into(verifier_channel);
+    verifier_channel.mix_felts(&circuit_params.output_values);
     commitment_scheme.commit(proof.proof.commitments[1], &sizes[1], verifier_channel);
 
     verifier_channel.verify_pow_nonce(INTERACTION_POW_BITS, interaction_pow_nonce);
 
     verifier_channel.mix_u64(interaction_pow_nonce);
-    let CircuitInteractionElements { common_lookup_elements } =
-        CircuitInteractionElements::draw(verifier_channel);
+    let interaction_elements = CircuitInteractionElements::draw(verifier_channel);
 
     interaction_claim.mix_into(verifier_channel);
 
@@ -129,14 +131,16 @@ fn test_prove_and_stark_verify_blake_gate_context() {
     )
     .unwrap();
 
-    // Compute the expected logup term. In this case it's only the terms corresponding to blake's
-    // IV.
-    let yield_sum =
-        blake_iv_public_logup_sum(blake_gate_context.circuit.blake.len(), &common_lookup_elements);
-
-    let total_claim_sum: QM31 = interaction_claim.claimed_sums.iter().sum();
-
-    assert_eq!(total_claim_sum, yield_sum);
+    assert_eq!(
+        lookup_sum(
+            &interaction_claim,
+            &interaction_elements,
+            &circuit_params.output_addresses,
+            &circuit_params.output_values,
+            circuit_params.n_blake_gates
+        ),
+        QM31::zero()
+    );
 }
 
 #[test]
@@ -148,6 +152,7 @@ fn test_prove_and_stark_verify_permutation_context() {
     let (
         CircuitProof {
             pcs_config,
+            circuit_params,
             claim,
             interaction_pow_nonce,
             interaction_claim,
@@ -176,10 +181,11 @@ fn test_prove_and_stark_verify_permutation_context() {
         verifier_channel,
     );
     claim.mix_into(verifier_channel);
+    verifier_channel.mix_felts(&circuit_params.output_values);
     commitment_scheme.commit(proof.proof.commitments[1], &sizes[1], verifier_channel);
-    // TODO(Gali): Draw interaction element?
     verifier_channel.verify_pow_nonce(INTERACTION_POW_BITS, interaction_pow_nonce);
     verifier_channel.mix_u64(interaction_pow_nonce);
+    let interaction_elements = CircuitInteractionElements::draw(verifier_channel);
     interaction_claim.mix_into(verifier_channel);
     commitment_scheme.commit(proof.proof.commitments[2], &sizes[2], verifier_channel);
     stwo::core::verifier::verify_ex(
@@ -190,6 +196,17 @@ fn test_prove_and_stark_verify_permutation_context() {
         true,
     )
     .unwrap();
+
+    assert_eq!(
+        lookup_sum(
+            &interaction_claim,
+            &interaction_elements,
+            &circuit_params.output_addresses,
+            &circuit_params.output_values,
+            circuit_params.n_blake_gates
+        ),
+        QM31::zero()
+    );
 }
 
 #[test]
@@ -201,6 +218,7 @@ fn test_prove_and_stark_verify_fibonacci_context() {
     let (
         CircuitProof {
             pcs_config,
+            circuit_params,
             claim,
             interaction_pow_nonce,
             interaction_claim,
@@ -229,10 +247,11 @@ fn test_prove_and_stark_verify_fibonacci_context() {
         verifier_channel,
     );
     claim.mix_into(verifier_channel);
+    verifier_channel.mix_felts(&circuit_params.output_values);
     commitment_scheme.commit(proof.proof.commitments[1], &sizes[1], verifier_channel);
-    // TODO(Gali): Draw interaction element?
     verifier_channel.verify_pow_nonce(INTERACTION_POW_BITS, interaction_pow_nonce);
     verifier_channel.mix_u64(interaction_pow_nonce);
+    let interaction_elements = CircuitInteractionElements::draw(verifier_channel);
     interaction_claim.mix_into(verifier_channel);
     commitment_scheme.commit(proof.proof.commitments[2], &sizes[2], verifier_channel);
     stwo::core::verifier::verify_ex(
@@ -243,6 +262,17 @@ fn test_prove_and_stark_verify_fibonacci_context() {
         true,
     )
     .unwrap();
+
+    assert_eq!(
+        lookup_sum(
+            &interaction_claim,
+            &interaction_elements,
+            &circuit_params.output_addresses,
+            &circuit_params.output_values,
+            circuit_params.n_blake_gates
+        ),
+        QM31::zero()
+    );
 }
 
 #[test]
@@ -255,6 +285,7 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     let (
         CircuitProof {
             pcs_config,
+            circuit_params,
             claim,
             interaction_pow_nonce,
             interaction_claim,
@@ -268,7 +299,13 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     let proof = stark_proof.unwrap();
 
     // Verify.
-    let statement = CircuitStatement::default();
+    let mut context = TraceContext::default();
+    let statement = CircuitStatement::new(
+        &mut context,
+        &circuit_params.output_addresses,
+        &circuit_params.output_values,
+        circuit_params.n_blake_gates,
+    );
     let claim = Claim {
         packed_enable_bits: pack_enable_bits(&[true, true]),
         packed_component_log_sizes: pack_component_log_sizes(&claim.log_sizes),
@@ -276,7 +313,6 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     };
     let config = ProofConfig::from_statement(&statement, &pcs_config, INTERACTION_POW_BITS);
 
-    let mut context = TraceContext::default();
     let proof = proof_from_stark_proof(&proof, &config, claim, interaction_pow_nonce, channel_salt);
     let proof_vars = proof.guess(&mut context);
 

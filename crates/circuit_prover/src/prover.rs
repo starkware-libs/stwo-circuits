@@ -1,24 +1,21 @@
 use crate::finalize::finalize_context;
-use crate::witness::components::blake_gate::blake2s_initial_state;
 use crate::witness::components::qm31_ops;
 use crate::witness::preprocessed::PreProcessedTrace;
 use crate::witness::trace::TraceGenerator;
 use crate::witness::trace::write_interaction_trace;
 use crate::witness::trace::write_trace;
 use circuit_air::components::CircuitComponents;
-use circuit_air::relations::CommonLookupElements;
 use circuit_air::statement::INTERACTION_POW_BITS;
 use circuit_air::{CircuitClaim, CircuitInteractionClaim, CircuitInteractionElements, lookup_sum};
 use circuits::context::Context;
 use itertools::chain;
+use num_traits::Zero;
 use std::sync::Arc;
 use stwo::core::air::Component;
 use stwo::core::channel::Blake2sM31Channel;
 use stwo::core::channel::Channel;
-use stwo::core::fields::FieldExpOps;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
-use stwo::core::fields::qm31::SecureField;
 use stwo::core::pcs::PcsConfig;
 use stwo::core::poly::circle::CanonicCoset;
 use stwo::core::proof::ExtendedStarkProof;
@@ -30,7 +27,6 @@ use stwo::prover::ComponentProver;
 use stwo::prover::backend::simd::SimdBackend;
 use stwo::prover::poly::circle::PolyOps;
 use stwo::prover::{ProvingError, prove_ex};
-use stwo_constraint_framework::Relation;
 
 const COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND: u32 = 1;
 
@@ -38,10 +34,13 @@ pub struct CircuitParams {
     pub trace_log_size: u32,
     pub first_permutation_row: usize,
     pub n_blake_gates: usize,
+    pub output_addresses: Vec<M31>,
+    pub output_values: Vec<QM31>,
 }
 
 pub struct CircuitProof {
     pub pcs_config: PcsConfig,
+    pub circuit_params: CircuitParams,
     pub claim: CircuitClaim,
     pub interaction_pow_nonce: u64,
     pub interaction_claim: CircuitInteractionClaim,
@@ -53,55 +52,6 @@ pub struct CircuitProof {
 #[cfg(test)]
 #[path = "prover_test.rs"]
 pub mod test;
-
-fn blake_iv_public_logup_sum(
-    n_blake_gates: usize,
-    common_lookup_elements: &CommonLookupElements,
-) -> SecureField {
-    let state_id = M31::from(1061955672);
-    let initial_state = blake2s_initial_state();
-    let initial_state_limbs = [
-        M31::from(initial_state[0] & 0xffff),
-        M31::from((initial_state[0] >> 16) & 0xffff),
-        M31::from(initial_state[1] & 0xffff),
-        M31::from((initial_state[1] >> 16) & 0xffff),
-        M31::from(initial_state[2] & 0xffff),
-        M31::from((initial_state[2] >> 16) & 0xffff),
-        M31::from(initial_state[3] & 0xffff),
-        M31::from((initial_state[3] >> 16) & 0xffff),
-        M31::from(initial_state[4] & 0xffff),
-        M31::from((initial_state[4] >> 16) & 0xffff),
-        M31::from(initial_state[5] & 0xffff),
-        M31::from((initial_state[5] >> 16) & 0xffff),
-        M31::from(initial_state[6] & 0xffff),
-        M31::from((initial_state[6] >> 16) & 0xffff),
-        M31::from(initial_state[7] & 0xffff),
-        M31::from((initial_state[7] >> 16) & 0xffff),
-    ];
-
-    let limbs = [
-        state_id,
-        M31::from(0u32),
-        initial_state_limbs[0],
-        initial_state_limbs[1],
-        initial_state_limbs[2],
-        initial_state_limbs[3],
-        initial_state_limbs[4],
-        initial_state_limbs[5],
-        initial_state_limbs[6],
-        initial_state_limbs[7],
-        initial_state_limbs[8],
-        initial_state_limbs[9],
-        initial_state_limbs[10],
-        initial_state_limbs[11],
-        initial_state_limbs[12],
-        initial_state_limbs[13],
-        initial_state_limbs[14],
-        initial_state_limbs[15],
-    ];
-    let denom: SecureField = common_lookup_elements.combine(&limbs);
-    denom.inverse() * M31::from(n_blake_gates)
-}
 
 pub fn to_component_provers(
     components: &CircuitComponents,
@@ -129,23 +79,36 @@ pub fn to_component_provers(
 pub fn prove_circuit(context: &mut Context<QM31>) -> (CircuitProof, Vec<u32>) {
     finalize_context(context);
 
-    let (preprocessed_trace, params) =
+    let (preprocessed_trace, mut params) =
         PreProcessedTrace::generate_preprocessed_trace(&context.circuit);
+    let context_values = context.values();
+    let (output_addresses, output_values) = context
+        .circuit
+        .output
+        .iter()
+        .map(|out| (M31::from(out.in0), context_values[out.in0]))
+        .unzip();
+    params.output_addresses = output_addresses;
+    params.output_values = output_values;
 
-    prove_circuit_assignment(context.values(), preprocessed_trace, &params)
+    prove_circuit_assignment(context_values, preprocessed_trace, params)
 }
 
 pub fn prove_circuit_assignment(
     values: &[QM31],
     preprocessed_trace: PreProcessedTrace,
-    params: &CircuitParams,
+    params: CircuitParams,
 ) -> (CircuitProof, Vec<u32>) {
+    let CircuitParams {
+        trace_log_size,
+        first_permutation_row,
+        n_blake_gates,
+        ref output_addresses,
+        ref output_values,
+    } = params;
     let trace_generator = TraceGenerator {
-        qm31_ops_trace_generator: qm31_ops::TraceGenerator {
-            first_permutation_row: params.first_permutation_row,
-        },
+        qm31_ops_trace_generator: qm31_ops::TraceGenerator { first_permutation_row },
     };
-    let trace_log_size = params.trace_log_size;
 
     let mut pcs_config = PcsConfig::default();
     let lifting_log_size = trace_log_size + pcs_config.fri_config.log_blowup_factor;
@@ -189,6 +152,8 @@ pub fn prove_circuit_assignment(
     let (claim, interaction_generator) =
         write_trace(values, preprocessed_trace_arc.clone(), &mut tree_builder, &trace_generator);
     claim.mix_into(channel);
+    // Mix the output gates values into the channel (addresses are constant).
+    channel.mix_felts(output_values);
     tree_builder.commit(channel);
 
     // Draw interaction elements.
@@ -204,11 +169,18 @@ pub fn prove_circuit_assignment(
         &mut tree_builder,
         &interaction_elements,
     );
-    let public_logup_sum = blake_iv_public_logup_sum(
-        params.n_blake_gates,
-        &interaction_elements.common_lookup_elements,
+
+    // Validate lookup argument.
+    debug_assert_eq!(
+        lookup_sum(
+            &interaction_claim,
+            &interaction_elements,
+            output_addresses,
+            output_values,
+            n_blake_gates
+        ),
+        QM31::zero()
     );
-    assert_eq!(lookup_sum(&interaction_claim), public_logup_sum);
 
     interaction_claim.mix_into(channel);
     tree_builder.commit(channel);
@@ -226,6 +198,7 @@ pub fn prove_circuit_assignment(
     (
         CircuitProof {
             pcs_config,
+            circuit_params: params,
             claim,
             interaction_pow_nonce,
             interaction_claim,
