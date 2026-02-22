@@ -135,9 +135,7 @@ impl FrameworkEval for Eval {
     }
 }
 
-pub struct CircuitQm31OpsComponent {
-    pub preprocessed_column_indices: [usize; N_PREPROCESSED_COLUMNS],
-}
+pub struct CircuitQm31OpsComponent {}
 
 impl<Value: IValue> CircuitEval<Value> for CircuitQm31OpsComponent {
     fn name(&self) -> String {
