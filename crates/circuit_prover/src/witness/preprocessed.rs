@@ -194,8 +194,8 @@ fn fill_blake_columns(
 ) {
     // IV should be in state_address 0.
     let mut state_address = 1;
-    let mut message_length = 0;
     for gate in blake.iter() {
+        let mut message_length = 0;
         for (i, [in0, in1, in2, in3]) in gate.input.iter().enumerate() {
             // The current message length split to 2 u16.
             message_length = gate.n_bytes.min(message_length + 16 * 4);

@@ -37,8 +37,22 @@ fn pad_eq(context: &mut Context<impl IValue>) {
 fn pad_blake(context: &mut Context<impl IValue>) {
     // The number of rows in blake output component is equal to the number of blake gates.
     let n_blake_output_rows = context.circuit.blake.len();
-    let target_blake_output_rows = std::cmp::max(n_blake_output_rows.next_power_of_two(), N_LANES);
-    let blake_output_padding = target_blake_output_rows - n_blake_output_rows;
+    let mut target_blake_output_rows =
+        std::cmp::max(n_blake_output_rows.next_power_of_two(), N_LANES);
+    let mut blake_output_padding = target_blake_output_rows - n_blake_output_rows;
+    if blake_output_padding == 0 {
+        let n_blake_compress_rows: usize =
+            context.circuit.blake.iter().map(|gate| gate.input.len()).sum();
+        let target_blake_compress_rows =
+            std::cmp::max(n_blake_compress_rows.next_power_of_two(), N_LANES);
+        if target_blake_compress_rows == n_blake_compress_rows {
+            return;
+        }
+        // Output rows are aligned but compress rows are not. Open a fresh output-padding block so
+        // we can add compress rows while keeping output rows power-of-two aligned.
+        target_blake_output_rows *= 2;
+        blake_output_padding = target_blake_output_rows - n_blake_output_rows;
+    }
     let zero = context.zero();
 
     // Reserve one final gate for aligning both blake output and blake compress row counts.
@@ -49,12 +63,19 @@ fn pad_blake(context: &mut Context<impl IValue>) {
 
     let n_blake_compress_rows: usize =
         context.circuit.blake.iter().map(|gate| gate.input.len()).sum();
-    let target_blake_compress_rows =
+    let mut target_blake_compress_rows =
         std::cmp::max(n_blake_compress_rows.next_power_of_two(), N_LANES);
-    let blake_compress_padding = target_blake_compress_rows - n_blake_compress_rows;
+    let mut blake_compress_padding = target_blake_compress_rows - n_blake_compress_rows;
+    // The reserved final gate must contribute at least one compress row.
+    // If we're already at the target, shift to the next power of two.
+    if blake_compress_padding == 0 {
+        target_blake_compress_rows *= 2;
+        blake_compress_padding = target_blake_compress_rows - n_blake_compress_rows;
+    }
     let n_last_words = blake_compress_padding * 4;
     circuits::blake::blake(context, &vec![zero; n_last_words], n_last_words * 16);
 }
+
 #[allow(dead_code)]
 fn hash_constants(context: &mut Context<impl IValue>) -> HashValue<Var> {
     let constants: Vec<_> = context.constants().values().copied().collect();
