@@ -7,6 +7,7 @@ use circuits::circuit::{Eq, Gate};
 use itertools::{Itertools, chain, zip_eq};
 use std::collections::HashMap;
 use stwo::core::fields::m31::BaseField;
+use stwo::core::fields::m31::M31;
 use stwo::core::poly::circle::CanonicCoset;
 use stwo::prover::backend::Backend;
 use stwo::prover::backend::Col;
@@ -395,6 +396,7 @@ impl PreProcessedTrace {
             trace_log_size,
             first_permutation_row: qm31_ops_trace_generator.first_permutation_row,
             n_blake_gates: circuit.blake.len(),
+            output_addresses: circuit.output.iter().map(|out| M31::from(out.in0)).collect(),
         };
         (pp_trace, params)
     }
