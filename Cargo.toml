@@ -40,6 +40,7 @@ circuits = { path = "crates/circuits"}
 circuit-air = { path = "crates/circuit_air"}
 circuits-stark-verifier = { path = "crates/stark_verifier"}
 circuits-stark-verifier-examples = { path = "crates/stark_verifier_examples"}
+circuit-prover = { path = "crates/circuit_prover"}
 rstest = "0.26.1"
 expect-test = "1.5.1"
 rayon = "1.10.0"

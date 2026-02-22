@@ -7,7 +7,7 @@ use cairo_air::relations::{
 use circuits::blake::blake;
 use circuits::eval;
 use circuits::extract_bits::extract_bits;
-use circuits::ops::{Guess, output};
+use circuits::ops::Guess;
 use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::logup::logup_use_term;
 use circuits_stark_verifier::proof_from_stark_proof::pack_into_qm31s;
@@ -215,8 +215,11 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         );
 
         // output the output hash.
-        output(context, output_hash.0);
-        output(context, output_hash.1);
+        //output(context, output_hash.0);
+        //output(context, output_hash.1);
+
+        context.mark_as_unused(output_hash.0);
+        context.mark_as_unused(output_hash.1);
 
         let packed_program =
             Simd::pack(context, &self.program.iter().flatten().cloned().collect_vec());
