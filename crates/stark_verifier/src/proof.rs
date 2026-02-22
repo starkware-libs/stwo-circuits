@@ -1,3 +1,4 @@
+use crate::fri::compute_steps;
 use crate::fri_proof::{FriConfig, FriProof, empty_fri_proof};
 use crate::merkle::{AuthPath, AuthPaths};
 use crate::oods::{EvalDomainSamples, N_COMPOSITION_COLUMNS, empty_eval_domain_samples};
@@ -113,7 +114,10 @@ impl ProofConfig {
         };
 
         let log_trace_size = (*lifting_log_size - log_blowup_factor) as usize;
-
+        let line_fold_steps_aux = compute_steps(
+            log_trace_size - 1 - *log_last_layer_degree_bound as usize,
+            *line_fold_step as usize,
+        );
         Self {
             n_proof_of_work_bits: *pow_bits,
             n_preprocessed_columns,
@@ -129,6 +133,7 @@ impl ProofConfig {
                 n_queries: *n_queries,
                 log_n_last_layer_coefs: *log_last_layer_degree_bound as usize,
                 line_fold_step: *line_fold_step as usize,
+                line_fold_steps_aux,
             },
             interaction_pow_bits,
         }

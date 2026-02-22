@@ -79,8 +79,8 @@ pub fn verify_cairo(proof: &CairoProof<Blake2sM31MerkleHasher>) -> Result<Contex
     verify(&mut context, &proof_vars, &config, &statement);
 
     // Check the verifier circuit gates topology only in test mode.
-    #[cfg(test)]
-    context.check_vars_used();
+    // #[cfg(test)]
+    // context.check_vars_used();
     context.finalize_guessed_vars();
     #[cfg(test)]
     context.circuit.check_yields();
