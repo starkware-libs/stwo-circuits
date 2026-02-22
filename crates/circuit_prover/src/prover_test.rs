@@ -1,6 +1,7 @@
 use crate::prover::blake_iv_public_logup_sum;
 use crate::prover::{CircuitProof, finalize_context, prove_circuit};
 use circuit_air::CircuitInteractionElements;
+use circuit_air::components::N_COMPONENTS;
 use circuit_air::statement::{CircuitStatement, INTERACTION_POW_BITS};
 use circuits::blake::blake;
 use circuits::context::{TraceContext, Var};
@@ -12,6 +13,7 @@ use circuits_stark_verifier::proof::{Claim, ProofConfig};
 use circuits_stark_verifier::proof_from_stark_proof::{
     pack_component_log_sizes, pack_enable_bits, proof_from_stark_proof,
 };
+use circuits_stark_verifier::statement::Statement;
 use expect_test::expect;
 use num_traits::{One, Zero};
 use stwo::core::air::Component;
@@ -247,7 +249,6 @@ fn test_prove_and_stark_verify_fibonacci_context() {
 }
 
 #[test]
-#[ignore = "Verifier does not yet support Blake AIR."]
 fn test_prove_and_circuit_verify_fibonacci_context() {
     let mut fibonacci_context = build_fibonacci_context();
     fibonacci_context.finalize_guessed_vars();
@@ -269,15 +270,21 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     let proof = stark_proof.unwrap();
 
     // Verify.
-    let statement = CircuitStatement::default();
+    let statement = CircuitStatement::with_component_log_sizes(&claim.log_sizes);
+    let (pp_trace_for_order, _) =
+        crate::witness::preprocessed::PreProcessedTrace::generate_preprocessed_trace(
+            &fibonacci_context.circuit,
+        );
+    assert_eq!(pp_trace_for_order.ids(), statement.get_preprocessed_column_ids());
     let claim = Claim {
-        packed_enable_bits: pack_enable_bits(&[true, true]),
+        packed_enable_bits: pack_enable_bits(&[true; N_COMPONENTS]),
         packed_component_log_sizes: pack_component_log_sizes(&claim.log_sizes),
         claimed_sums: interaction_claim.claimed_sums.to_vec(),
     };
     let config = ProofConfig::from_statement(&statement, &pcs_config, INTERACTION_POW_BITS);
 
     let mut context = TraceContext::default();
+    context.enable_assert_eq_on_eval();
     let proof = proof_from_stark_proof(&proof, &config, claim, interaction_pow_nonce, channel_salt);
     let proof_vars = proof.guess(&mut context);
 

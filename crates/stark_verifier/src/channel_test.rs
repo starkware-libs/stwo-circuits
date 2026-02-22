@@ -1,4 +1,6 @@
 use rstest::rstest;
+use stwo::core::channel::Blake2sM31Channel as NativeBlake2sM31Channel;
+use stwo::core::channel::Channel as NativeChannelTrait;
 
 use circuits::blake::HashValue;
 use circuits::context::TraceContext;
@@ -133,6 +135,60 @@ fn test_draw_point_regression() {
 
     assert_eq!(context.get(pt.x), qm31_from_u32s(1343313724, 1951183646, 1685075959, 888698585));
     assert_eq!(context.get(pt.y), qm31_from_u32s(674655034, 1516640953, 569857337, 1549701521));
+
+    context.validate_circuit();
+}
+
+#[test]
+fn test_draw_qm31_matches_native_channel() {
+    let mut context = TraceContext::default();
+    let mut our = Channel::new(&mut context);
+    let mut native = NativeBlake2sM31Channel::default();
+
+    let salt = qm31_from_u32s(12345, 0, 0, 0);
+    let salt_var = context.new_var(salt);
+    our.mix_qm31s(&mut context, [salt_var]);
+    native.mix_felts(&[salt]);
+
+    let our_draw = our.draw_qm31(&mut context);
+    let native_draw = native.draw_secure_felt();
+    assert_eq!(context.get(our_draw), native_draw);
+
+    context.validate_circuit();
+}
+
+#[test]
+fn test_draw_qm31_matches_native_from_fixed_digest() {
+    let mut context = TraceContext::default();
+    let init_digest = [
+        qm31_from_u32s(1965230632, 1839411032, 1501942319, 262181679),
+        qm31_from_u32s(1779914487, 909827358, 1760026750, 1554912623),
+    ];
+    let mut our = Channel::from_digest(&mut context, init_digest);
+    let our_draw = our.draw_qm31(&mut context);
+    let mut input = Vec::new();
+    for w in [
+        init_digest[0].0.0.0,
+        init_digest[0].0.1.0,
+        init_digest[0].1.0.0,
+        init_digest[0].1.1.0,
+        init_digest[1].0.0.0,
+        init_digest[1].0.1.0,
+        init_digest[1].1.0.0,
+        init_digest[1].1.1.0,
+    ] {
+        input.extend_from_slice(&w.to_le_bytes());
+    }
+    input.extend_from_slice(&0u32.to_le_bytes());
+    input.push(0u8);
+    let digest = stwo::core::vcs::blake2_hash::Blake2sHasherGeneric::<true>::hash(&input).0;
+    let native_draw = qm31_from_u32s(
+        u32::from_le_bytes(digest[0..4].try_into().unwrap()),
+        u32::from_le_bytes(digest[4..8].try_into().unwrap()),
+        u32::from_le_bytes(digest[8..12].try_into().unwrap()),
+        u32::from_le_bytes(digest[12..16].try_into().unwrap()),
+    );
+    assert_eq!(context.get(our_draw), native_draw);
 
     context.validate_circuit();
 }
