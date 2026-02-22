@@ -17,16 +17,6 @@ pub struct ClaimGenerator {
     preprocessed_trace: Arc<PreProcessedTrace>,
 }
 
-const BLAKE2S_IV: [u32; 8] = [
-    0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19,
-];
-
-pub fn blake2s_initial_state() -> [u32; 8] {
-    let mut h = BLAKE2S_IV;
-    h[0] ^= 0x01010020;
-    h
-}
-
 #[inline]
 fn blake2s_g(v: &mut [u32; 16], a: usize, b: usize, c: usize, d: usize, x: u32, y: u32) {
     v[a] = v[a].wrapping_add(v[b]).wrapping_add(x);
