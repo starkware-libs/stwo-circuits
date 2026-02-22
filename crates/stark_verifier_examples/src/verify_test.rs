@@ -93,9 +93,9 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
         }
         ProofModifier::WrongFriSibling => {
             let err = result.unwrap_err();
-            // The error should be when comparing the last layer Merkle root.
-            let expected_value =
-                context.get(proof_vars.fri.commit.layer_commitments.last().unwrap().0);
+            // The error should be when validating the query position in its fri coset.
+            let expected_value = context
+                .get(proof_vars.fri.line_coset_vals_per_query_per_tree.last().unwrap()[0][1]);
             assert!(err.contains(&expected_value.to_string()));
         }
     }

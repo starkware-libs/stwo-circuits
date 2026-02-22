@@ -3,6 +3,7 @@ use std::array;
 use hashbrown::HashMap;
 use itertools::Itertools;
 use itertools::chain;
+use itertools::zip_eq;
 use num_traits::Zero;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
@@ -34,6 +35,8 @@ pub fn proof_from_stark_proof(
     let interaction_pow_high = (interaction_pow_nonce >> 32) as u32;
     let interaction_pow_low = (interaction_pow_nonce & 0xFFFFFFFF) as u32;
 
+    let siblings = construct_fri_siblings(proof, config);
+
     Proof {
         preprocessed_root: commitments[0].into(),
         trace_root: commitments[1].into(),
@@ -63,7 +66,8 @@ pub fn proof_from_stark_proof(
                 last_layer_coefs: (*fri_proof.last_layer_poly).to_vec(),
             },
             auth_paths: construct_fri_auth_paths(proof, config),
-            fri_siblings: construct_fri_siblings(proof, config),
+            circle_fri_siblings: siblings.0,
+            line_coset_vals_per_query_per_tree: siblings.1,
         },
         proof_of_work_nonce: qm31_from_u32s(pow_low, pow_high, 0, 0),
         interaction_pow_nonce: qm31_from_u32s(interaction_pow_low, interaction_pow_high, 0, 0),
@@ -160,21 +164,25 @@ fn construct_fri_auth_paths(
 ) -> AuthPaths<QM31> {
     let unsorted_query_locations = &proof.aux.unsorted_query_locations;
     let layers = chain!([&proof.aux.fri.first_layer], &proof.aux.fri.inner_layers);
-    let res = layers
-        .enumerate()
-        .map(|(tree_idx, aux)| {
+    let n = config.log_evaluation_domain_size();
+    // Gather the layer log sizes.
+    let mut layer_log_sizes = vec![n, n - 1];
+    for i in 0..proof.aux.fri.inner_layers.len() - 1 {
+        layer_log_sizes.push(layer_log_sizes.last().unwrap() - config.fri.line_fold_steps_aux[i]);
+    }
+    let mut extended_steps = vec![1];
+    extended_steps.extend_from_slice(&config.fri.line_fold_steps_aux);
+    let res = zip_eq(zip_eq(layer_log_sizes, layers), extended_steps)
+        .map(|((log_size, layer_proof), step)| {
             unsorted_query_locations
                 .iter()
                 .map(|query| {
                     let mut pos = *query;
-                    pos >>= tree_idx;
+                    pos >>= n - log_size + step;
                     let mut auth_path: AuthPath<QM31> = AuthPath(vec![]);
-                    for j in 0..config.log_evaluation_domain_size() - tree_idx {
-                        let hash = aux.decommitment.all_node_values[j][&(pos ^ 1)];
-                        if j > 0 {
-                            // Don't add the first hash because it's computed from the fri sibling.
-                            auth_path.0.push(hash.into());
-                        }
+                    for j in step..log_size {
+                        let hash = layer_proof.decommitment.all_node_values[j][&(pos ^ 1)];
+                        auth_path.0.push(hash.into());
                         pos >>= 1;
                     }
                     auth_path
@@ -190,21 +198,26 @@ fn construct_fri_auth_paths(
 /// ([ExtendedStarkProof]).
 ///
 /// For each tree, for each query, the sibling of the relevant node in FRI.
-fn construct_fri_siblings(
+pub fn construct_fri_siblings(
     proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
     config: &ProofConfig,
-) -> Vec<Vec<QM31>> {
-    let mut res = vec![vec![]; config.log_trace_size()];
-    let layers = chain!([&proof.aux.fri.first_layer], &proof.aux.fri.inner_layers).collect_vec();
+) -> (Vec<QM31>, Vec<Vec<Vec<QM31>>>) {
+    let mut line_coset_vals_per_query_per_tree = vec![vec![]; config.log_trace_size() - 1];
+    let mut circle_fri_siblings = vec![];
     for query in &proof.aux.unsorted_query_locations {
-        let mut pos = *query;
-        for j in 0..config.log_trace_size() {
-            let sibling = layers[j].all_values[0][&(pos ^ 1)];
-            pos >>= 1;
-            res[j].push(sibling);
+        circle_fri_siblings.push(proof.aux.fri.first_layer.all_values[0][&(query ^ 1)]);
+        let mut pos = query >> 1;
+        for (tree_idx, (layer, step)) in
+            zip_eq(&proof.aux.fri.inner_layers, &config.fri.line_fold_steps_aux).enumerate()
+        {
+            let start = (pos >> step) << step;
+            let line_coset_vals: Vec<_> =
+                (start..start + (1 << step)).map(|i| layer.all_values[0][&i]).collect();
+            line_coset_vals_per_query_per_tree[tree_idx].push(line_coset_vals);
+            pos >>= step;
         }
     }
-    res
+    (circle_fri_siblings, line_coset_vals_per_query_per_tree)
 }
 
 /// Packs the enable bits into QM31s.

@@ -152,12 +152,13 @@ impl CircuitSerialize for FriCommitProof<QM31> {
         last_layer_coefs.serialize(output);
     }
 }
-
 impl CircuitSerialize for FriProof<QM31> {
     fn serialize(&self, output: &mut Vec<u8>) {
-        let Self { commit, auth_paths, fri_siblings } = self;
+        let Self { commit, auth_paths, circle_fri_siblings, line_coset_vals_per_query_per_tree } =
+            self;
         commit.serialize(output);
         auth_paths.serialize(output);
-        fri_siblings.serialize(output);
+        circle_fri_siblings.serialize(output);
+        line_coset_vals_per_query_per_tree.serialize(output);
     }
 }
