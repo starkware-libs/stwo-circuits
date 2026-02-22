@@ -17,7 +17,7 @@ use stwo::core::fields::qm31::QM31;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 
 /// Circuit Verifies a [CairoProof].
-pub fn verify_cairo(proof: &CairoProof<Blake2sM31MerkleHasher>) -> Context<QM31> {
+pub fn verify_cairo(proof: &CairoProof<Blake2sM31MerkleHasher>) -> Result<Context<QM31>, String> {
     let mut context = TraceContext::default();
     let CairoProof {
         claim,
@@ -78,5 +78,15 @@ pub fn verify_cairo(proof: &CairoProof<Blake2sM31MerkleHasher>) -> Context<QM31>
 
     verify(&mut context, &proof_vars, &config, &statement);
 
-    context
+    // Check the verifier circuit gates topology only in test mode.
+    #[cfg(test)]
+    context.check_vars_used();
+    context.finalize_guessed_vars();
+    #[cfg(test)]
+    context.circuit.check_yields();
+    // Always validate the circuit values.
+    if !context.is_circuit_valid() {
+        return Err("Verification failed".to_string());
+    }
+    Ok(context)
 }
