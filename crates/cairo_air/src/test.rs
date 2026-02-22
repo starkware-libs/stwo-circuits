@@ -184,11 +184,7 @@ fn test_verify_all_opcodes() {
     let proof_file = File::open(proof_path).unwrap();
     let cairo_proof = binary_deserialize_from_file(&proof_file).unwrap();
 
-    let mut context = verify_cairo(&cairo_proof);
-    context.check_vars_used();
-    context.finalize_guessed_vars();
-    context.circuit.check_yields();
-    context.validate_circuit();
+    let context = verify_cairo(&cairo_proof).unwrap();
     println!("Stats: {:?}", context.stats);
 }
 
@@ -198,9 +194,5 @@ fn test_verify_privacy() {
     let proof_file = File::open(proof_path).unwrap();
     let cairo_proof = binary_deserialize_from_file(&proof_file).unwrap();
 
-    let mut context = verify_cairo(&cairo_proof);
-    context.check_vars_used();
-    context.finalize_guessed_vars();
-    context.circuit.check_yields();
-    context.validate_circuit();
+    verify_cairo(&cairo_proof).unwrap();
 }
