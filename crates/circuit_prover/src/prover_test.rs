@@ -266,7 +266,7 @@ fn test_prove_and_stark_verify_fibonacci_context() {
 }
 
 #[test]
-#[ignore]
+#[ignore = "Verifier does not yet support Blake AIR."]
 fn test_prove_and_circuit_verify_fibonacci_context() {
     let mut fibonacci_context = build_fibonacci_context();
     fibonacci_context.finalize_guessed_vars();
