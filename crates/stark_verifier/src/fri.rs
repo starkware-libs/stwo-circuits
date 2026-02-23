@@ -53,21 +53,19 @@ pub fn fri_decommit<Value: IValue>(
     let FriProof {
         commit: FriCommitProof { layer_commitments, last_layer_coefs },
         auth_paths,
-        fri_siblings,
+        circle_fri_siblings,
+        line_coset_vals_per_query_per_tree,
     } = proof;
     let all_line_fold_steps = compute_all_line_fold_steps(
         config.log_trace_size - 1 - config.log_n_last_layer_coefs,
         config.line_fold_step,
     );
     let n_inner_layers = all_line_fold_steps.len();
-    // TODO(Leo): remove and guess actual values from proof in next PR.
-    let line_coset_vals_per_query_per_tree: Vec<Vec<Vec<Var>>> =
-        vec![vec![vec![]; config.n_queries]; n_inner_layers];
     // Circle to line decommitment.
     let mut fri_data = decommit_circle_to_line(
         context,
         &layer_commitments[0],
-        &fri_siblings[0],
+        circle_fri_siblings,
         auth_paths,
         fri_input,
         bits,
@@ -90,7 +88,7 @@ pub fn fri_decommit<Value: IValue>(
         // `fri_coset_per_query`.
         validate_query_position_in_coset(
             context,
-            &coset_per_query,
+            coset_per_query,
             &fri_data,
             &bits[bit_range.clone()],
         );
@@ -137,7 +135,7 @@ pub fn fri_decommit<Value: IValue>(
         // Compute the next layer.
         fri_data = zip_eq(coset_per_query, twiddles_per_fold_per_query)
             .map(|(coset, twiddles_per_fold)| {
-                fold_coset(context, &coset, &twiddles_per_fold, &alpha_powers)
+                fold_coset(context, coset, &twiddles_per_fold, &alpha_powers)
             })
             .collect();
 
