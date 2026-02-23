@@ -1,9 +1,15 @@
 use crate::channel::Channel;
+use crate::fri::fold_coset;
 use crate::fri_proof::FriCommitProof;
 use circuits::blake::HashValue;
 use circuits::context::TraceContext;
 use circuits::ivalue::qm31_from_u32s;
 use circuits::ops::Guess;
+use stwo::core::circle::Coset;
+use stwo::core::fields::qm31::SecureField;
+use stwo::core::fri::fold_coset as stwo_fold_coset;
+use stwo::core::poly::line::LineDomain;
+use stwo::core::utils::bit_reverse_index;
 
 use super::fri_commit;
 
@@ -63,5 +69,49 @@ fn test_fri_commit_regression() {
         qm31_from_u32s(1805658819, 300032261, 172116750, 994058243)
     );
 
+    context.validate_circuit();
+}
+
+#[test]
+fn test_fold_coset() {
+    let mut context = TraceContext::default();
+    let coset_log_size = 3_u32;
+
+    let coset_values_qm31: Vec<_> = (0..(1 << coset_log_size))
+        .map(|i| qm31_from_u32s(4 * i, 4 * i + 1, 4 * i + 2, 4 * i + 3))
+        .collect();
+    let coset_values: Vec<_> = coset_values_qm31.iter().map(|x| context.constant(*x)).collect();
+
+    let alpha_qm31 = qm31_from_u32s(98, 76, 54, 32);
+    let mut alpha_pow = alpha_qm31;
+    let mut alphas = Vec::with_capacity(coset_log_size as usize);
+    for _ in 0..coset_log_size {
+        alphas.push(context.constant(alpha_pow));
+        alpha_pow = alpha_pow * alpha_pow;
+    }
+
+    let mut fold_domain = LineDomain::new(Coset::half_odds(coset_log_size));
+    let mut twiddles_per_fold = Vec::with_capacity(coset_log_size as usize);
+    for i in 0..coset_log_size {
+        let twiddles_len = 1 << (coset_log_size - i - 1);
+        let twiddles = (0..twiddles_len)
+            .map(|k| {
+                let j = 2 * k;
+                let x = fold_domain.at(bit_reverse_index(j, fold_domain.log_size()));
+                context.constant(SecureField::from(x.inverse()))
+            })
+            .collect::<Vec<_>>();
+        twiddles_per_fold.push(twiddles);
+        fold_domain = fold_domain.double();
+    }
+
+    let actual = fold_coset(&mut context, &coset_values, &twiddles_per_fold, &alphas);
+    let expected = stwo_fold_coset(
+        coset_values_qm31,
+        LineDomain::new(Coset::half_odds(coset_log_size)),
+        alpha_qm31,
+    );
+
+    assert_eq!(context.get(actual), expected);
     context.validate_circuit();
 }
