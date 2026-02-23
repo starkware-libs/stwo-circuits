@@ -3,6 +3,7 @@ use circuits::blake::HashValue;
 use circuits::context::{Context, Var};
 use circuits::ivalue::{IValue, NoValue};
 use circuits::ops::Guess;
+use itertools::zip_eq;
 
 /// Represents the structure of a FRI proof.
 #[derive(Debug, PartialEq)]
@@ -63,33 +64,49 @@ pub struct FriProof<T> {
     pub commit: FriCommitProof<T>,
     /// Authentication paths for all the FRI trees.
     pub auth_paths: AuthPaths<T>,
-    /// For each layer, for each query, the sibling value.
-    pub fri_siblings: Vec<Vec<T>>,
+    /// The siblings for the first FRI layer (circle-to-line). Currently the folding step is 1 so
+    /// only one sibling per query is required.
+    pub circle_fri_siblings: Vec<T>,
+    /// For each inner layer, for each query, the values of the layer poly on the FRI coset
+    /// containing the query.
+    pub line_coset_vals_per_query_per_tree: Vec<Vec<Vec<T>>>,
 }
 
 impl<T> FriProof<T> {
     /// Validates that the size of the members of the struct are consistent with the config.
     pub fn validate_structure(&self, config: &FriConfig) {
-        let FriProof { commit, auth_paths, fri_siblings } = self;
-        let log_evaluation_domain_size = config.log_evaluation_domain_size();
-
+        let FriProof {
+            commit,
+            auth_paths,
+            line_coset_vals_per_query_per_tree,
+            circle_fri_siblings,
+        } = self;
         commit.validate_structure(config);
+        let all_line_fold_steps = compute_all_line_fold_steps(
+            config.log_trace_size - 1 - config.log_n_last_layer_coefs,
+            config.line_fold_step,
+        );
 
-        // As layer skipping is not currently supported and the last layer is a constant polynomial,
-        // the number of commitment trees should be the same as the trace log size.
-        assert_eq!(auth_paths.data.len(), config.log_trace_size);
-        for (tree_idx, tree_data) in auth_paths.data.iter().enumerate() {
+        assert_eq!(auth_paths.data.len(), all_line_fold_steps.len() + 1);
+        let first_layer_log_size = config.log_evaluation_domain_size();
+        let mut all_fold_steps = vec![1];
+        all_fold_steps.extend_from_slice(&all_line_fold_steps);
+        let mut fold_sum = 0;
+        for (tree_data, fold_step) in zip_eq(&auth_paths.data, all_fold_steps) {
             assert_eq!(tree_data.len(), config.n_queries);
             for query_data in tree_data {
-                // Reduce size by 1 because we take the sibling of the leaf from `fri_siblings`
-                // rather than `auth_paths`.
-                assert_eq!(query_data.0.len(), log_evaluation_domain_size - tree_idx - 1);
+                assert_eq!(query_data.0.len(), first_layer_log_size - fold_sum - fold_step);
             }
+            fold_sum += fold_step
         }
 
-        assert_eq!(fri_siblings.len(), config.log_trace_size);
-        for siblings in fri_siblings {
-            assert_eq!(siblings.len(), config.n_queries);
+        assert_eq!(circle_fri_siblings.len(), config.n_queries);
+        assert_eq!(line_coset_vals_per_query_per_tree.len(), all_line_fold_steps.len());
+        for (fri_coset_per_query, step) in
+            zip_eq(line_coset_vals_per_query_per_tree, &all_line_fold_steps)
+        {
+            assert_eq!(fri_coset_per_query.len(), config.n_queries);
+            fri_coset_per_query.iter().all(|coset| coset.len() == 1 << step);
         }
     }
 }
@@ -101,7 +118,10 @@ impl<Value: IValue> Guess<Value> for FriProof<Value> {
         Self::Target {
             commit: self.commit.guess(context),
             auth_paths: self.auth_paths.guess(context),
-            fri_siblings: self.fri_siblings.guess(context),
+            circle_fri_siblings: self.circle_fri_siblings.guess(context),
+            line_coset_vals_per_query_per_tree: self
+                .line_coset_vals_per_query_per_tree
+                .guess(context),
         }
     }
 }
@@ -121,13 +141,22 @@ pub fn empty_fri_proof(config: &FriConfig) -> FriProof<NoValue> {
             .collect(),
     };
 
+    let all_line_fold_steps = compute_all_line_fold_steps(
+        config.log_trace_size - 1 - config.log_n_last_layer_coefs,
+        config.line_fold_step,
+    );
+    let line_coset_vals_per_query_per_tree = all_line_fold_steps
+        .iter()
+        .map(|step| vec![vec![NoValue; 1 << step]; config.n_queries])
+        .collect();
     FriProof {
         commit: FriCommitProof {
             layer_commitments: vec![empty_hash; config.log_trace_size],
             last_layer_coefs: vec![NoValue; 1 << config.log_n_last_layer_coefs],
         },
         auth_paths,
-        fri_siblings: vec![vec![NoValue; config.n_queries]; config.log_trace_size],
+        circle_fri_siblings: vec![NoValue; config.n_queries],
+        line_coset_vals_per_query_per_tree,
     }
 }
 
