@@ -17,6 +17,11 @@ pub struct FriConfig {
     pub log_n_last_layer_coefs: usize,
     /// The step of the line folds in FRI's inner layers.
     pub line_fold_step: usize,
+    /// The vector of all of the line folds between inner layers. This field
+    /// is redundant with `line_fold_step` in the sense that it can be computed from it (but not
+    /// vice versa). This field is stored explicitly to avoid recomputing the folding
+    /// schedule.
+    pub all_line_fold_steps: Vec<usize>,
 }
 
 impl FriConfig {
@@ -129,4 +134,22 @@ pub fn empty_fri_proof(config: &FriConfig) -> FriProof<NoValue> {
         auth_paths,
         fri_siblings: vec![vec![NoValue; config.n_queries]; config.log_trace_size],
     }
+}
+
+/// Computes all the line-to-line folding steps.
+///
+/// # Arguments
+///
+/// - `line_degree_log_ratio`: (log degree of FRI's second layer poly) - (log degree of FRI's last
+///   layer).
+/// - `line_fold_step`: the folding step of all the line-to-line folds except possibly the last.
+pub fn compute_all_line_fold_steps(
+    line_degree_log_ratio: usize,
+    line_fold_step: usize,
+) -> Vec<usize> {
+    let n_folds = line_degree_log_ratio.div_ceil(line_fold_step);
+    let rem = line_degree_log_ratio % line_fold_step;
+    let mut line_fold_steps = vec![line_fold_step; n_folds];
+    line_fold_steps[n_folds - 1] = if rem == 0 { line_fold_step } else { rem };
+    line_fold_steps
 }
