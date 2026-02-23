@@ -67,7 +67,7 @@ pub fn hash_leaf_qm31(context: &mut Context<impl IValue>, value: Var) -> HashVal
 }
 
 /// Computes the hash of an internal node in the Merkle tree.
-fn hash_node(
+pub fn hash_node(
     context: &mut Context<impl IValue>,
     left: HashValue<Var>,
     right: HashValue<Var>,
