@@ -1,5 +1,6 @@
 use crate::prover::{CircuitProof, finalize_context, prove_circuit};
 use circuit_air::CircuitInteractionElements;
+use circuit_air::components::N_COMPONENTS;
 use circuit_air::lookup_sum;
 use circuit_air::statement::{CircuitStatement, INTERACTION_POW_BITS};
 use circuits::blake::blake;
@@ -81,19 +82,16 @@ fn test_prove_and_stark_verify_blake_gate_context() {
     blake_gate_context.finalize_guessed_vars();
     blake_gate_context.validate_circuit();
 
-    let (
-        CircuitProof {
-            components,
-            circuit_params,
-            claim,
-            interaction_claim,
-            pcs_config,
-            stark_proof,
-            interaction_pow_nonce,
-            channel_salt,
-        },
-        preprocessed_trace_sizes,
-    ) = prove_circuit(&mut blake_gate_context);
+    let CircuitProof {
+        components,
+        circuit_params,
+        claim,
+        interaction_claim,
+        pcs_config,
+        stark_proof,
+        interaction_pow_nonce,
+        channel_salt,
+    } = prove_circuit(&mut blake_gate_context);
     assert!(stark_proof.is_ok(), "Got error: {}", stark_proof.err().unwrap());
     let proof = stark_proof.unwrap();
 
@@ -108,7 +106,7 @@ fn test_prove_and_stark_verify_blake_gate_context() {
 
     commitment_scheme.commit(
         proof.proof.commitments[0],
-        &preprocessed_trace_sizes,
+        &circuit_params.preprocessed_trace_info.log_sizes,
         verifier_channel,
     );
     claim.mix_into(verifier_channel);
@@ -149,19 +147,16 @@ fn test_prove_and_stark_verify_permutation_context() {
     permutation_context.finalize_guessed_vars();
     permutation_context.validate_circuit();
 
-    let (
-        CircuitProof {
-            pcs_config,
-            circuit_params,
-            claim,
-            interaction_pow_nonce,
-            interaction_claim,
-            components,
-            stark_proof,
-            channel_salt,
-        },
-        preprocessed_trace_sizes,
-    ) = prove_circuit(&mut permutation_context);
+    let CircuitProof {
+        pcs_config,
+        circuit_params,
+        claim,
+        interaction_pow_nonce,
+        interaction_claim,
+        components,
+        stark_proof,
+        channel_salt,
+    } = prove_circuit(&mut permutation_context);
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
 
@@ -177,7 +172,7 @@ fn test_prove_and_stark_verify_permutation_context() {
 
     commitment_scheme.commit(
         proof.proof.commitments[0],
-        &preprocessed_trace_sizes,
+        &circuit_params.preprocessed_trace_info.log_sizes,
         verifier_channel,
     );
     claim.mix_into(verifier_channel);
@@ -214,19 +209,16 @@ fn test_prove_and_stark_verify_fibonacci_context() {
     fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
 
-    let (
-        CircuitProof {
-            pcs_config,
-            circuit_params,
-            claim,
-            interaction_pow_nonce,
-            interaction_claim,
-            components,
-            stark_proof,
-            channel_salt,
-        },
-        preprocessed_trace_sizes,
-    ) = prove_circuit(&mut fibonacci_context);
+    let CircuitProof {
+        pcs_config,
+        circuit_params,
+        claim,
+        interaction_pow_nonce,
+        interaction_claim,
+        components,
+        stark_proof,
+        channel_salt,
+    } = prove_circuit(&mut fibonacci_context);
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
 
@@ -242,7 +234,7 @@ fn test_prove_and_stark_verify_fibonacci_context() {
 
     commitment_scheme.commit(
         proof.proof.commitments[0],
-        &preprocessed_trace_sizes,
+        &circuit_params.preprocessed_trace_info.log_sizes,
         verifier_channel,
     );
     claim.mix_into(verifier_channel);
@@ -274,25 +266,21 @@ fn test_prove_and_stark_verify_fibonacci_context() {
 }
 
 #[test]
-#[ignore = "Verifier does not yet support Blake AIR."]
 fn test_prove_and_circuit_verify_fibonacci_context() {
     let mut fibonacci_context = build_fibonacci_context();
     fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
 
-    let (
-        CircuitProof {
-            pcs_config,
-            circuit_params,
-            claim,
-            interaction_pow_nonce,
-            interaction_claim,
-            components: _,
-            stark_proof,
-            channel_salt,
-        },
-        _preprocessed_trace_sizes,
-    ) = prove_circuit(&mut fibonacci_context);
+    let CircuitProof {
+        pcs_config,
+        circuit_params,
+        claim,
+        interaction_pow_nonce,
+        interaction_claim,
+        components: _,
+        stark_proof,
+        channel_salt,
+    } = prove_circuit(&mut fibonacci_context);
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
 
@@ -303,14 +291,16 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
         &circuit_params.output_addresses,
         &claim.output_values,
         circuit_params.n_blake_gates,
+        circuit_params.preprocessed_trace_info.column_ids,
     );
     let claim = Claim {
-        packed_enable_bits: pack_enable_bits(&[true, true]),
+        packed_enable_bits: pack_enable_bits(&[true; N_COMPONENTS]),
         packed_component_log_sizes: pack_component_log_sizes(&claim.log_sizes),
         claimed_sums: interaction_claim.claimed_sums.to_vec(),
     };
     let config = ProofConfig::from_statement(&statement, &pcs_config, INTERACTION_POW_BITS);
 
+    context.enable_assert_eq_on_eval();
     let proof = proof_from_stark_proof(&proof, &config, claim, interaction_pow_nonce, channel_salt);
     let proof_vars = proof.guess(&mut context);
 
