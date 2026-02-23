@@ -1,4 +1,4 @@
-use crate::prover::{CircuitParams, PreprocessedTraceInfo};
+use crate::prover::CircuitParams;
 use crate::witness::components::prelude::BLAKE_SIGMA;
 use crate::witness::components::qm31_ops;
 use circuits::circuit::Blake;
@@ -344,6 +344,7 @@ fn add_blake_to_preprocessed_trace(
 
 /// A collection of preprocessed columns, whose values are publicly acknowledged, and independent of
 /// the proof.
+#[derive(Clone)]
 pub struct PreProcessedTrace {
     pub columns: Vec<Vec<usize>>,
     column_ids: Vec<PreProcessedColumnId>,
@@ -434,6 +435,7 @@ impl PreProcessedTrace {
     }
 }
 
+#[derive(Clone)]
 pub struct PreprocessedCircuit {
     pub preprocessed_trace: PreProcessedTrace,
     pub params: CircuitParams,
@@ -474,10 +476,6 @@ impl PreprocessedCircuit {
             first_permutation_row: qm31_ops_trace_generator.first_permutation_row,
             n_blake_gates: circuit.blake.len(),
             output_addresses: circuit.output.iter().map(|out| out.in0).collect(),
-            preprocessed_trace_info: PreprocessedTraceInfo {
-                log_sizes: pp_trace.log_sizes(),
-                column_ids: pp_trace.ids(),
-            },
         };
 
         Self { preprocessed_trace: pp_trace, params }

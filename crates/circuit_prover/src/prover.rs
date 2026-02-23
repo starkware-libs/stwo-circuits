@@ -26,32 +26,26 @@ use stwo::prover::ComponentProver;
 use stwo::prover::backend::simd::SimdBackend;
 use stwo::prover::poly::circle::PolyOps;
 use stwo::prover::{ProvingError, prove_ex};
-use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 const COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND: u32 = 1;
 
+#[derive(Clone)]
 pub struct CircuitParams {
     pub trace_log_size: u32,
     pub first_permutation_row: usize,
     pub n_blake_gates: usize,
     pub output_addresses: Vec<usize>,
-    pub preprocessed_trace_info: PreprocessedTraceInfo,
 }
 
 pub struct CircuitProof {
     pub pcs_config: PcsConfig,
-    pub circuit_params: CircuitParams,
+    pub preprocessed_circuit: PreprocessedCircuit,
     pub claim: CircuitClaim,
     pub interaction_pow_nonce: u64,
     pub interaction_claim: CircuitInteractionClaim,
     pub components: Vec<Box<dyn Component>>,
     pub stark_proof: Result<ExtendedStarkProof<Blake2sM31MerkleHasher>, ProvingError>,
     pub channel_salt: u32,
-}
-
-pub struct PreprocessedTraceInfo {
-    pub log_sizes: Vec<u32>,
-    pub column_ids: Vec<PreProcessedColumnId>,
 }
 
 #[cfg(test)]
@@ -94,6 +88,7 @@ pub fn prove_circuit_assignment(
     values: &[QM31],
     preprocessed_circuit: PreprocessedCircuit,
 ) -> CircuitProof {
+    let preprocessed_circuit_for_output = preprocessed_circuit.clone();
     let PreprocessedCircuit { preprocessed_trace, params } = preprocessed_circuit;
     let CircuitParams {
         trace_log_size,
@@ -196,7 +191,7 @@ pub fn prove_circuit_assignment(
     let proof = prove_ex::<SimdBackend, _>(&components, channel, commitment_scheme, true);
     CircuitProof {
         pcs_config,
-        circuit_params: params,
+        preprocessed_circuit: preprocessed_circuit_for_output,
         claim,
         interaction_pow_nonce,
         interaction_claim,
