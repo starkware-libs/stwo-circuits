@@ -1,3 +1,4 @@
+use crate::constraint_eval::CircuitEval;
 use crate::fri_proof::{FriConfig, FriProof, empty_fri_proof};
 use crate::merkle::{AuthPath, AuthPaths};
 use crate::oods::{EvalDomainSamples, N_COMPOSITION_COLUMNS, empty_eval_domain_samples};
@@ -45,19 +46,7 @@ impl ProofConfig {
     ) -> Self {
         let components = statement.get_components();
         let n_preprocessed_columns = statement.get_preprocessed_column_ids().len();
-        let trace_columns_per_component =
-            components.iter().map(|c| c.trace_columns()).collect_vec();
-        let interaction_columns_per_component =
-            components.iter().map(|c| c.interaction_columns()).collect_vec();
-
-        Self::new(
-            components.len(),
-            trace_columns_per_component,
-            interaction_columns_per_component,
-            n_preprocessed_columns,
-            pcs_config,
-            interaction_pow_bits,
-        )
+        Self::from_components(components, n_preprocessed_columns, pcs_config, interaction_pow_bits)
     }
 
     /// Returns an iterator over the enabled components.
@@ -67,6 +56,26 @@ impl ProofConfig {
         self.interaction_columns_per_component
             .iter()
             .map(|interaction_columns| *interaction_columns > 0)
+    }
+
+    pub fn from_components<Value: IValue>(
+        components: &[Box<dyn CircuitEval<Value>>],
+        n_preprocessed_columns: usize,
+        pcs_config: &PcsConfig,
+        interaction_pow_bits: u32,
+    ) -> Self {
+        let trace_columns_per_component =
+            components.iter().map(|c| c.trace_columns()).collect_vec();
+        let interaction_columns_per_component =
+            components.iter().map(|c| c.interaction_columns()).collect_vec();
+        Self::new(
+            components.len(),
+            trace_columns_per_component,
+            interaction_columns_per_component,
+            n_preprocessed_columns,
+            pcs_config,
+            interaction_pow_bits,
+        )
     }
 
     pub fn new(
