@@ -84,7 +84,7 @@ fn test_prove_and_stark_verify_blake_gate_context() {
 
     let CircuitProof {
         components,
-        circuit_params,
+        preprocessed_circuit,
         claim,
         interaction_claim,
         pcs_config,
@@ -106,7 +106,7 @@ fn test_prove_and_stark_verify_blake_gate_context() {
 
     commitment_scheme.commit(
         proof.proof.commitments[0],
-        &circuit_params.preprocessed_trace_info.log_sizes,
+        &preprocessed_circuit.params.preprocessed_trace_info.log_sizes,
         verifier_channel,
     );
     claim.mix_into(verifier_channel);
@@ -134,8 +134,8 @@ fn test_prove_and_stark_verify_blake_gate_context() {
             &claim,
             &interaction_claim,
             &interaction_elements,
-            &circuit_params.output_addresses,
-            circuit_params.n_blake_gates
+            &preprocessed_circuit.params.output_addresses,
+            preprocessed_circuit.params.n_blake_gates
         ),
         QM31::zero()
     );
@@ -149,7 +149,7 @@ fn test_prove_and_stark_verify_permutation_context() {
 
     let CircuitProof {
         pcs_config,
-        circuit_params,
+        preprocessed_circuit,
         claim,
         interaction_pow_nonce,
         interaction_claim,
@@ -172,7 +172,7 @@ fn test_prove_and_stark_verify_permutation_context() {
 
     commitment_scheme.commit(
         proof.proof.commitments[0],
-        &circuit_params.preprocessed_trace_info.log_sizes,
+        &preprocessed_circuit.params.preprocessed_trace_info.log_sizes,
         verifier_channel,
     );
     claim.mix_into(verifier_channel);
@@ -196,8 +196,8 @@ fn test_prove_and_stark_verify_permutation_context() {
             &claim,
             &interaction_claim,
             &interaction_elements,
-            &circuit_params.output_addresses,
-            circuit_params.n_blake_gates
+            &preprocessed_circuit.params.output_addresses,
+            preprocessed_circuit.params.n_blake_gates
         ),
         QM31::zero()
     );
@@ -211,7 +211,7 @@ fn test_prove_and_stark_verify_fibonacci_context() {
 
     let CircuitProof {
         pcs_config,
-        circuit_params,
+        preprocessed_circuit,
         claim,
         interaction_pow_nonce,
         interaction_claim,
@@ -234,7 +234,7 @@ fn test_prove_and_stark_verify_fibonacci_context() {
 
     commitment_scheme.commit(
         proof.proof.commitments[0],
-        &circuit_params.preprocessed_trace_info.log_sizes,
+        &preprocessed_circuit.params.preprocessed_trace_info.log_sizes,
         verifier_channel,
     );
     claim.mix_into(verifier_channel);
@@ -258,8 +258,8 @@ fn test_prove_and_stark_verify_fibonacci_context() {
             &claim,
             &interaction_claim,
             &interaction_elements,
-            &circuit_params.output_addresses,
-            circuit_params.n_blake_gates
+            &preprocessed_circuit.params.output_addresses,
+            preprocessed_circuit.params.n_blake_gates
         ),
         QM31::zero()
     );
@@ -274,7 +274,7 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
 
     let CircuitProof {
         pcs_config,
-        circuit_params,
+        preprocessed_circuit,
         claim,
         interaction_pow_nonce,
         interaction_claim,
@@ -289,10 +289,10 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     let mut context = TraceContext::default();
     let statement = CircuitStatement::new(
         &mut context,
-        &circuit_params.output_addresses,
+        &preprocessed_circuit.params.output_addresses,
         &claim.output_values,
-        circuit_params.n_blake_gates,
-        circuit_params.preprocessed_trace_info.column_ids,
+        preprocessed_circuit.params.n_blake_gates,
+        preprocessed_circuit.params.preprocessed_trace_info.column_ids,
     );
     let claim = Claim {
         packed_enable_bits: pack_enable_bits(&[true; N_COMPONENTS]),

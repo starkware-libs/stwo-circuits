@@ -344,6 +344,7 @@ fn add_blake_to_preprocessed_trace(
 
 /// A collection of preprocessed columns, whose values are publicly acknowledged, and independent of
 /// the proof.
+#[derive(Clone)]
 pub struct PreProcessedTrace {
     pub columns: Vec<Vec<usize>>,
     column_ids: Vec<PreProcessedColumnId>,
@@ -434,6 +435,7 @@ impl PreProcessedTrace {
     }
 }
 
+#[derive(Clone)]
 pub struct PreprocessedCircuit {
     pub preprocessed_trace: PreProcessedTrace,
     pub params: CircuitParams,
