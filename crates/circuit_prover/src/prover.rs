@@ -10,7 +10,6 @@ use circuit_air::{CircuitClaim, CircuitInteractionClaim, CircuitInteractionEleme
 use circuits::context::Context;
 use itertools::chain;
 use num_traits::Zero;
-use std::sync::Arc;
 use stwo::core::air::Component;
 use stwo::core::channel::Blake2sM31Channel;
 use stwo::core::channel::Channel;
@@ -38,7 +37,7 @@ pub struct CircuitParams {
 
 pub struct CircuitProof {
     pub pcs_config: PcsConfig,
-    pub circuit_params: CircuitParams,
+    pub preprocessed_circuit: PreprocessedCircuit,
     pub claim: CircuitClaim,
     pub interaction_pow_nonce: u64,
     pub interaction_claim: CircuitInteractionClaim,
@@ -74,7 +73,7 @@ pub fn to_component_provers(
     .collect()
 }
 
-pub fn prove_circuit(context: &mut Context<QM31>) -> (CircuitProof, Vec<u32>) {
+pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     finalize_context(context);
 
     let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&context.circuit);
@@ -86,16 +85,20 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> (CircuitProof, Vec<u32>) {
 pub fn prove_circuit_assignment(
     values: &[QM31],
     preprocessed_circuit: PreprocessedCircuit,
-) -> (CircuitProof, Vec<u32>) {
-    let PreprocessedCircuit { preprocessed_trace, params } = preprocessed_circuit;
+) -> CircuitProof {
+    let preprocessed_trace = preprocessed_circuit.preprocessed_trace.clone();
+    let params = &preprocessed_circuit.params;
     let CircuitParams {
         trace_log_size,
         first_permutation_row,
         n_blake_gates,
-        ref output_addresses,
+        output_addresses,
+        ..
     } = params;
     let trace_generator = TraceGenerator {
-        qm31_ops_trace_generator: qm31_ops::TraceGenerator { first_permutation_row },
+        qm31_ops_trace_generator: qm31_ops::TraceGenerator {
+            first_permutation_row: *first_permutation_row,
+        },
     };
 
     let mut pcs_config = PcsConfig::default();
@@ -136,10 +139,9 @@ pub fn prove_circuit_assignment(
 
     // Base trace.
     let mut tree_builder = commitment_scheme.tree_builder();
-    let preprocessed_trace_arc = Arc::new(preprocessed_trace);
     let (claim, interaction_generator) = write_trace(
         values,
-        preprocessed_trace_arc.clone(),
+        preprocessed_trace.clone(),
         output_addresses,
         &mut tree_builder,
         &trace_generator,
@@ -168,7 +170,7 @@ pub fn prove_circuit_assignment(
             &interaction_claim,
             &interaction_elements,
             output_addresses,
-            n_blake_gates
+            *n_blake_gates
         ),
         QM31::zero()
     );
@@ -180,23 +182,20 @@ pub fn prove_circuit_assignment(
         &claim,
         &interaction_elements,
         &interaction_claim,
-        &preprocessed_trace_arc.ids(),
+        &preprocessed_trace.ids(),
     );
     let components = to_component_provers(&circuit_components);
 
     // Prove stark.
     let proof = prove_ex::<SimdBackend, _>(&components, channel, commitment_scheme, true);
-    (
-        CircuitProof {
-            pcs_config,
-            circuit_params: params,
-            claim,
-            interaction_pow_nonce,
-            interaction_claim,
-            components: circuit_components.components(),
-            stark_proof: proof,
-            channel_salt,
-        },
-        preprocessed_trace_arc.log_sizes(),
-    )
+    CircuitProof {
+        pcs_config,
+        preprocessed_circuit,
+        claim,
+        interaction_pow_nonce,
+        interaction_claim,
+        components: circuit_components.components(),
+        stark_proof: proof,
+        channel_salt,
+    }
 }
