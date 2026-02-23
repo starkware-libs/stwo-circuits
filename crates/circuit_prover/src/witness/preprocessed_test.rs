@@ -32,8 +32,9 @@ fn test_generate_preprocessed_trace() {
     }
     circuit.n_vars = 56;
 
-    let preprocessed_trace =
-        PreProcessedTrace::generate_preprocessed_trace(&circuit).0.get_trace::<SimdBackend>();
+    let preprocessed_trace = PreProcessedTrace::generate_preprocessed_trace(&circuit)
+        .preprocessed_trace
+        .get_trace::<SimdBackend>();
 
     assert_eq!(preprocessed_trace.len(), 73);
     let lengths = preprocessed_trace.iter().map(|column| column.values.len()).collect_vec();

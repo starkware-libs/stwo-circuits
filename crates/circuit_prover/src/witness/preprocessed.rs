@@ -366,9 +366,14 @@ pub struct PreProcessedTrace {
     column_indices: HashMap<PreProcessedColumnId, usize>,
 }
 
+pub struct PreprocessedCircuit {
+    pub preprocessed_trace: PreProcessedTrace,
+    pub params: CircuitParams,
+}
+
 impl PreProcessedTrace {
     /// Generates the preprocessed trace for the circuit, assuming it is already finalized.
-    pub fn generate_preprocessed_trace(circuit: &Circuit) -> (Self, CircuitParams) {
+    pub fn generate_preprocessed_trace(circuit: &Circuit) -> PreprocessedCircuit {
         let mut pp_trace = Self { columns: vec![], column_indices: HashMap::new() };
 
         // Adjust multiplicities to account for the use of the constant 0 in the permutation gate
@@ -397,7 +402,7 @@ impl PreProcessedTrace {
             n_blake_gates: circuit.blake.len(),
             output_addresses: circuit.output.iter().map(|out| out.in0).collect(),
         };
-        (pp_trace, params)
+        PreprocessedCircuit { preprocessed_trace: pp_trace, params }
     }
 
     fn add_non_circuit_preprocessed_columns(pp_trace: &mut PreProcessedTrace) {
