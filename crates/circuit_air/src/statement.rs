@@ -1,3 +1,8 @@
+use crate::circuit_eval_components::{
+    blake_g, blake_gate, blake_output, blake_round, blake_round_sigma, range_check_15,
+    range_check_16, triple_xor_32, verify_bitwise_xor_4, verify_bitwise_xor_7,
+    verify_bitwise_xor_8, verify_bitwise_xor_9, verify_bitwise_xor_12,
+};
 use crate::components::{eq, qm31_ops};
 use circuits::context::{Context, Var};
 use circuits::eval;
@@ -45,6 +50,19 @@ impl<Value: IValue> CircuitStatement<Value> {
             components: vec![
                 Box::new(eq::CircuitEqComponent {}),
                 Box::new(qm31_ops::CircuitQm31OpsComponent {}),
+                Box::new(blake_gate::Component {}),
+                Box::new(blake_round::Component {}),
+                Box::new(blake_round_sigma::Component {}),
+                Box::new(blake_g::Component {}),
+                Box::new(blake_output::Component {}),
+                Box::new(triple_xor_32::Component {}),
+                Box::new(verify_bitwise_xor_8::Component {}),
+                Box::new(verify_bitwise_xor_12::Component {}),
+                Box::new(verify_bitwise_xor_4::Component {}),
+                Box::new(verify_bitwise_xor_7::Component {}),
+                Box::new(verify_bitwise_xor_9::Component {}),
+                Box::new(range_check_15::Component {}),
+                Box::new(range_check_16::Component {}),
             ],
             output_addresses,
             output_values,
