@@ -3,7 +3,7 @@ use itertools::{Itertools, zip_eq};
 use stwo::core::circle::CirclePoint;
 
 use crate::channel::Channel;
-use crate::circle::double_x_simd;
+use crate::circle::{compute_half_coset_points, double_x_simd};
 use crate::fri_proof::{FriCommitProof, FriConfig, FriProof};
 use crate::merkle::{hash_leaf_qm31, merkle_node, verify_merkle_path};
 use circuits::context::{Context, Var};
@@ -146,4 +146,48 @@ fn validate_query_position_in_coset<Value: IValue>(
         let expected_query_value = select_by_index(context, coset, &bits);
         eq(context, *query_value, expected_query_value);
     }
+}
+
+/// Computes the twiddles needed to fold a line domain of log size `n` to a line domain of log size
+/// `n - step`.
+///
+/// # Arguments
+///
+/// - `context`: the circuit's context.
+/// - `base_point`: for each query, the first point of the coset of log size `step` that contains
+///   the query. More precisely, if the query index has a little-endian bit decomposition
+///   a₁a₂a₃a₄...aₙ then its base point is the circle point with index 0...0a_{step + 1}...aₙ. So,
+///   for example, for a query with index 101110 and step = 2, its base point has index 001110.
+/// - `step`: the folding step for the current line-to-line FRI fold.
+// TODO(Leo): remove the allow.
+#[allow(dead_code)]
+fn compute_twiddles_from_base_point<Value: IValue>(
+    context: &mut Context<Value>,
+    base_point: &CirclePoint<Simd>,
+    fold_step: usize,
+) -> Vec<Vec<Vec<Var>>> {
+    let n_queries = base_point.x.len();
+    let mut twiddles_per_fold_per_query: Vec<Vec<Vec<Var>>> =
+        vec![vec![vec![]; fold_step]; n_queries];
+    let mut x_coords: Vec<Simd> = compute_half_coset_points(context, base_point, fold_step as u32)
+        .into_iter()
+        .map(|p| p.x)
+        .collect();
+    for i in 0..fold_step {
+        for x in &x_coords {
+            let x_inv = x.inv(context);
+            let unpacked = Simd::unpack(context, &x_inv);
+
+            for (query_twiddles, twiddle) in
+                twiddles_per_fold_per_query.iter_mut().zip(unpacked.into_iter())
+            {
+                query_twiddles[i].push(twiddle);
+            }
+        }
+        // Don't add unused gates in the last iteration.
+        if i != fold_step - 1 {
+            x_coords = x_coords.iter().step_by(2).map(|x| double_x_simd(context, x)).collect();
+        }
+    }
+    twiddles_per_fold_per_query
 }
