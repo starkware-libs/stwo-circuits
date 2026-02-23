@@ -6,6 +6,7 @@ use cairo_air::air::PublicData;
 use cairo_air::flat_claims::FlatClaim;
 use circuits::context::{Context, TraceContext};
 use circuits::ops::Guess;
+use circuits_stark_verifier::constraint_eval::CircuitEval;
 use circuits_stark_verifier::empty_component::EmptyComponent;
 use circuits_stark_verifier::proof::{Claim, Proof, ProofConfig};
 use circuits_stark_verifier::proof_from_stark_proof::{
@@ -14,6 +15,7 @@ use circuits_stark_verifier::proof_from_stark_proof::{
 use circuits_stark_verifier::verify::verify;
 use itertools::{Itertools, zip_eq};
 use std::array;
+use std::collections::HashSet;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
@@ -82,6 +84,23 @@ pub fn verify_fixed_cairo_circuit(
 
 /// Circuit Verifies a [CairoProof].
 pub fn verify_cairo(proof: &CairoProof<Blake2sM31MerkleHasher>) -> Result<Context<QM31>, String> {
+    let FlatClaim { component_enable_bits, component_log_sizes: _, public_data: _ } =
+        proof.claim.flatten_claim();
+
+    let components = HashSet::from_iter(
+        zip_eq(all_components::<QM31>().into_keys(), &component_enable_bits)
+            .filter(|(_, enable_bit)| **enable_bit)
+            .map(|(component_name, _)| component_name),
+    );
+
+    verify_cairo_with_component_set(proof, components)
+}
+
+/// Verifies a [CairoProof] with a given set of components.
+pub fn verify_cairo_with_component_set(
+    proof: &CairoProof<Blake2sM31MerkleHasher>,
+    component_set: HashSet<&str>,
+) -> Result<Context<QM31>, String> {
     let CairoProof {
         claim,
         interaction_pow,
@@ -93,13 +112,21 @@ pub fn verify_cairo(proof: &CairoProof<Blake2sM31MerkleHasher>) -> Result<Contex
     let FlatClaim { component_enable_bits, component_log_sizes, public_data } =
         claim.flatten_claim();
 
-    let components = zip_eq(all_components::<QM31>().into_values(), &component_enable_bits)
-        .map(
-            |(component, enable_bit)| {
-                if *enable_bit { component } else { Box::new(EmptyComponent {}) }
-            },
-        )
-        .collect_vec();
+    let components: Vec<Box<dyn CircuitEval<QM31>>> =
+        zip_eq(all_components::<QM31>().into_iter(), &component_enable_bits)
+            .map(|((component_name, component), &enable_bit)| {
+                let component_in_set = component_set.contains(component_name);
+                if component_in_set != enable_bit {
+                    return Err(format!(
+                        "Proof was produced with the wrong components set: expected the component '{}' to be {}abled according to the component set, but it is {}abled in the proof.",
+                        component_name,
+                        if component_in_set { "en" } else { "dis" },
+                        if enable_bit { "en" } else { "dis" }
+                    ));
+                }
+                Ok(if enable_bit { component } else { Box::new(EmptyComponent {}) })
+            })
+            .try_collect()?;
 
     let proof_config = ProofConfig::from_components(
         &components,
