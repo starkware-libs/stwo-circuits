@@ -1,3 +1,4 @@
+use circuits::blake::HashValue;
 use circuits::utils::select_by_index;
 use itertools::{Itertools, zip_eq};
 use stwo::core::circle::CirclePoint;
@@ -7,7 +8,7 @@ use crate::circle::{
     add_points_simd, compute_half_coset_points, double_x_simd, generator_point_simd,
 };
 use crate::fri_proof::{FriCommitProof, FriConfig, FriProof};
-use crate::merkle::{hash_leaf_qm31, merkle_node, verify_merkle_path};
+use crate::merkle::{AuthPaths, hash_leaf_qm31, merkle_node, verify_merkle_path};
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::ivalue::IValue;
@@ -99,6 +100,45 @@ pub fn fri_decommit<Value: IValue>(
     for value in fri_data {
         eq(context, value, last_layer_val);
     }
+}
+
+/// Computes the first layer of FRI (circle-to-line fold).
+// TODO(Leo): remove the dead_code allow.
+#[allow(dead_code)]
+#[allow(clippy::too_many_arguments)]
+fn decommit_circle_to_line<Value: IValue>(
+    context: &mut Context<Value>,
+    root: &HashValue<Var>,
+    siblings: &[Var],
+    auth_paths: &AuthPaths<Var>,
+    fri_input: &[Var],
+    bits: &[Vec<Var>],
+    points: &CirclePoint<Simd>,
+    alpha: Var,
+) -> Vec<Var> {
+    let points_y_inv = points.y.inv(context);
+    let twiddles = Simd::unpack(context, &points_y_inv);
+    // Check merkle decommitment.
+    for (query_idx, (fri_query, sibling)) in zip_eq(fri_input, siblings).enumerate() {
+        // Compute one layer of the Merkle tree with the query and its sibling.
+        let leaf = hash_leaf_qm31(context, *fri_query);
+        let leaf_sibling = hash_leaf_qm31(context, *sibling);
+
+        let bits_for_query = bits.iter().map(|b| b[query_idx]).collect_vec();
+        let node = merkle_node(context, &leaf, &leaf_sibling, bits_for_query[0]);
+
+        let auth_path = auth_paths.at(0, query_idx);
+        verify_merkle_path(context, node, &bits_for_query[1..], *root, auth_path);
+    }
+
+    // Compute the next layer.
+    zip_eq(zip_eq(fri_input, siblings), twiddles)
+        .map(|((fri_query, sibling), twiddle)| {
+            let g = eval!(context, (*fri_query) + (*sibling));
+            let h = eval!(context, ((*fri_query) - (*sibling)) * (twiddle));
+            eval!(context, (g) + ((alpha) * (h)))
+        })
+        .collect()
 }
 
 /// Folds a coset of log size n to a point using the folding coefficients `alphas`.
