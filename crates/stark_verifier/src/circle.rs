@@ -127,3 +127,23 @@ pub fn denom_inverse(context: &mut Context<impl IValue>, x: Var, log_trace_size:
     let denom = coset_vanishing_poly(context, x, log_trace_size);
     div(context, one, denom)
 }
+
+/// For each base point (i.e. for each SIMD lane in `base_points`), computes the points of the first
+/// half of a coset of given log size starting from base point, in bit reversed order.
+pub fn compute_half_coset_points<Value: IValue>(
+    context: &mut Context<Value>,
+    base_points: &CirclePoint<Simd>,
+    log_size: u32,
+) -> Vec<CirclePoint<Simd>> {
+    let gen_pt = generator_point_simd(context, log_size as usize, base_points.x.len());
+    let mut curr_pt = base_points.clone();
+    let mut half_coset = vec![curr_pt.clone()];
+    let half_log_size = log_size - 1;
+    for _ in 0..(1 << half_log_size) - 1 {
+        curr_pt = add_points_simd(context, &curr_pt, &gen_pt);
+        half_coset.push(curr_pt.clone());
+    }
+    // Bit reverse.
+    stwo::core::utils::bit_reverse(&mut half_coset);
+    half_coset
+}
