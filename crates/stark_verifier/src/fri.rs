@@ -6,13 +6,17 @@ use stwo::core::circle::CirclePoint;
 use crate::channel::Channel;
 use crate::circle::{
     add_points_simd, compute_half_coset_points, double_x_simd, minus_generator_point_simd,
+    repeated_double_point_simd,
 };
-use crate::fri_proof::{FriCommitProof, FriConfig, FriProof};
-use crate::merkle::{AuthPaths, hash_leaf_qm31, merkle_node, verify_merkle_path};
+use crate::fri_proof::{FriCommitProof, FriConfig, FriProof, compute_all_line_fold_steps};
+use crate::merkle::{
+    AuthPath, AuthPaths, hash_leaf_qm31, hash_node, merkle_node, verify_merkle_path,
+};
+use crate::select_queries::Queries;
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::ivalue::IValue;
-use circuits::ops::eq;
+use circuits::ops::{eq, mul};
 use circuits::simd::Simd;
 
 #[cfg(test)]
@@ -41,8 +45,8 @@ pub fn fri_decommit<Value: IValue>(
     proof: &FriProof<Var>,
     config: &FriConfig,
     fri_input: &[Var],
-    bits: &[Vec<Var>],
-    points: &CirclePoint<Simd>,
+    mut bits: &[Vec<Var>],
+    queries: Queries,
     alphas: &[Var],
 ) {
     let FriProof {
@@ -50,48 +54,97 @@ pub fn fri_decommit<Value: IValue>(
         auth_paths,
         fri_siblings,
     } = proof;
+    let all_line_fold_steps = compute_all_line_fold_steps(
+        config.log_trace_size - 1 - config.log_n_last_layer_coefs,
+        config.line_fold_step,
+    );
+    let n_inner_layers = all_line_fold_steps.len();
+    // TODO(Leo): remove and guess actual values from proof in next PR.
+    let line_coset_vals_per_query_per_tree: Vec<Vec<Vec<Var>>> =
+        vec![vec![vec![]; config.n_queries]; n_inner_layers];
+    // Circle to line decommitment.
+    let mut fri_data = decommit_circle_to_line(
+        context,
+        &layer_commitments[0],
+        &fri_siblings[0],
+        auth_paths,
+        fri_input,
+        bits,
+        &queries.points,
+        alphas[0],
+    );
+    // Line to line decommitment.
+    let mut packed_bits = queries.bits.as_slice();
+    let packed_lsb = packed_bits.split_off_first().unwrap();
+    let mut base_point = translate_by_lsb(context, &queries.points, packed_lsb);
+    let _ = bits.split_off_first().unwrap();
 
-    // Prepare twiddle factors.
-    let mut all_twiddles = vec![];
-    let points_y_inv = points.y.inv(context);
-    all_twiddles.push(Simd::unpack(context, &points_y_inv));
-
-    let mut points_x = points.x.clone();
-    let points_x_inv = points_x.inv(context);
-    all_twiddles.push(Simd::unpack(context, &points_x_inv));
-
-    for _ in 0..(layer_commitments.len() - 2) {
-        points_x = double_x_simd(context, &points_x);
-        let points_x_inv = points_x.inv(context);
-        all_twiddles.push(Simd::unpack(context, &points_x_inv));
-    }
-
-    let mut fri_data = fri_input.iter().cloned().collect_vec();
-    for (tree_idx, (root, twiddles)) in zip_eq(layer_commitments, all_twiddles).enumerate() {
-        let siblings = &fri_siblings[tree_idx];
+    for (tree_idx, ((root, step), coset_per_query)) in zip_eq(
+        zip_eq(&layer_commitments[1..], &all_line_fold_steps),
+        line_coset_vals_per_query_per_tree,
+    )
+    .enumerate()
+    {
+        let lowest_bits = bits.split_off(..*step).unwrap();
+        let packed_lowest_bits = packed_bits.split_off(..*step).unwrap();
+        // Validate that the fri query is in the correct position inside the guessed
+        // `fri_coset_per_query`.
+        validate_query_position_in_coset(context, &coset_per_query, &fri_data, lowest_bits);
 
         // Check merkle decommitment.
-        for (query_idx, (fri_query, sibling)) in zip_eq(&fri_data, siblings).enumerate() {
-            // Compute one layer of the Merkle tree with the query and its sibling.
-            let leaf = hash_leaf_qm31(context, *fri_query);
-            let leaf_sibling = hash_leaf_qm31(context, *sibling);
+        for (query_idx, coset_values) in coset_per_query.iter().enumerate() {
+            // Compute the leaves.
+            let mut buf: Vec<HashValue<Var>> =
+                coset_values.iter().map(|val| hash_leaf_qm31(context, *val)).collect();
+            // Compute the the merkle root of the coset values.
+            let coset_root = {
+                for fold in 0..*step {
+                    for i in 0..1 << (step - fold - 1) {
+                        let (even, odd) = (buf[2 * i], buf[2 * i + 1]);
+                        buf[i] = hash_node(context, even, odd);
+                    }
+                }
+                buf[0]
+            };
+            // Verify the rest of the authentication path.
+            let auth_path = auth_paths.at(tree_idx + 1, query_idx); // We add 1 because the outer loop is 0 based.
+            let auth_path = AuthPath(auth_path.0.to_vec());
 
-            // Skip the first `tree_idx` LSBs, that are not relevant for this tree.
-            let bits_for_query = bits.iter().skip(tree_idx).map(|b| b[query_idx]).collect_vec();
-            let node = merkle_node(context, &leaf, &leaf_sibling, bits_for_query[0]);
+            let bits_for_query = bits.iter().map(|b| b[query_idx]).collect_vec();
+            verify_merkle_path(context, coset_root, &bits_for_query, *root, &auth_path);
+        }
 
-            let auth_path = auth_paths.at(tree_idx, query_idx);
-            verify_merkle_path(context, node, &bits_for_query[1..], *root, auth_path);
+        // Translate base_point to the base of the current coset.
+        base_point = translate_to_base_point(context, base_point, packed_lowest_bits);
+        // Compute twiddles.
+        let twiddles_per_fold_per_query =
+            compute_twiddles_from_base_point(context, &base_point, *step);
+
+        // Compute alpha, alpha^2, ..., alpha^(2^(step - 1));
+        let mut alpha_powers = Vec::with_capacity(*step);
+        let mut alpha_pow = alphas[tree_idx + 1];
+        alpha_powers.push(alpha_pow);
+        for _ in 0..step - 1 {
+            alpha_pow = mul(context, alpha_pow, alpha_pow);
+            alpha_powers.push(alpha_pow);
         }
 
         // Compute the next layer.
-        fri_data = zip_eq(zip_eq(fri_data, siblings), twiddles)
-            .map(|((fri_query, sibling), twiddle)| {
-                let g = eval!(context, (fri_query) + (*sibling));
-                let h = eval!(context, ((fri_query) - (*sibling)) * (twiddle));
-                eval!(context, (g) + ((alphas[tree_idx]) * (h)))
+        fri_data = zip_eq(coset_per_query, twiddles_per_fold_per_query)
+            .map(|(coset, twiddles_per_fold)| {
+                fold_coset(context, &coset, &twiddles_per_fold, &alpha_powers)
             })
             .collect();
+
+        // Don't add unused gates in the last iteration.
+        if tree_idx != n_inner_layers - 1 {
+            base_point = repeated_double_point_simd(context, &base_point, *step);
+        }
+    }
+    // The last base point's y-coords hasn't been used by `compute_twiddles_from_base_point` if the
+    // last step was = 1.
+    if *all_line_fold_steps.last().unwrap() == 1 {
+        Simd::mark_partly_used(context, &base_point.y);
     }
 
     // Check last layer.
@@ -103,8 +156,6 @@ pub fn fri_decommit<Value: IValue>(
 }
 
 /// Computes the first layer of FRI (circle-to-line fold).
-// TODO(Leo): remove the dead_code allow.
-#[allow(dead_code)]
 #[allow(clippy::too_many_arguments)]
 fn decommit_circle_to_line<Value: IValue>(
     context: &mut Context<Value>,
@@ -143,8 +194,6 @@ fn decommit_circle_to_line<Value: IValue>(
 
 /// Folds a coset of log size n to a point using the folding coefficients `alphas`.
 /// `twiddles_per_fold[i]` contains the twiddles needed at fold i, and has length 2^(n - 1 - i).
-// TODO(Leo): remove the allow.
-#[allow(dead_code)]
 fn fold_coset<Value: IValue>(
     context: &mut Context<Value>,
     coset_values: &[Var],
@@ -175,8 +224,6 @@ fn fold_coset<Value: IValue>(
 ///   coset" containing the query point. The coset log size is equal to this layer's fri fold step.
 /// - `fri_data`: the query values.
 /// - `bits`: for each query, the coset log size-many lowest significant bits of the query position.
-// TODO(Leo): remove the allow.
-#[allow(dead_code)]
 fn validate_query_position_in_coset<Value: IValue>(
     context: &mut Context<Value>,
     fri_coset_per_query: &[Vec<Var>],
@@ -201,8 +248,6 @@ fn validate_query_position_in_coset<Value: IValue>(
 ///   a₁a₂a₃a₄...aₙ then its base point is the circle point with index 0...0a_{step + 1}...aₙ. So,
 ///   for example, for a query with index 101110 and step = 2, its base point has index 001110.
 /// - `fold_step`: the folding step for the current line-to-line FRI fold.
-// TODO(Leo): remove the allow.
-#[allow(dead_code)]
 fn compute_twiddles_from_base_point<Value: IValue>(
     context: &mut Context<Value>,
     base_point: &CirclePoint<Simd>,
@@ -245,8 +290,6 @@ fn compute_twiddles_from_base_point<Value: IValue>(
 /// - `base_point`: packed query points to translate.
 /// - `packed_bits`: the least significant `step`-many bits of the current queries (where `step` is
 ///   the fold_step of the current FRI fold).
-// TODO(Leo): remove the allow.
-#[allow(dead_code)]
 fn translate_to_base_point<Value: IValue>(
     context: &mut Context<Value>,
     mut base_point: CirclePoint<Simd>,
@@ -274,8 +317,6 @@ fn translate_to_base_point<Value: IValue>(
 /// - `context`: the circuit context.
 /// - `point`: packed input points.
 /// - `bit`: SIMD selector (0 or 1) per lane.
-// TODO(Leo): remove the allow.
-#[allow(dead_code)]
 fn translate_by_lsb<Value: IValue>(
     context: &mut Context<Value>,
     point: &CirclePoint<Simd>,
