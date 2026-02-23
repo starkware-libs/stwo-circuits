@@ -10,9 +10,11 @@ use std::path::PathBuf;
 
 use crate::all_components::all_components;
 use crate::preprocessed_columns::MAX_SEQUENCE_LOG_SIZE;
+use crate::privacy::privacy_components;
 use crate::statement::CairoStatement;
 use crate::statement::{MEMORY_VALUES_LIMBS, PUBLIC_DATA_LEN};
 use crate::verify::verify_cairo;
+use crate::verify::verify_cairo_with_component_set;
 use cairo_air::PreProcessedTraceVariant;
 use circuits::{context::Context, ivalue::NoValue, ops::Guess};
 use circuits_stark_verifier::{
@@ -194,5 +196,5 @@ fn test_verify_privacy() {
     let proof_file = File::open(proof_path).unwrap();
     let cairo_proof = binary_deserialize_from_file(&proof_file).unwrap();
 
-    verify_cairo(&cairo_proof).unwrap();
+    verify_cairo_with_component_set(&cairo_proof, privacy_components()).unwrap();
 }
