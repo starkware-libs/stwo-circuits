@@ -206,7 +206,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, blake_message_output_message_limb_limb_0_col51),
         eval!(context, blake_message_output_message_limb_limb_1_col52),
     ];
-    let numerator_2 = eval!(context, 1);
+    let numerator_2 = eval!(context, enabler_col147);
     acc.add_to_relation(context, numerator_2, tuple_2);
 
     // Use BlakeMessage.
@@ -217,7 +217,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, blake_message_output_message_limb_limb_0_col53),
         eval!(context, blake_message_output_message_limb_limb_1_col54),
     ];
-    let numerator_3 = eval!(context, 1);
+    let numerator_3 = eval!(context, enabler_col147);
     acc.add_to_relation(context, numerator_3, tuple_3);
 
     // Use BlakeMessage.
@@ -228,7 +228,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, blake_message_output_message_limb_limb_0_col55),
         eval!(context, blake_message_output_message_limb_limb_1_col56),
     ];
-    let numerator_4 = eval!(context, 1);
+    let numerator_4 = eval!(context, enabler_col147);
     acc.add_to_relation(context, numerator_4, tuple_4);
 
     // Use BlakeMessage.
@@ -239,7 +239,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, blake_message_output_message_limb_limb_0_col57),
         eval!(context, blake_message_output_message_limb_limb_1_col58),
     ];
-    let numerator_5 = eval!(context, 1);
+    let numerator_5 = eval!(context, enabler_col147);
     acc.add_to_relation(context, numerator_5, tuple_5);
 
     // Use BlakeMessage.
@@ -250,7 +250,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, blake_message_output_message_limb_limb_0_col59),
         eval!(context, blake_message_output_message_limb_limb_1_col60),
     ];
-    let numerator_6 = eval!(context, 1);
+    let numerator_6 = eval!(context, enabler_col147);
     acc.add_to_relation(context, numerator_6, tuple_6);
 
     // Use BlakeMessage.
@@ -261,7 +261,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, blake_message_output_message_limb_limb_0_col61),
         eval!(context, blake_message_output_message_limb_limb_1_col62),
     ];
-    let numerator_7 = eval!(context, 1);
+    let numerator_7 = eval!(context, enabler_col147);
     acc.add_to_relation(context, numerator_7, tuple_7);
 
     // Use BlakeMessage.
@@ -272,7 +272,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, blake_message_output_message_limb_limb_0_col63),
         eval!(context, blake_message_output_message_limb_limb_1_col64),
     ];
-    let numerator_8 = eval!(context, 1);
+    let numerator_8 = eval!(context, enabler_col147);
     acc.add_to_relation(context, numerator_8, tuple_8);
 
     // Use BlakeMessage.
@@ -283,7 +283,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, blake_message_output_message_limb_limb_0_col65),
         eval!(context, blake_message_output_message_limb_limb_1_col66),
     ];
-    let numerator_9 = eval!(context, 1);
+    let numerator_9 = eval!(context, enabler_col147);
     acc.add_to_relation(context, numerator_9, tuple_9);
 
     // Use BlakeMessage.
@@ -294,7 +294,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, blake_message_output_message_limb_limb_0_col67),
         eval!(context, blake_message_output_message_limb_limb_1_col68),
     ];
-    let numerator_10 = eval!(context, 1);
+    let numerator_10 = eval!(context, enabler_col147);
     acc.add_to_relation(context, numerator_10, tuple_10);
 
     // Use BlakeMessage.
@@ -305,7 +305,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, blake_message_output_message_limb_limb_0_col69),
         eval!(context, blake_message_output_message_limb_limb_1_col70),
     ];
-    let numerator_11 = eval!(context, 1);
+    let numerator_11 = eval!(context, enabler_col147);
     acc.add_to_relation(context, numerator_11, tuple_11);
 
     // Use BlakeMessage.
@@ -316,7 +316,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, blake_message_output_message_limb_limb_0_col71),
         eval!(context, blake_message_output_message_limb_limb_1_col72),
     ];
-    let numerator_12 = eval!(context, 1);
+    let numerator_12 = eval!(context, enabler_col147);
     acc.add_to_relation(context, numerator_12, tuple_12);
 
     // Use BlakeMessage.
@@ -327,7 +327,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, blake_message_output_message_limb_limb_0_col73),
         eval!(context, blake_message_output_message_limb_limb_1_col74),
     ];
-    let numerator_13 = eval!(context, 1);
+    let numerator_13 = eval!(context, enabler_col147);
     acc.add_to_relation(context, numerator_13, tuple_13);
 
     // Use BlakeMessage.
@@ -338,7 +338,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, blake_message_output_message_limb_limb_0_col75),
         eval!(context, blake_message_output_message_limb_limb_1_col76),
     ];
-    let numerator_14 = eval!(context, 1);
+    let numerator_14 = eval!(context, enabler_col147);
     acc.add_to_relation(context, numerator_14, tuple_14);
 
     // Use BlakeMessage.
@@ -349,7 +349,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, blake_message_output_message_limb_limb_0_col77),
         eval!(context, blake_message_output_message_limb_limb_1_col78),
     ];
-    let numerator_15 = eval!(context, 1);
+    let numerator_15 = eval!(context, enabler_col147);
     acc.add_to_relation(context, numerator_15, tuple_15);
 
     // Use BlakeMessage.
@@ -360,7 +360,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, blake_message_output_message_limb_limb_0_col79),
         eval!(context, blake_message_output_message_limb_limb_1_col80),
     ];
-    let numerator_16 = eval!(context, 1);
+    let numerator_16 = eval!(context, enabler_col147);
     acc.add_to_relation(context, numerator_16, tuple_16);
 
     // Use BlakeMessage.
@@ -371,7 +371,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, blake_message_output_message_limb_limb_0_col81),
         eval!(context, blake_message_output_message_limb_limb_1_col82),
     ];
-    let numerator_17 = eval!(context, 1);
+    let numerator_17 = eval!(context, enabler_col147);
     acc.add_to_relation(context, numerator_17, tuple_17);
 
     // Use BlakeG.
