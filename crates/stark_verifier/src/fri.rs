@@ -3,7 +3,9 @@ use itertools::{Itertools, zip_eq};
 use stwo::core::circle::CirclePoint;
 
 use crate::channel::Channel;
-use crate::circle::{compute_half_coset_points, double_x_simd};
+use crate::circle::{
+    add_points_simd, compute_half_coset_points, double_x_simd, minus_generator_point_simd,
+};
 use crate::fri_proof::{FriCommitProof, FriConfig, FriProof};
 use crate::merkle::{hash_leaf_qm31, merkle_node, verify_merkle_path};
 use circuits::context::{Context, Var};
@@ -188,4 +190,61 @@ fn compute_twiddles_from_base_point<Value: IValue>(
         }
     }
     twiddles_per_fold_per_query
+}
+
+/// Translates each packed query point to the base point of its local FRI coset.
+///
+/// For each SIMD lane `j`, when the corresponding bit is `1`, the function subtracts the circle
+/// generator corresponding to this bit position; when it is `0`, it leaves the point unchanged.
+///
+/// Applying this for all provided bits clears the least significant `step`-many bits of each query.
+///
+/// # Arguments
+///
+/// - `context`: the circuit context.
+/// - `base_point`: packed query points to translate.
+/// - `packed_bits`: the least significant `step`-many bits of the current queries (where `step` is
+///   the fold_step of the current FRI fold).
+// TODO(Leo): remove the allow.
+#[allow(dead_code)]
+fn translate_to_base_point<Value: IValue>(
+    context: &mut Context<Value>,
+    mut base_point: CirclePoint<Simd>,
+    packed_bits: &[Simd],
+) -> CirclePoint<Simd> {
+    let n_queries = base_point.x.len();
+    for (i, bit) in packed_bits.iter().enumerate() {
+        // The group inverse of the generator of the subgroup of size 2^(i+1).
+        let minus_cur_gen_pt = minus_generator_point_simd(context, i + 1, n_queries);
+        // Select between `point` and `point - cur_gen_pt`.
+        let point_if_bit = add_points_simd(context, &base_point, &minus_cur_gen_pt);
+        base_point = CirclePoint {
+            x: Simd::select(context, bit, &base_point.x, &point_if_bit.x),
+            y: Simd::select(context, bit, &base_point.y, &point_if_bit.y),
+        };
+    }
+    base_point
+}
+
+/// For each SIMD lane of `point`, maps the corresponding point to its group inverse if the bit is
+/// 1, else leaves it unchanged.
+///
+/// # Arguments
+///
+/// - `context`: the circuit context.
+/// - `point`: packed input points.
+/// - `bit`: SIMD selector (0 or 1) per lane.
+// TODO(Leo): remove the allow.
+#[allow(dead_code)]
+fn translate_by_lsb<Value: IValue>(
+    context: &mut Context<Value>,
+    point: &CirclePoint<Simd>,
+    bit: &Simd,
+) -> CirclePoint<Simd> {
+    let n_queries = point.x.len();
+    let zero = Simd::zero(context, n_queries);
+    let minus_y_coord = Simd::sub(context, &zero, &point.y);
+    let minus_y_point = CirclePoint { x: point.x.clone(), y: minus_y_coord };
+    // Select between `point` and `point - g_0` (implemented by negating `y`).
+    CirclePoint { x: point.x.clone(), y: Simd::select(context, bit, &point.y, &minus_y_point.y) }
 }
