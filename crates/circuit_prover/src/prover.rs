@@ -1,6 +1,6 @@
 use crate::finalize::finalize_context;
 use crate::witness::components::qm31_ops;
-use crate::witness::preprocessed::PreProcessedTrace;
+use crate::witness::preprocessed::PreprocessedCircuit;
 use crate::witness::trace::TraceGenerator;
 use crate::witness::trace::write_interaction_trace;
 use crate::witness::trace::write_trace;
@@ -77,18 +77,17 @@ pub fn to_component_provers(
 pub fn prove_circuit(context: &mut Context<QM31>) -> (CircuitProof, Vec<u32>) {
     finalize_context(context);
 
-    let (preprocessed_trace, params) =
-        PreProcessedTrace::generate_preprocessed_trace(&context.circuit);
+    let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&context.circuit);
     let context_values = context.values();
 
-    prove_circuit_assignment(context_values, preprocessed_trace, params)
+    prove_circuit_assignment(context_values, preprocessed_circuit)
 }
 
 pub fn prove_circuit_assignment(
     values: &[QM31],
-    preprocessed_trace: PreProcessedTrace,
-    params: CircuitParams,
+    preprocessed_circuit: PreprocessedCircuit,
 ) -> (CircuitProof, Vec<u32>) {
+    let PreprocessedCircuit { preprocessed_trace, params } = preprocessed_circuit;
     let CircuitParams {
         trace_log_size,
         first_permutation_row,

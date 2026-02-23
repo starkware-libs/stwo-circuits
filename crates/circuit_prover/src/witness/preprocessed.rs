@@ -367,39 +367,6 @@ pub struct PreProcessedTrace {
 }
 
 impl PreProcessedTrace {
-    /// Generates the preprocessed trace for the circuit, assuming it is already finalized.
-    pub fn generate_preprocessed_trace(circuit: &Circuit) -> (Self, CircuitParams) {
-        let mut pp_trace = Self { columns: vec![], column_indices: HashMap::new() };
-
-        // Adjust multiplicities to account for the use of the constant 0 in the permutation gate
-        // implementation. See `fill_permutation_columns` for details.
-        let mut multiplicities = circuit.compute_multiplicities().0;
-        let additional_zero_multiplicity: usize =
-            circuit.permutation.iter().map(|gate| gate.inputs.len() + gate.outputs.len()).sum();
-        multiplicities[0] += additional_zero_multiplicity;
-
-        // Add Eq columns.
-        add_eq_to_preprocessed_trace(circuit, &mut pp_trace);
-        // Add QM31 operations columns.
-        let qm31_ops_trace_generator =
-            add_qm31_ops_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
-        // Add Blake columns.
-        add_blake_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
-
-        Self::add_non_circuit_preprocessed_columns(&mut pp_trace);
-
-        // The trace size is the size of the largest column in the preprocessed trace (since all
-        // components have preprocessed columns).
-        let trace_log_size = pp_trace.log_sizes().into_iter().max().unwrap();
-        let params = CircuitParams {
-            trace_log_size,
-            first_permutation_row: qm31_ops_trace_generator.first_permutation_row,
-            n_blake_gates: circuit.blake.len(),
-            output_addresses: circuit.output.iter().map(|out| out.in0).collect(),
-        };
-        (pp_trace, params)
-    }
-
     fn add_non_circuit_preprocessed_columns(pp_trace: &mut PreProcessedTrace) {
         let n_columns = pp_trace.columns.len();
         let seq: [Vec<usize>; 17] = std::array::from_fn(|i| (0..1_usize << (i + 4)).collect());
@@ -470,6 +437,47 @@ impl PreProcessedTrace {
             .chunks_exact(N_LANES)
             .map(|c| PackedM31::from_array(std::array::from_fn(|i| BaseField::from(c[i]))))
             .collect::<Vec<_>>()
+    }
+}
+
+pub struct PreprocessedCircuit {
+    pub preprocessed_trace: PreProcessedTrace,
+    pub params: CircuitParams,
+}
+
+impl PreprocessedCircuit {
+    /// Builds the preprocessed circuit data (trace + params) from a finalized circuit.
+    pub fn preprocess_circuit(circuit: &Circuit) -> Self {
+        let mut pp_trace = PreProcessedTrace { columns: vec![], column_indices: HashMap::new() };
+
+        // Adjust multiplicities to account for the use of the constant 0 in the permutation gate
+        // implementation. See `fill_permutation_columns` for details.
+        let mut multiplicities = circuit.compute_multiplicities().0;
+        let additional_zero_multiplicity: usize =
+            circuit.permutation.iter().map(|gate| gate.inputs.len() + gate.outputs.len()).sum();
+        multiplicities[0] += additional_zero_multiplicity;
+
+        // Add Eq columns.
+        add_eq_to_preprocessed_trace(circuit, &mut pp_trace);
+        // Add QM31 operations columns.
+        let qm31_ops_trace_generator =
+            add_qm31_ops_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
+        // Add Blake columns.
+        add_blake_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
+
+        PreProcessedTrace::add_non_circuit_preprocessed_columns(&mut pp_trace);
+
+        // The trace size is the size of the largest column in the preprocessed trace (since all
+        // components have preprocessed columns).
+        let trace_log_size = pp_trace.log_sizes().into_iter().max().unwrap();
+        let params = CircuitParams {
+            trace_log_size,
+            first_permutation_row: qm31_ops_trace_generator.first_permutation_row,
+            n_blake_gates: circuit.blake.len(),
+            output_addresses: circuit.output.iter().map(|out| out.in0).collect(),
+        };
+
+        Self { preprocessed_trace: pp_trace, params }
     }
 }
 
