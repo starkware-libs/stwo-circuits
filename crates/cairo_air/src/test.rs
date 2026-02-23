@@ -28,16 +28,7 @@ use stwo_cairo_dev_utils::utils::get_compiled_cairo_program_path;
 use stwo_cairo_dev_utils::vm_utils::{ProgramType, run_and_adapt};
 use stwo_cairo_prover::prover::{ChannelHash, ProverParameters, prove_cairo};
 
-/// Logup security is defined by the `QM31` space (~124 bits) + `INTERACTION_POW_BITS` -
-/// log2(number of relation terms).
-/// The number of relation terms is defined as n_terms * n_relations * n_uses, where:
-/// n_terms = number of terms in each relation (the size of the relation entry) < 2^7,
-/// n_relations = number of different relations ids < 2^6,
-/// n_uses is bounded by the characteristic of the field = 2^31.
-/// E.g. assuming a 100-bit security target, the witness may contain up to
-/// 1 << (24 + INTERACTION_POW_BITS) relation terms.
-pub const INTERACTION_POW_BITS: u32 = 24;
-
+use cairo_air::verifier::INTERACTION_POW_BITS;
 use circuits::context::Var;
 use circuits::ivalue::IValue;
 use circuits_stark_verifier::constraint_eval::ComponentDataTrait;

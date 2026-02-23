@@ -1,3 +1,4 @@
+use crate::constraint_eval::CircuitEval;
 use crate::fri_proof::{FriConfig, FriProof, empty_fri_proof};
 use crate::merkle::{AuthPath, AuthPaths};
 use crate::oods::{EvalDomainSamples, N_COMPOSITION_COLUMNS, empty_eval_domain_samples};
@@ -45,11 +46,19 @@ impl ProofConfig {
     ) -> Self {
         let components = statement.get_components();
         let n_preprocessed_columns = statement.get_preprocessed_column_ids().len();
+        Self::from_components(components, n_preprocessed_columns, pcs_config, interaction_pow_bits)
+    }
+
+    pub fn from_components<Value: IValue>(
+        components: &[Box<dyn CircuitEval<Value>>],
+        n_preprocessed_columns: usize,
+        pcs_config: &PcsConfig,
+        interaction_pow_bits: u32,
+    ) -> Self {
         let trace_columns_per_component =
             components.iter().map(|c| c.trace_columns()).collect_vec();
         let interaction_columns_per_component =
             components.iter().map(|c| c.interaction_columns()).collect_vec();
-
         Self::new(
             components.len(),
             trace_columns_per_component,
@@ -58,15 +67,6 @@ impl ProofConfig {
             pcs_config,
             interaction_pow_bits,
         )
-    }
-
-    /// Returns an iterator over the enabled components.
-    pub fn enabled_components(&self) -> impl Iterator<Item = bool> {
-        // A real component need to interact with the other components or the public logup sum and
-        // therefore it must have some interaction columns.
-        self.interaction_columns_per_component
-            .iter()
-            .map(|interaction_columns| *interaction_columns > 0)
     }
 
     pub fn new(
@@ -132,6 +132,15 @@ impl ProofConfig {
             },
             interaction_pow_bits,
         }
+    }
+
+    /// Returns an iterator over the enabled components.
+    pub fn enabled_components(&self) -> impl Iterator<Item = bool> {
+        // A real component need to interact with the other components or the public logup sum and
+        // therefore it must have some interaction columns.
+        self.interaction_columns_per_component
+            .iter()
+            .map(|interaction_columns| *interaction_columns > 0)
     }
 
     /// Returns the log2 of the size of the trace.
