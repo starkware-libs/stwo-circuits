@@ -26,6 +26,7 @@ use stwo::prover::ComponentProver;
 use stwo::prover::backend::simd::SimdBackend;
 use stwo::prover::poly::circle::PolyOps;
 use stwo::prover::{ProvingError, prove_ex};
+use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 const COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND: u32 = 1;
 
@@ -34,6 +35,7 @@ pub struct CircuitParams {
     pub first_permutation_row: usize,
     pub n_blake_gates: usize,
     pub output_addresses: Vec<usize>,
+    pub preprocessed_trace_info: PreprocessedTraceInfo,
 }
 
 pub struct CircuitProof {
@@ -45,6 +47,11 @@ pub struct CircuitProof {
     pub components: Vec<Box<dyn Component>>,
     pub stark_proof: Result<ExtendedStarkProof<Blake2sM31MerkleHasher>, ProvingError>,
     pub channel_salt: u32,
+}
+
+pub struct PreprocessedTraceInfo {
+    pub log_sizes: Vec<u32>,
+    pub column_ids: Vec<PreProcessedColumnId>,
 }
 
 #[cfg(test)]
@@ -74,7 +81,7 @@ pub fn to_component_provers(
     .collect()
 }
 
-pub fn prove_circuit(context: &mut Context<QM31>) -> (CircuitProof, Vec<u32>) {
+pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     finalize_context(context);
 
     let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&context.circuit);
@@ -86,13 +93,14 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> (CircuitProof, Vec<u32>) {
 pub fn prove_circuit_assignment(
     values: &[QM31],
     preprocessed_circuit: PreprocessedCircuit,
-) -> (CircuitProof, Vec<u32>) {
+) -> CircuitProof {
     let PreprocessedCircuit { preprocessed_trace, params } = preprocessed_circuit;
     let CircuitParams {
         trace_log_size,
         first_permutation_row,
         n_blake_gates,
         ref output_addresses,
+        ..
     } = params;
     let trace_generator = TraceGenerator {
         qm31_ops_trace_generator: qm31_ops::TraceGenerator { first_permutation_row },
@@ -186,17 +194,14 @@ pub fn prove_circuit_assignment(
 
     // Prove stark.
     let proof = prove_ex::<SimdBackend, _>(&components, channel, commitment_scheme, true);
-    (
-        CircuitProof {
-            pcs_config,
-            circuit_params: params,
-            claim,
-            interaction_pow_nonce,
-            interaction_claim,
-            components: circuit_components.components(),
-            stark_proof: proof,
-            channel_salt,
-        },
-        preprocessed_trace_arc.log_sizes(),
-    )
+    CircuitProof {
+        pcs_config,
+        circuit_params: params,
+        claim,
+        interaction_pow_nonce,
+        interaction_claim,
+        components: circuit_components.components(),
+        stark_proof: proof,
+        channel_salt,
+    }
 }
