@@ -39,17 +39,21 @@ pub fn write_trace(
 ) -> (CircuitClaim, CircuitInteractionClaimGenerator) {
     let preprocessed_trace_ref = preprocessed_trace.as_ref();
 
-    // Write eq component.
-    let (eq_trace, eq_log_size, eq_lookup_data) =
-        eq::write_trace(context_values, preprocessed_trace_ref);
-    let mut trace_evals = eq_trace.to_evals();
-
-    // Write qm31_ops component.
-    let (qm31_ops_trace, qm31_ops_log_size, qm31_ops_lookup_data) = qm31_ops::write_trace(
-        context_values,
-        preprocessed_trace_ref,
-        &trace_generator.qm31_ops_trace_generator,
+    // Write eq and qm31_ops components in parallel.
+    let (
+        (eq_trace, eq_log_size, eq_lookup_data),
+        (qm31_ops_trace, qm31_ops_log_size, qm31_ops_lookup_data),
+    ) = join(
+        || eq::write_trace(context_values, preprocessed_trace_ref),
+        || {
+            qm31_ops::write_trace(
+                context_values,
+                preprocessed_trace_ref,
+                &trace_generator.qm31_ops_trace_generator,
+            )
+        },
     );
+    let mut trace_evals = eq_trace.to_evals();
     trace_evals.extend(qm31_ops_trace.to_evals());
 
     let verify_bitwise_xor_8_state =
@@ -86,7 +90,6 @@ pub fn write_trace(
         &mut blake_round_generator,
         &mut triple_xor_32_state,
     );
-    trace_evals.extend(blake_gate_trace.to_evals());
 
     // Write blake round component.
     let (blake_round_trace, blake_round_log_size, blake_round_interaction_claim_gen) =
@@ -95,7 +98,6 @@ pub fn write_trace(
             &blake_message_state,
             &mut blake_g_generator,
         );
-    trace_evals.extend(blake_round_trace.to_evals());
 
     // Write blake round sigma component.
     let (
@@ -103,6 +105,8 @@ pub fn write_trace(
         _blake_round_sigma_claim,
         blake_round_sigma_interaction_claim_gen,
     ) = blake_round_sigma_generator.write_trace();
+    trace_evals.extend(blake_gate_trace.to_evals());
+    trace_evals.extend(blake_round_trace.to_evals());
     trace_evals.extend(blake_round_sigma_trace.to_evals());
 
     // Write blake g, blake output, and triple xor 32 components in parallel.
@@ -135,35 +139,57 @@ pub fn write_trace(
     trace_evals.extend(blake_output_trace.to_evals());
     trace_evals.extend(triple_xor_32_trace.to_evals());
 
-    // Write xor and range-check components in parallel.
+    // Write xor/range-check traces and extract output values in parallel.
     let (
-        verify_bitwise_xor_8_result,
-        verify_bitwise_xor_12_result,
-        verify_bitwise_xor_4_result,
-        verify_bitwise_xor_7_result,
-        verify_bitwise_xor_9_result,
-        range_check_15_result,
-        range_check_16_result,
-    ) = std::thread::scope(|s| {
-        let verify_bitwise_xor_8_handle = s.spawn(move || verify_bitwise_xor_8_state.write_trace());
-        let verify_bitwise_xor_12_handle =
-            s.spawn(move || verify_bitwise_xor_12_state.write_trace());
-        let verify_bitwise_xor_4_handle = s.spawn(move || verify_bitwise_xor_4_state.write_trace());
-        let verify_bitwise_xor_7_handle = s.spawn(move || verify_bitwise_xor_7_state.write_trace());
-        let verify_bitwise_xor_9_handle = s.spawn(move || verify_bitwise_xor_9_state.write_trace());
-        let range_check_15_handle = s.spawn(move || range_check_15_state.write_trace());
-        let range_check_16_handle = s.spawn(move || range_check_16_state.write_trace());
-
         (
-            verify_bitwise_xor_8_handle.join().expect("verify_bitwise_xor_8 trace task failed"),
-            verify_bitwise_xor_12_handle.join().expect("verify_bitwise_xor_12 trace task failed"),
-            verify_bitwise_xor_4_handle.join().expect("verify_bitwise_xor_4 trace task failed"),
-            verify_bitwise_xor_7_handle.join().expect("verify_bitwise_xor_7 trace task failed"),
-            verify_bitwise_xor_9_handle.join().expect("verify_bitwise_xor_9 trace task failed"),
-            range_check_15_handle.join().expect("range_check_15 trace task failed"),
-            range_check_16_handle.join().expect("range_check_16 trace task failed"),
-        )
-    });
+            verify_bitwise_xor_8_result,
+            verify_bitwise_xor_12_result,
+            verify_bitwise_xor_4_result,
+            verify_bitwise_xor_7_result,
+            verify_bitwise_xor_9_result,
+            range_check_15_result,
+            range_check_16_result,
+        ),
+        output_values,
+    ) = join(
+        || {
+            std::thread::scope(|s| {
+                let verify_bitwise_xor_8_handle =
+                    s.spawn(move || verify_bitwise_xor_8_state.write_trace());
+                let verify_bitwise_xor_12_handle =
+                    s.spawn(move || verify_bitwise_xor_12_state.write_trace());
+                let verify_bitwise_xor_4_handle =
+                    s.spawn(move || verify_bitwise_xor_4_state.write_trace());
+                let verify_bitwise_xor_7_handle =
+                    s.spawn(move || verify_bitwise_xor_7_state.write_trace());
+                let verify_bitwise_xor_9_handle =
+                    s.spawn(move || verify_bitwise_xor_9_state.write_trace());
+                let range_check_15_handle = s.spawn(move || range_check_15_state.write_trace());
+                let range_check_16_handle = s.spawn(move || range_check_16_state.write_trace());
+
+                (
+                    verify_bitwise_xor_8_handle
+                        .join()
+                        .expect("verify_bitwise_xor_8 trace task failed"),
+                    verify_bitwise_xor_12_handle
+                        .join()
+                        .expect("verify_bitwise_xor_12 trace task failed"),
+                    verify_bitwise_xor_4_handle
+                        .join()
+                        .expect("verify_bitwise_xor_4 trace task failed"),
+                    verify_bitwise_xor_7_handle
+                        .join()
+                        .expect("verify_bitwise_xor_7 trace task failed"),
+                    verify_bitwise_xor_9_handle
+                        .join()
+                        .expect("verify_bitwise_xor_9 trace task failed"),
+                    range_check_15_handle.join().expect("range_check_15 trace task failed"),
+                    range_check_16_handle.join().expect("range_check_16 trace task failed"),
+                )
+            })
+        },
+        || output_addresses.iter().map(|addr| context_values[*addr]).collect_vec(),
+    );
 
     let (
         verify_bitwise_xor_8_trace,
@@ -209,8 +235,6 @@ pub fn write_trace(
     trace_evals.extend(range_check_16_trace.to_evals());
 
     tree_builder.extend_evals(trace_evals);
-
-    let output_values = output_addresses.iter().map(|addr| context_values[*addr]).collect_vec();
 
     (
         CircuitClaim {
