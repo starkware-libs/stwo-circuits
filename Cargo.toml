@@ -38,6 +38,7 @@ stwo_cairo_dev_utils = { package = "stwo-cairo-dev-utils", git = "https://github
 stwo_cairo_utils = { package = "stwo-cairo-utils", git = "https://github.com/starkware-libs/stwo-cairo", rev = "dc653e77" }
 circuits = { path = "crates/circuits"}
 circuit-air = { path = "crates/circuit_air"}
+circuit-prover = { path = "crates/circuit_prover"}
 circuits-stark-verifier = { path = "crates/stark_verifier"}
 circuits-stark-verifier-examples = { path = "crates/stark_verifier_examples"}
 rstest = "0.26.1"
