@@ -1,3 +1,5 @@
+use circuit_prover::prover::prove_circuit;
+use circuit_prover::prover::verify_circuit;
 use itertools::Itertools;
 use num_traits::Zero;
 use stwo::core::fields::m31::M31;
@@ -195,4 +197,15 @@ fn test_verify_privacy() {
     let cairo_proof = binary_deserialize_from_file(&proof_file).unwrap();
 
     verify_cairo(&cairo_proof).unwrap();
+}
+
+#[test]
+fn test_verify_privacy_with_recursion() {
+    let proof_path = get_proof_file_path("privacy");
+    let proof_file = File::open(proof_path).unwrap();
+    let cairo_proof = binary_deserialize_from_file(&proof_file).unwrap();
+
+    let mut context = verify_cairo(&cairo_proof).unwrap();
+    let circuit_proof = prove_circuit(&mut context);
+    verify_circuit(circuit_proof).unwrap();
 }
