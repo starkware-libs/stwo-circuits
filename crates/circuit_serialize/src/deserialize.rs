@@ -27,21 +27,21 @@ pub type DeserializeResult<T> = Result<T, DeserializeError>;
 /// implementations. Fixed-size types implement the trait directly; composite types that require
 /// length information from the [`ProofConfig`] use dedicated `deserialize_with_config` methods.
 pub trait CircuitDeserialize: Sized {
-    fn deserialize(data: &mut &[u8]) -> DeserializeResult<Self>;
+    fn deserialize(data: &mut &[u32]) -> DeserializeResult<Self>;
 }
 
 impl CircuitDeserialize for M31 {
-    fn deserialize(data: &mut &[u8]) -> DeserializeResult<Self> {
-        let Some(&[a, b, c, d]) = data.split_off(..4) else {
+    fn deserialize(data: &mut &[u32]) -> DeserializeResult<Self> {
+        let Some(&[value]) = data.split_off(..1) else {
             return Err(DeserializeError);
         };
 
-        Ok(M31::from(u32::from_le_bytes([a, b, c, d])))
+        Ok(M31::from(value))
     }
 }
 
 impl CircuitDeserialize for QM31 {
-    fn deserialize(data: &mut &[u8]) -> DeserializeResult<Self> {
+    fn deserialize(data: &mut &[u32]) -> DeserializeResult<Self> {
         let m31_values: [M31; 4] = [
             M31::deserialize(data)?,
             M31::deserialize(data)?,
@@ -53,7 +53,7 @@ impl CircuitDeserialize for QM31 {
 }
 
 impl<T: CircuitDeserialize, const N: usize> CircuitDeserialize for [T; N] {
-    fn deserialize(data: &mut &[u8]) -> DeserializeResult<Self> {
+    fn deserialize(data: &mut &[u32]) -> DeserializeResult<Self> {
         (0..N)
             .map(|_| T::deserialize(data))
             .collect::<DeserializeResult<Vec<_>>>()?
@@ -63,13 +63,13 @@ impl<T: CircuitDeserialize, const N: usize> CircuitDeserialize for [T; N] {
 }
 
 impl CircuitDeserialize for HashValue<QM31> {
-    fn deserialize(data: &mut &[u8]) -> DeserializeResult<Self> {
+    fn deserialize(data: &mut &[u32]) -> DeserializeResult<Self> {
         Ok(HashValue(QM31::deserialize(data)?, QM31::deserialize(data)?))
     }
 }
 
 impl CircuitDeserialize for M31Wrapper<QM31> {
-    fn deserialize(data: &mut &[u8]) -> DeserializeResult<Self> {
+    fn deserialize(data: &mut &[u32]) -> DeserializeResult<Self> {
         let m31 = M31::deserialize(data)?;
         Ok(M31Wrapper::from(m31))
     }
@@ -77,7 +77,7 @@ impl CircuitDeserialize for M31Wrapper<QM31> {
 
 /// Deserializes a `Vec<T>` of the given length from the byte stream.
 fn deserialize_vec<T: CircuitDeserialize>(
-    data: &mut &[u8],
+    data: &mut &[u32],
     len: usize,
 ) -> DeserializeResult<Vec<T>> {
     (0..len).map(|_| T::deserialize(data)).collect()
@@ -86,7 +86,7 @@ fn deserialize_vec<T: CircuitDeserialize>(
 /// Deserializes a proof from a byte stream, using the [`ProofConfig`] for all length
 /// information.
 pub fn deserialize_proof_with_config(
-    data: &mut &[u8],
+    data: &mut &[u32],
     config: &ProofConfig,
 ) -> DeserializeResult<Proof<QM31>> {
     let channel_salt = QM31::deserialize(data)?;
@@ -124,7 +124,7 @@ pub fn deserialize_proof_with_config(
     })
 }
 
-fn deserialize_claim(data: &mut &[u8], config: &ProofConfig) -> DeserializeResult<Claim<QM31>> {
+fn deserialize_claim(data: &mut &[u32], config: &ProofConfig) -> DeserializeResult<Claim<QM31>> {
     // TODO(Gali): Serialize more efficiently.
     let packed_enable_bits = deserialize_vec(data, config.n_components.div_ceil(4))?;
     let packed_component_log_sizes = deserialize_vec(data, config.n_components.div_ceil(4))?;
@@ -133,7 +133,7 @@ fn deserialize_claim(data: &mut &[u8], config: &ProofConfig) -> DeserializeResul
 }
 
 fn deserialize_interaction_at_oods(
-    data: &mut &[u8],
+    data: &mut &[u32],
     config: &ProofConfig,
 ) -> DeserializeResult<Vec<InteractionAtOods<QM31>>> {
     config
@@ -148,7 +148,7 @@ fn deserialize_interaction_at_oods(
 }
 
 fn deserialize_eval_domain_samples(
-    data: &mut &[u8],
+    data: &mut &[u32],
     config: &ProofConfig,
 ) -> DeserializeResult<EvalDomainSamples<QM31>> {
     let n_columns_per_trace = config.n_columns_per_trace();
@@ -167,7 +167,7 @@ fn deserialize_eval_domain_samples(
 }
 
 fn deserialize_eval_domain_auth_paths(
-    data: &mut &[u8],
+    data: &mut &[u32],
     config: &ProofConfig,
 ) -> DeserializeResult<AuthPaths<QM31>> {
     let n_queries = config.n_queries();
@@ -185,7 +185,7 @@ fn deserialize_eval_domain_auth_paths(
 }
 
 fn deserialize_fri_commit_proof(
-    data: &mut &[u8],
+    data: &mut &[u32],
     config: &FriConfig,
 ) -> DeserializeResult<FriCommitProof<QM31>> {
     let n_layers = config.log_trace_size - config.log_n_last_layer_coefs;
@@ -197,7 +197,7 @@ fn deserialize_fri_commit_proof(
 }
 
 fn deserialize_fri_proof(
-    data: &mut &[u8],
+    data: &mut &[u32],
     config: &FriConfig,
 ) -> DeserializeResult<FriProof<QM31>> {
     let commit = deserialize_fri_commit_proof(data, config)?;
