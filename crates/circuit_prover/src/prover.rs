@@ -11,6 +11,7 @@ use circuits::context::Context;
 use itertools::chain;
 use num_traits::Zero;
 use std::sync::Once;
+use std::time::Instant;
 use stwo::core::air::Component;
 use stwo::core::channel::Blake2sM31Channel;
 use stwo::core::channel::Channel;
@@ -79,11 +80,21 @@ pub fn to_component_provers(
 }
 
 pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
+    let started_at = Instant::now();
+    println!(
+        "[prove_circuit][{:>8} ms] checkpoint 1: enter",
+        started_at.elapsed().as_millis()
+    );
     finalize_context(context);
+    println!(
+        "[prove_circuit][{:>8} ms] checkpoint 2: finalize_context done",
+        started_at.elapsed().as_millis()
+    );
 
     let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&context.circuit);
     println!(
-        "prove_circuit: trace_log_size={}, eq={}, add={}, sub={}, mul={}, pointwise_mul={}, blake={}, permutation={}, output={}, blake_gate_preprocessed_trace_size={}",
+        "[prove_circuit][{:>8} ms] checkpoint 3: preprocessed ready; trace_log_size={}, eq={}, add={}, sub={}, mul={}, pointwise_mul={}, blake={}, permutation={}, output={}, blake_gate_preprocessed_trace_size={}",
+        started_at.elapsed().as_millis(),
         preprocessed_circuit.params.trace_log_size,
         context.circuit.eq.len(),
         context.circuit.add.len(),
@@ -99,6 +110,10 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
             .len()
     );
     let context_values = context.values();
+    println!(
+        "[prove_circuit][{:>8} ms] checkpoint 4: extracted context values",
+        started_at.elapsed().as_millis()
+    );
 
     prove_circuit_assignment(context_values, preprocessed_circuit)
 }
@@ -107,6 +122,11 @@ pub fn prove_circuit_assignment(
     values: &[QM31],
     preprocessed_circuit: PreprocessedCircuit,
 ) -> CircuitProof {
+    let started_at = Instant::now();
+    println!(
+        "[prove_circuit_assignment][{:>8} ms] checkpoint 1: enter",
+        started_at.elapsed().as_millis()
+    );
     let PreprocessedCircuit { preprocessed_trace, params } = &preprocessed_circuit;
     let CircuitParams {
         trace_log_size,
@@ -115,6 +135,13 @@ pub fn prove_circuit_assignment(
         output_addresses,
         ..
     } = params;
+    println!(
+        "[prove_circuit_assignment][{:>8} ms] checkpoint 2: params loaded (trace_log_size={}, n_blake_gates={}, n_outputs={})",
+        started_at.elapsed().as_millis(),
+        trace_log_size,
+        n_blake_gates,
+        output_addresses.len()
+    );
     let trace_generator = TraceGenerator {
         qm31_ops_trace_generator: qm31_ops::TraceGenerator {
             first_permutation_row: *first_permutation_row,
@@ -129,6 +156,13 @@ pub fn prove_circuit_assignment(
     let lifting_log_size = trace_log_size + pcs_config.fri_config.log_blowup_factor;
 
     pcs_config.lifting_log_size = Some(lifting_log_size);
+    println!(
+        "[prove_circuit_assignment][{:>8} ms] checkpoint 3: pcs configured (pow_bits={}, fri_blowup={}, lifting_log_size={})",
+        started_at.elapsed().as_millis(),
+        pcs_config.pow_bits,
+        pcs_config.fri_config.log_blowup_factor,
+        lifting_log_size
+    );
 
     // Precompute twiddles.
     // Account for blowup factor and for composition polynomial calculation (taking the max since
@@ -155,11 +189,19 @@ pub fn prove_circuit_assignment(
         CommitmentSchemeProver::<SimdBackend, Blake2sM31MerkleChannel>::new(pcs_config, &twiddles);
 
     commitment_scheme.set_store_polynomials_coefficients();
+    println!(
+        "[prove_circuit_assignment][{:>8} ms] checkpoint 4: commitment scheme initialized",
+        started_at.elapsed().as_millis()
+    );
 
     // Preprocessed trace.
     let mut tree_builder = commitment_scheme.tree_builder();
     tree_builder.extend_evals(preprocessed_trace.get_trace::<SimdBackend>());
     tree_builder.commit(channel);
+    println!(
+        "[prove_circuit_assignment][{:>8} ms] checkpoint 5: preprocessed trace committed",
+        started_at.elapsed().as_millis()
+    );
 
     // Base trace.
     let mut tree_builder = commitment_scheme.tree_builder();
@@ -172,11 +214,19 @@ pub fn prove_circuit_assignment(
     );
     claim.mix_into(channel);
     tree_builder.commit(channel);
+    println!(
+        "[prove_circuit_assignment][{:>8} ms] checkpoint 6: base trace committed",
+        started_at.elapsed().as_millis()
+    );
 
     // Draw interaction elements.
     let interaction_pow_nonce = SimdBackend::grind(channel, INTERACTION_POW_BITS);
     channel.mix_u64(interaction_pow_nonce);
     let interaction_elements = CircuitInteractionElements::draw(channel);
+    println!(
+        "[prove_circuit_assignment][{:>8} ms] checkpoint 7: interaction elements drawn",
+        started_at.elapsed().as_millis()
+    );
 
     // Interaction trace.
     let mut tree_builder = commitment_scheme.tree_builder();
@@ -185,6 +235,10 @@ pub fn prove_circuit_assignment(
         interaction_generator,
         &mut tree_builder,
         &interaction_elements,
+    );
+    println!(
+        "[prove_circuit_assignment][{:>8} ms] checkpoint 8: interaction trace written",
+        started_at.elapsed().as_millis()
     );
 
     // Validate lookup argument.
@@ -201,6 +255,10 @@ pub fn prove_circuit_assignment(
 
     interaction_claim.mix_into(channel);
     tree_builder.commit(channel);
+    println!(
+        "[prove_circuit_assignment][{:>8} ms] checkpoint 9: interaction trace committed",
+        started_at.elapsed().as_millis()
+    );
     // Component provers.
     let circuit_components = CircuitComponents::new(
         &claim,
@@ -209,9 +267,17 @@ pub fn prove_circuit_assignment(
         &preprocessed_trace.ids(),
     );
     let components = to_component_provers(&circuit_components);
+    println!(
+        "[prove_circuit_assignment][{:>8} ms] checkpoint 10: component provers built",
+        started_at.elapsed().as_millis()
+    );
 
     // Prove stark.
     let proof = prove_ex::<SimdBackend, _>(&components, channel, commitment_scheme, true);
+    println!(
+        "[prove_circuit_assignment][{:>8} ms] checkpoint 11: prove_ex completed",
+        started_at.elapsed().as_millis()
+    );
     CircuitProof {
         pcs_config,
         preprocessed_circuit,
