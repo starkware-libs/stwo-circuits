@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::Instant;
 
 use crate::witness::components::blake_g;
 use crate::witness::components::blake_gate;
@@ -37,9 +38,11 @@ pub fn write_trace(
     tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, Blake2sM31MerkleChannel>,
     trace_generator: &TraceGenerator,
 ) -> (CircuitClaim, CircuitInteractionClaimGenerator) {
+    let write_trace_start = Instant::now();
     let preprocessed_trace_ref = preprocessed_trace.as_ref();
 
     // Write eq and qm31_ops components in parallel.
+    let eq_qm31_start = Instant::now();
     let (
         (eq_trace, eq_log_size, eq_lookup_data),
         (qm31_ops_trace, qm31_ops_log_size, qm31_ops_lookup_data),
@@ -53,29 +56,141 @@ pub fn write_trace(
             )
         },
     );
+    println!(
+        "[write_trace] eq+qm31_ops: {} ms",
+        eq_qm31_start.elapsed().as_millis()
+    );
     let mut trace_evals = eq_trace.to_evals();
     trace_evals.extend(qm31_ops_trace.to_evals());
 
-    let verify_bitwise_xor_8_state =
-        verify_bitwise_xor_8::ClaimGenerator::new(preprocessed_trace.clone());
-    let verify_bitwise_xor_12_state =
-        verify_bitwise_xor_12::ClaimGenerator::new(preprocessed_trace.clone());
-    let verify_bitwise_xor_4_state =
-        verify_bitwise_xor_4::ClaimGenerator::new(preprocessed_trace.clone());
-    let verify_bitwise_xor_7_state =
-        verify_bitwise_xor_7::ClaimGenerator::new(preprocessed_trace.clone());
-    let verify_bitwise_xor_9_state =
-        verify_bitwise_xor_9::ClaimGenerator::new(preprocessed_trace.clone());
-    let range_check_16_state = range_check_16::ClaimGenerator::new(preprocessed_trace.clone());
-    let range_check_15_state = range_check_15::ClaimGenerator::new(preprocessed_trace.clone());
-    let mut triple_xor_32_state = triple_xor_32::ClaimGenerator::new();
-    let blake_gate_claim_generator = blake_gate::ClaimGenerator::new(preprocessed_trace.clone());
+    let init_states_start = Instant::now();
+    let (
+        (
+            verify_bitwise_xor_8_state,
+            verify_bitwise_xor_12_state,
+            verify_bitwise_xor_4_state,
+            verify_bitwise_xor_7_state,
+            verify_bitwise_xor_9_state,
+            range_check_16_state,
+            range_check_15_state,
+        ),
+        (
+            blake_gate_claim_generator,
+            blake_round_sigma_generator,
+            mut triple_xor_32_state,
+            mut blake_g_generator,
+        ),
+    ) = join(
+        || {
+            let ((verify_bitwise_xor_8_state, verify_bitwise_xor_12_state), xor_4_7_9_and_ranges) =
+                join(
+                    || {
+                        join(
+                            || verify_bitwise_xor_8::ClaimGenerator::new(preprocessed_trace.clone()),
+                            || {
+                                verify_bitwise_xor_12::ClaimGenerator::new(
+                                    preprocessed_trace.clone(),
+                                )
+                            },
+                        )
+                    },
+                    || {
+                        let (
+                            (
+                                verify_bitwise_xor_4_state,
+                                verify_bitwise_xor_7_state,
+                                verify_bitwise_xor_9_state,
+                            ),
+                            (range_check_16_state, range_check_15_state),
+                        ) = join(
+                            || {
+                                let (verify_bitwise_xor_4_state, xor_7_9) = join(
+                                    || {
+                                        verify_bitwise_xor_4::ClaimGenerator::new(
+                                            preprocessed_trace.clone(),
+                                        )
+                                    },
+                                    || {
+                                        join(
+                                            || {
+                                                verify_bitwise_xor_7::ClaimGenerator::new(
+                                                    preprocessed_trace.clone(),
+                                                )
+                                            },
+                                            || {
+                                                verify_bitwise_xor_9::ClaimGenerator::new(
+                                                    preprocessed_trace.clone(),
+                                                )
+                                            },
+                                        )
+                                    },
+                                );
+                                (
+                                    verify_bitwise_xor_4_state,
+                                    xor_7_9.0,
+                                    xor_7_9.1,
+                                )
+                            },
+                            || {
+                                join(
+                                    || range_check_16::ClaimGenerator::new(preprocessed_trace.clone()),
+                                    || range_check_15::ClaimGenerator::new(preprocessed_trace.clone()),
+                                )
+                            },
+                        );
+                        (
+                            (
+                                verify_bitwise_xor_4_state,
+                                verify_bitwise_xor_7_state,
+                                verify_bitwise_xor_9_state,
+                            ),
+                            (range_check_16_state, range_check_15_state),
+                        )
+                    },
+                );
+            (
+                verify_bitwise_xor_8_state,
+                verify_bitwise_xor_12_state,
+                xor_4_7_9_and_ranges.0.0,
+                xor_4_7_9_and_ranges.0.1,
+                xor_4_7_9_and_ranges.0.2,
+                xor_4_7_9_and_ranges.1.0,
+                xor_4_7_9_and_ranges.1.1,
+            )
+        },
+        || {
+            let ((blake_gate_claim_generator, blake_round_sigma_generator), (triple_xor_32_state, blake_g_generator)) =
+                join(
+                    || {
+                        join(
+                            || blake_gate::ClaimGenerator::new(preprocessed_trace.clone()),
+                            || blake_round_sigma::ClaimGenerator::new(preprocessed_trace.clone()),
+                        )
+                    },
+                    || {
+                        join(
+                            || triple_xor_32::ClaimGenerator::new(),
+                            || blake_g::ClaimGenerator::new(),
+                        )
+                    },
+                );
+            (
+                blake_gate_claim_generator,
+                blake_round_sigma_generator,
+                triple_xor_32_state,
+                blake_g_generator,
+            )
+        },
+    );
+    println!(
+        "[write_trace] init states: {} ms",
+        init_states_start.elapsed().as_millis()
+    );
+
     let mut blake_round_generator = blake_round::ClaimGenerator::default();
-    let blake_round_sigma_generator =
-        blake_round_sigma::ClaimGenerator::new(preprocessed_trace.clone());
-    let mut blake_g_generator = blake_g::ClaimGenerator::new();
 
     // Write blake gate component.
+    let blake_gate_start = Instant::now();
     let (
         blake_gate_trace,
         blake_gate_interaction_claim_gen,
@@ -90,26 +205,41 @@ pub fn write_trace(
         &mut blake_round_generator,
         &mut triple_xor_32_state,
     );
+    println!(
+        "[write_trace] blake_gate: {} ms",
+        blake_gate_start.elapsed().as_millis()
+    );
 
     // Write blake round component.
+    let blake_round_start = Instant::now();
     let (blake_round_trace, blake_round_log_size, blake_round_interaction_claim_gen) =
         blake_round_generator.write_trace(
             &blake_round_sigma_generator,
             &blake_message_state,
             &mut blake_g_generator,
         );
+    println!(
+        "[write_trace] blake_round: {} ms",
+        blake_round_start.elapsed().as_millis()
+    );
 
     // Write blake round sigma component.
+    let blake_round_sigma_start = Instant::now();
     let (
         blake_round_sigma_trace,
         _blake_round_sigma_claim,
         blake_round_sigma_interaction_claim_gen,
     ) = blake_round_sigma_generator.write_trace();
+    println!(
+        "[write_trace] blake_round_sigma.write_trace: {} ms",
+        blake_round_sigma_start.elapsed().as_millis()
+    );
     trace_evals.extend(blake_gate_trace.to_evals());
     trace_evals.extend(blake_round_trace.to_evals());
     trace_evals.extend(blake_round_sigma_trace.to_evals());
 
     // Write blake g, blake output, and triple xor 32 components in parallel.
+    let blake_g_output_triple_start = Instant::now();
     let blake_output_generator =
         blake_output::ClaimGenerator::new(blake_output_component_input, preprocessed_trace);
     let (
@@ -135,11 +265,16 @@ pub fn write_trace(
             )
         },
     );
+    println!(
+        "[write_trace] blake_g+blake_output+triple_xor_32: {} ms",
+        blake_g_output_triple_start.elapsed().as_millis()
+    );
     trace_evals.extend(blake_g_trace.to_evals());
     trace_evals.extend(blake_output_trace.to_evals());
     trace_evals.extend(triple_xor_32_trace.to_evals());
 
     // Write xor/range-check traces and extract output values in parallel.
+    let xor_range_fanout_start = Instant::now();
     let (
         (
             verify_bitwise_xor_8_result,
@@ -190,6 +325,10 @@ pub fn write_trace(
         },
         || output_addresses.iter().map(|addr| context_values[*addr]).collect_vec(),
     );
+    println!(
+        "[write_trace] xor+range fanout: {} ms",
+        xor_range_fanout_start.elapsed().as_millis()
+    );
 
     let (
         verify_bitwise_xor_8_trace,
@@ -235,6 +374,10 @@ pub fn write_trace(
     trace_evals.extend(range_check_16_trace.to_evals());
 
     tree_builder.extend_evals(trace_evals);
+    println!(
+        "[write_trace] total: {} ms",
+        write_trace_start.elapsed().as_millis()
+    );
 
     (
         CircuitClaim {
