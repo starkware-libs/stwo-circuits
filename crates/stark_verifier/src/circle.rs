@@ -105,6 +105,17 @@ pub fn generator_point_simd(
     CirclePoint { x: Simd::repeat(context, pt.x, size), y: Simd::repeat(context, pt.y, size) }
 }
 
+/// Computes the group inverse of the generator point of the subgroup of size `2^log_domain_size`,
+/// repeated `size` times.
+pub fn minus_generator_point_simd(
+    context: &mut Context<impl IValue>,
+    log_domain_size: usize,
+    size: usize,
+) -> CirclePoint<Simd> {
+    let pt = generator_point(log_domain_size);
+    CirclePoint { x: Simd::repeat(context, pt.x, size), y: Simd::repeat(context, -pt.y, size) }
+}
+
 /// Computes the polynomial that vanishes on the canonical coset of size `2^log_trace_size`.
 ///
 /// The polynomial is `pi^{log_trace_size - 1}(x) = pi(...(pi(x))...)`.
