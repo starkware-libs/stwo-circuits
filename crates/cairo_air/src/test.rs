@@ -14,7 +14,7 @@ use crate::preprocessed_columns::MAX_SEQUENCE_LOG_SIZE;
 use crate::statement::CairoStatement;
 use crate::statement::{MEMORY_VALUES_LIMBS, PUBLIC_DATA_LEN};
 use crate::verify::verify_cairo;
-use cairo_air::PreProcessedTraceVariant;
+use cairo_air::{CairoProof, PreProcessedTraceVariant};
 use circuit_air::components::N_COMPONENTS;
 use circuit_air::statement::{
     CircuitStatement, INTERACTION_POW_BITS as CIRCUIT_INTERACTION_POW_BITS,
@@ -28,6 +28,7 @@ use circuits_stark_verifier::{
 };
 use stwo::core::fri::FriConfig;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
+use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 use stwo_cairo_dev_utils::utils::get_compiled_cairo_program_path;
 use stwo_cairo_dev_utils::vm_utils::{ProgramType, run_and_adapt};
 use stwo_cairo_prover::prover::{ChannelHash, ProverParameters, prove_cairo};
@@ -208,7 +209,9 @@ fn test_verify_privacy() {
 
     let proof_path = get_proof_file_path("privacy");
     let proof_file = File::open(proof_path).unwrap();
-    let cairo_proof = binary_deserialize_from_file(&proof_file).unwrap();
+    let cairo_proof: CairoProof<Blake2sM31MerkleHasher> =
+        binary_deserialize_from_file(&proof_file).unwrap();
+    println!("pcs config: {:?}", cairo_proof.extended_stark_proof.proof.config);
     checkpoint("loaded cairo proof");
 
     let mut cairo_verifier_context = verify_cairo(&cairo_proof).unwrap();
