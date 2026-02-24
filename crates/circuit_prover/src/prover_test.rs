@@ -1,6 +1,5 @@
 use crate::prover::{CircuitProof, finalize_context, prove_circuit};
 use circuit_air::CircuitInteractionElements;
-use circuit_air::components::N_COMPONENTS;
 use circuit_air::lookup_sum;
 use circuit_air::statement::{CircuitStatement, INTERACTION_POW_BITS};
 use circuits::blake::blake;
@@ -14,6 +13,7 @@ use circuits_stark_verifier::proof_from_stark_proof::{
     pack_component_log_sizes, pack_enable_bits, proof_from_stark_proof,
 };
 use expect_test::expect;
+use itertools::Itertools;
 use num_traits::{One, Zero};
 use stwo::core::air::Component;
 use stwo::core::channel::Blake2sM31Channel;
@@ -265,12 +265,7 @@ fn test_prove_and_stark_verify_fibonacci_context() {
     );
 }
 
-#[test]
-fn test_prove_and_circuit_verify_fibonacci_context() {
-    let mut fibonacci_context = build_fibonacci_context();
-    fibonacci_context.finalize_guessed_vars();
-    fibonacci_context.validate_circuit();
-
+pub fn verify_circuit(proof: CircuitProof) -> Result<Context<QM31>, String> {
     let CircuitProof {
         pcs_config,
         preprocessed_circuit,
@@ -280,9 +275,9 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
         components: _,
         stark_proof,
         channel_salt,
-    } = prove_circuit(&mut fibonacci_context);
+    } = proof;
     assert!(stark_proof.is_ok());
-    let proof = stark_proof.unwrap();
+    let stark_proof = stark_proof.unwrap();
 
     // Verify.
     let mut context = TraceContext::default();
@@ -294,21 +289,39 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
         preprocessed_circuit.preprocessed_trace.ids(),
     );
     let claim = Claim {
-        packed_enable_bits: pack_enable_bits(&[true; N_COMPONENTS]),
+        packed_enable_bits: pack_enable_bits(
+            &claim.log_sizes.iter().map(|log_size| *log_size > 0).collect_vec(),
+        ),
         packed_component_log_sizes: pack_component_log_sizes(&claim.log_sizes),
         claimed_sums: interaction_claim.claimed_sums.to_vec(),
     };
     let config = ProofConfig::from_statement(&statement, &pcs_config, INTERACTION_POW_BITS);
 
     context.enable_assert_eq_on_eval();
-    let proof = proof_from_stark_proof(&proof, &config, claim, interaction_pow_nonce, channel_salt);
+    let proof =
+        proof_from_stark_proof(&stark_proof, &config, claim, interaction_pow_nonce, channel_salt);
     let proof_vars = proof.guess(&mut context);
 
     circuits_stark_verifier::verify::verify(&mut context, &proof_vars, &config, &statement);
     context.check_vars_used();
+    #[cfg(test)]
     context.finalize_guessed_vars();
+    #[cfg(test)]
     context.circuit.check_yields();
-    context.validate_circuit();
+    if !context.is_circuit_valid() {
+        return Err("Verification failed".to_string());
+    }
+    Ok(context)
+}
+
+#[test]
+fn test_prove_and_circuit_verify_fibonacci_context() {
+    let mut fibonacci_context = build_fibonacci_context();
+    fibonacci_context.finalize_guessed_vars();
+    fibonacci_context.validate_circuit();
+
+    let proof = prove_circuit(&mut fibonacci_context);
+    verify_circuit(proof).unwrap();
 }
 
 #[test]
