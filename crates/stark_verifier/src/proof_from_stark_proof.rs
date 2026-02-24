@@ -3,12 +3,14 @@ use std::array;
 use hashbrown::HashMap;
 use itertools::Itertools;
 use itertools::chain;
+use itertools::zip_eq;
 use num_traits::Zero;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::proof::ExtendedStarkProof;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 
+use crate::fri_proof::compute_all_line_fold_steps;
 use crate::fri_proof::{FriCommitProof, FriProof};
 use crate::merkle::{AuthPath, AuthPaths};
 use crate::oods::EvalDomainSamples;
@@ -33,6 +35,12 @@ pub fn proof_from_stark_proof(
 
     let interaction_pow_high = (interaction_pow_nonce >> 32) as u32;
     let interaction_pow_low = (interaction_pow_nonce & 0xFFFFFFFF) as u32;
+
+    let all_line_fold_steps = compute_all_line_fold_steps(
+        config.fri.log_trace_size - 1 - config.fri.log_n_last_layer_coefs,
+        config.fri.line_fold_step,
+    );
+    let siblings = construct_fri_siblings(proof, &all_line_fold_steps);
 
     Proof {
         preprocessed_root: commitments[0].into(),
@@ -62,8 +70,9 @@ pub fn proof_from_stark_proof(
                 .collect(),
                 last_layer_coefs: (*fri_proof.last_layer_poly).to_vec(),
             },
-            auth_paths: construct_fri_auth_paths(proof, config),
-            fri_siblings: construct_fri_siblings(proof, config),
+            auth_paths: construct_fri_auth_paths(proof, config, &all_line_fold_steps),
+            circle_fri_siblings: siblings.0,
+            line_coset_vals_per_query_per_tree: siblings.1,
         },
         proof_of_work_nonce: qm31_from_u32s(pow_low, pow_high, 0, 0),
         interaction_pow_nonce: qm31_from_u32s(interaction_pow_low, interaction_pow_high, 0, 0),
@@ -157,54 +166,68 @@ fn construct_eval_domain_auth_paths(
 fn construct_fri_auth_paths(
     proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
     config: &ProofConfig,
+    all_line_fold_steps: &[usize],
 ) -> AuthPaths<QM31> {
     let unsorted_query_locations = &proof.aux.unsorted_query_locations;
     let layers = chain!([&proof.aux.fri.first_layer], &proof.aux.fri.inner_layers);
-    let res = layers
-        .enumerate()
-        .map(|(tree_idx, aux)| {
+    let log_eval_domain_size = config.log_evaluation_domain_size();
+    // The circle-to-line fold is hardcoded to 1 currently.
+    let all_fold_steps = [&[1], all_line_fold_steps].concat();
+    let mut fold_sum = 0;
+    let mut res = vec![];
+
+    for (layer_proof, step) in zip_eq(layers, all_fold_steps) {
+        res.push(
             unsorted_query_locations
                 .iter()
                 .map(|query| {
                     let mut pos = *query;
-                    pos >>= tree_idx;
+                    pos >>= fold_sum + step;
+                    let log_size = log_eval_domain_size - fold_sum;
                     let mut auth_path: AuthPath<QM31> = AuthPath(vec![]);
-                    for j in 0..config.log_evaluation_domain_size() - tree_idx {
-                        let hash = aux.decommitment.all_node_values[j][&(pos ^ 1)];
-                        if j > 0 {
-                            // Don't add the first hash because it's computed from the fri sibling.
-                            auth_path.0.push(hash.into());
-                        }
+                    for j in step..log_size {
+                        let hash = layer_proof.decommitment.all_node_values[j][&(pos ^ 1)];
+                        auth_path.0.push(hash.into());
                         pos >>= 1;
                     }
                     auth_path
                 })
-                .collect()
-        })
-        .collect();
+                .collect(),
+        );
+        fold_sum += step;
+    }
 
     AuthPaths { data: res }
 }
 
-/// Constructs the vector of siblings for the FRI trees with the values from the given proof
+/// Constructs the witnesses for the FRI decommitment phase with the values from the given proof
 /// ([ExtendedStarkProof]).
 ///
-/// For each tree, for each query, the sibling of the relevant node in FRI.
-fn construct_fri_siblings(
+/// Returns a pair where:
+/// - the first member contains the fri siblings of the first FRI layer. Currently the
+///   circle-to-line fold is hardcoded to 1, so there is exactly one sibling per query.
+/// - the second member contains, for each inner layer, for each query, the coset witness for that
+///   query.
+pub fn construct_fri_siblings(
     proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
-    config: &ProofConfig,
-) -> Vec<Vec<QM31>> {
-    let mut res = vec![vec![]; config.log_trace_size()];
-    let layers = chain!([&proof.aux.fri.first_layer], &proof.aux.fri.inner_layers).collect_vec();
+    all_line_fold_steps: &[usize],
+) -> (Vec<QM31>, Vec<Vec<Vec<QM31>>>) {
+    let mut line_coset_vals_per_query_per_tree = vec![vec![]; all_line_fold_steps.len()];
+    let mut circle_fri_siblings = vec![];
     for query in &proof.aux.unsorted_query_locations {
-        let mut pos = *query;
-        for j in 0..config.log_trace_size() {
-            let sibling = layers[j].all_values[0][&(pos ^ 1)];
-            pos >>= 1;
-            res[j].push(sibling);
+        circle_fri_siblings.push(proof.aux.fri.first_layer.all_values[0][&(query ^ 1)]);
+        let mut pos = query >> 1;
+        for (tree_idx, (layer, step)) in
+            zip_eq(&proof.aux.fri.inner_layers, all_line_fold_steps).enumerate()
+        {
+            let start = (pos >> step) << step;
+            let line_coset_vals: Vec<_> =
+                (start..start + (1 << step)).map(|i| layer.all_values[0][&i]).collect();
+            line_coset_vals_per_query_per_tree[tree_idx].push(line_coset_vals);
+            pos >>= step;
         }
     }
-    res
+    (circle_fri_siblings, line_coset_vals_per_query_per_tree)
 }
 
 /// Packs the enable bits into QM31s.
