@@ -130,3 +130,21 @@ pub fn empty_fri_proof(config: &FriConfig) -> FriProof<NoValue> {
         fri_siblings: vec![vec![NoValue; config.n_queries]; config.log_trace_size],
     }
 }
+
+/// Computes all the line-to-line folding steps.
+///
+/// # Arguments
+///
+/// - `line_degree_log_ratio`: (log degree of FRI's second layer poly) - (log degree of FRI's last
+///   layer).
+/// - `line_fold_step`: the folding step of all the line-to-line folds except possibly the last.
+pub fn compute_all_line_fold_steps(
+    line_degree_log_ratio: usize,
+    line_fold_step: usize,
+) -> Vec<usize> {
+    let n_folds = line_degree_log_ratio.div_ceil(line_fold_step);
+    let rem = line_degree_log_ratio % line_fold_step;
+    let mut line_fold_steps = vec![line_fold_step; n_folds];
+    line_fold_steps[n_folds - 1] = if rem == 0 { line_fold_step } else { rem };
+    line_fold_steps
+}
