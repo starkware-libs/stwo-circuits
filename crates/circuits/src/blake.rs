@@ -7,6 +7,7 @@ use crate::circuit::Blake;
 use crate::context::{Context, Var};
 use crate::ivalue::{IValue, qm31_from_u32s};
 use crate::ops::Guess;
+use crate::stats::StatEntryKind;
 
 #[cfg(test)]
 #[path = "blake_test.rs"]
@@ -103,8 +104,8 @@ pub fn blake<Value: IValue>(
             res
         })
         .collect_vec();
-
     context.stats.blake_updates += chunks.len();
+    // context.stats.register(StatEntryKind::Blake { updates: chunks.len() });
     let out_var0 = context.new_var(out.0);
     let out_var1 = context.new_var(out.1);
 

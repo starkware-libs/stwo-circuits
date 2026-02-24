@@ -19,6 +19,7 @@ use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 /// Circuit Verifies a [CairoProof].
 pub fn verify_cairo(proof: &CairoProof<Blake2sM31MerkleHasher>) -> Result<Context<QM31>, String> {
     let mut context = TraceContext::default();
+    context.stats.profiler.stacks.clear();
     let CairoProof {
         claim,
         interaction_pow,

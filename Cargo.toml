@@ -36,7 +36,7 @@ stwo_cairo_prover = { package = "stwo-cairo-prover", path = "../stwo-cairo/stwo_
 stwo_cairo_common = { package = "stwo-cairo-common", path = "../stwo-cairo/stwo_cairo_prover/crates/common" }
 stwo_cairo_dev_utils = { package = "stwo-cairo-dev-utils", path = "../stwo-cairo/stwo_cairo_prover/crates/dev_utils" }
 stwo_cairo_utils = { package = "stwo-cairo-utils", path = "../stwo-cairo/stwo_cairo_prover/crates/utils" }
-circuits = { path = "crates/circuits"}
+circuits = { path = "crates/circuits", features = ["circuit-profiler"] }
 circuit-air = { path = "crates/circuit_air"}
 circuits-stark-verifier = { path = "crates/stark_verifier"}
 circuits-stark-verifier-examples = { path = "crates/stark_verifier_examples"}

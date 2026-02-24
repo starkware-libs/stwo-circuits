@@ -194,5 +194,8 @@ fn test_verify_privacy() {
     let proof_file = File::open(proof_path).unwrap();
     let cairo_proof = binary_deserialize_from_file(&proof_file).unwrap();
 
-    verify_cairo(&cairo_proof).unwrap();
+    let context = verify_cairo(&cairo_proof).unwrap();
+    let s = context.stats.profiler.format_with(circuits::stats::ProfilerVerbosity::Full);
+    eprintln!("Stats: {:?}", context.stats);
+    // println!("{}", s);
 }

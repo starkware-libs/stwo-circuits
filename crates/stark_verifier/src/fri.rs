@@ -71,6 +71,7 @@ pub fn fri_decommit<Value: IValue>(
     // Line to line decommitment.
     let mut base_point = translate_by_lsb(context, points, &packed_bits[0]);
     let mut bit_counter = 0;
+    let mut tot_updates = 0;
 
     for (tree_idx, ((root, step), coset_per_query)) in
         zip_eq(zip_eq(&layer_commitments[1..], steps), line_coset_vals_per_query_per_tree)
@@ -110,6 +111,10 @@ pub fn fri_decommit<Value: IValue>(
                 bits.iter().skip(bit_counter + step).map(|b| b[query_idx]).collect_vec();
             verify_merkle_path(context, coset_root, &bits_for_query[1..], *root, &auth_path);
         }
+        println!("Line-to-line {tree_idx}-th inner layer | Hash leaves | # updates: {}", config.n_queries * (1 << step));
+        println!("Line-to-line {tree_idx}-th inner layer | Coset root | # updates: {}", config.n_queries * ((1 << step) - 1));
+        println!("Line-to-line {tree_idx}-th inner layer | Authentication | # updates: {}", config.n_queries * (bits.len() - bit_counter - step - 1));
+        tot_updates += config.n_queries * ((1 << step) + ((1 << step) - 1) + (bits.len() - bit_counter - step - 1));
 
         // Translate base_point to the base of the current coset.
         base_point = translate_base_point(context, base_point, &packed_bits[bit_range]);
@@ -144,7 +149,7 @@ pub fn fri_decommit<Value: IValue>(
     if *steps.last().unwrap() == 1 {
         Simd::mark_partly_used(context, &base_point.y);
     }
-
+    println!("Total line to line updates: {tot_updates}");
     // Check last layer.
     assert_eq!(config.log_n_last_layer_coefs, 0);
     let last_layer_val = last_layer_coefs[0];
@@ -246,7 +251,9 @@ fn decommit_circle_to_line<Value: IValue>(
         let auth_path = auth_paths.at(0, query_idx);
         verify_merkle_path(context, node, &bits_for_query[1..], *root, auth_path);
     }
-
+    println!("Circle-to-line | Hash leaves | # updates: {}", siblings.len() * (1 << 1));
+    println!("Circle-to-line | Coset root | # updates: {}", siblings.len() * ((1 << 1) - 1));
+    println!("Circle-to-line | Authentication | # updates: {}", siblings.len() * (bits.len() - 1));
     // Compute the next layer.
     zip_eq(zip_eq(fri_input, siblings), twiddles)
         .map(|((fri_query, sibling), twiddle)| {

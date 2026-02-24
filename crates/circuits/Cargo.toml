@@ -3,6 +3,9 @@ name = "circuits"
 version.workspace = true
 edition.workspace = true
 
+[features]
+circuit-profiler = []
+
 [dependencies]
 blake2.workspace = true
 hashbrown.workspace = true

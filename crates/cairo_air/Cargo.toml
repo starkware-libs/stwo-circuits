@@ -10,7 +10,7 @@ num-traits.workspace = true
 stwo.workspace = true
 stwo-constraint-framework.workspace = true
 cairo-air.workspace = true
-circuits.workspace = true
+circuits = { workspace = true, features = ["circuit-profiler"] }
 circuits-stark-verifier.workspace = true
 
 [dev-dependencies]

@@ -2,7 +2,7 @@
     "tasks": [
         {
             "type": "CairoPiePath",
-            "path": "./privacy_tx_cairo_pie.zip",
+            "path": "/home/leo/Desktop/check_blakes_setup/stwo-circuits/test_data/privacy/privacy_tx_cairo_pie.zip",
             "program_hash_function": "blake"
         }
     ],
