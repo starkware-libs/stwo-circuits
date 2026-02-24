@@ -5,9 +5,17 @@ use crate::witness::trace::TraceGenerator;
 use crate::witness::trace::write_interaction_trace;
 use crate::witness::trace::write_trace;
 use circuit_air::components::CircuitComponents;
+use circuit_air::statement::CircuitStatement;
 use circuit_air::statement::INTERACTION_POW_BITS;
 use circuit_air::{CircuitClaim, CircuitInteractionClaim, CircuitInteractionElements, lookup_sum};
 use circuits::context::Context;
+use circuits::context::TraceContext;
+use circuits::ops::Guess;
+use circuits_stark_verifier::proof::{Claim, ProofConfig};
+use circuits_stark_verifier::proof_from_stark_proof::{
+    pack_component_log_sizes, pack_enable_bits, proof_from_stark_proof,
+};
+use itertools::Itertools;
 use itertools::chain;
 use num_traits::Zero;
 use stwo::core::air::Component;
@@ -197,4 +205,54 @@ pub fn prove_circuit_assignment(
         stark_proof: proof,
         channel_salt,
     }
+}
+
+// TODO(Gali): Move to circuit air crate
+pub fn verify_circuit(proof: CircuitProof) -> Result<Context<QM31>, String> {
+    let CircuitProof {
+        pcs_config,
+        preprocessed_circuit,
+        claim,
+        interaction_pow_nonce,
+        interaction_claim,
+        components: _,
+        stark_proof,
+        channel_salt,
+    } = proof;
+    assert!(stark_proof.is_ok());
+    let stark_proof = stark_proof.unwrap();
+
+    // Verify.
+    let mut context = TraceContext::default();
+    let statement = CircuitStatement::new(
+        &mut context,
+        &preprocessed_circuit.params.output_addresses,
+        &claim.output_values,
+        preprocessed_circuit.params.n_blake_gates,
+        preprocessed_circuit.preprocessed_trace.ids(),
+    );
+    let claim = Claim {
+        packed_enable_bits: pack_enable_bits(
+            &claim.log_sizes.iter().map(|log_size| *log_size > 0).collect_vec(),
+        ),
+        packed_component_log_sizes: pack_component_log_sizes(&claim.log_sizes),
+        claimed_sums: interaction_claim.claimed_sums.to_vec(),
+    };
+    let config = ProofConfig::from_statement(&statement, &pcs_config, INTERACTION_POW_BITS);
+
+    context.enable_assert_eq_on_eval();
+    let proof =
+        proof_from_stark_proof(&stark_proof, &config, claim, interaction_pow_nonce, channel_salt);
+    let proof_vars = proof.guess(&mut context);
+
+    circuits_stark_verifier::verify::verify(&mut context, &proof_vars, &config, &statement);
+    context.check_vars_used();
+    #[cfg(test)]
+    context.finalize_guessed_vars();
+    #[cfg(test)]
+    context.circuit.check_yields();
+    if !context.is_circuit_valid() {
+        return Err("Verification failed".to_string());
+    }
+    Ok(context)
 }

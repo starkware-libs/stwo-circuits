@@ -17,3 +17,4 @@ circuits-stark-verifier.workspace = true
 stwo_cairo_prover.workspace = true
 stwo_cairo_dev_utils.workspace = true
 stwo_cairo_utils.workspace = true
+circuit-prover.workspace = true
