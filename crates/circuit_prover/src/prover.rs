@@ -10,10 +10,12 @@ use circuit_air::{CircuitClaim, CircuitInteractionClaim, CircuitInteractionEleme
 use circuits::context::Context;
 use itertools::chain;
 use num_traits::Zero;
+use std::sync::Once;
 use stwo::core::air::Component;
 use stwo::core::channel::Blake2sM31Channel;
 use stwo::core::channel::Channel;
 use stwo::core::fields::qm31::QM31;
+use stwo::core::fri::FriConfig;
 use stwo::core::pcs::PcsConfig;
 use stwo::core::poly::circle::CanonicCoset;
 use stwo::core::proof::ExtendedStarkProof;
@@ -25,8 +27,11 @@ use stwo::prover::ComponentProver;
 use stwo::prover::backend::simd::SimdBackend;
 use stwo::prover::poly::circle::PolyOps;
 use stwo::prover::{ProvingError, prove_ex};
+use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
+use tracing_subscriber::EnvFilter;
 
 const COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND: u32 = 1;
+static LOGGER_INIT: Once = Once::new();
 
 pub struct CircuitParams {
     pub trace_log_size: u32,
@@ -77,6 +82,22 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     finalize_context(context);
 
     let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&context.circuit);
+    println!(
+        "prove_circuit: trace_log_size={}, eq={}, add={}, sub={}, mul={}, pointwise_mul={}, blake={}, permutation={}, output={}, blake_gate_preprocessed_trace_size={}",
+        preprocessed_circuit.params.trace_log_size,
+        context.circuit.eq.len(),
+        context.circuit.add.len(),
+        context.circuit.sub.len(),
+        context.circuit.mul.len(),
+        context.circuit.pointwise_mul.len(),
+        context.circuit.blake.len(),
+        context.circuit.permutation.len(),
+        context.circuit.output.len(),
+        preprocessed_circuit
+            .preprocessed_trace
+            .get_column(&PreProcessedColumnId { id: "finalize_flag".to_owned() })
+            .len()
+    );
     let context_values = context.values();
 
     prove_circuit_assignment(context_values, preprocessed_circuit)
@@ -100,7 +121,11 @@ pub fn prove_circuit_assignment(
         },
     };
 
-    let mut pcs_config = PcsConfig::default();
+    let mut pcs_config = PcsConfig {
+        pow_bits: 0,
+        fri_config: FriConfig::new(0, 2, 35, 1),
+        lifting_log_size: Some(1),
+    };
     let lifting_log_size = trace_log_size + pcs_config.fri_config.log_blowup_factor;
 
     pcs_config.lifting_log_size = Some(lifting_log_size);

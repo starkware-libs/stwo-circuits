@@ -14,10 +14,15 @@ use crate::statement::CairoStatement;
 use crate::statement::{MEMORY_VALUES_LIMBS, PUBLIC_DATA_LEN};
 use crate::verify::verify_cairo;
 use cairo_air::PreProcessedTraceVariant;
+use circuit_air::components::N_COMPONENTS;
+use circuit_air::statement::{
+    CircuitStatement, INTERACTION_POW_BITS as CIRCUIT_INTERACTION_POW_BITS,
+};
 use circuits::{context::Context, ivalue::NoValue, ops::Guess};
 use circuits_stark_verifier::{
     empty_component::EmptyComponent,
-    proof::{ProofConfig, empty_proof},
+    proof::{Claim, ProofConfig, empty_proof},
+    proof_from_stark_proof::{pack_component_log_sizes, pack_enable_bits, proof_from_stark_proof},
     verify::verify,
 };
 use stwo::core::fri::FriConfig;
@@ -194,5 +199,128 @@ fn test_verify_privacy() {
     let proof_file = File::open(proof_path).unwrap();
     let cairo_proof = binary_deserialize_from_file(&proof_file).unwrap();
 
-    verify_cairo(&cairo_proof).unwrap();
+    let mut cairo_verifier_context = verify_cairo(&cairo_proof).unwrap();
+    println!("cairo verifier stats: {:?}", cairo_verifier_context.stats);
+
+    let circuit_prover::prover::CircuitProof {
+        pcs_config: first_pcs_config,
+        preprocessed_circuit: first_preprocessed_circuit,
+        claim: first_claim_data,
+        interaction_pow_nonce: first_interaction_pow_nonce,
+        interaction_claim: first_interaction_claim,
+        stark_proof: first_stark_proof,
+        channel_salt: first_channel_salt,
+        ..
+    } = circuit_prover::prover::prove_circuit(&mut cairo_verifier_context);
+    println!("first prove trace_log_size: {}", first_preprocessed_circuit.params.trace_log_size);
+    assert!(first_stark_proof.is_ok());
+    let first_stark_proof = first_stark_proof.unwrap();
+
+    let mut circuit_verifier_context = Context::<QM31>::default();
+    let first_statement = CircuitStatement::new(
+        &mut circuit_verifier_context,
+        &first_preprocessed_circuit.params.output_addresses,
+        &first_claim_data.output_values,
+        first_preprocessed_circuit.params.n_blake_gates,
+        first_preprocessed_circuit.preprocessed_trace.ids(),
+    );
+    let first_claim = Claim {
+        packed_enable_bits: pack_enable_bits(&[true; N_COMPONENTS]),
+        packed_component_log_sizes: pack_component_log_sizes(&first_claim_data.log_sizes),
+        claimed_sums: first_interaction_claim.claimed_sums.to_vec(),
+    };
+    let first_config = ProofConfig::from_statement(
+        &first_statement,
+        &first_pcs_config,
+        CIRCUIT_INTERACTION_POW_BITS,
+    );
+    let first_proof = proof_from_stark_proof(
+        &first_stark_proof,
+        &first_config,
+        first_claim,
+        first_interaction_pow_nonce,
+        first_channel_salt,
+    );
+    let first_proof_vars = first_proof.guess(&mut circuit_verifier_context);
+    verify(&mut circuit_verifier_context, &first_proof_vars, &first_config, &first_statement);
+    println!("circuit verifier stats: {:?}", circuit_verifier_context.stats);
+    circuit_verifier_context.finalize_guessed_vars();
+    circuit_verifier_context.validate_circuit();
+
+    let circuit_proof = circuit_prover::prover::prove_circuit(&mut circuit_verifier_context);
+    // let dump_path = std::env::temp_dir().join("circuit_proof_no_preprocessed.bin");
+    // let dump_file = File::create(&dump_path).unwrap();
+    // let stark_proof = circuit_proof.stark_proof.as_ref().unwrap();
+    // let output_values = circuit_proof
+    //     .claim
+    //     .output_values
+    //     .iter()
+    //     .map(|v| v.to_m31_array().map(|x| x.0))
+    //     .collect_vec();
+    // let claimed_sums = circuit_proof
+    //     .interaction_claim
+    //     .claimed_sums
+    //     .iter()
+    //     .map(|v| v.to_m31_array().map(|x| x.0))
+    //     .collect_vec();
+    // let proof_dump = (
+    //     format!("{:?}", circuit_proof.pcs_config),
+    //     circuit_proof.claim.log_sizes,
+    //     output_values,
+    //     circuit_proof.interaction_pow_nonce,
+    //     claimed_sums,
+    //     circuit_proof.channel_salt,
+    //     stark_proof,
+    // );
+    // // binary_serialize_to_file(&proof_dump, &dump_file).unwrap();
+    // println!(
+    //     "dumped circuit proof payload (without preprocessed_circuit/components) to {}",
+    //     dump_path.display()
+    // );
+    // let circuit_prover::prover::CircuitProof {
+    //     pcs_config: second_pcs_config,
+    //     preprocessed_circuit: second_preprocessed_circuit,
+    //     claim: second_claim_data,
+    //     interaction_pow_nonce: second_interaction_pow_nonce,
+    //     interaction_claim: second_interaction_claim,
+    //     stark_proof: second_stark_proof,
+    //     channel_salt: second_channel_salt,
+    //     ..
+    // } = circuit_proof;
+    assert!(circuit_proof.stark_proof.is_ok());
+    // let second_stark_proof = second_stark_proof.unwrap();
+
+    // let mut second_circuit_verifier_context = Context::<QM31>::default();
+    // let second_statement = CircuitStatement::new(
+    //     &mut second_circuit_verifier_context,
+    //     &second_preprocessed_circuit.params.output_addresses,
+    //     &second_claim_data.output_values,
+    //     second_preprocessed_circuit.params.n_blake_gates,
+    //     second_preprocessed_circuit.preprocessed_trace.ids(),
+    // );
+    // let second_claim = Claim {
+    //     packed_enable_bits: pack_enable_bits(&[true; N_COMPONENTS]),
+    //     packed_component_log_sizes: pack_component_log_sizes(&second_claim_data.log_sizes),
+    //     claimed_sums: second_interaction_claim.claimed_sums.to_vec(),
+    // };
+    // let second_config = ProofConfig::from_statement(
+    //     &second_statement,
+    //     &second_pcs_config,
+    //     CIRCUIT_INTERACTION_POW_BITS,
+    // );
+    // let second_proof = proof_from_stark_proof(
+    //     &second_stark_proof,
+    //     &second_config,
+    //     second_claim,
+    //     second_interaction_pow_nonce,
+    //     second_channel_salt,
+    // );
+    // let second_proof_vars = second_proof.guess(&mut second_circuit_verifier_context);
+    // verify(
+    //     &mut second_circuit_verifier_context,
+    //     &second_proof_vars,
+    //     &second_config,
+    //     &second_statement,
+    // );
+    // println!("second circuit verifier stats: {:?}", second_circuit_verifier_context.stats);
 }

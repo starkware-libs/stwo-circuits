@@ -17,6 +17,7 @@ stwo_cairo_common = { workspace = true, features = ["prover"] }
 circuits.workspace = true
 circuit-air.workspace = true
 circuits-stark-verifier.workspace = true
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 
 [dev-dependencies]
 expect-test.workspace = true

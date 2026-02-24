@@ -468,9 +468,16 @@ impl PreprocessedCircuit {
         PreProcessedTrace::add_non_circuit_preprocessed_columns(&mut pp_trace);
         pp_trace.sort_by_size();
 
-        // The trace size is the size of the largest column in the preprocessed trace (since all
-        // components have preprocessed columns).
-        let trace_log_size = pp_trace.log_sizes().into_iter().max().unwrap();
+        // The trace size is the max between:
+        // 1. The largest preprocessed column size.
+        // 2. BlakeG trace size (= number of blake updates * 2^7).
+        let max_preprocessed_rows = pp_trace.columns.iter().map(Vec::len).max().unwrap();
+        let blake_updates = pp_trace
+            .get_column(&PreProcessedColumnId { id: "finalize_flag".to_owned() })
+            .len();
+        let blake_g_rows = blake_updates << 7;
+        let trace_rows = std::cmp::max(max_preprocessed_rows, blake_g_rows);
+        let trace_log_size = trace_rows.ilog2();
         let params = CircuitParams {
             trace_log_size,
             first_permutation_row: qm31_ops_trace_generator.first_permutation_row,
