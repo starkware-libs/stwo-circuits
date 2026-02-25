@@ -12,6 +12,7 @@ use circuits::ops::{Guess, eq, output};
 use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::logup::logup_use_term;
 use circuits_stark_verifier::proof_from_stark_proof::pack_into_qm31s;
+use circuits_stark_verifier::verify::RELATION_USES_NUM_ROWS_SHIFT;
 use itertools::{Itertools, chain, izip, zip_eq};
 use stwo::core::fields::qm31::QM31;
 use stwo_cairo_common::builtins::{
@@ -405,6 +406,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         context: &mut Context<Value>,
         enable_bits: &[Var],
         component_sizes: &[Var],
+        shifted_relation_uses: &HashMap<&'static str, Var>,
     ) {
         let PublicData { initial_state, final_state, public_memory: _ } = &self.public_data;
 
@@ -441,7 +443,13 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         // Higher addresses are not supported by components that assume 29-bit addresses.
         const { assert!(MEMORY_ADDRESS_TO_ID_SPLIT * MAX_SEQUENCE_LOG_SIZE < 1 << 29) };
 
-        // TODO(ilya): Check that opcodes_uses < 2^29.
+        let shifted_opcode_relation_uses =
+            Simd::from_packed(vec![shifted_relation_uses["Opcodes"]], 1);
+        extract_bits(
+            context,
+            &shifted_opcode_relation_uses,
+            (29 - RELATION_USES_NUM_ROWS_SHIFT).try_into().unwrap(),
+        );
     }
 }
 
