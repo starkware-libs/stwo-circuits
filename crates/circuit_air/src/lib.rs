@@ -3,6 +3,7 @@ pub mod component_utils;
 pub mod components;
 pub mod relations;
 pub mod statement;
+pub mod verify;
 
 use crate::components::N_COMPONENTS;
 use crate::relations::CommonLookupElements;

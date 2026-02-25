@@ -1,9 +1,9 @@
 use crate::prover::preprare_circuit_proof_for_circuit_verifier;
-use crate::prover::verify_circuit;
 use crate::prover::{CircuitProof, finalize_context, prove_circuit};
 use circuit_air::CircuitInteractionElements;
 use circuit_air::lookup_sum;
 use circuit_air::statement::INTERACTION_POW_BITS;
+use circuit_air::verify::verify_circuit;
 use circuits::blake::blake;
 use circuits::context::Var;
 use circuits::eval;

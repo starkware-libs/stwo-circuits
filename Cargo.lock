@@ -1289,6 +1289,7 @@ name = "circuit-cairo-air"
 version = "0.1.0"
 dependencies = [
  "cairo-air",
+ "circuit-air",
  "circuit-prover",
  "circuits",
  "circuits-stark-verifier",

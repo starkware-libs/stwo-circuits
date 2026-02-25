@@ -5,13 +5,11 @@ use crate::witness::trace::TraceGenerator;
 use crate::witness::trace::write_interaction_trace;
 use crate::witness::trace::write_trace;
 use circuit_air::components::CircuitComponents;
-use circuit_air::statement::CircuitStatement;
 use circuit_air::statement::INTERACTION_POW_BITS;
 use circuit_air::statement::all_circuit_components;
+use circuit_air::verify::CircuitPublicData;
 use circuit_air::{CircuitClaim, CircuitInteractionClaim, CircuitInteractionElements, lookup_sum};
 use circuits::context::Context;
-use circuits::context::TraceContext;
-use circuits::ops::Guess;
 use circuits_stark_verifier::proof::Proof;
 use circuits_stark_verifier::proof::{Claim, ProofConfig};
 use circuits_stark_verifier::proof_from_stark_proof::{
@@ -35,7 +33,6 @@ use stwo::prover::ComponentProver;
 use stwo::prover::backend::simd::SimdBackend;
 use stwo::prover::poly::circle::PolyOps;
 use stwo::prover::{ProvingError, prove_ex};
-use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 const COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND: u32 = 1;
 
@@ -250,46 +247,4 @@ pub fn preprare_circuit_proof_for_circuit_verifier(
     let proof =
         proof_from_stark_proof(&stark_proof, &config, claim, interaction_pow_nonce, channel_salt);
     (proof, public_data)
-}
-
-// TODO(Gali): Move to circuit air crate
-pub struct CircuitPublicData {
-    output_addresses: Vec<usize>,
-    output_values: Vec<QM31>,
-    n_blake_gates: usize,
-    preprocessed_column_ids: Vec<PreProcessedColumnId>,
-}
-// TODO(Gali): Move to circuit air crate
-pub fn verify_circuit(
-    pcs_config: PcsConfig,
-    proof: Proof<QM31>,
-    public_data: CircuitPublicData,
-) -> Result<Context<QM31>, String> {
-    let mut context = TraceContext::default();
-    let statement = CircuitStatement::new(
-        &mut context,
-        &public_data.output_addresses,
-        &public_data.output_values,
-        public_data.n_blake_gates,
-        public_data.preprocessed_column_ids.clone(),
-    );
-    // TODO(Gali): Use a fixed config.
-    let config = ProofConfig::from_components(
-        &all_circuit_components::<QM31>(),
-        public_data.preprocessed_column_ids.len(),
-        &pcs_config,
-        INTERACTION_POW_BITS,
-    );
-    let proof_vars = proof.guess(&mut context);
-
-    circuits_stark_verifier::verify::verify(&mut context, &proof_vars, &config, &statement);
-    context.check_vars_used();
-    #[cfg(test)]
-    context.finalize_guessed_vars();
-    #[cfg(test)]
-    context.circuit.check_yields();
-    if !context.is_circuit_valid() {
-        return Err("Verification failed".to_string());
-    }
-    Ok(context)
 }
