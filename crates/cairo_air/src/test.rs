@@ -1,5 +1,6 @@
 use cairo_air::CairoProof;
 use cairo_air::flat_claims::FlatClaim;
+use circuit_prover::prover::CircuitConfig;
 use circuit_prover::prover::prove_circuit;
 use circuit_prover::prover::verify_circuit;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
@@ -27,6 +28,7 @@ use crate::verify::CairoVerifierConfig;
 use crate::verify::prepare_cairo_proof_for_circuit_verifier;
 use crate::verify::verify_fixed_cairo_circuit;
 use cairo_air::PreProcessedTraceVariant;
+use circuit_prover::prover::preprare_circuit_proof_for_circuit_verifier;
 use circuits::{context::Context, ivalue::NoValue, ops::Guess};
 use circuits_stark_verifier::{
     empty_component::EmptyComponent,
@@ -40,6 +42,7 @@ use stwo_cairo_dev_utils::vm_utils::{ProgramType, run_and_adapt};
 use stwo_cairo_prover::prover::{ChannelHash, ProverParameters, prove_cairo};
 
 use cairo_air::verifier::INTERACTION_POW_BITS;
+use circuit_air::statement::all_circuit_components;
 use circuits::context::Var;
 use circuits::ivalue::IValue;
 use circuits_stark_verifier::constraint_eval::ComponentDataTrait;
@@ -273,5 +276,20 @@ fn test_verify_privacy_with_recursion() {
 
     let mut context = verify_cairo(&cairo_proof).unwrap();
     let circuit_proof = prove_circuit(&mut context);
-    verify_circuit(circuit_proof).unwrap();
+    let preprocessed_column_ids = circuit_proof.preprocessed_circuit.preprocessed_trace.ids();
+    let proof_config = ProofConfig::from_components(
+        &all_circuit_components::<QM31>(),
+        preprocessed_column_ids.len(),
+        &circuit_proof.pcs_config,
+        INTERACTION_POW_BITS,
+    );
+    let circuit_config = CircuitConfig {
+        config: circuit_proof.pcs_config,
+        output_addresses: circuit_proof.preprocessed_circuit.params.output_addresses.clone(),
+        n_blake_gates: circuit_proof.preprocessed_circuit.params.n_blake_gates,
+        preprocessed_column_ids,
+    };
+    let (proof, public_data) =
+        preprare_circuit_proof_for_circuit_verifier(circuit_proof, proof_config);
+    verify_circuit(circuit_config, proof, public_data).unwrap();
 }
