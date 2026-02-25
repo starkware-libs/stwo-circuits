@@ -108,20 +108,11 @@ pub fn verify_cairo(proof: &CairoProof<Blake2sM31MerkleHasher>) -> Result<Contex
 
 /// Verifies a [CairoProof] with a given set of components.
 pub fn verify_cairo_with_component_set(
-    proof: &CairoProof<Blake2sM31MerkleHasher>,
+    cairo_proof: &CairoProof<Blake2sM31MerkleHasher>,
     component_set: HashSet<&str>,
 ) -> Result<Context<QM31>, String> {
-    let CairoProof {
-        claim,
-        interaction_pow,
-        interaction_claim,
-        extended_stark_proof,
-        channel_salt,
-        preprocessed_trace_variant: _,
-    } = proof;
-    let FlatClaim { component_enable_bits, component_log_sizes, public_data } =
-        claim.flatten_claim();
-
+    let FlatClaim { component_enable_bits, component_log_sizes: _, public_data: _ } =
+        cairo_proof.claim.flatten_claim();
     let components: Vec<Box<dyn CircuitEval<QM31>>> =
         zip_eq(all_components::<QM31>().into_iter(), &component_enable_bits)
             .map(|((component_name, component), &enable_bit)| {
@@ -141,29 +132,54 @@ pub fn verify_cairo_with_component_set(
     let proof_config = ProofConfig::from_components(
         &components,
         PREPROCESSED_COLUMNS_ORDER.len(),
-        &proof.extended_stark_proof.proof.config,
+        &cairo_proof.extended_stark_proof.proof.config,
         INTERACTION_POW_BITS,
     );
+    let (proof, public_data) = prepare_cairo_proof_for_circuit_verifier(cairo_proof, &proof_config);
+
     let verifier_config = CairoVerifierConfig {
         proof_config,
-        n_outputs: claim.public_data.public_memory.output.len(),
-        program_len: claim.public_data.public_memory.program.len(),
+        n_outputs: cairo_proof.claim.public_data.public_memory.output.len(),
+        program_len: cairo_proof.claim.public_data.public_memory.program.len(),
     };
 
+    verify_fixed_cairo_circuit(verifier_config, proof, public_data)
+}
+
+/// Converts a [CairoProof] to a [Proof] and [PublicData] for the circuit verifier.
+pub fn prepare_cairo_proof_for_circuit_verifier(
+    proof: &CairoProof<Blake2sM31MerkleHasher>,
+    proof_config: &ProofConfig,
+) -> (Proof<QM31>, PublicData) {
+    let CairoProof {
+        claim,
+        interaction_pow,
+        interaction_claim,
+        extended_stark_proof,
+        channel_salt,
+        preprocessed_trace_variant: _,
+    } = proof;
+
+    let FlatClaim { component_enable_bits, component_log_sizes, public_data } =
+        claim.flatten_claim();
     let component_claimed_sums = interaction_claim.flatten_interaction_claim();
-    assert_eq!(component_claimed_sums.len(), verifier_config.proof_config.n_components);
+
+    debug_assert_eq!(component_enable_bits.len(), proof_config.n_components);
+    debug_assert_eq!(component_claimed_sums.len(), proof_config.n_components);
+
     let claim = Claim {
         packed_enable_bits: pack_enable_bits(&component_enable_bits),
         packed_component_log_sizes: pack_component_log_sizes(&component_log_sizes),
         claimed_sums: component_claimed_sums,
     };
+
     let proof = proof_from_stark_proof(
         extended_stark_proof,
-        &verifier_config.proof_config,
+        proof_config,
         claim,
         *interaction_pow,
         *channel_salt,
     );
 
-    verify_fixed_cairo_circuit(verifier_config, proof, public_data)
+    (proof, public_data)
 }
