@@ -2,7 +2,6 @@ use crate::all_components::all_components;
 use crate::preprocessed_columns::PREPROCESSED_COLUMNS_ORDER;
 use crate::statement::{CairoStatement, MEMORY_VALUES_LIMBS};
 use cairo_air::CairoProof;
-use cairo_air::air::PublicData;
 use cairo_air::flat_claims::FlatClaim;
 use circuits::context::{Context, TraceContext};
 use circuits::ops::Guess;
@@ -32,20 +31,20 @@ pub const INTERACTION_POW_BITS: u32 = 24;
 
 pub struct CairoVerifierConfig {
     pub proof_config: ProofConfig,
+    program: Vec<[M31; MEMORY_VALUES_LIMBS]>,
     pub n_outputs: usize,
-    pub program_len: usize,
 }
 
 /// Verifies a [CairoProof] for a fixed [CairoVerifierConfig].
 pub fn verify_fixed_cairo_circuit(
     verifier_config: CairoVerifierConfig,
     proof: Proof<QM31>,
-    public_data: PublicData,
+    public_claim: Vec<u32>,
+    // TODO(ilya): Replace outputs with proof_facts.
+    outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
 ) -> Result<Context<QM31>, String> {
     let mut context = TraceContext::default();
-
     let config = verifier_config.proof_config;
-
     let components = zip_eq(all_components().into_values(), config.enabled_components())
         .map(
             |(component, enable_bit)| {
@@ -54,27 +53,14 @@ pub fn verify_fixed_cairo_circuit(
         )
         .collect_vec();
 
-    let (public_claim, outputs, program) = public_data.pack_into_u32s();
-    if outputs.len() != verifier_config.n_outputs * MEMORY_VALUES_LIMBS {
-        return Err("The proof claim does not match the expected number of outputs.".to_string());
-    }
-    if program.len() != verifier_config.program_len * MEMORY_VALUES_LIMBS {
-        return Err("The proof claim does not match the expected program length.".to_string());
-    }
-
-    let public_claim = public_claim.iter().map(|u32| M31::from_u32_unchecked(*u32)).collect_vec();
-
-    let outputs = outputs
-        .chunks_exact(MEMORY_VALUES_LIMBS)
-        .map(|chunk| array::from_fn(|i| M31::from_u32_unchecked(chunk[i])))
-        .collect_vec();
-    let program = program
-        .chunks_exact(MEMORY_VALUES_LIMBS)
-        .map(|chunk| array::from_fn(|i| M31::from_u32_unchecked(chunk[i])))
-        .collect_vec();
-
-    let statement =
-        CairoStatement::<QM31>::new_ex(&mut context, public_claim, outputs, program, components);
+    let public_claim = public_claim.iter().map(|u32| M31::from(*u32)).collect_vec();
+    let statement = CairoStatement::<QM31>::new_ex(
+        &mut context,
+        public_claim,
+        outputs,
+        verifier_config.program,
+        components,
+    );
 
     let proof_vars = proof.guess(&mut context);
     verify(&mut context, &proof_vars, &config, &statement);
@@ -144,10 +130,21 @@ pub fn verify_cairo_with_component_set(
         &proof.extended_stark_proof.proof.config,
         INTERACTION_POW_BITS,
     );
+
+    let (public_claim, outputs, program) = public_data.pack_into_u32s();
+    let outputs = outputs
+        .chunks_exact(MEMORY_VALUES_LIMBS)
+        .map(|chunk| array::from_fn(|i| M31::from_u32_unchecked(chunk[i])))
+        .collect_vec();
+    let program = program
+        .chunks_exact(MEMORY_VALUES_LIMBS)
+        .map(|chunk| array::from_fn(|i| M31::from_u32_unchecked(chunk[i])))
+        .collect_vec();
+
     let verifier_config = CairoVerifierConfig {
         proof_config,
+        program,
         n_outputs: claim.public_data.public_memory.output.len(),
-        program_len: claim.public_data.public_memory.program.len(),
     };
 
     let component_claimed_sums = interaction_claim.flatten_interaction_claim();
@@ -165,5 +162,5 @@ pub fn verify_cairo_with_component_set(
         *channel_salt,
     );
 
-    verify_fixed_cairo_circuit(verifier_config, proof, public_data)
+    verify_fixed_cairo_circuit(verifier_config, proof, public_claim, outputs)
 }
