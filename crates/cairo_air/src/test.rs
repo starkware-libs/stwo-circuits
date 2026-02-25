@@ -1,22 +1,31 @@
+use cairo_air::CairoProof;
+use cairo_air::flat_claims::FlatClaim;
 use circuit_prover::prover::prove_circuit;
 use circuit_prover::prover::verify_circuit;
+use circuits_stark_verifier::constraint_eval::CircuitEval;
 use itertools::Itertools;
+use itertools::zip_eq;
 use num_traits::Zero;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::PcsConfig;
 
 use cairo_air::utils::{binary_deserialize_from_file, binary_serialize_to_file};
+use std::array;
+use std::collections::HashSet;
 use std::fs::{File, OpenOptions};
 use std::path::PathBuf;
+use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 
 use crate::all_components::all_components;
 use crate::preprocessed_columns::MAX_SEQUENCE_LOG_SIZE;
+use crate::preprocessed_columns::PREPROCESSED_COLUMNS_ORDER;
 use crate::privacy::privacy_components;
 use crate::statement::CairoStatement;
 use crate::statement::{MEMORY_VALUES_LIMBS, PUBLIC_DATA_LEN};
-use crate::verify::verify_cairo;
-use crate::verify::verify_cairo_with_component_set;
+use crate::verify::CairoVerifierConfig;
+use crate::verify::prepare_cairo_proof_for_circuit_verifier;
+use crate::verify::verify_fixed_cairo_circuit;
 use cairo_air::PreProcessedTraceVariant;
 use circuits::{context::Context, ivalue::NoValue, ops::Guess};
 use circuits_stark_verifier::{
@@ -109,6 +118,70 @@ impl<Value: IValue> ComponentDataTrait<Value> for TestComponentData {
     }
 }
 
+/// Circuit Verifies a [CairoProof].
+fn verify_cairo(proof: &CairoProof<Blake2sM31MerkleHasher>) -> Result<Context<QM31>, String> {
+    let FlatClaim { component_enable_bits, component_log_sizes: _, public_data: _ } =
+        proof.claim.flatten_claim();
+
+    let components = HashSet::from_iter(
+        zip_eq(all_components::<QM31>().into_keys(), &component_enable_bits)
+            .filter(|(_, enable_bit)| **enable_bit)
+            .map(|(component_name, _)| component_name),
+    );
+
+    verify_cairo_with_component_set(proof, components)
+}
+
+/// Verifies a [CairoProof] with a given set of components.
+fn verify_cairo_with_component_set(
+    cairo_proof: &CairoProof<Blake2sM31MerkleHasher>,
+    component_set: HashSet<&str>,
+) -> Result<Context<QM31>, String> {
+    let FlatClaim { component_enable_bits, component_log_sizes: _, public_data: _ } =
+        cairo_proof.claim.flatten_claim();
+    let components: Vec<Box<dyn CircuitEval<QM31>>> =
+        zip_eq(all_components::<QM31>().into_iter(), &component_enable_bits)
+            .map(|((component_name, component), &enable_bit)| {
+                let component_in_set = component_set.contains(component_name);
+                if component_in_set != enable_bit {
+                    return Err(format!(
+                        "Proof was produced with the wrong components set: expected the component '{}' to be {} according to the component set, but it is {} in the proof.",
+                        component_name,
+                        if component_in_set { "enabled" } else { "disabled" },
+                        if enable_bit { "enabled" } else { "disabled" }
+                    ));
+                }
+                Ok(if enable_bit { component } else { Box::new(EmptyComponent {}) })
+            })
+            .try_collect()?;
+
+    let proof_config = ProofConfig::from_components(
+        &components,
+        PREPROCESSED_COLUMNS_ORDER.len(),
+        &cairo_proof.extended_stark_proof.proof.config,
+        INTERACTION_POW_BITS,
+    );
+
+    let (proof, public_data) = prepare_cairo_proof_for_circuit_verifier(cairo_proof, &proof_config);
+    let (public_claim, outputs, program) = public_data.pack_into_u32s();
+    let outputs = outputs
+        .chunks_exact(MEMORY_VALUES_LIMBS)
+        .map(|chunk| array::from_fn(|i| M31::from_u32_unchecked(chunk[i])))
+        .collect_vec();
+    let program = program
+        .chunks_exact(MEMORY_VALUES_LIMBS)
+        .map(|chunk| array::from_fn(|i| M31::from_u32_unchecked(chunk[i])))
+        .collect_vec();
+
+    let verifier_config = CairoVerifierConfig {
+        proof_config,
+        program,
+        n_outputs: cairo_proof.claim.public_data.public_memory.output.len(),
+    };
+
+    verify_fixed_cairo_circuit(verifier_config, proof, public_claim, outputs)
+}
+
 #[test]
 fn test_verify() {
     let mut pcs_config = PcsConfig::default();
@@ -141,7 +214,7 @@ fn test_verify() {
     println!("Stats: {:?}", novalue_context.stats);
 }
 
-pub fn get_proof_file_path(test_name: &str) -> PathBuf {
+fn get_proof_file_path(test_name: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../test_data/")
         .join(test_name)
