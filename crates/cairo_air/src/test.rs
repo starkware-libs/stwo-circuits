@@ -27,6 +27,7 @@ use crate::verify::CairoVerifierConfig;
 use crate::verify::prepare_cairo_proof_for_circuit_verifier;
 use crate::verify::verify_fixed_cairo_circuit;
 use cairo_air::PreProcessedTraceVariant;
+use circuit_prover::prover::preprare_circuit_proof_for_circuit_verifier;
 use circuits::{context::Context, ivalue::NoValue, ops::Guess};
 use circuits_stark_verifier::{
     empty_component::EmptyComponent,
@@ -273,5 +274,7 @@ fn test_verify_privacy_with_recursion() {
 
     let mut context = verify_cairo(&cairo_proof).unwrap();
     let circuit_proof = prove_circuit(&mut context);
-    verify_circuit(circuit_proof).unwrap();
+    let pcs_config = circuit_proof.pcs_config;
+    let (proof, public_data) = preprare_circuit_proof_for_circuit_verifier(circuit_proof);
+    verify_circuit(pcs_config, proof, public_data).unwrap();
 }

@@ -1,3 +1,4 @@
+use crate::prover::preprare_circuit_proof_for_circuit_verifier;
 use crate::prover::verify_circuit;
 use crate::prover::{CircuitProof, finalize_context, prove_circuit};
 use circuit_air::CircuitInteractionElements;
@@ -267,8 +268,10 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
 
-    let proof = prove_circuit(&mut fibonacci_context);
-    verify_circuit(proof).unwrap();
+    let circuit_proof = prove_circuit(&mut fibonacci_context);
+    let pcs_config = circuit_proof.pcs_config;
+    let (proof, public_data) = preprare_circuit_proof_for_circuit_verifier(circuit_proof);
+    verify_circuit(pcs_config, proof, public_data).unwrap();
 }
 
 #[test]

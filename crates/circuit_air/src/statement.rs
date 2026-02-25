@@ -47,23 +47,7 @@ impl<Value: IValue> CircuitStatement<Value> {
         let output_values =
             output_values.iter().map(|value| Value::from_qm31(*value).guess(context)).collect_vec();
         Self {
-            components: vec![
-                Box::new(eq::CircuitEqComponent {}),
-                Box::new(qm31_ops::CircuitQm31OpsComponent {}),
-                Box::new(blake_gate::Component {}),
-                Box::new(blake_round::Component {}),
-                Box::new(blake_round_sigma::Component {}),
-                Box::new(blake_g::Component {}),
-                Box::new(blake_output::Component {}),
-                Box::new(triple_xor_32::Component {}),
-                Box::new(verify_bitwise_xor_8::Component {}),
-                Box::new(verify_bitwise_xor_12::Component {}),
-                Box::new(verify_bitwise_xor_4::Component {}),
-                Box::new(verify_bitwise_xor_7::Component {}),
-                Box::new(verify_bitwise_xor_9::Component {}),
-                Box::new(range_check_15::Component {}),
-                Box::new(range_check_16::Component {}),
-            ],
+            components: all_circuit_components(),
             output_addresses,
             output_values,
             n_blake_gates,
@@ -134,4 +118,24 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
     fn get_preprocessed_column_ids(&self) -> Vec<PreProcessedColumnId> {
         self.preprocessed_column_ids.clone()
     }
+}
+
+pub fn all_circuit_components<Value: IValue>() -> Vec<Box<dyn CircuitEval<Value>>> {
+    vec![
+        Box::new(eq::CircuitEqComponent {}),
+        Box::new(qm31_ops::CircuitQm31OpsComponent {}),
+        Box::new(blake_gate::Component {}),
+        Box::new(blake_round::Component {}),
+        Box::new(blake_round_sigma::Component {}),
+        Box::new(blake_g::Component {}),
+        Box::new(blake_output::Component {}),
+        Box::new(triple_xor_32::Component {}),
+        Box::new(verify_bitwise_xor_8::Component {}),
+        Box::new(verify_bitwise_xor_12::Component {}),
+        Box::new(verify_bitwise_xor_4::Component {}),
+        Box::new(verify_bitwise_xor_7::Component {}),
+        Box::new(verify_bitwise_xor_9::Component {}),
+        Box::new(range_check_15::Component {}),
+        Box::new(range_check_16::Component {}),
+    ]
 }
