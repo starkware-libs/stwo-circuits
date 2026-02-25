@@ -27,6 +27,8 @@ use circuits::wrappers::M31Wrapper;
 
 pub const LOG_SIZE_BITS: u32 = 5;
 
+pub const RELATION_USES_NUM_ROWS_SHIFT: usize = 16;
+
 pub fn validate_logup_sum(
     context: &mut Context<impl IValue>,
     public_logup_sum: Var,
@@ -131,9 +133,14 @@ pub fn verify<Value: IValue>(
     // Draw a random point for the OODS.
     let oods_point = channel.draw_point(context);
 
-    check_relation_uses(context, statement, &component_sizes_bits);
+    let shifted_relation_uses = check_relation_uses(context, statement, &component_sizes_bits);
     let unpacked_component_sizes = Simd::unpack(context, &component_sizes);
-    statement.verify_claim(context, &enable_bits, &unpacked_component_sizes);
+    statement.verify_claim(
+        context,
+        &enable_bits,
+        &unpacked_component_sizes,
+        &shifted_relation_uses,
+    );
 
     // Compute the composition evaluation at the OODS point from `proof.*_at_oods` and compare
     // to `proof.composition_eval_at_oods`.
@@ -262,8 +269,7 @@ fn check_relation_uses<Value: IValue>(
     context: &mut Context<impl IValue>,
     statement: &impl Statement<Value>,
     component_sizes_bits: &[Simd],
-) {
-    const NUM_ROWS_SHIFT: usize = 16;
+) -> HashMap<&'static str, Var> {
     let components = statement.get_components();
 
     // Check that sum(uses_per_row * (floor(num_rows / DIV) + 1)) cannot overflow even for the
@@ -274,13 +280,13 @@ fn check_relation_uses<Value: IValue>(
     for component in components.iter() {
         for relation_use in component.relation_uses_per_row() {
             let entry = max_shifted_uses_per_relation.entry(relation_use.relation_id).or_insert(0);
-            *entry += relation_use.uses * (((P >> NUM_ROWS_SHIFT) + 1) as u64);
+            *entry += relation_use.uses * (((P >> RELATION_USES_NUM_ROWS_SHIFT) + 1) as u64);
         }
     }
     assert!(max_shifted_uses_per_relation.values().all(|count| *count < (P as u64)));
 
     // Compute floor(num_rows / DIV) for all components
-    let shifted_component_sizes = match component_sizes_bits.get(NUM_ROWS_SHIFT..) {
+    let shifted_component_sizes = match component_sizes_bits.get(RELATION_USES_NUM_ROWS_SHIFT..) {
         Some(high_bits) => Simd::combine_bits(context, high_bits),
         None => Simd::zero(context, components.len()),
     };
@@ -308,12 +314,13 @@ fn check_relation_uses<Value: IValue>(
     // Verify that the sum is less than floor(P / DIV) by expressing it as a
     // floor(log2(P / DIV))-bit number
     let shifted_use_counts = shifted_relation_uses
-        .into_iter()
+        .iter()
         .sorted_by_key(|(k, _v)| *k)
-        .map(|(_k, v)| M31Wrapper::new_unsafe(v))
+        .map(|(_k, v)| M31Wrapper::new_unsafe(*v))
         .collect_vec();
     let shifted_use_counts = Simd::pack(context, &shifted_use_counts);
-    extract_bits(context, &shifted_use_counts, (P >> NUM_ROWS_SHIFT).ilog2());
+    extract_bits(context, &shifted_use_counts, (P >> RELATION_USES_NUM_ROWS_SHIFT).ilog2());
+    shifted_relation_uses
 }
 
 // Returns the column_log_sizes_by_trace, which includes the column log sizes for the trace and
