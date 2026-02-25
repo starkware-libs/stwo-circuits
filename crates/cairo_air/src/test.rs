@@ -1,8 +1,7 @@
 use cairo_air::CairoProof;
 use cairo_air::flat_claims::FlatClaim;
-use circuit_prover::prover::CircuitConfig;
+use circuit_air::verify::{CircuitConfig, verify_circuit};
 use circuit_prover::prover::prove_circuit;
-use circuit_prover::prover::verify_circuit;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
 use itertools::Itertools;
 use itertools::zip_eq;
