@@ -23,19 +23,19 @@ itertools = { version = "0.12", default-features = false, features = [
     "use_alloc",
 ] }
 num-traits = { version = "0.2.19", default-features = false }
-stwo = { git = "https://github.com/starkware-libs/stwo", rev = "b70dbd31", features = [
+stwo = { version = "2.1.0", features = [
     "parallel",
 ], default-features = false }
-stwo-constraint-framework = { git = "https://github.com/starkware-libs/stwo", rev = "b70dbd31", features = [
+stwo-constraint-framework = { version = "2.1.0", features = [
     "parallel",
 ] }
-stwo-air-utils-derive = { git = "https://github.com/starkware-libs/stwo", rev = "b70dbd31" }
-stwo-air-utils = { git = "https://github.com/starkware-libs/stwo", rev = "b70dbd31" }
-cairo-air = { git = "https://github.com/starkware-libs/stwo-cairo", rev = "dc653e77" }
-stwo_cairo_prover = { package = "stwo-cairo-prover", git = "https://github.com/starkware-libs/stwo-cairo", rev = "dc653e77" }
-stwo_cairo_common = { package = "stwo-cairo-common", git = "https://github.com/starkware-libs/stwo-cairo", rev = "dc653e77" }
-stwo_cairo_dev_utils = { package = "stwo-cairo-dev-utils", git = "https://github.com/starkware-libs/stwo-cairo", rev = "dc653e77" }
-stwo_cairo_utils = { package = "stwo-cairo-utils", git = "https://github.com/starkware-libs/stwo-cairo", rev = "dc653e77" }
+stwo-air-utils-derive = "2.1.0"
+stwo-air-utils = "2.1.0"
+cairo-air = { git = "https://github.com/starkware-libs/stwo-cairo", rev = "edfe75c7" }
+stwo_cairo_prover = { package = "stwo-cairo-prover", git = "https://github.com/starkware-libs/stwo-cairo", rev = "edfe75c7" }
+stwo_cairo_common = { package = "stwo-cairo-common", git = "https://github.com/starkware-libs/stwo-cairo", rev = "edfe75c7" }
+stwo_cairo_dev_utils = { package = "stwo-cairo-dev-utils", git = "https://github.com/starkware-libs/stwo-cairo", rev = "edfe75c7" }
+stwo_cairo_utils = { package = "stwo-cairo-utils", git = "https://github.com/starkware-libs/stwo-cairo", rev = "edfe75c7" }
 circuits = { path = "crates/circuits"}
 circuit-air = { path = "crates/circuit_air"}
 circuit-prover = { path = "crates/circuit_prover"}
