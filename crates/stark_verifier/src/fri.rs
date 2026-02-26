@@ -53,6 +53,7 @@ pub fn fri_decommit<Value: IValue>(
         auth_paths,
         witness_per_query_per_tree,
     } = proof;
+
     let all_line_fold_steps = compute_all_line_fold_steps(
         config.log_trace_size - config.circle_fold_step - config.log_n_last_layer_coefs,
         config.line_fold_step,
@@ -70,7 +71,7 @@ pub fn fri_decommit<Value: IValue>(
     {
         // The range of the lowest `step`-many significant bits of the current query positions.
         let bit_range = bit_counter..(bit_counter + step);
-        let is_circle_to_line = bit_range.contains(&0);
+        let is_circle_to_line = tree_idx == 0;
         // Validate that the fri query is in the correct position inside the guessed
         // `fri_coset_per_query`.
         validate_query_position_in_coset(
