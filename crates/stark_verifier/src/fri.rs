@@ -59,40 +59,15 @@ pub fn fri_decommit<Value: IValue>(
         config.line_fold_step,
     );
     let all_fold_steps = [&[config.circle_fold_step], all_line_fold_steps.as_slice()].concat();
-    let cosets_per_query_per_tree: Vec<Vec<Vec<Var>>> =
-        if line_coset_vals_per_query_per_tree.len() == all_fold_steps.len() {
-            line_coset_vals_per_query_per_tree.to_vec()
-        } else {
-            assert_eq!(config.circle_fold_step, 1);
-            assert_eq!(line_coset_vals_per_query_per_tree.len() + 1, all_fold_steps.len());
-            assert_eq!(circle_fri_siblings.len(), fri_input.len());
-            assert!(!bits.is_empty());
-
-            let first_layer_cosets = (0..fri_input.len())
-                .map(|query_idx| {
-                    let bit = bits[0][query_idx];
-                    let query_value = fri_input[query_idx];
-                    let sibling = circle_fri_siblings[query_idx];
-                    let even = eval!(context, (query_value) + ((bit) * ((sibling) - (query_value))));
-                    let odd = eval!(context, (sibling) + ((bit) * ((query_value) - (sibling))));
-                    vec![even, odd]
-                })
-                .collect_vec();
-            let mut res = vec![first_layer_cosets];
-            res.extend(line_coset_vals_per_query_per_tree.iter().cloned());
-            res
-        };
+    assert!(circle_fri_siblings.is_empty());
+    assert_eq!(line_coset_vals_per_query_per_tree.len(), all_fold_steps.len());
 
     let mut bit_counter = 0;
     let mut fri_data = fri_input.to_vec();
     let mut base_point = points.clone();
-    eprintln!("Before loop");
-    eprintln!("Base point x coord:");
-    base_point.x.get_packed().iter().for_each(|x| eprintln!("{:?}", context.get(*x)));
-    eprintln!("Base point y coord:");
-    base_point.y.get_packed().iter().for_each(|x| eprintln!("{:?}", context.get(*x)));
     for (tree_idx, ((root, step), coset_per_query)) in
-        zip_eq(zip_eq(layer_commitments, &all_fold_steps), &cosets_per_query_per_tree).enumerate()
+        zip_eq(zip_eq(layer_commitments, &all_fold_steps), line_coset_vals_per_query_per_tree)
+            .enumerate()
     {
         // The range of the lowest `step`-many significant bits of the current query positions.
         let bit_range = bit_counter..(bit_counter + step);
@@ -138,11 +113,6 @@ pub fn fri_decommit<Value: IValue>(
             &packed_bits[bit_range],
             is_circle_to_line,
         );
-        eprintln!("Tree idx: {tree_idx}");
-        eprintln!("Base point x coord:");
-        base_point.x.get_packed().iter().for_each(|x| eprintln!("{:?}", context.get(*x)));
-        eprintln!("Base point y coord:");
-        base_point.y.get_packed().iter().for_each(|x| eprintln!("{:?}", context.get(*x)));
         // Compute twiddles.
         let twiddles_per_fold_per_query =
             compute_twiddles_from_base_point(context, &base_point, *step, is_circle_to_line);
@@ -243,7 +213,6 @@ fn compute_twiddles_from_base_point<Value: IValue>(
     fold_step: usize,
     is_circle_to_line: bool,
 ) -> Vec<Vec<Vec<Var>>> {
-    eprintln!("fold: {fold_step}, circle_to_line {is_circle_to_line}");
     let n_queries = base_point.x.len();
     let mut twiddles_per_fold_per_query: Vec<Vec<Vec<Var>>> =
         vec![vec![vec![]; fold_step]; n_queries];

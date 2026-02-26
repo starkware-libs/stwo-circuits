@@ -66,11 +66,11 @@ pub struct FriProof<T> {
     pub commit: FriCommitProof<T>,
     /// Authentication paths for all the FRI trees.
     pub auth_paths: AuthPaths<T>,
-    /// The siblings for the first FRI layer (circle-to-line). Currently the folding step is 1 so
-    /// only one sibling per query is required.
+    /// Deprecated witness field for first-layer siblings.
+    /// New proofs keep this empty and provide full per-layer coset witnesses instead.
     pub circle_fri_siblings: Vec<T>,
-    /// For each inner layer, for each query, the values of the layer poly on the FRI coset
-    /// containing the query.
+    /// For each FRI layer, for each query, the values of the layer polynomial on the FRI coset
+    /// containing that query.
     pub line_coset_vals_per_query_per_tree: Vec<Vec<Vec<T>>>,
 }
 
@@ -102,16 +102,9 @@ impl<T> FriProof<T> {
             fold_sum += *fold_step
         }
 
-        let coset_steps: &[usize] = if line_coset_vals_per_query_per_tree.len() == all_fold_steps.len()
-        {
-            &all_fold_steps
-        } else {
-            assert_eq!(line_coset_vals_per_query_per_tree.len(), all_line_fold_steps.len());
-            assert_eq!(circle_fri_siblings.len(), config.n_queries);
-            &all_line_fold_steps
-        };
-
-        for (fri_coset_per_query, step) in zip_eq(line_coset_vals_per_query_per_tree, coset_steps) {
+        assert!(circle_fri_siblings.is_empty());
+        assert_eq!(line_coset_vals_per_query_per_tree.len(), all_fold_steps.len());
+        for (fri_coset_per_query, step) in zip_eq(line_coset_vals_per_query_per_tree, &all_fold_steps) {
             assert_eq!(fri_coset_per_query.len(), config.n_queries);
             fri_coset_per_query.iter().all(|coset| coset.len() == 1 << step);
         }
@@ -139,8 +132,6 @@ pub fn empty_fri_proof(config: &FriConfig) -> FriProof<NoValue> {
         data: (0..config.log_trace_size)
             .map(|tree_idx| {
                 vec![
-                    // Reduce size by 1 because we take the sibling of the leaf from `fri_siblings`
-                    // rather than `auth_paths`.
                     AuthPath(vec![empty_hash; config.log_evaluation_domain_size() - tree_idx - 1]);
                     config.n_queries
                 ]
