@@ -84,7 +84,7 @@ fn test_fri_decommit_with_jumps() {
         },
         auth_paths,
         circle_fri_siblings: vec![],
-        line_coset_vals_per_query_per_tree: witness,
+        witness_per_query_per_tree: witness,
     };
     let circuit_fri_proof = circuit_fri_proof.guess(&mut context);
 
@@ -149,7 +149,7 @@ fn test_construct_fri_witness(
     let all_layers =
         [&[&proof.aux.first_layer], proof.aux.inner_layers.iter().collect::<Vec<_>>().as_slice()]
             .concat();
-    let mut coset_vals_per_query_per_tree = vec![vec![]; all_layers.len()];
+    let mut witness_per_query_per_tree = vec![vec![]; all_layers.len()];
 
     for query in query_locations {
         let mut pos = *query;
@@ -158,11 +158,11 @@ fn test_construct_fri_witness(
             eprintln!("Tree: {tree_idx}. Decommitment positions: {:?}", start..start + (1 << step));
             let coset_vals: Vec<_> =
                 (start..start + (1 << step)).map(|i| layer.all_values[0][&i]).collect();
-            coset_vals_per_query_per_tree[tree_idx].push(coset_vals);
+            witness_per_query_per_tree[tree_idx].push(coset_vals);
             pos >>= step;
         }
     }
-    coset_vals_per_query_per_tree
+    witness_per_query_per_tree
 }
 
 /// Constructs [AuthPaths] for the FRI trees with the values from the given proof

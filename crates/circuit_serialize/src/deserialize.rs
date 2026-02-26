@@ -229,15 +229,15 @@ fn deserialize_fri_proof(
     let auth_paths = AuthPaths { data: auth_path_trees };
     // Deserialize fri siblings of the first layer and line coset witnesses.
     let circle_fri_siblings = deserialize_vec(data, config.n_queries)?;
-    let mut line_coset_vals_per_query_per_tree = vec![];
+    let mut witness_per_query_per_tree = vec![];
     for step in all_line_fold_steps.iter() {
         let mut line_coset_vals_per_query = vec![];
         for _ in 0..config.n_queries {
             let coset: Vec<QM31> = deserialize_vec(data, 1 << step)?;
             line_coset_vals_per_query.push(coset);
         }
-        line_coset_vals_per_query_per_tree.push(line_coset_vals_per_query);
+        witness_per_query_per_tree.push(line_coset_vals_per_query);
     }
 
-    Ok(FriProof { commit, auth_paths, circle_fri_siblings, line_coset_vals_per_query_per_tree })
+    Ok(FriProof { commit, auth_paths, circle_fri_siblings, witness_per_query_per_tree })
 }

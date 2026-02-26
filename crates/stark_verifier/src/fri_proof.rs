@@ -71,7 +71,7 @@ pub struct FriProof<T> {
     pub circle_fri_siblings: Vec<T>,
     /// For each FRI layer, for each query, the values of the layer polynomial on the FRI coset
     /// containing that query.
-    pub line_coset_vals_per_query_per_tree: Vec<Vec<Vec<T>>>,
+    pub witness_per_query_per_tree: Vec<Vec<Vec<T>>>,
 }
 
 impl<T> FriProof<T> {
@@ -80,7 +80,7 @@ impl<T> FriProof<T> {
         let FriProof {
             commit,
             auth_paths,
-            line_coset_vals_per_query_per_tree,
+            witness_per_query_per_tree,
             circle_fri_siblings,
         } = self;
         commit.validate_structure(config);
@@ -103,8 +103,8 @@ impl<T> FriProof<T> {
         }
 
         assert!(circle_fri_siblings.is_empty());
-        assert_eq!(line_coset_vals_per_query_per_tree.len(), all_fold_steps.len());
-        for (fri_coset_per_query, step) in zip_eq(line_coset_vals_per_query_per_tree, &all_fold_steps) {
+        assert_eq!(witness_per_query_per_tree.len(), all_fold_steps.len());
+        for (fri_coset_per_query, step) in zip_eq(witness_per_query_per_tree, &all_fold_steps) {
             assert_eq!(fri_coset_per_query.len(), config.n_queries);
             fri_coset_per_query.iter().all(|coset| coset.len() == 1 << step);
         }
@@ -119,8 +119,8 @@ impl<Value: IValue> Guess<Value> for FriProof<Value> {
             commit: self.commit.guess(context),
             auth_paths: self.auth_paths.guess(context),
             circle_fri_siblings: self.circle_fri_siblings.guess(context),
-            line_coset_vals_per_query_per_tree: self
-                .line_coset_vals_per_query_per_tree
+            witness_per_query_per_tree: self
+                .witness_per_query_per_tree
                 .guess(context),
         }
     }
@@ -144,7 +144,7 @@ pub fn empty_fri_proof(config: &FriConfig) -> FriProof<NoValue> {
         config.line_fold_step,
     );
     let all_fold_steps = [&[config.circle_fold_step], all_line_fold_steps.as_slice()].concat();
-    let line_coset_vals_per_query_per_tree = all_fold_steps
+    let witness_per_query_per_tree = all_fold_steps
         .iter()
         .map(|step| vec![vec![NoValue; 1 << step]; config.n_queries])
         .collect();
@@ -155,7 +155,7 @@ pub fn empty_fri_proof(config: &FriConfig) -> FriProof<NoValue> {
         },
         auth_paths,
         circle_fri_siblings: vec![],
-        line_coset_vals_per_query_per_tree,
+        witness_per_query_per_tree,
     }
 }
 

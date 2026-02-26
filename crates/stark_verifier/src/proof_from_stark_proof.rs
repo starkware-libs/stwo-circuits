@@ -73,7 +73,7 @@ pub fn proof_from_stark_proof(
             },
             auth_paths: construct_fri_auth_paths(proof, config, &all_line_fold_steps),
             circle_fri_siblings: vec![],
-            line_coset_vals_per_query_per_tree: witness,
+            witness_per_query_per_tree: witness,
         },
         proof_of_work_nonce: qm31_from_u32s(pow_low, pow_high, 0, 0),
         interaction_pow_nonce: qm31_from_u32s(interaction_pow_low, interaction_pow_high, 0, 0),
@@ -213,18 +213,18 @@ pub fn construct_fri_witness(
         proof.aux.fri.inner_layers.iter().collect::<Vec<_>>().as_slice(),
     ]
     .concat();
-    let mut coset_vals_per_query_per_tree = vec![vec![]; all_layers.len()];
+    let mut witness_per_query_per_tree = vec![vec![]; all_layers.len()];
     for query in &proof.aux.unsorted_query_locations {
         let mut pos = *query;
         for (tree_idx, (layer, step)) in zip_eq(&all_layers, all_fold_steps).enumerate() {
             let start = (pos >> *step) << *step;
             let line_coset_vals: Vec<_> =
                 (start..start + (1usize << *step)).map(|i| layer.all_values[0][&i]).collect();
-            coset_vals_per_query_per_tree[tree_idx].push(line_coset_vals);
+            witness_per_query_per_tree[tree_idx].push(line_coset_vals);
             pos >>= *step;
         }
     }
-    coset_vals_per_query_per_tree
+    witness_per_query_per_tree
 }
 
 /// Packs the enable bits into QM31s.

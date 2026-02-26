@@ -95,7 +95,7 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
             let err = result.unwrap_err();
             // The error should be when validating the query position inside its witness coset.
             let expected_value = context
-                .get(proof_vars.fri.line_coset_vals_per_query_per_tree.last().unwrap()[0][1]);
+                .get(proof_vars.fri.witness_per_query_per_tree.last().unwrap()[0][1]);
             assert!(err.contains(&expected_value.to_string()));
         }
     }

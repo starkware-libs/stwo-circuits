@@ -52,21 +52,21 @@ pub fn fri_decommit<Value: IValue>(
         commit: FriCommitProof { layer_commitments, last_layer_coefs },
         auth_paths,
         circle_fri_siblings,
-        line_coset_vals_per_query_per_tree,
+        witness_per_query_per_tree,
     } = proof;
     let all_line_fold_steps = compute_all_line_fold_steps(
         config.log_trace_size - config.circle_fold_step - config.log_n_last_layer_coefs,
         config.line_fold_step,
     );
     let all_fold_steps = [&[config.circle_fold_step], all_line_fold_steps.as_slice()].concat();
-    assert!(circle_fri_siblings.is_empty());
-    assert_eq!(line_coset_vals_per_query_per_tree.len(), all_fold_steps.len());
+    let n_layers = all_fold_steps.len();
 
     let mut bit_counter = 0;
     let mut fri_data = fri_input.to_vec();
     let mut base_point = points.clone();
-    for (tree_idx, ((root, step), coset_per_query)) in
-        zip_eq(zip_eq(layer_commitments, &all_fold_steps), line_coset_vals_per_query_per_tree)
+    
+    for (tree_idx, ((root, step), witness_per_query)) in
+        zip_eq(zip_eq(layer_commitments, &all_fold_steps), witness_per_query_per_tree)
             .enumerate()
     {
         // The range of the lowest `step`-many significant bits of the current query positions.
@@ -76,13 +76,13 @@ pub fn fri_decommit<Value: IValue>(
         // `fri_coset_per_query`.
         validate_query_position_in_coset(
             context,
-            coset_per_query,
+            witness_per_query,
             &fri_data,
             &bits[bit_range.clone()],
         );
 
         // Check merkle decommitment.
-        for (query_idx, coset_values) in coset_per_query.iter().enumerate() {
+        for (query_idx, coset_values) in witness_per_query.iter().enumerate() {
             // Compute the leaves.
             let mut buf: Vec<HashValue<Var>> =
                 coset_values.iter().map(|val| hash_leaf_qm31(context, *val)).collect();
@@ -127,7 +127,7 @@ pub fn fri_decommit<Value: IValue>(
         }
 
         // Compute the next layer.
-        fri_data = zip_eq(coset_per_query, twiddles_per_fold_per_query)
+        fri_data = zip_eq(witness_per_query, twiddles_per_fold_per_query)
             .map(|(coset, twiddles_per_fold)| {
                 fold_coset(context, coset, &twiddles_per_fold, &alpha_powers)
             })
@@ -135,7 +135,9 @@ pub fn fri_decommit<Value: IValue>(
 
         bit_counter += step;
         let n_doubles = if is_circle_to_line { *step - 1 } else { *step };
-        base_point = repeated_double_point_simd(context, &base_point, n_doubles);
+        if tree_idx != n_layers - 1 {
+            base_point = repeated_double_point_simd(context, &base_point, n_doubles);
+        }
     }
     // The last base point's y-coord may hasn't been used by the compute_twiddles if the last step
     // was = 1.
@@ -298,7 +300,7 @@ fn translate_to_base_point<Value: IValue>(
     is_circle_to_line: bool,
 ) -> CirclePoint<Simd> {
     let n_queries = base_point.x.len();
-    let mut packed_bits_ = packed_bits;
+    let mut packed_bits = packed_bits;
 
     if is_circle_to_line {
         let zero = Simd::zero(context, n_queries);
@@ -309,10 +311,10 @@ fn translate_to_base_point<Value: IValue>(
             x: base_point.x.clone(),
             y: Simd::select(context, &packed_bits[0], &base_point.y, &minus_y_point.y),
         };
-        packed_bits_ = &packed_bits[1..];
+        packed_bits = &packed_bits[1..];
     }
 
-    for (i, bit) in packed_bits_.iter().enumerate() {
+    for (i, bit) in packed_bits.iter().enumerate() {
         // The group inverse of the generator of the subgroup of size 2^(i+1).
         let minus_cur_gen_pt = minus_generator_point_simd(context, i + 1, n_queries);
         // Select between `point` and `point - cur_gen_pt`.
