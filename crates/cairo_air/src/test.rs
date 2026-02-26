@@ -159,14 +159,47 @@ fn test_verify_all_opcodes() {
     let low_blowup_factor = 2;
 
     if std::env::var("FIX_PROOF").is_ok() {
+        println!("Logs");
         let compiled_program =
             get_compiled_cairo_program_path("test_prove_verify_all_opcode_components");
-        let input = run_and_adapt(&compiled_program, ProgramType::Json, None).unwrap();
+        let base_input = run_and_adapt(&compiled_program, ProgramType::Json, None).unwrap();
+
+        for line_fold_step in [1, 2, 3, 4] {
+            for pack_leaves in [true, false] {
+                println!("\nLine fold step = {line_fold_step}");
+                println!("Pack leaves = {pack_leaves}\n");
+                let prover_params = ProverParameters {
+                    channel_hash: ChannelHash::Blake2sM31,
+                    pcs_config: PcsConfig {
+                        pow_bits: 26,
+                        fri_config: FriConfig::new(
+                            0,
+                            low_blowup_factor,
+                            35,
+                            line_fold_step,
+                            pack_leaves,
+                        ),
+                        lifting_log_size: Some(20 + low_blowup_factor),
+                    },
+                    preprocessed_trace: PreProcessedTraceVariant::CanonicalSmall,
+                    channel_salt: 0,
+                    store_polynomials_coefficients: true,
+                    include_all_preprocessed_columns: true,
+                };
+                let cairo_proof =
+                    prove_cairo::<Blake2sM31MerkleChannel>(base_input.clone(), prover_params)
+                        .unwrap();
+                let context = verify_cairo(&cairo_proof).unwrap();
+                println!("Stats: {:?}", context.stats);
+            }
+        }
+
+        // Keep legacy proof file updated with the default benchmarking config.
         let prover_params = ProverParameters {
             channel_hash: ChannelHash::Blake2sM31,
             pcs_config: PcsConfig {
                 pow_bits: 26,
-                fri_config: FriConfig::new(0, low_blowup_factor, 35, 1),
+                fri_config: FriConfig::new(0, low_blowup_factor, 35, 1, true),
                 lifting_log_size: Some(20 + low_blowup_factor),
             },
             preprocessed_trace: PreProcessedTraceVariant::CanonicalSmall,
@@ -174,11 +207,12 @@ fn test_verify_all_opcodes() {
             store_polynomials_coefficients: true,
             include_all_preprocessed_columns: true,
         };
-        let cairo_proof = prove_cairo::<Blake2sM31MerkleChannel>(input, prover_params).unwrap();
+        let cairo_proof = prove_cairo::<Blake2sM31MerkleChannel>(base_input, prover_params).unwrap();
 
         let proof_file =
             OpenOptions::new().create(true).write(true).truncate(true).open(&proof_path).unwrap();
         binary_serialize_to_file(&cairo_proof, &proof_file).unwrap();
+        return;
     }
 
     let proof_file = File::open(proof_path).unwrap();
@@ -195,7 +229,7 @@ fn test_verify_privacy() {
     let cairo_proof = binary_deserialize_from_file(&proof_file).unwrap();
 
     let context = verify_cairo(&cairo_proof).unwrap();
-    let s = context.stats.profiler.format_with(circuits::stats::ProfilerVerbosity::Full);
+    let _s = context.stats.profiler.format_with(circuits::stats::ProfilerVerbosity::Full);
     eprintln!("Stats: {:?}", context.stats);
     // println!("{}", s);
 }

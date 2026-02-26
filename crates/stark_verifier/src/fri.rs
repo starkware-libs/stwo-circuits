@@ -79,7 +79,7 @@ pub fn fri_decommit<Value: IValue>(
     // Line to line decommitment.
     let mut base_point = translate_by_lsb(context, points, &packed_bits[0]);
     let mut bit_counter = 0;
-    let mut tot_updates = 0;
+    let mut total_line_to_line_updates = 0usize;
 
     for (tree_idx, ((root, step), coset_per_query)) in
         zip_eq(zip_eq(&layer_commitments[1..], steps), line_coset_vals_per_query_per_tree)
@@ -111,33 +111,49 @@ pub fn fri_decommit<Value: IValue>(
         }
 
         // Check merkle decommitment.
+        let mut hash_leaves_updates = 0usize;
+        let mut coset_root_updates = 0usize;
+        let mut auth_updates = 0usize;
         for (query_idx, coset_values) in coset_per_query.iter().enumerate() {
             let coset_root = if pack_layer {
                 assert!(
                     coset_values.len() == (1 << *step) || (*step == 1 && coset_values.len() == 4)
                 );
                 let leaf_hashes = if *step == 1 {
-                    vec![hash_packed_fri_leaf(context, coset_values)]
+                    let before = context.stats.blake_updates;
+                    let leaf = hash_packed_fri_leaf(context, coset_values);
+                    hash_leaves_updates += context.stats.blake_updates - before;
+                    vec![leaf]
                 } else {
-                    coset_values
+                    let before = context.stats.blake_updates;
+                    let hashes = coset_values
                         .chunks(PACKED_FRI_LEAF_SIZE)
                         .map(|chunk| hash_packed_fri_leaf(context, chunk))
-                        .collect_vec()
+                        .collect_vec();
+                    hash_leaves_updates += context.stats.blake_updates - before;
+                    hashes
                 };
-                fold_hashes_to_root(
+                let before = context.stats.blake_updates;
+                let root = fold_hashes_to_root(
                     context,
                     leaf_hashes,
                     step.saturating_sub(PACKED_FRI_LEAF_LOG_SIZE),
-                )
+                );
+                coset_root_updates += context.stats.blake_updates - before;
+                root
             } else {
+                let before = context.stats.blake_updates;
                 let mut buf: Vec<HashValue<Var>> =
                     coset_values.iter().map(|val| hash_leaf_qm31(context, *val)).collect();
+                hash_leaves_updates += context.stats.blake_updates - before;
+                let before = context.stats.blake_updates;
                 for fold in 0..*step {
                     for i in 0..1 << (step - fold - 1) {
                         let (even, odd) = (buf[2 * i], buf[2 * i + 1]);
                         buf[i] = hash_node(context, even, odd);
                     }
                 }
+                coset_root_updates += context.stats.blake_updates - before;
                 buf[0]
             };
             // Verify the rest of the authentication path.
@@ -147,12 +163,23 @@ pub fn fri_decommit<Value: IValue>(
             let bits_for_query = bits.iter().map(|b| b[query_idx]).collect_vec();
             let bits_used_by_path = auth_path.0.len();
             let bits_tail = &bits_for_query[(bits_for_query.len() - bits_used_by_path)..];
+            let before = context.stats.blake_updates;
             verify_merkle_path(context, coset_root, bits_tail, *root, &auth_path);
+            auth_updates += context.stats.blake_updates - before;
         }
-        println!("Line-to-line {tree_idx}-th inner layer | Hash leaves | # updates: {}", config.n_queries * (1 << step));
-        println!("Line-to-line {tree_idx}-th inner layer | Coset root | # updates: {}", config.n_queries * ((1 << step) - 1));
-        println!("Line-to-line {tree_idx}-th inner layer | Authentication | # updates: {}", config.n_queries * (bits.len() - bit_counter - step - 1));
-        tot_updates += config.n_queries * ((1 << step) + ((1 << step) - 1) + (bits.len() - bit_counter - step - 1));
+        println!(
+            "Line-to-line {tree_idx}-th inner layer | Hash leaves | # updates: {}",
+            hash_leaves_updates
+        );
+        println!(
+            "Line-to-line {tree_idx}-th inner layer | Coset root | # updates: {}",
+            coset_root_updates
+        );
+        println!(
+            "Line-to-line {tree_idx}-th inner layer | Authentication | # updates: {}",
+            auth_updates
+        );
+        total_line_to_line_updates += hash_leaves_updates + coset_root_updates + auth_updates;
 
         // Translate base_point to the base of the current coset.
         base_point = translate_base_point(context, base_point, &packed_bits[bit_range]);
@@ -202,7 +229,7 @@ pub fn fri_decommit<Value: IValue>(
     if *steps.last().unwrap() == 1 {
         Simd::mark_partly_used(context, &base_point.y);
     }
-    println!("Total line to line updates: {tot_updates}");
+    println!("Total line to line updates: {total_line_to_line_updates}");
     // Check last layer.
     assert_eq!(config.log_n_last_layer_coefs, 0);
     let last_layer_val = last_layer_coefs[0];
@@ -293,25 +320,31 @@ fn decommit_circle_to_line<Value: IValue>(
 ) -> Vec<Var> {
     let points_y_inv = points.y.inv(context);
     let twiddles = Simd::unpack(context, &points_y_inv);
+    let mut hash_leaves_updates = 0usize;
+    let mut coset_root_updates = 0usize;
+    let mut auth_updates = 0usize;
     if !pack_leaves {
         for (query_idx, (fri_query, sibling)) in zip_eq(fri_input, siblings).enumerate() {
+            let before = context.stats.blake_updates;
             let leaf = hash_leaf_qm31(context, *fri_query);
             let leaf_sibling = hash_leaf_qm31(context, *sibling);
+            hash_leaves_updates += context.stats.blake_updates - before;
 
             let bits_for_query = bits.iter().map(|b| b[query_idx]).collect_vec();
+            let before = context.stats.blake_updates;
             let node = merkle_node(context, &leaf, &leaf_sibling, bits_for_query[0]);
+            coset_root_updates += context.stats.blake_updates - before;
 
             let auth_path = auth_paths.at(0, query_idx);
             let bits_used_by_path = auth_path.0.len();
             let bits_tail = &bits_for_query[(bits_for_query.len() - bits_used_by_path)..];
+            let before = context.stats.blake_updates;
             verify_merkle_path(context, node, bits_tail, *root, auth_path);
+            auth_updates += context.stats.blake_updates - before;
         }
-        println!("Circle-to-line | Hash leaves | # updates: {}", siblings.len() * (1 << 1));
-        println!("Circle-to-line | Coset root | # updates: {}", siblings.len() * ((1 << 1) - 1));
-        println!(
-            "Circle-to-line | Authentication | # updates: {}",
-            siblings.len() * (bits.len() - 1)
-        );
+        println!("Circle-to-line | Hash leaves | # updates: {}", hash_leaves_updates);
+        println!("Circle-to-line | Coset root | # updates: {}", coset_root_updates);
+        println!("Circle-to-line | Authentication | # updates: {}", auth_updates);
         return zip_eq(zip_eq(fri_input, siblings), twiddles)
             .map(|((fri_query, sibling), twiddle)| {
                 let g = eval!(context, (*fri_query) + (*sibling));
@@ -329,10 +362,14 @@ fn decommit_circle_to_line<Value: IValue>(
         let bits_for_query = bits.iter().map(|b| b[query_idx]).collect_vec();
         let auth_path = auth_paths.at(0, query_idx);
 
+        let before = context.stats.blake_updates;
         let leaf = hash_packed_fri_leaf(context, leaf_values);
+        hash_leaves_updates += context.stats.blake_updates - before;
         let bits_used_by_path = auth_path.0.len();
         let bits_tail = &bits_for_query[(bits_for_query.len() - bits_used_by_path)..];
+        let before = context.stats.blake_updates;
         verify_merkle_path(context, leaf, bits_tail, *root, auth_path);
+        auth_updates += context.stats.blake_updates - before;
 
         let one_minus_lsb = eval!(context, (1) - (bits_for_query[0]));
         let sibling = select_by_index(context, leaf_values, &[one_minus_lsb, bits_for_query[1]]);
@@ -340,6 +377,9 @@ fn decommit_circle_to_line<Value: IValue>(
         let h = eval!(context, ((*fri_query) - (sibling)) * (twiddle));
         folded.push(eval!(context, (g) + ((alpha) * (h))));
     }
+    println!("Circle-to-line | Hash leaves | # updates: {}", hash_leaves_updates);
+    println!("Circle-to-line | Coset root | # updates: {}", coset_root_updates);
+    println!("Circle-to-line | Authentication | # updates: {}", auth_updates);
 
     folded
 }
