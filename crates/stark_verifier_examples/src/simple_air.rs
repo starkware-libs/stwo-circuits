@@ -197,6 +197,8 @@ pub fn create_proof() -> (
 ) {
     let mut config = PcsConfig::default();
     config.fri_config.log_blowup_factor = 2;
+    config.fri_config.line_fold_step = 2;
+    config.fri_config.pack_leaves = true;
     let lifting_log_size = LOG_SIZE_LONG + config.fri_config.log_blowup_factor;
     config.lifting_log_size = Some(lifting_log_size);
     // Precompute twiddles.

@@ -60,6 +60,7 @@ pub fn verify<Value: IValue>(
         config.fri.log_n_last_layer_coefs as u32,
         config.fri.line_fold_step as u32,
         lifting_log_size as u32,
+        u32::from(config.fri.pack_leaves),
     ];
 
     let pcs_config_vars = pack_into_qm31s(pcs_config_values.into_iter())

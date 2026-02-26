@@ -55,9 +55,13 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
         }
         ProofModifier::WrongFriAuthPath => {
             let first_query = proof.aux.unsorted_query_locations[0];
-            let first_layer_values = &mut proof.aux.fri.first_layer.decommitment.all_node_values[1];
-            let value: &mut Blake2sHash =
-                first_layer_values.get_mut(&((first_query >> 1) ^ 1)).unwrap();
+            let (level, pos) = if pcs_config.fri_config.pack_leaves {
+                (0, (first_query >> 2) ^ 1)
+            } else {
+                (1, (first_query >> 1) ^ 1)
+            };
+            let first_layer_values = &mut proof.aux.fri.first_layer.decommitment.all_node_values[level];
+            let value: &mut Blake2sHash = first_layer_values.get_mut(&pos).unwrap();
             value.0[0] ^= 1;
         }
         ProofModifier::WrongFriSibling => {

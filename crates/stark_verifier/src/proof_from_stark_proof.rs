@@ -16,6 +16,9 @@ use crate::oods::EvalDomainSamples;
 use crate::proof::{Claim, InteractionAtOods, N_TRACES, Proof, ProofConfig};
 use circuits::ivalue::qm31_from_u32s;
 
+const PACKED_FRI_LEAF_LOG_SIZE: usize = 2;
+const PACKED_FRI_LEAF_SIZE: usize = 1 << PACKED_FRI_LEAF_LOG_SIZE;
+
 /// Constructs [Proof] with the values from the given proof ([ExtendedStarkProof]).
 pub fn proof_from_stark_proof(
     proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
@@ -174,13 +177,18 @@ fn construct_fri_auth_paths(
     extended_steps.extend_from_slice(&config.fri.line_fold_steps_aux);
     let res = zip_eq(zip_eq(layer_log_sizes, layers), extended_steps)
         .map(|((log_size, layer_proof), step)| {
+            let pack_layer = config.fri.pack_leaves && log_size >= PACKED_FRI_LEAF_LOG_SIZE;
+            let pack_shift = if pack_layer { PACKED_FRI_LEAF_LOG_SIZE } else { 0 };
+            let start_level_original = if pack_layer { step.max(pack_shift) } else { step };
+            let start_level = start_level_original - pack_shift;
+            let merkle_log_size = log_size - pack_shift;
             unsorted_query_locations
                 .iter()
                 .map(|query| {
                     let mut pos = *query;
-                    pos >>= n - log_size + step;
+                    pos >>= n - log_size + start_level_original;
                     let mut auth_path: AuthPath<QM31> = AuthPath(vec![]);
-                    for j in step..log_size {
+                    for j in start_level..merkle_log_size {
                         let hash = layer_proof.decommitment.all_node_values[j][&(pos ^ 1)];
                         auth_path.0.push(hash.into());
                         pos >>= 1;
@@ -204,17 +212,36 @@ pub fn construct_fri_siblings(
 ) -> (Vec<QM31>, Vec<Vec<Vec<QM31>>>) {
     let mut line_coset_vals_per_query_per_tree = vec![vec![]; config.fri.line_fold_steps_aux.len()];
     let mut circle_fri_siblings = vec![];
+    let first_layer_pack = config.fri.pack_leaves && config.log_evaluation_domain_size() >= 2;
     for query in &proof.aux.unsorted_query_locations {
-        circle_fri_siblings.push(proof.aux.fri.first_layer.all_values[0][&(query ^ 1)]);
+        if first_layer_pack {
+            let start = query & !(PACKED_FRI_LEAF_SIZE - 1);
+            circle_fri_siblings.extend(
+                (start..start + PACKED_FRI_LEAF_SIZE)
+                    .map(|i| proof.aux.fri.first_layer.all_values[0][&i]),
+            );
+        } else {
+            circle_fri_siblings.push(proof.aux.fri.first_layer.all_values[0][&(query ^ 1)]);
+        }
         let mut pos = query >> 1;
+        let mut layer_log_size = config.log_evaluation_domain_size() - 1;
         for (tree_idx, (layer, step)) in
             zip_eq(&proof.aux.fri.inner_layers, &config.fri.line_fold_steps_aux).enumerate()
         {
-            let start = (pos >> step) << step;
-            let line_coset_vals: Vec<_> =
-                (start..start + (1 << step)).map(|i| layer.all_values[0][&i]).collect();
+            let pack_layer = config.fri.pack_leaves && layer_log_size >= 2;
+            let line_coset_vals: Vec<_> = if pack_layer && *step == 1 {
+                let subset_start = (pos >> step) << step;
+                let aligned_start = subset_start & !(PACKED_FRI_LEAF_SIZE - 1);
+                (aligned_start..aligned_start + PACKED_FRI_LEAF_SIZE)
+                    .map(|i| layer.all_values[0][&i])
+                    .collect()
+            } else {
+                let start = (pos >> step) << step;
+                (start..start + (1 << step)).map(|i| layer.all_values[0][&i]).collect()
+            };
             line_coset_vals_per_query_per_tree[tree_idx].push(line_coset_vals);
             pos >>= step;
+            layer_log_size -= *step;
         }
     }
     (circle_fri_siblings, line_coset_vals_per_query_per_tree)
