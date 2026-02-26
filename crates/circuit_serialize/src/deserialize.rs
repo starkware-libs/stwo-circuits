@@ -203,7 +203,7 @@ fn deserialize_fri_commit_proof(
         last_layer_coefs: deserialize_vec(data, n_last_layer_coefs)?,
     })
 }
-
+// TODO: deal with the fold step schedule.
 fn deserialize_fri_proof(
     data: &mut &[u8],
     config: &FriConfig,
@@ -227,8 +227,6 @@ fn deserialize_fri_proof(
         fold_sum += step;
     }
     let auth_paths = AuthPaths { data: auth_path_trees };
-    // Deserialize fri siblings of the first layer and line coset witnesses.
-    let circle_fri_siblings = deserialize_vec(data, config.n_queries)?;
     let mut witness_per_query_per_tree = vec![];
     for step in all_line_fold_steps.iter() {
         let mut line_coset_vals_per_query = vec![];
@@ -239,5 +237,5 @@ fn deserialize_fri_proof(
         witness_per_query_per_tree.push(line_coset_vals_per_query);
     }
 
-    Ok(FriProof { commit, auth_paths, circle_fri_siblings, witness_per_query_per_tree })
+    Ok(FriProof { commit, auth_paths, witness_per_query_per_tree })
 }

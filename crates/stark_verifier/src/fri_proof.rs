@@ -66,9 +66,6 @@ pub struct FriProof<T> {
     pub commit: FriCommitProof<T>,
     /// Authentication paths for all the FRI trees.
     pub auth_paths: AuthPaths<T>,
-    /// Deprecated witness field for first-layer siblings.
-    /// New proofs keep this empty and provide full per-layer coset witnesses instead.
-    pub circle_fri_siblings: Vec<T>,
     /// For each FRI layer, for each query, the values of the layer polynomial on the FRI coset
     /// containing that query.
     pub witness_per_query_per_tree: Vec<Vec<Vec<T>>>,
@@ -81,7 +78,6 @@ impl<T> FriProof<T> {
             commit,
             auth_paths,
             witness_per_query_per_tree,
-            circle_fri_siblings,
         } = self;
         commit.validate_structure(config);
         let all_line_fold_steps = compute_all_line_fold_steps(
@@ -102,7 +98,6 @@ impl<T> FriProof<T> {
             fold_sum += *fold_step
         }
 
-        assert!(circle_fri_siblings.is_empty());
         assert_eq!(witness_per_query_per_tree.len(), all_fold_steps.len());
         for (fri_coset_per_query, step) in zip_eq(witness_per_query_per_tree, &all_fold_steps) {
             assert_eq!(fri_coset_per_query.len(), config.n_queries);
@@ -118,7 +113,6 @@ impl<Value: IValue> Guess<Value> for FriProof<Value> {
         Self::Target {
             commit: self.commit.guess(context),
             auth_paths: self.auth_paths.guess(context),
-            circle_fri_siblings: self.circle_fri_siblings.guess(context),
             witness_per_query_per_tree: self
                 .witness_per_query_per_tree
                 .guess(context),
@@ -154,7 +148,6 @@ pub fn empty_fri_proof(config: &FriConfig) -> FriProof<NoValue> {
             last_layer_coefs: vec![NoValue; 1 << config.log_n_last_layer_coefs],
         },
         auth_paths,
-        circle_fri_siblings: vec![],
         witness_per_query_per_tree,
     }
 }

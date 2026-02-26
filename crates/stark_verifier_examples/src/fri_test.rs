@@ -83,7 +83,6 @@ fn test_fri_decommit_with_jumps() {
             last_layer_coefs: fri_proof.proof.last_layer_poly.into_ordered_coefficients(),
         },
         auth_paths,
-        circle_fri_siblings: vec![],
         witness_per_query_per_tree: witness,
     };
     let circuit_fri_proof = circuit_fri_proof.guess(&mut context);

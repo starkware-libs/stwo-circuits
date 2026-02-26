@@ -72,7 +72,6 @@ pub fn proof_from_stark_proof(
                 last_layer_coefs: (*fri_proof.last_layer_poly).to_vec(),
             },
             auth_paths: construct_fri_auth_paths(proof, config, &all_line_fold_steps),
-            circle_fri_siblings: vec![],
             witness_per_query_per_tree: witness,
         },
         proof_of_work_nonce: qm31_from_u32s(pow_low, pow_high, 0, 0),
