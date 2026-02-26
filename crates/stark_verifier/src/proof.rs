@@ -105,6 +105,7 @@ impl ProofConfig {
                     n_queries,
                     log_last_layer_degree_bound,
                     line_fold_step,
+                    circle_fold_step,
                 },
             lifting_log_size: Some(lifting_log_size),
         } = pcs_config
@@ -129,6 +130,7 @@ impl ProofConfig {
                 n_queries: *n_queries,
                 log_n_last_layer_coefs: *log_last_layer_degree_bound as usize,
                 line_fold_step: *line_fold_step as usize,
+                circle_fold_step: *circle_fold_step as usize,
             },
             interaction_pow_bits,
         }

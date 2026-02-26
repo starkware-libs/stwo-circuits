@@ -47,6 +47,7 @@ fn test_fri_decommit_with_jumps() {
             n_queries: 7,
             log_n_last_layer_coefs: 0,
             line_fold_step: 2,
+            circle_fold_step: 2,
         },
         interaction_pow_bits: 0,
     };
@@ -63,10 +64,15 @@ fn test_fri_decommit_with_jumps() {
         queries.bits.iter().map(|simd| Simd::unpack(&mut context, simd)).collect();
 
     // Compute the circuit FriProof.
-    let all_line_fold_steps = compute_all_line_fold_steps(5, 2);
-    let siblings = test_construct_fri_siblings(&fri_proof, &all_line_fold_steps, &query_indices);
+    let all_line_fold_steps = compute_all_line_fold_steps(
+        config.fri.log_trace_size - config.fri.circle_fold_step - config.fri.log_n_last_layer_coefs,
+        config.fri.line_fold_step,
+    );
+    let all_fold_steps = [&[config.fri.circle_fold_step], all_line_fold_steps.as_slice()].concat();
+    let witness = test_construct_fri_witness(&fri_proof, &all_fold_steps, &query_indices);
     let auth_paths =
         test_construct_fri_auth_paths(&fri_proof, &config, &query_indices, &all_line_fold_steps);
+
     let circuit_fri_proof = FriProof {
         commit: FriCommitProof {
             layer_commitments: chain!(
@@ -77,17 +83,16 @@ fn test_fri_decommit_with_jumps() {
             last_layer_coefs: fri_proof.proof.last_layer_poly.into_ordered_coefficients(),
         },
         auth_paths,
-        circle_fri_siblings: siblings.0,
-        line_coset_vals_per_query_per_tree: siblings.1,
+        circle_fri_siblings: vec![],
+        line_coset_vals_per_query_per_tree: witness,
     };
     let circuit_fri_proof = circuit_fri_proof.guess(&mut context);
 
     // Folding alphas.
     let alpha_values = [
         qm31_from_u32s(1011730217, 238354028, 1321702146, 1634795701),
-        qm31_from_u32s(1690232064, 1294671291, 1616406021, 525755234),
-        qm31_from_u32s(1975580628, 2062626494, 1340534631, 1939928290),
-        qm31_from_u32s(160270922, 428202964, 1497289811, 1557635193),
+        qm31_from_u32s(1837551196, 996059164, 541247751, 126611986),
+        qm31_from_u32s(1889251375, 1206270873, 523653533, 1863366183),
     ];
     let alphas: Vec<_> = alpha_values.iter().map(|x| context.constant(*x)).collect();
 
@@ -123,7 +128,7 @@ fn create_fri_proof() -> ExtendedFriProof<Blake2sM31Hasher> {
     const LOG_BLOWUP_FACTOR: u32 = 2;
     const LOG_TRACE_SIZE: u32 = 6;
 
-    let config = FriConfig::new(0, LOG_BLOWUP_FACTOR, 3, 2);
+    let config = FriConfig::new(0, LOG_BLOWUP_FACTOR, 3, 2, 2);
     let column = polynomial_evaluation(LOG_TRACE_SIZE, LOG_BLOWUP_FACTOR);
     let twiddles = CpuBackend::precompute_twiddles(column.domain.half_coset);
     let prover = FriProver::<CpuBackend, Blake2sM31MerkleChannel>::commit(
@@ -136,28 +141,28 @@ fn create_fri_proof() -> ExtendedFriProof<Blake2sM31Hasher> {
     prover.decommit_on_queries(&queries)
 }
 
-fn test_construct_fri_siblings(
+fn test_construct_fri_witness(
     proof: &ExtendedFriProof<Blake2sM31MerkleHasher>,
-    all_line_fold_steps: &[usize],
+    all_fold_steps: &[usize],
     query_locations: &[usize],
-) -> (Vec<QM31>, Vec<Vec<Vec<QM31>>>) {
-    let mut line_coset_vals_per_query_per_tree = vec![vec![]; proof.proof.inner_layers.len()];
-    let mut circle_fri_siblings = vec![];
+) -> Vec<Vec<Vec<QM31>>> {
+    let all_layers =
+        [&[&proof.aux.first_layer], proof.aux.inner_layers.iter().collect::<Vec<_>>().as_slice()]
+            .concat();
+    let mut coset_vals_per_query_per_tree = vec![vec![]; all_layers.len()];
 
     for query in query_locations {
-        circle_fri_siblings.push(proof.aux.first_layer.all_values[0][&(query ^ 1)]);
-        let mut pos = query >> 1;
-        for (tree_idx, (layer, step)) in
-            zip_eq(&proof.aux.inner_layers, all_line_fold_steps).enumerate()
-        {
+        let mut pos = *query;
+        for (tree_idx, (layer, step)) in zip_eq(&all_layers, all_fold_steps).enumerate() {
             let start = (pos >> step) << step;
-            let line_coset_vals: Vec<_> =
+            eprintln!("Tree: {tree_idx}. Decommitment positions: {:?}", start..start + (1 << step));
+            let coset_vals: Vec<_> =
                 (start..start + (1 << step)).map(|i| layer.all_values[0][&i]).collect();
-            line_coset_vals_per_query_per_tree[tree_idx].push(line_coset_vals);
+            coset_vals_per_query_per_tree[tree_idx].push(coset_vals);
             pos >>= step;
         }
     }
-    (circle_fri_siblings, line_coset_vals_per_query_per_tree)
+    coset_vals_per_query_per_tree
 }
 
 /// Constructs [AuthPaths] for the FRI trees with the values from the given proof
@@ -172,11 +177,11 @@ pub fn test_construct_fri_auth_paths(
     let layers = chain!([&proof.aux.first_layer], &proof.aux.inner_layers);
     let n = config.log_evaluation_domain_size();
     // Gather the layer log sizes.
-    let mut layer_log_sizes = vec![n, n - 1];
+    let mut layer_log_sizes = vec![n, n - config.fri.circle_fold_step];
     for step in all_line_fold_steps.iter().take(proof.aux.inner_layers.len() - 1) {
         layer_log_sizes.push(layer_log_sizes.last().unwrap() - step);
     }
-    let mut all_fold_steps = vec![1];
+    let mut all_fold_steps = vec![config.fri.circle_fold_step];
     all_fold_steps.extend_from_slice(all_line_fold_steps);
     let res = zip_eq(zip_eq(layer_log_sizes, layers), all_fold_steps)
         .map(|((log_size, layer_proof), step)| {

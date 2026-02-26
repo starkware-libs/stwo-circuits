@@ -18,6 +18,8 @@ pub struct FriConfig {
     pub log_n_last_layer_coefs: usize,
     /// The step of the line folds in FRI's inner layers.
     pub line_fold_step: usize,
+    /// The step of the first circle-to-line fold.
+    pub circle_fold_step: usize,
 }
 
 impl FriConfig {
@@ -83,28 +85,33 @@ impl<T> FriProof<T> {
         } = self;
         commit.validate_structure(config);
         let all_line_fold_steps = compute_all_line_fold_steps(
-            config.log_trace_size - 1 - config.log_n_last_layer_coefs,
+            config.log_trace_size - config.circle_fold_step - config.log_n_last_layer_coefs,
             config.line_fold_step,
         );
 
         assert_eq!(auth_paths.data.len(), all_line_fold_steps.len() + 1);
         let first_layer_log_size = config.log_evaluation_domain_size();
-        let mut all_fold_steps = vec![1];
+        let mut all_fold_steps = vec![config.circle_fold_step];
         all_fold_steps.extend_from_slice(&all_line_fold_steps);
         let mut fold_sum = 0;
-        for (tree_data, fold_step) in zip_eq(&auth_paths.data, all_fold_steps) {
+        for (tree_data, fold_step) in zip_eq(&auth_paths.data, &all_fold_steps) {
             assert_eq!(tree_data.len(), config.n_queries);
             for query_data in tree_data {
-                assert_eq!(query_data.0.len(), first_layer_log_size - fold_sum - fold_step);
+                assert_eq!(query_data.0.len(), first_layer_log_size - fold_sum - *fold_step);
             }
-            fold_sum += fold_step
+            fold_sum += *fold_step
         }
 
-        assert_eq!(circle_fri_siblings.len(), config.n_queries);
-        assert_eq!(line_coset_vals_per_query_per_tree.len(), all_line_fold_steps.len());
-        for (fri_coset_per_query, step) in
-            zip_eq(line_coset_vals_per_query_per_tree, &all_line_fold_steps)
+        let coset_steps: &[usize] = if line_coset_vals_per_query_per_tree.len() == all_fold_steps.len()
         {
+            &all_fold_steps
+        } else {
+            assert_eq!(line_coset_vals_per_query_per_tree.len(), all_line_fold_steps.len());
+            assert_eq!(circle_fri_siblings.len(), config.n_queries);
+            &all_line_fold_steps
+        };
+
+        for (fri_coset_per_query, step) in zip_eq(line_coset_vals_per_query_per_tree, coset_steps) {
             assert_eq!(fri_coset_per_query.len(), config.n_queries);
             fri_coset_per_query.iter().all(|coset| coset.len() == 1 << step);
         }
@@ -142,10 +149,11 @@ pub fn empty_fri_proof(config: &FriConfig) -> FriProof<NoValue> {
     };
 
     let all_line_fold_steps = compute_all_line_fold_steps(
-        config.log_trace_size - 1 - config.log_n_last_layer_coefs,
+        config.log_trace_size - config.circle_fold_step - config.log_n_last_layer_coefs,
         config.line_fold_step,
     );
-    let line_coset_vals_per_query_per_tree = all_line_fold_steps
+    let all_fold_steps = [&[config.circle_fold_step], all_line_fold_steps.as_slice()].concat();
+    let line_coset_vals_per_query_per_tree = all_fold_steps
         .iter()
         .map(|step| vec![vec![NoValue; 1 << step]; config.n_queries])
         .collect();
@@ -155,7 +163,7 @@ pub fn empty_fri_proof(config: &FriConfig) -> FriProof<NoValue> {
             last_layer_coefs: vec![NoValue; 1 << config.log_n_last_layer_coefs],
         },
         auth_paths,
-        circle_fri_siblings: vec![NoValue; config.n_queries],
+        circle_fri_siblings: vec![],
         line_coset_vals_per_query_per_tree,
     }
 }

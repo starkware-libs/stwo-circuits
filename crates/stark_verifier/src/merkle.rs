@@ -94,6 +94,8 @@ pub fn verify_merkle_path<Value: IValue>(
     for (bit, sibling) in zip_eq(bits, &auth_path.0) {
         leaf = merkle_node(context, &leaf, sibling, *bit);
     }
+    // debug_assert_eq!(context.get(leaf.0), context.get(root.0));
+    // debug_assert_eq!(context.get(leaf.1), context.get(root.1));
     eq(context, leaf.0, root.0);
     eq(context, leaf.1, root.1);
 }

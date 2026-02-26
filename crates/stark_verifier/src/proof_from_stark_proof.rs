@@ -37,10 +37,10 @@ pub fn proof_from_stark_proof(
     let interaction_pow_low = (interaction_pow_nonce & 0xFFFFFFFF) as u32;
 
     let all_line_fold_steps = compute_all_line_fold_steps(
-        config.fri.log_trace_size - 1 - config.fri.log_n_last_layer_coefs,
+        config.fri.log_trace_size - config.fri.circle_fold_step - config.fri.log_n_last_layer_coefs,
         config.fri.line_fold_step,
     );
-    let siblings = construct_fri_siblings(proof, &all_line_fold_steps);
+    let siblings = construct_fri_siblings(proof, &all_line_fold_steps, config.fri.circle_fold_step);
 
     Proof {
         preprocessed_root: commitments[0].into(),
@@ -171,8 +171,7 @@ fn construct_fri_auth_paths(
     let unsorted_query_locations = &proof.aux.unsorted_query_locations;
     let layers = chain!([&proof.aux.fri.first_layer], &proof.aux.fri.inner_layers);
     let log_eval_domain_size = config.log_evaluation_domain_size();
-    // The circle-to-line fold is hardcoded to 1 currently.
-    let all_fold_steps = [&[1], all_line_fold_steps].concat();
+    let all_fold_steps = [&[config.fri.circle_fold_step], all_line_fold_steps].concat();
     let mut fold_sum = 0;
     let mut res = vec![];
 
@@ -204,14 +203,15 @@ fn construct_fri_auth_paths(
 /// ([ExtendedStarkProof]).
 ///
 /// Returns a pair where:
-/// - the first member contains the fri siblings of the first FRI layer. Currently the
-///   circle-to-line fold is hardcoded to 1, so there is exactly one sibling per query.
+/// - the first member contains the fri siblings of the first FRI layer.
 /// - the second member contains, for each inner layer, for each query, the coset witness for that
 ///   query.
 pub fn construct_fri_siblings(
     proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
     all_line_fold_steps: &[usize],
+    circle_fold_step: usize,
 ) -> (Vec<QM31>, Vec<Vec<Vec<QM31>>>) {
+    assert_eq!(circle_fold_step, 1, "Expected circle_fold_step = 1 for sibling-based witness");
     let mut line_coset_vals_per_query_per_tree = vec![vec![]; all_line_fold_steps.len()];
     let mut circle_fri_siblings = vec![];
     for query in &proof.aux.unsorted_query_locations {
