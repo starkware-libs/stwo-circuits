@@ -1,25 +1,16 @@
 // This file was created by the AIR team.
 
-use crate::components::prelude::*;
+use super::super::prelude::*;
 
-#[derive(Copy, Clone, Serialize)]
-pub struct Split16LowPartSize7 {}
+pub const RELATION_USES_PER_ROW: [RelationUse; 0] = [];
 
-impl Split16LowPartSize7 {
-    #[allow(unused_parens)]
-    #[allow(clippy::double_parens)]
-    #[allow(non_snake_case)]
-    #[allow(clippy::unused_unit)]
-    #[allow(unused_variables)]
-    #[allow(clippy::too_many_arguments)]
-    pub fn evaluate<E: EvalAtRow>(
-        [split_16_low_part_size_7_input]: [E::F; 1],
-        ms_9_bits_col0: E::F,
-        common_lookup_elements: &relations::CommonLookupElements,
-        eval: &mut E,
-    ) -> [E::F; 1] {
-        let M31_128 = E::F::from(M31::from(128));
-
-        [(split_16_low_part_size_7_input.clone() - (ms_9_bits_col0.clone() * M31_128.clone()))]
-    }
+#[allow(unused_variables)]
+pub fn accumulate_constraints<Value: IValue>(
+    input: &[Var],
+    context: &mut Context<Value>,
+    component_data: &dyn ComponentDataTrait<Value>,
+    acc: &mut CompositionConstraintAccumulator,
+) -> Vec<Var> {
+    let [split_16_low_part_size_7_input, ms_9_bits_col0] = input.try_into().unwrap();
+    vec![eval!(context, (split_16_low_part_size_7_input) - ((ms_9_bits_col0) * (128)))]
 }
