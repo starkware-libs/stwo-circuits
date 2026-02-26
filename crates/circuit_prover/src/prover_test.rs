@@ -1,14 +1,16 @@
+use crate::prover::preprare_circuit_proof_for_circuit_verifier;
 use crate::prover::verify_circuit;
-use crate::prover::{CircuitProof, finalize_context, prove_circuit};
+use crate::prover::{CircuitConfig, CircuitProof, finalize_context, prove_circuit};
 use circuit_air::CircuitInteractionElements;
 use circuit_air::lookup_sum;
-use circuit_air::statement::INTERACTION_POW_BITS;
+use circuit_air::statement::{INTERACTION_POW_BITS, all_circuit_components};
 use circuits::blake::blake;
 use circuits::context::Var;
 use circuits::eval;
 use circuits::ivalue::{IValue, qm31_from_u32s};
 use circuits::ops::{output, permute};
 use circuits::{context::Context, ops::guess};
+use circuits_stark_verifier::proof::ProofConfig;
 use expect_test::expect;
 use num_traits::{One, Zero};
 use stwo::core::air::Component;
@@ -267,8 +269,24 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
 
-    let proof = prove_circuit(&mut fibonacci_context);
-    verify_circuit(proof).unwrap();
+    let circuit_proof = prove_circuit(&mut fibonacci_context);
+
+    let preprocessed_column_ids = circuit_proof.preprocessed_circuit.preprocessed_trace.ids();
+    let proof_config = ProofConfig::from_components(
+        &all_circuit_components::<QM31>(),
+        preprocessed_column_ids.len(),
+        &circuit_proof.pcs_config,
+        INTERACTION_POW_BITS,
+    );
+    let circuit_config = CircuitConfig {
+        config: circuit_proof.pcs_config,
+        output_addresses: circuit_proof.preprocessed_circuit.params.output_addresses.clone(),
+        n_blake_gates: circuit_proof.preprocessed_circuit.params.n_blake_gates,
+        preprocessed_column_ids,
+    };
+    let (proof, public_data) =
+        preprare_circuit_proof_for_circuit_verifier(circuit_proof, proof_config);
+    verify_circuit(circuit_config, proof, public_data).unwrap();
 }
 
 #[test]
