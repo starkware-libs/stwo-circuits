@@ -38,7 +38,7 @@ pub fn fri_decommit<Value: IValue>(
     proof: &FriProof<Var>,
     config: &FriConfig,
     fri_input: &[Var],
-    bits: &[Vec<Var>],
+    mut bits: &[Vec<Var>],
     points: &CirclePoint<Simd>,
     alphas: &[Var],
 ) {
@@ -67,6 +67,8 @@ pub fn fri_decommit<Value: IValue>(
     for (tree_idx, (root, twiddles)) in zip_eq(layer_commitments, all_twiddles).enumerate() {
         let siblings = &fri_siblings[tree_idx];
 
+        let lsb_bits = bits.split_off_first().unwrap();
+
         // Check merkle decommitment.
         for (query_idx, (fri_query, sibling)) in zip_eq(&fri_data, siblings).enumerate() {
             // Compute one layer of the Merkle tree with the query and its sibling.
@@ -74,11 +76,12 @@ pub fn fri_decommit<Value: IValue>(
             let leaf_sibling = hash_leaf_qm31(context, *sibling);
 
             // Skip the first `tree_idx` LSBs, that are not relevant for this tree.
-            let bits_for_query = bits.iter().skip(tree_idx).map(|b| b[query_idx]).collect_vec();
-            let node = merkle_node(context, &leaf, &leaf_sibling, bits_for_query[0]);
+
+            let node = merkle_node(context, &leaf, &leaf_sibling, lsb_bits[query_idx]);
 
             let auth_path = auth_paths.at(tree_idx, query_idx);
-            verify_merkle_path(context, node, &bits_for_query[1..], *root, auth_path);
+            let bits_for_query = bits.iter().map(|b| b[query_idx]).collect_vec();
+            verify_merkle_path(context, node, &bits_for_query, *root, auth_path);
         }
 
         // Compute the next layer.
