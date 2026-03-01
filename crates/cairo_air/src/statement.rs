@@ -5,7 +5,7 @@ use cairo_air::components::memory_address_to_id::MEMORY_ADDRESS_TO_ID_SPLIT;
 use cairo_air::relations::{
     MEMORY_ADDRESS_TO_ID_RELATION_ID, MEMORY_ID_TO_BIG_RELATION_ID, OPCODES_RELATION_ID,
 };
-use circuits::blake::blake;
+use circuits::blake::{HashValue, blake};
 use circuits::eval;
 use circuits::extract_bits::extract_bits;
 use circuits::ops::{Guess, eq, output};
@@ -44,6 +44,13 @@ pub const PUBLIC_DATA_LEN: usize =
 
 const LIMB_BITS: usize = 9;
 const SMALL_VALUE_BITS: u32 = 27;
+
+// The preprocessed roots are taken from stwo_cairo's
+// export_circuit_cairo_verifier_preprocessed_roots().
+const _PREPROCESSED_ROOT_LOG_BLOWUP_1: [u32; 8] =
+    [564120632, 1595734162, 1550883364, 1605077950, 129976625, 906430422, 812575238, 606882670];
+const PREPROCESSED_ROOT_LOG_BLOWUP_2: [u32; 8] =
+    [2019947850, 1578675143, 1485624323, 207118193, 636087281, 1354843492, 2101876892, 721181021];
 
 pub struct CasmState<T> {
     pub pc: T,
@@ -450,6 +457,29 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
             &shifted_opcode_relation_uses,
             (29 - RELATION_USES_NUM_ROWS_SHIFT).try_into().unwrap(),
         );
+    }
+
+    fn verify_preprocessed_root(
+        &self,
+        context: &mut Context<Value>,
+        preprocessed_root: HashValue<Var>,
+    ) {
+        let expected_preprocessed_root = HashValue(
+            context.constant(qm31_from_u32s(
+                PREPROCESSED_ROOT_LOG_BLOWUP_2[0],
+                PREPROCESSED_ROOT_LOG_BLOWUP_2[1],
+                PREPROCESSED_ROOT_LOG_BLOWUP_2[2],
+                PREPROCESSED_ROOT_LOG_BLOWUP_2[3],
+            )),
+            context.constant(qm31_from_u32s(
+                PREPROCESSED_ROOT_LOG_BLOWUP_2[4],
+                PREPROCESSED_ROOT_LOG_BLOWUP_2[5],
+                PREPROCESSED_ROOT_LOG_BLOWUP_2[6],
+                PREPROCESSED_ROOT_LOG_BLOWUP_2[7],
+            )),
+        );
+        eq(context, preprocessed_root.0, expected_preprocessed_root.0);
+        eq(context, preprocessed_root.1, expected_preprocessed_root.1);
     }
 }
 

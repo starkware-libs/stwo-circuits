@@ -227,7 +227,7 @@ fn get_proof_file_path(test_name: &str) -> PathBuf {
 #[test]
 fn test_verify_all_opcodes() {
     let proof_path = get_proof_file_path("all_opcode_components");
-    let low_blowup_factor = 1;
+    let low_blowup_factor = 2;
 
     if std::env::var("FIX_PROOF").is_ok() {
         let compiled_program =
@@ -242,7 +242,7 @@ fn test_verify_all_opcodes() {
             },
             preprocessed_trace: PreProcessedTraceVariant::CanonicalSmall,
             channel_salt: 0,
-            store_polynomials_coefficients: false,
+            store_polynomials_coefficients: true,
             include_all_preprocessed_columns: true,
         };
         let cairo_proof = prove_cairo::<Blake2sM31MerkleChannel>(input, prover_params).unwrap();
