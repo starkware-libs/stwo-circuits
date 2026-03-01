@@ -4,6 +4,7 @@ use crate::circuit_eval_components::{
     verify_bitwise_xor_8, verify_bitwise_xor_9, verify_bitwise_xor_12,
 };
 use crate::components::{eq, qm31_ops};
+use circuits::blake::HashValue;
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::ivalue::IValue;
@@ -117,6 +118,14 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
 
     fn get_preprocessed_column_ids(&self) -> Vec<PreProcessedColumnId> {
         self.preprocessed_column_ids.clone()
+    }
+
+    fn verify_preprocessed_root(
+        &self,
+        _context: &mut Context<Value>,
+        _preprocessed_root: HashValue<Var>,
+    ) {
+        // TODO(Gali): Implement according to different circuit statements.
     }
 }
 

@@ -60,6 +60,7 @@ pub fn verify_fixed_cairo_circuit(
         outputs,
         verifier_config.program,
         components,
+        config.fri.log_blowup_factor as u32,
     );
 
     let proof_vars = proof.guess(&mut context);

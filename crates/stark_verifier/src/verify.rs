@@ -71,6 +71,7 @@ pub fn verify<Value: IValue>(
     channel.mix_qm31s(context, pcs_config_vars);
 
     // Mix the trace commitments into the channel.
+    statement.verify_preprocessed_root(context, proof.preprocessed_root);
     channel.mix_commitment(context, proof.preprocessed_root);
 
     let component_log_sizes =
