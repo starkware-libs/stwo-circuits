@@ -1,20 +1,20 @@
 use cairo_air::CairoProof;
 use cairo_air::flat_claims::FlatClaim;
+use cairo_air::utils::{binary_deserialize_from_file, binary_serialize_to_file};
 use circuit_air::verify::{CircuitConfig, verify_circuit};
 use circuit_prover::prover::prove_circuit;
+use circuits::ivalue::qm31_from_u32s;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
 use itertools::Itertools;
 use itertools::zip_eq;
 use num_traits::Zero;
-use stwo::core::fields::m31::M31;
-use stwo::core::fields::qm31::QM31;
-use stwo::core::pcs::PcsConfig;
-
-use cairo_air::utils::{binary_deserialize_from_file, binary_serialize_to_file};
 use std::array;
 use std::collections::HashSet;
 use std::fs::{File, OpenOptions};
 use std::path::PathBuf;
+use stwo::core::fields::m31::M31;
+use stwo::core::fields::qm31::QM31;
+use stwo::core::pcs::PcsConfig;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 
 use crate::all_components::all_components;
@@ -29,7 +29,7 @@ use crate::verify::prepare_cairo_proof_for_circuit_verifier;
 use crate::verify::verify_fixed_cairo_circuit;
 use cairo_air::PreProcessedTraceVariant;
 use circuit_prover::prover::preprare_circuit_proof_for_circuit_verifier;
-use circuits::{context::Context, ivalue::NoValue, ops::Guess};
+use circuits::{blake::HashValue, context::Context, ivalue::NoValue, ops::Guess};
 use circuits_stark_verifier::{
     empty_component::EmptyComponent,
     proof::{ProofConfig, empty_proof},
@@ -277,6 +277,9 @@ fn test_verify_privacy() {
     verify_cairo_with_component_set(&cairo_proof, privacy_components()).unwrap();
 }
 
+pub const PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
+    [1503321232, 505830013, 1977032338, 322557681, 206825522, 15105381, 2108386724, 1111284849];
+
 #[test]
 fn test_verify_privacy_with_recursion() {
     let proof_path = get_proof_file_path("privacy");
@@ -292,11 +295,27 @@ fn test_verify_privacy_with_recursion() {
         &circuit_proof.pcs_config,
         INTERACTION_POW_BITS,
     );
+    let preprocessed_root = PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT;
+    let preprocessed_root = HashValue(
+        qm31_from_u32s(
+            preprocessed_root[0],
+            preprocessed_root[1],
+            preprocessed_root[2],
+            preprocessed_root[3],
+        ),
+        qm31_from_u32s(
+            preprocessed_root[4],
+            preprocessed_root[5],
+            preprocessed_root[6],
+            preprocessed_root[7],
+        ),
+    );
     let circuit_config = CircuitConfig {
         config: circuit_proof.pcs_config,
         output_addresses: circuit_proof.preprocessed_circuit.params.output_addresses.clone(),
         n_blake_gates: circuit_proof.preprocessed_circuit.params.n_blake_gates,
         preprocessed_column_ids,
+        preprocessed_root,
     };
     let (proof, public_data) =
         preprare_circuit_proof_for_circuit_verifier(circuit_proof, proof_config);

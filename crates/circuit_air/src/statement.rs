@@ -8,7 +8,7 @@ use circuits::blake::HashValue;
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::ivalue::IValue;
-use circuits::ops::{Guess, div};
+use circuits::ops::{Guess, div, eq as eq_op};
 use circuits::simd::Simd;
 use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
@@ -32,6 +32,8 @@ pub struct CircuitStatement<Value: IValue> {
     pub n_blake_gates: usize,
     /// Preprocessed column ids in the exact order used by the prover's preprocessed trace.
     pub preprocessed_column_ids: Vec<PreProcessedColumnId>,
+    /// The preprocessed trace root.
+    pub preprocessed_root: HashValue<QM31>,
 }
 impl<Value: IValue> CircuitStatement<Value> {
     pub fn new(
@@ -40,6 +42,7 @@ impl<Value: IValue> CircuitStatement<Value> {
         output_values: &[QM31],
         n_blake_gates: usize,
         preprocessed_column_ids: Vec<PreProcessedColumnId>,
+        preprocessed_root: HashValue<QM31>,
     ) -> Self {
         let output_addresses = output_addresses
             .iter()
@@ -53,6 +56,7 @@ impl<Value: IValue> CircuitStatement<Value> {
             output_values,
             n_blake_gates,
             preprocessed_column_ids,
+            preprocessed_root,
         }
     }
 }
@@ -122,10 +126,17 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
 
     fn verify_preprocessed_root(
         &self,
-        _context: &mut Context<Value>,
-        _preprocessed_root: HashValue<Var>,
+        context: &mut Context<Value>,
+        preprocessed_root: HashValue<Var>,
     ) {
-        // TODO(Gali): Implement according to different circuit statements.
+        println!("preprocessed_root 0 : {:?}", context.get(preprocessed_root.0));
+        println!("preprocessed_root 1 : {:?}", context.get(preprocessed_root.1));
+        let expected_preprocessed_root = HashValue(
+            context.constant(self.preprocessed_root.0),
+            context.constant(self.preprocessed_root.1),
+        );
+        eq_op(context, preprocessed_root.0, expected_preprocessed_root.0);
+        eq_op(context, preprocessed_root.1, expected_preprocessed_root.1);
     }
 }
 
