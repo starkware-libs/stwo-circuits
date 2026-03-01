@@ -7,6 +7,7 @@ use circuits_stark_verifier::fri_proof::{FriCommitProof, FriProof};
 use circuits_stark_verifier::merkle::{AuthPath, AuthPaths};
 use circuits_stark_verifier::oods::EvalDomainSamples;
 use circuits_stark_verifier::proof::{Claim, InteractionAtOods, Proof};
+use circuits_stark_verifier::verify::LOG_SIZE_BITS;
 
 pub trait CircuitSerialize {
     fn serialize(&self, output: &mut Vec<u32>);
@@ -93,9 +94,44 @@ impl CircuitSerialize for HashValue<QM31> {
 impl CircuitSerialize for Claim<QM31> {
     fn serialize(&self, output: &mut Vec<u32>) {
         let Self { packed_enable_bits, packed_component_log_sizes, claimed_sums } = self;
-        packed_enable_bits.serialize(output);
-        packed_component_log_sizes.serialize(output);
-        claimed_sums.serialize(output);
+
+        // Pack enable bits: 32 enable bits per u32. Each QM31 holds 4 enable bits, so chunks of 8
+        // QM31s fill one u32.
+        for chunk in packed_enable_bits.chunks(8) {
+            let mut packed = 0u32;
+            for (qm31_idx, qm31) in chunk.iter().enumerate() {
+                for (m31_idx, m31) in qm31.to_m31_array().into_iter().enumerate() {
+                    if m31.0 != 0 {
+                        packed |= 1 << (qm31_idx * 4 + m31_idx);
+                    }
+                }
+            }
+            output.push(packed);
+        }
+
+        // Pack log sizes: 4 per u32 (requires `LOG_SIZE_BITS` <= 32 / 4 = 8).
+        assert!(LOG_SIZE_BITS as usize <= 32 / 4);
+        for qm31 in packed_component_log_sizes {
+            let mut packed = 0u32;
+            for (i, m31) in qm31.to_m31_array().into_iter().enumerate() {
+                packed |= (m31.0 & 0xFF) << (i * 8);
+            }
+            output.push(packed);
+        }
+
+        // Only serialize claimed sums for enabled components (disabled have zero claimed sum).
+        let mut claimed_sum_idx = 0;
+        for qm31 in packed_enable_bits {
+            for m31 in qm31.to_m31_array() {
+                if claimed_sum_idx >= claimed_sums.len() {
+                    break;
+                }
+                if m31.0 != 0 {
+                    claimed_sums[claimed_sum_idx].serialize(output);
+                }
+                claimed_sum_idx += 1;
+            }
+        }
     }
 }
 

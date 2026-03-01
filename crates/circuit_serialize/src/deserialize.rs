@@ -1,5 +1,6 @@
 use std::fmt;
 
+use num_traits::Zero;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 
@@ -9,6 +10,7 @@ use circuits_stark_verifier::fri_proof::{FriCommitProof, FriConfig, FriProof};
 use circuits_stark_verifier::merkle::{AuthPath, AuthPaths};
 use circuits_stark_verifier::oods::{EvalDomainSamples, N_COMPOSITION_COLUMNS};
 use circuits_stark_verifier::proof::{Claim, InteractionAtOods, Proof, ProofConfig};
+use circuits_stark_verifier::proof_from_stark_proof::{pack_component_log_sizes, pack_enable_bits};
 
 #[derive(Debug)]
 pub struct DeserializeError;
@@ -125,10 +127,46 @@ pub fn deserialize_proof_with_config(
 }
 
 fn deserialize_claim(data: &mut &[u32], config: &ProofConfig) -> DeserializeResult<Claim<QM31>> {
-    // TODO(Gali): Serialize more efficiently.
-    let packed_enable_bits = deserialize_vec(data, config.n_components.div_ceil(4))?;
-    let packed_component_log_sizes = deserialize_vec(data, config.n_components.div_ceil(4))?;
-    let claimed_sums = deserialize_vec(data, config.n_components)?;
+    let n_components = config.n_components;
+
+    // Unpack enable bits (32 enable bits per u32).
+    let n_enable_u32s = n_components.div_ceil(32);
+    let mut enable_bits = Vec::with_capacity(n_components);
+    for i in 0..n_enable_u32s {
+        let Some(&[packed]) = data.split_off(..1) else {
+            return Err(DeserializeError);
+        };
+        let bits_in_word = std::cmp::min(32, n_components - i * 32);
+        for bit_idx in 0..bits_in_word {
+            enable_bits.push((packed >> bit_idx) & 1 != 0);
+        }
+    }
+    let packed_enable_bits = pack_enable_bits(&enable_bits);
+
+    // Unpack log sizes from packed u32s (4 per u32, 8 bits each).
+    let n_log_size_u32s = n_components.div_ceil(4);
+    let mut log_sizes = Vec::with_capacity(n_components);
+    for i in 0..n_log_size_u32s {
+        let Some(&[packed]) = data.split_off(..1) else {
+            return Err(DeserializeError);
+        };
+        let sizes_in_word = std::cmp::min(4, n_components - i * 4);
+        for byte_idx in 0..sizes_in_word {
+            log_sizes.push((packed >> (byte_idx * 8)) & 0xFF);
+        }
+    }
+    let packed_component_log_sizes = pack_component_log_sizes(&log_sizes);
+
+    // Only enabled components have serialized claimed sums; disabled get zero.
+    let mut claimed_sums = Vec::with_capacity(n_components);
+    for &enabled in &enable_bits {
+        if enabled {
+            claimed_sums.push(QM31::deserialize(data)?);
+        } else {
+            claimed_sums.push(QM31::zero());
+        }
+    }
+
     Ok(Claim { packed_enable_bits, packed_component_log_sizes, claimed_sums })
 }
 
