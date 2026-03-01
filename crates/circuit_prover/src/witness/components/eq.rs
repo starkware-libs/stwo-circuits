@@ -120,7 +120,7 @@ pub fn write_interaction_trace(
     lookup_data: LookupData,
     common_lookup_elements: &relations::CommonLookupElements,
 ) -> (Vec<CircleEvaluation<SimdBackend, M31, BitReversedOrder>>, SecureField) {
-    let mut logup_gen = LogupTraceGenerator::new(log_size);
+    let mut logup_gen = unsafe { LogupTraceGenerator::uninitialized(log_size) };
 
     // Sum logup terms in pairs.
     let mut col_gen = logup_gen.new_col();

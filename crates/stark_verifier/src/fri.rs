@@ -38,7 +38,7 @@ pub fn fri_decommit<Value: IValue>(
     proof: &FriProof<Var>,
     config: &FriConfig,
     fri_input: &[Var],
-    bits: &[Vec<Var>],
+    mut bits: &[Vec<Var>],
     points: &CirclePoint<Simd>,
     alphas: &[Var],
 ) {

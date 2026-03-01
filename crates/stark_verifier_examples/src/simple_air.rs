@@ -149,7 +149,7 @@ pub fn generate_interaction_trace(
     lookup_elements: &LookupElements<2>,
 ) -> (ColumnVec<CircleEvaluation<SimdBackend, BaseField, BitReversedOrder>>, SecureField) {
     let log_instances = trace[0].values.length.ilog2();
-    let mut logup_gen = LogupTraceGenerator::new(log_instances);
+    let mut logup_gen = unsafe { LogupTraceGenerator::uninitialized(log_instances) };
 
     let mut col_gen = logup_gen.new_col();
     for vec_row in 0..(1 << (log_instances - LOG_N_LANES)) {
