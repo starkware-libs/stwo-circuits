@@ -5,7 +5,7 @@ use cairo_air::components::memory_address_to_id::MEMORY_ADDRESS_TO_ID_SPLIT;
 use cairo_air::relations::{
     MEMORY_ADDRESS_TO_ID_RELATION_ID, MEMORY_ID_TO_BIG_RELATION_ID, OPCODES_RELATION_ID,
 };
-use circuits::blake::blake;
+use circuits::blake::{HashValue, blake};
 use circuits::eval;
 use circuits::extract_bits::extract_bits;
 use circuits::ops::{Guess, eq, output};
@@ -149,6 +149,7 @@ pub struct CairoStatement<Value: IValue> {
     pub public_data: PublicData<Var>,
     pub program: Vec<[M31; MEMORY_VALUES_LIMBS]>,
     pub outputs: Vec<[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]>,
+    pub preprocessed_root: HashValue<QM31>,
 }
 
 impl<Value: IValue> CairoStatement<Value> {
@@ -282,9 +283,10 @@ impl<Value: IValue> CairoStatement<Value> {
         public_data: Vec<M31>,
         outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
         program: Vec<[M31; MEMORY_VALUES_LIMBS]>,
+        preprocessed_root: HashValue<QM31>,
     ) -> Self {
         let components = all_components().into_values().collect_vec();
-        Self::new_ex(context, public_data, outputs, program, components)
+        Self::new_ex(context, public_data, outputs, program, components, preprocessed_root)
     }
 
     pub fn new_ex(
@@ -293,6 +295,7 @@ impl<Value: IValue> CairoStatement<Value> {
         outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
         program: Vec<[M31; MEMORY_VALUES_LIMBS]>,
         components: Vec<Box<dyn CircuitEval<Value>>>,
+        preprocessed_root: HashValue<QM31>,
     ) -> Self {
         let packed_public_data = pack_into_qm31s(public_data.iter().cloned())
             .into_iter()
@@ -315,7 +318,7 @@ impl<Value: IValue> CairoStatement<Value> {
             })
             .collect_vec();
 
-        Self { packed_public_data, public_data, program, outputs, components }
+        Self { packed_public_data, public_data, program, outputs, components, preprocessed_root }
     }
 }
 
@@ -450,6 +453,19 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
             &shifted_opcode_relation_uses,
             (29 - RELATION_USES_NUM_ROWS_SHIFT).try_into().unwrap(),
         );
+    }
+
+    fn verify_preprocessed_root(
+        &self,
+        context: &mut Context<Value>,
+        preprocessed_root: HashValue<Var>,
+    ) {
+        let expected_preprocessed_root = HashValue(
+            context.constant(self.preprocessed_root.0),
+            context.constant(self.preprocessed_root.1),
+        );
+        eq(context, preprocessed_root.0, expected_preprocessed_root.0);
+        eq(context, preprocessed_root.1, expected_preprocessed_root.1);
     }
 }
 

@@ -1,3 +1,4 @@
+use circuits::blake::HashValue;
 use itertools::zip_eq;
 use num_traits::One;
 use stwo::core::fields::m31::M31;
@@ -7,8 +8,8 @@ use super::simple_air::FIB_SEQUENCE_LENGTH;
 use crate::simple_air::{FIB_PREPROCESSED_COLUMNS, LOG_SIZE_LONG, LOG_SIZE_SHORT};
 use circuits::context::{Context, Var};
 use circuits::eval;
-use circuits::ivalue::IValue;
-use circuits::ops::div;
+use circuits::ivalue::{IValue, qm31_from_u32s};
+use circuits::ops::{div, eq};
 use circuits::simd::Simd;
 use circuits_stark_verifier::constraint_eval::RelationUse;
 use circuits_stark_verifier::constraint_eval::{
@@ -157,5 +158,18 @@ impl<Value: IValue> Statement<Value> for SimpleStatement<Value> {
             .iter()
             .map(|id| PreProcessedColumnId { id: id.to_string() })
             .collect()
+    }
+
+    fn verify_preprocessed_root(
+        &self,
+        context: &mut Context<Value>,
+        preprocessed_root: HashValue<Var>,
+    ) {
+        let expected_preprocessed_root = HashValue(
+            context.constant(qm31_from_u32s(709984722, 1794174263, 414815104, 733903951)),
+            context.constant(qm31_from_u32s(1522975159, 1233861941, 1489692661, 512084637)),
+        );
+        eq(context, preprocessed_root.0, expected_preprocessed_root.0);
+        eq(context, preprocessed_root.1, expected_preprocessed_root.1);
     }
 }

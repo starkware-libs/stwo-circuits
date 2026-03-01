@@ -3,7 +3,9 @@ use crate::statement::{CairoStatement, MEMORY_VALUES_LIMBS};
 use cairo_air::CairoProof;
 use cairo_air::air::PublicData;
 use cairo_air::flat_claims::FlatClaim;
+use circuits::blake::HashValue;
 use circuits::context::{Context, TraceContext};
+use circuits::ivalue::qm31_from_u32s;
 use circuits::ops::Guess;
 use circuits_stark_verifier::empty_component::EmptyComponent;
 use circuits_stark_verifier::proof::{Claim, Proof, ProofConfig};
@@ -26,10 +28,33 @@ use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 /// 1 << (24 + INTERACTION_POW_BITS) relation terms.
 pub const INTERACTION_POW_BITS: u32 = 24;
 
+/// The preprocessed roots are taken from stwo_cairo's
+/// `export_circuit_cairo_verifier_preprocessed_roots()`, where the small canonical preproessed
+/// trace is lifted to the lifting_log_size specified. Notice that lifting_log_size = 20 +
+/// log_blowup_factor.
+pub fn get_preprocessed_root(lifting_log_size: u32) -> HashValue<QM31> {
+    let root = match lifting_log_size {
+        21 => [
+            564120632, 1595734162, 1550883364, 1605077950, 129976625, 906430422, 812575238,
+            606882670,
+        ],
+        22 => [
+            2019947850, 1578675143, 1485624323, 207118193, 636087281, 1354843492, 2101876892,
+            721181021,
+        ],
+        _ => panic!("Unsupported lifting_log_size: {lifting_log_size}"),
+    };
+    HashValue(
+        qm31_from_u32s(root[0], root[1], root[2], root[3]),
+        qm31_from_u32s(root[4], root[5], root[6], root[7]),
+    )
+}
+
 pub struct CairoVerifierConfig {
     pub proof_config: ProofConfig,
     pub program: Vec<[M31; MEMORY_VALUES_LIMBS]>,
     pub n_outputs: usize,
+    pub preprocessed_root: HashValue<QM31>,
 }
 
 /// Verifies a [CairoProof] for a fixed [CairoVerifierConfig].
@@ -60,6 +85,7 @@ pub fn verify_fixed_cairo_circuit(
         outputs,
         verifier_config.program,
         components,
+        verifier_config.preprocessed_root,
     );
 
     let proof_vars = proof.guess(&mut context);
