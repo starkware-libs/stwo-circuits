@@ -5,7 +5,7 @@ use cairo_air::components::memory_address_to_id::MEMORY_ADDRESS_TO_ID_SPLIT;
 use cairo_air::relations::{
     MEMORY_ADDRESS_TO_ID_RELATION_ID, MEMORY_ID_TO_BIG_RELATION_ID, OPCODES_RELATION_ID,
 };
-use circuits::blake::blake;
+use circuits::blake::{HashValue, blake};
 use circuits::eval;
 use circuits::extract_bits::extract_bits;
 use circuits::ops::{Guess, eq, output};
@@ -44,6 +44,13 @@ pub const PUBLIC_DATA_LEN: usize =
 
 const LIMB_BITS: usize = 9;
 const SMALL_VALUE_BITS: u32 = 27;
+
+// The preprocessed roots are taken from stwo_cairo's
+// export_circuit_cairo_verifier_preprocessed_roots().
+const PREPROCESSED_ROOT_LOG_BLOWUP_1: [u32; 8] =
+    [564120632, 1595734162, 1550883364, 1605077950, 129976625, 906430422, 812575238, 606882670];
+const PREPROCESSED_ROOT_LOG_BLOWUP_2: [u32; 8] =
+    [2019947850, 1578675143, 1485624323, 207118193, 636087281, 1354843492, 2101876892, 721181021];
 
 pub struct CasmState<T> {
     pub pc: T,
@@ -149,6 +156,7 @@ pub struct CairoStatement<Value: IValue> {
     pub public_data: PublicData<Var>,
     pub program: Vec<[M31; MEMORY_VALUES_LIMBS]>,
     pub outputs: Vec<[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]>,
+    pub log_blowup_factor: u32,
 }
 
 impl<Value: IValue> CairoStatement<Value> {
@@ -282,9 +290,10 @@ impl<Value: IValue> CairoStatement<Value> {
         public_data: Vec<M31>,
         outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
         program: Vec<[M31; MEMORY_VALUES_LIMBS]>,
+        log_blowup_factor: u32,
     ) -> Self {
         let components = all_components().into_values().collect_vec();
-        Self::new_ex(context, public_data, outputs, program, components)
+        Self::new_ex(context, public_data, outputs, program, components, log_blowup_factor)
     }
 
     pub fn new_ex(
@@ -293,6 +302,7 @@ impl<Value: IValue> CairoStatement<Value> {
         outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
         program: Vec<[M31; MEMORY_VALUES_LIMBS]>,
         components: Vec<Box<dyn CircuitEval<Value>>>,
+        log_blowup_factor: u32,
     ) -> Self {
         let packed_public_data = pack_into_qm31s(public_data.iter().cloned())
             .into_iter()
@@ -315,7 +325,7 @@ impl<Value: IValue> CairoStatement<Value> {
             })
             .collect_vec();
 
-        Self { packed_public_data, public_data, program, outputs, components }
+        Self { packed_public_data, public_data, program, outputs, components, log_blowup_factor }
     }
 }
 
@@ -450,6 +460,24 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
             &shifted_opcode_relation_uses,
             (29 - RELATION_USES_NUM_ROWS_SHIFT).try_into().unwrap(),
         );
+    }
+
+    fn verify_preprocessed_root(
+        &self,
+        context: &mut Context<Value>,
+        preprocessed_root: HashValue<Var>,
+    ) {
+        let root = match self.log_blowup_factor {
+            1 => PREPROCESSED_ROOT_LOG_BLOWUP_1,
+            2 => PREPROCESSED_ROOT_LOG_BLOWUP_2,
+            _ => panic!("Unsupported log_blowup_factor: {}", self.log_blowup_factor),
+        };
+        let expected_preprocessed_root = HashValue(
+            context.constant(qm31_from_u32s(root[0], root[1], root[2], root[3])),
+            context.constant(qm31_from_u32s(root[4], root[5], root[6], root[7])),
+        );
+        eq(context, preprocessed_root.0, expected_preprocessed_root.0);
+        eq(context, preprocessed_root.1, expected_preprocessed_root.1);
     }
 }
 

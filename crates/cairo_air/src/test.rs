@@ -196,7 +196,13 @@ fn test_verify() {
     let flat_claim = vec![M31::zero(); PUBLIC_DATA_LEN + output_len + program_len];
     let outputs = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; output_len];
     let program = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; program_len];
-    let mut statement = CairoStatement::new(&mut novalue_context, flat_claim, outputs, program);
+    let mut statement = CairoStatement::new(
+        &mut novalue_context,
+        flat_claim,
+        outputs,
+        program,
+        pcs_config.fri_config.log_blowup_factor,
+    );
     // Remove the pedersen points table component since it requires long preprocessed columns, which
     // are not supported.
     let pedersen_points_index =
@@ -226,7 +232,7 @@ fn get_proof_file_path(test_name: &str) -> PathBuf {
 #[test]
 fn test_verify_all_opcodes() {
     let proof_path = get_proof_file_path("all_opcode_components");
-    let low_blowup_factor = 1;
+    let low_blowup_factor = 2;
 
     if std::env::var("FIX_PROOF").is_ok() {
         let compiled_program =
@@ -241,7 +247,7 @@ fn test_verify_all_opcodes() {
             },
             preprocessed_trace: PreProcessedTraceVariant::CanonicalSmall,
             channel_salt: 0,
-            store_polynomials_coefficients: false,
+            store_polynomials_coefficients: true,
             include_all_preprocessed_columns: true,
         };
         let cairo_proof = prove_cairo::<Blake2sM31MerkleChannel>(input, prover_params).unwrap();
