@@ -112,7 +112,6 @@ pub(crate) fn finalize_context(context: &mut Context<impl IValue>) {
     // TODO(Leo): consider storing these values at a fixed address.
     output(context, hash0);
     output(context, hash1);
-    // TODO(Gali): Hash the outputs (all variables that have no uses).
 
     // Padding the components to a power of two.
     pad_eq(context);

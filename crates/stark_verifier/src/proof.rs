@@ -240,7 +240,6 @@ pub struct Proof<T> {
     pub proof_of_work_nonce: T,
     pub interaction_pow_nonce: T,
     pub fri: FriProof<T>,
-    // TODO(lior): Add missing fields.
 }
 impl<T> Proof<T> {
     /// Validates that the size of the members of the struct are consistent with the config.
