@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use circuits::blake::HashValue;
 use stwo::core::circle::CirclePoint;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
@@ -36,6 +37,12 @@ pub trait Statement<Value: IValue> {
     fn get_components(&self) -> &[Box<dyn CircuitEval<Value>>];
 
     fn get_preprocessed_column_ids(&self) -> Vec<PreProcessedColumnId>;
+
+    fn verify_preprocessed_root(
+        &self,
+        context: &mut Context<Value>,
+        preprocessed_root: HashValue<Var>,
+    );
 
     /// Computes the part of the logup sum that is determined by the (public) statement rather than
     /// by the witness.
