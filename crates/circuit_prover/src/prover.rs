@@ -30,6 +30,7 @@ use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 use stwo::prover::CommitmentSchemeProver;
 use stwo::prover::ComponentProver;
 use stwo::prover::backend::simd::SimdBackend;
+use stwo::prover::mempool::BaseColumnPool;
 use stwo::prover::poly::circle::PolyOps;
 use stwo::prover::{ProvingError, prove_ex};
 
@@ -86,12 +87,13 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&context.circuit);
     let context_values = context.values();
 
-    prove_circuit_assignment(context_values, preprocessed_circuit)
+    prove_circuit_assignment(context_values, preprocessed_circuit, &mut BaseColumnPool::new())
 }
 
 pub fn prove_circuit_assignment(
     values: &[QM31],
     preprocessed_circuit: PreprocessedCircuit,
+    base_column_pool: &mut BaseColumnPool<SimdBackend>,
 ) -> CircuitProof {
     let PreprocessedCircuit { preprocessed_trace, params } = &preprocessed_circuit;
     let CircuitParams {
@@ -134,7 +136,11 @@ pub fn prove_circuit_assignment(
     channel.mix_felts(&[channel_salt.into()]);
     pcs_config.mix_into(channel);
     let mut commitment_scheme =
-        CommitmentSchemeProver::<SimdBackend, Blake2sM31MerkleChannel>::new(pcs_config, &twiddles);
+        CommitmentSchemeProver::<SimdBackend, Blake2sM31MerkleChannel>::with_memory_pool(
+            pcs_config,
+            &twiddles,
+            base_column_pool,
+        );
 
     commitment_scheme.set_store_polynomials_coefficients();
 
