@@ -1,4 +1,5 @@
 use circuits::{
+    blake::HashValue,
     context::{Context, TraceContext},
     ops::Guess,
 };
@@ -20,6 +21,7 @@ pub struct CircuitConfig {
     pub output_addresses: Vec<usize>,
     pub n_blake_gates: usize,
     pub preprocessed_column_ids: Vec<PreProcessedColumnId>,
+    pub preprocessed_root: HashValue<QM31>,
 }
 
 pub fn verify_circuit(
@@ -34,6 +36,7 @@ pub fn verify_circuit(
         &public_data.output_values,
         circuit_config.n_blake_gates,
         circuit_config.preprocessed_column_ids.clone(),
+        circuit_config.preprocessed_root,
     );
 
     let proof_config =
