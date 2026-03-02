@@ -105,7 +105,7 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
     context.finalize_guessed_vars();
 
     // Make sure we got the same circuit.
-    assert_eq!(context.circuit, novalue_circuit);
+    assert!(format!("{:?}", context.circuit) == format!("{novalue_circuit:?}"), "Circuits differ");
 
     novalue_circuit.check_yields();
     println!("Stats: {:?}", context.stats);

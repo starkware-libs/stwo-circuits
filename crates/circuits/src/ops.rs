@@ -1,8 +1,8 @@
 use itertools::Itertools;
 use stwo::core::circle::CirclePoint;
 
-use crate::circuit::{Add, Eq, Mul, Output, Permutation, PointwiseMul, Sub};
-use crate::context::{Context, Var};
+use crate::circuit::{Add, Eq, Mul, Output, Permutation, PointwiseMul, Sub, Var};
+use crate::context::Context;
 use crate::ivalue::{IValue, qm31_from_u32s};
 
 #[cfg(test)]
@@ -60,14 +60,14 @@ pub fn eq<Value: IValue>(context: &mut Context<Value>, a: Var, b: Var) {
     if context.assert_eq_on_eval {
         assert_eq!(context.get(a), context.get(b), "Eq failed: Vars {a:?} and {b:?}");
     }
-    context.circuit.eq.push(Eq { in0: a.idx, in1: b.idx });
+    context.circuit.eq.push(Eq { in0: a, in1: b });
 }
 
 /// Adds an addition gate to the circuit, and returns the output variable.
 pub fn add(context: &mut Context<impl IValue>, a: Var, b: Var) -> Var {
     context.stats.add += 1;
     let out = context.new_var(context.get(a) + context.get(b));
-    context.circuit.add.push(Add { in0: a.idx, in1: b.idx, out: out.idx });
+    context.circuit.add.push(Add { in0: a, in1: b, out });
     out
 }
 
@@ -75,7 +75,7 @@ pub fn add(context: &mut Context<impl IValue>, a: Var, b: Var) -> Var {
 pub fn sub(context: &mut Context<impl IValue>, a: Var, b: Var) -> Var {
     context.stats.sub += 1;
     let out = context.new_var(context.get(a) - context.get(b));
-    context.circuit.sub.push(Sub { in0: a.idx, in1: b.idx, out: out.idx });
+    context.circuit.sub.push(Sub { in0: a, in1: b, out });
     out
 }
 
@@ -83,7 +83,7 @@ pub fn sub(context: &mut Context<impl IValue>, a: Var, b: Var) -> Var {
 pub fn mul(context: &mut Context<impl IValue>, a: Var, b: Var) -> Var {
     context.stats.mul += 1;
     let out = context.new_var(context.get(a) * context.get(b));
-    context.circuit.mul.push(Mul { in0: a.idx, in1: b.idx, out: out.idx });
+    context.circuit.mul.push(Mul { in0: a, in1: b, out });
     out
 }
 
@@ -102,7 +102,7 @@ pub fn div(context: &mut Context<impl IValue>, a: Var, b: Var) -> Var {
 pub fn pointwise_mul<Value: IValue>(context: &mut Context<Value>, a: Var, b: Var) -> Var {
     context.stats.pointwise_mul += 1;
     let out = context.new_var(Value::pointwise_mul(context.get(a), context.get(b)));
-    context.circuit.pointwise_mul.push(PointwiseMul { in0: a.idx, in1: b.idx, out: out.idx });
+    context.circuit.pointwise_mul.push(PointwiseMul { in0: a, in1: b, out });
     out
 }
 
@@ -116,17 +116,17 @@ pub fn permute<Value: IValue>(
         .iter()
         .map(|value| context.new_var(*value))
         .collect();
-    context.circuit.permutation.push(Permutation {
-        inputs: inputs.iter().map(|var| var.idx).collect(),
-        outputs: outputs.iter().map(|var| var.idx).collect(),
-    });
+    context
+        .circuit
+        .permutation
+        .push(Permutation { inputs: inputs.to_vec(), outputs: outputs.to_vec() });
     outputs
 }
 
 /// Adds an output gate to the circuit.
 pub fn output<Value: IValue>(context: &mut Context<Value>, a: Var) {
     context.stats.outputs += 1;
-    context.circuit.output.push(Output { in0: a.idx });
+    context.circuit.output.push(Output { in0: a });
 }
 
 /// Returns `(a, b)` if `selector` is 0, and `(b, a)` if `selector` is 1.
@@ -149,7 +149,7 @@ pub fn conj(c: &mut Context<impl IValue>, a: Var) -> Var {
 pub fn guess<Value: IValue>(context: &mut Context<Value>, value: Value) -> Var {
     context.stats.guess += 1;
     let out = context.new_var(value);
-    context.guessed_vars.as_mut().unwrap().push(out.idx);
+    context.guessed_vars.as_mut().unwrap().push(out);
     out
 }
 
