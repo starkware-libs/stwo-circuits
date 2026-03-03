@@ -24,6 +24,7 @@ use crate::privacy::privacy_components;
 use crate::statement::CairoStatement;
 use crate::statement::{MEMORY_VALUES_LIMBS, PUBLIC_DATA_LEN};
 use crate::verify::CairoVerifierConfig;
+use crate::verify::build_cairo_verifier_circuit;
 use crate::verify::get_preprocessed_root;
 use crate::verify::prepare_cairo_proof_for_circuit_verifier;
 use crate::verify::verify_fixed_cairo_circuit;
@@ -188,6 +189,50 @@ fn verify_cairo_with_component_set(
     verify_fixed_cairo_circuit(verifier_config, proof, public_claim, outputs)
 }
 
+/// Returns a fixed [CairoVerifierConfig] for the privacy proof setup.
+pub fn privacy_cairo_verifier_config() -> CairoVerifierConfig {
+    let privacy_set = privacy_components();
+    let components: Vec<Box<dyn CircuitEval<NoValue>>> = all_components::<NoValue>()
+        .into_iter()
+        .map(|(name, component)| -> Box<dyn CircuitEval<NoValue>> {
+            if privacy_set.contains(name) { component } else { Box::new(EmptyComponent {}) }
+        })
+        .collect_vec();
+
+    let pcs_config = PcsConfig {
+        pow_bits: 26,
+        fri_config: FriConfig::new(0, 2, 35, 1),
+        lifting_log_size: Some(22),
+    };
+
+    let proof_config = ProofConfig::from_components(
+        &components,
+        PREPROCESSED_COLUMNS_ORDER.len(),
+        &pcs_config,
+        INTERACTION_POW_BITS,
+    );
+
+    let program_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../test_data/privacy/program.txt");
+    let program_text =
+        std::fs::read_to_string(program_path).expect("failed to read privacy program file");
+    let program = program_text
+        .lines()
+        .filter(|l| !l.is_empty())
+        .map(|l| l.parse::<u32>().unwrap())
+        .collect_vec()
+        .chunks_exact(MEMORY_VALUES_LIMBS)
+        .map(|chunk| array::from_fn(|i| M31::from_u32_unchecked(chunk[i])))
+        .collect_vec();
+
+    CairoVerifierConfig {
+        preprocessed_root: get_preprocessed_root(22),
+        proof_config,
+        program,
+        n_outputs: 1,
+    }
+}
+
 #[test]
 fn test_verify() {
     let mut pcs_config = PcsConfig::default();
@@ -274,7 +319,21 @@ fn test_verify_privacy() {
     let proof_file = File::open(proof_path).unwrap();
     let cairo_proof = binary_deserialize_from_file(&proof_file).unwrap();
 
-    verify_cairo_with_component_set(&cairo_proof, privacy_components()).unwrap();
+    // Verify the proof.
+    let context = verify_cairo_with_component_set(&cairo_proof, privacy_components()).unwrap();
+
+    // Build the verifier circuit via NoValue.
+    let const_config = privacy_cairo_verifier_config();
+    let novalue_context = build_cairo_verifier_circuit(&const_config);
+
+    // Check that building the verifier circuit via NoValue produces the same topology.
+    // TODO(Gali): Consider comparing unused and maybe unused vars.
+    assert_eq!(context.circuit, novalue_context.circuit);
+    assert_eq!(context.stats, novalue_context.stats);
+    assert_eq!(context.guessed_vars, novalue_context.guessed_vars);
+    let constants_a = context.constants().iter().map(|(k, v)| (*k, v.idx)).collect_vec();
+    let constants_b = novalue_context.constants().iter().map(|(k, v)| (*k, v.idx)).collect_vec();
+    assert_eq!(constants_a, constants_b);
 }
 
 pub const PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
