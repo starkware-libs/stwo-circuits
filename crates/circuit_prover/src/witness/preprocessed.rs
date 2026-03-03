@@ -453,7 +453,7 @@ impl PreprocessedCircuit {
     }
 
     /// Builds the preprocessed circuit data (trace + params) from a finalized circuit.
-    fn from_finalized_circuit(circuit: &Circuit) -> Self {
+    pub fn from_finalized_circuit(circuit: &Circuit) -> Self {
         let mut pp_trace = PreProcessedTrace {
             columns: vec![],
             column_ids: vec![],

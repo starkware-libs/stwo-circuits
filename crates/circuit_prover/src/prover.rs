@@ -44,7 +44,6 @@ pub struct CircuitParams {
 
 pub struct CircuitProof {
     pub pcs_config: PcsConfig,
-    pub preprocessed_circuit: PreprocessedCircuit,
     pub claim: CircuitClaim,
     pub interaction_pow_nonce: u64,
     pub interaction_claim: CircuitInteractionClaim,
@@ -82,14 +81,14 @@ pub fn to_component_provers(
 
 pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(context);
-    prove_circuit_assignment(context.values(), preprocessed_circuit)
+    prove_circuit_assignment(context.values(), &preprocessed_circuit)
 }
 
 pub fn prove_circuit_assignment(
     values: &[QM31],
-    preprocessed_circuit: PreprocessedCircuit,
+    preprocessed_circuit: &PreprocessedCircuit,
 ) -> CircuitProof {
-    let PreprocessedCircuit { preprocessed_trace, params } = &preprocessed_circuit;
+    let PreprocessedCircuit { preprocessed_trace, params } = preprocessed_circuit;
     let CircuitParams {
         trace_log_size,
         first_permutation_row,
@@ -192,7 +191,6 @@ pub fn prove_circuit_assignment(
     let proof = prove_ex::<SimdBackend, _>(&components, channel, commitment_scheme, true);
     CircuitProof {
         pcs_config,
-        preprocessed_circuit,
         claim,
         interaction_pow_nonce,
         interaction_claim,
@@ -208,7 +206,6 @@ pub fn preprare_circuit_proof_for_circuit_verifier(
 ) -> (Proof<QM31>, CircuitPublicData) {
     let CircuitProof {
         pcs_config: _,
-        preprocessed_circuit: _,
         claim,
         interaction_pow_nonce,
         interaction_claim,
