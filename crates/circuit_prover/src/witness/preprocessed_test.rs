@@ -32,7 +32,7 @@ fn test_preprocess_circuit() {
     }
     circuit.n_vars = 56;
 
-    let preprocessed_trace = PreprocessedCircuit::preprocess_circuit(&circuit)
+    let preprocessed_trace = PreprocessedCircuit::from_finalized_circuit(&circuit)
         .preprocessed_trace
         .get_trace::<SimdBackend>();
 

@@ -1,5 +1,6 @@
+use crate::finalize::finalize_context;
 use crate::prover::preprare_circuit_proof_for_circuit_verifier;
-use crate::prover::{CircuitProof, finalize_context, prove_circuit};
+use crate::prover::{CircuitProof, prove_circuit};
 use circuit_air::CircuitInteractionElements;
 use circuit_air::lookup_sum;
 use circuit_air::statement::{INTERACTION_POW_BITS, all_circuit_components};
