@@ -1,52 +1,39 @@
-use cairo_air::CairoProof;
-use cairo_air::flat_claims::FlatClaim;
-use cairo_air::utils::{binary_deserialize_from_file, binary_serialize_to_file};
-use circuit_air::verify::{CircuitConfig, verify_circuit};
-use circuit_prover::prover::prove_circuit;
-use circuits::ivalue::qm31_from_u32s;
-use circuits_stark_verifier::constraint_eval::CircuitEval;
-use itertools::Itertools;
-use itertools::zip_eq;
-use num_traits::Zero;
 use std::array;
 use std::collections::HashSet;
 use std::fs::{File, OpenOptions};
-use std::path::PathBuf;
+
+use cairo_air::CairoProof;
+use cairo_air::PreProcessedTraceVariant;
+use cairo_air::flat_claims::FlatClaim;
+use cairo_air::utils::{binary_deserialize_from_file, binary_serialize_to_file};
+use cairo_air::verifier::INTERACTION_POW_BITS;
+use circuits::context::{Context, Var};
+use circuits::ivalue::{IValue, NoValue};
+use circuits::ops::Guess;
+use circuits_stark_verifier::constraint_eval::{CircuitEval, ComponentDataTrait};
+use circuits_stark_verifier::empty_component::EmptyComponent;
+use circuits_stark_verifier::proof::{InteractionAtOods, ProofConfig, empty_proof};
+use circuits_stark_verifier::verify::verify;
+use itertools::Itertools;
+use itertools::zip_eq;
+use num_traits::Zero;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
-use stwo::core::pcs::PcsConfig;
-use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
-
-use crate::all_components::all_components;
-use crate::preprocessed_columns::MAX_SEQUENCE_LOG_SIZE;
-use crate::preprocessed_columns::PREPROCESSED_COLUMNS_ORDER;
-use crate::privacy::privacy_components;
-use crate::statement::CairoStatement;
-use crate::statement::{MEMORY_VALUES_LIMBS, PUBLIC_DATA_LEN};
-use crate::verify::CairoVerifierConfig;
-use crate::verify::get_preprocessed_root;
-use crate::verify::prepare_cairo_proof_for_circuit_verifier;
-use crate::verify::verify_fixed_cairo_circuit;
-use cairo_air::PreProcessedTraceVariant;
-use circuit_prover::prover::preprare_circuit_proof_for_circuit_verifier;
-use circuits::{blake::HashValue, context::Context, ivalue::NoValue, ops::Guess};
-use circuits_stark_verifier::{
-    empty_component::EmptyComponent,
-    proof::{ProofConfig, empty_proof},
-    verify::verify,
-};
 use stwo::core::fri::FriConfig;
-use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
+use stwo::core::pcs::PcsConfig;
+use stwo::core::vcs_lifted::blake2_merkle::{Blake2sM31MerkleChannel, Blake2sM31MerkleHasher};
 use stwo_cairo_dev_utils::utils::get_compiled_cairo_program_path;
 use stwo_cairo_dev_utils::vm_utils::{ProgramType, run_and_adapt};
 use stwo_cairo_prover::prover::{ChannelHash, ProverParameters, prove_cairo};
 
-use cairo_air::verifier::INTERACTION_POW_BITS;
-use circuit_air::statement::all_circuit_components;
-use circuits::context::Var;
-use circuits::ivalue::IValue;
-use circuits_stark_verifier::constraint_eval::ComponentDataTrait;
-use circuits_stark_verifier::proof::InteractionAtOods;
+use crate::all_components::all_components;
+use crate::preprocessed_columns::{MAX_SEQUENCE_LOG_SIZE, PREPROCESSED_COLUMNS_ORDER};
+use crate::statement::{CairoStatement, MEMORY_VALUES_LIMBS, PUBLIC_DATA_LEN};
+use crate::utils::get_proof_file_path;
+use crate::verify::{
+    CairoVerifierConfig, get_preprocessed_root, prepare_cairo_proof_for_circuit_verifier,
+    verify_fixed_cairo_circuit,
+};
 
 pub struct TestComponentData {
     trace: Vec<Var>,
@@ -122,7 +109,7 @@ impl<Value: IValue> ComponentDataTrait<Value> for TestComponentData {
 }
 
 /// Circuit Verifies a [CairoProof].
-fn verify_cairo(proof: &CairoProof<Blake2sM31MerkleHasher>) -> Result<Context<QM31>, String> {
+pub fn verify_cairo(proof: &CairoProof<Blake2sM31MerkleHasher>) -> Result<Context<QM31>, String> {
     let FlatClaim { component_enable_bits, component_log_sizes: _, public_data: _ } =
         proof.claim.flatten_claim();
 
@@ -136,7 +123,7 @@ fn verify_cairo(proof: &CairoProof<Blake2sM31MerkleHasher>) -> Result<Context<QM
 }
 
 /// Verifies a [CairoProof] with a given set of components.
-fn verify_cairo_with_component_set(
+pub fn verify_cairo_with_component_set(
     cairo_proof: &CairoProof<Blake2sM31MerkleHasher>,
     component_set: HashSet<&str>,
 ) -> Result<Context<QM31>, String> {
@@ -226,13 +213,6 @@ fn test_verify() {
     println!("Stats: {:?}", novalue_context.stats);
 }
 
-fn get_proof_file_path(test_name: &str) -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../test_data/")
-        .join(test_name)
-        .join("proof.bin")
-}
-
 #[test]
 fn test_verify_all_opcodes() {
     let proof_path = get_proof_file_path("all_opcode_components");
@@ -266,58 +246,4 @@ fn test_verify_all_opcodes() {
 
     let context = verify_cairo(&cairo_proof).unwrap();
     println!("Stats: {:?}", context.stats);
-}
-
-#[test]
-fn test_verify_privacy() {
-    let proof_path = get_proof_file_path("privacy");
-    let proof_file = File::open(proof_path).unwrap();
-    let cairo_proof = binary_deserialize_from_file(&proof_file).unwrap();
-
-    verify_cairo_with_component_set(&cairo_proof, privacy_components()).unwrap();
-}
-
-pub const PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
-    [1503321232, 505830013, 1977032338, 322557681, 206825522, 15105381, 2108386724, 1111284849];
-
-#[test]
-fn test_verify_privacy_with_recursion() {
-    let proof_path = get_proof_file_path("privacy");
-    let proof_file = File::open(proof_path).unwrap();
-    let cairo_proof = binary_deserialize_from_file(&proof_file).unwrap();
-
-    let mut context = verify_cairo(&cairo_proof).unwrap();
-    let circuit_proof = prove_circuit(&mut context);
-    let preprocessed_column_ids = circuit_proof.preprocessed_circuit.preprocessed_trace.ids();
-    let proof_config = ProofConfig::from_components(
-        &all_circuit_components::<QM31>(),
-        preprocessed_column_ids.len(),
-        &circuit_proof.pcs_config,
-        INTERACTION_POW_BITS,
-    );
-    let preprocessed_root = PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT;
-    let preprocessed_root = HashValue(
-        qm31_from_u32s(
-            preprocessed_root[0],
-            preprocessed_root[1],
-            preprocessed_root[2],
-            preprocessed_root[3],
-        ),
-        qm31_from_u32s(
-            preprocessed_root[4],
-            preprocessed_root[5],
-            preprocessed_root[6],
-            preprocessed_root[7],
-        ),
-    );
-    let circuit_config = CircuitConfig {
-        config: circuit_proof.pcs_config,
-        output_addresses: circuit_proof.preprocessed_circuit.params.output_addresses.clone(),
-        n_blake_gates: circuit_proof.preprocessed_circuit.params.n_blake_gates,
-        preprocessed_column_ids,
-        preprocessed_root,
-    };
-    let (proof, public_data) =
-        preprare_circuit_proof_for_circuit_verifier(circuit_proof, proof_config);
-    verify_circuit(circuit_config, proof, public_data).unwrap();
 }

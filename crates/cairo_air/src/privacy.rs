@@ -1,4 +1,58 @@
+use cairo_air::verifier::INTERACTION_POW_BITS;
+use circuits::ivalue::NoValue;
+use circuits_stark_verifier::constraint_eval::CircuitEval;
+use circuits_stark_verifier::empty_component::EmptyComponent;
+use circuits_stark_verifier::proof::ProofConfig;
+use itertools::Itertools;
 use std::collections::HashSet;
+use stwo::core::fri::FriConfig;
+use stwo::core::pcs::PcsConfig;
+
+use crate::all_components::all_components;
+use crate::preprocessed_columns::PREPROCESSED_COLUMNS_ORDER;
+use crate::utils::{get_test_data_dir, load_program};
+use crate::verify::{CairoVerifierConfig, get_preprocessed_root};
+
+#[cfg(test)]
+#[path = "privacy_test.rs"]
+pub mod test;
+
+pub const PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
+    [1503321232, 505830013, 1977032338, 322557681, 206825522, 15105381, 2108386724, 1111284849];
+
+/// Returns a fixed [CairoVerifierConfig] for the privacy proof setup.
+pub fn privacy_cairo_verifier_config() -> CairoVerifierConfig {
+    let privacy_set = privacy_components();
+    let components: Vec<Box<dyn CircuitEval<NoValue>>> = all_components::<NoValue>()
+        .into_iter()
+        .map(|(name, component)| -> Box<dyn CircuitEval<NoValue>> {
+            if privacy_set.contains(name) { component } else { Box::new(EmptyComponent {}) }
+        })
+        .collect_vec();
+
+    let pcs_config = PcsConfig {
+        pow_bits: 26,
+        fri_config: FriConfig::new(0, 2, 35, 1),
+        lifting_log_size: Some(22),
+    };
+
+    let proof_config = ProofConfig::from_components(
+        &components,
+        PREPROCESSED_COLUMNS_ORDER.len(),
+        &pcs_config,
+        INTERACTION_POW_BITS,
+    );
+
+    let program_path = get_test_data_dir().join("privacy/privacy_simple_bootloader_compiled.json");
+    let program = load_program(&program_path);
+
+    CairoVerifierConfig {
+        preprocessed_root: get_preprocessed_root(22),
+        proof_config,
+        program,
+        n_outputs: 1,
+    }
+}
 
 // The set of components that are used to verify the privacy transaction.
 // The order of the components is determend by the order in all_components()
