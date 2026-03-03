@@ -7,6 +7,9 @@ use circuit_air::components::verify_bitwise_xor_12::{
 };
 use itertools::{Itertools, chain};
 
+use stwo::prover::mempool::BaseColumnPool;
+use stwo_constraint_framework::PooledLogupTraceGenerator;
+
 use crate::witness::components::prelude::*;
 
 pub type InputType = [M31; 3];
@@ -67,9 +70,10 @@ impl InteractionClaimGenerator {
     pub fn write_interaction_trace(
         self,
         common_lookup_elements: &relations::CommonLookupElements,
+        pool: &BaseColumnPool<SimdBackend>,
     ) -> (Vec<CircleEvaluation<SimdBackend, M31, BitReversedOrder>>, InteractionClaim) {
         let relation_id = PackedM31::broadcast(M31::from(648362599));
-        let mut logup_gen = LogupTraceGenerator::new(LOG_SIZE);
+        let mut logup_gen = PooledLogupTraceGenerator::new(LOG_SIZE, pool);
 
         // [0, 1, 2, ..., N_LANES - 1].
         let zero_to_n_lanes = u32x16::from_array(std::array::from_fn(|i| i as u32));

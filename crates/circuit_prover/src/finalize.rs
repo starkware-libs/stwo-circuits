@@ -106,7 +106,7 @@ fn hash_constants(context: &mut Context<impl IValue>) -> HashValue<Var> {
 /// - Hashing the outputs.
 /// - Padding the components to a power of two.
 // TODO(Gali): Have it under a trait.
-pub(crate) fn finalize_context(context: &mut Context<impl IValue>) {
+pub fn finalize_context(context: &mut Context<impl IValue>) {
     let HashValue(hash0, hash1) = hash_constants(context);
     // Add the hash of the constants to the outputs.
     // TODO(Leo): consider storing these values at a fixed address.

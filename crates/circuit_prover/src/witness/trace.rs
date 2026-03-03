@@ -25,6 +25,7 @@ use stwo::core::fields::qm31::QM31;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::prover::TreeBuilder;
 use stwo::prover::backend::simd::SimdBackend;
+use stwo::prover::mempool::BaseColumnPool;
 
 pub struct TraceGenerator {
     pub qm31_ops_trace_generator: qm31_ops::TraceGenerator,
@@ -276,6 +277,7 @@ pub fn write_interaction_trace(
     circuit_interaction_claim_generator: CircuitInteractionClaimGenerator,
     tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, Blake2sM31MerkleChannel>,
     interaction_elements: &CircuitInteractionElements,
+    pool: &BaseColumnPool<SimdBackend>,
 ) -> CircuitInteractionClaim {
     let CircuitClaim { log_sizes, output_values: _ } = circuit_claim;
     let mut component_log_size_iter = log_sizes.iter();
@@ -337,10 +339,11 @@ pub fn write_interaction_trace(
             .verify_bitwise_xor_8
             .write_interaction_trace(&interaction_elements.common_lookup_elements);
     tree_builder.extend_evals(verify_bitwise_xor_8_trace);
-    let (verify_bitwise_xor_12_trace, verify_bitwise_xor_12_interaction_claim) =
+    let (verify_bitwise_xor_12_trace, verify_bitwise_xor_12_interaction_claim) = {
         circuit_interaction_claim_generator
             .verify_bitwise_xor_12
-            .write_interaction_trace(&interaction_elements.common_lookup_elements);
+            .write_interaction_trace(&interaction_elements.common_lookup_elements, pool)
+    };
     tree_builder.extend_evals(verify_bitwise_xor_12_trace);
 
     // Write verify bitwise xor 4 interaction trace.

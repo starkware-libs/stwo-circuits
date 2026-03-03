@@ -88,13 +88,13 @@ pub fn preprocess_circuit(context: &mut Context<QM31>) -> PreprocessedCircuit {
 
 pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     let preprocessed_circuit = preprocess_circuit(context);
-    prove_circuit_assignment(context.values(), preprocessed_circuit, &mut BaseColumnPool::new())
+    prove_circuit_assignment(context.values(), preprocessed_circuit, &BaseColumnPool::new())
 }
 
 pub fn prove_circuit_assignment(
     values: &[QM31],
     preprocessed_circuit: PreprocessedCircuit,
-    base_column_pool: &mut BaseColumnPool<SimdBackend>,
+    base_column_pool: &BaseColumnPool<SimdBackend>,
 ) -> CircuitProof {
     let PreprocessedCircuit { preprocessed_trace, params } = &preprocessed_circuit;
     let CircuitParams {
@@ -174,6 +174,7 @@ pub fn prove_circuit_assignment(
         interaction_generator,
         &mut tree_builder,
         &interaction_elements,
+        base_column_pool,
     );
 
     // Validate lookup argument.
