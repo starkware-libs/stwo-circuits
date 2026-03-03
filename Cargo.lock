@@ -1296,6 +1296,7 @@ dependencies = [
  "indexmap",
  "itertools 0.12.1",
  "num-traits",
+ "serde_json",
  "stwo",
  "stwo-cairo-common",
  "stwo-cairo-dev-utils",

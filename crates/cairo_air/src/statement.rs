@@ -31,6 +31,10 @@ use circuits_stark_verifier::proof::Claim;
 use circuits_stark_verifier::statement::Statement;
 use stwo::core::fields::m31::M31;
 
+#[cfg(test)]
+#[path = "statement_test.rs"]
+pub mod test;
+
 const N_SEGMENTS: usize = 11;
 const N_SAFE_CALL_IDS: usize = 2;
 
