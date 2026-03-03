@@ -18,7 +18,7 @@ use crate::verify::{CairoVerifierConfig, get_preprocessed_root};
 pub mod test;
 
 pub const PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
-    [1503321232, 505830013, 1977032338, 322557681, 206825522, 15105381, 2108386724, 1111284849];
+    [263240521, 1367152939, 1051535423, 332158340, 51922189, 1390263238, 1273523373, 1503851977];
 
 /// Returns a fixed [CairoVerifierConfig] for the privacy proof setup.
 pub fn privacy_cairo_verifier_config() -> CairoVerifierConfig {

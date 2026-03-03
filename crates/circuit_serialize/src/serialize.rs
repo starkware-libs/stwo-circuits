@@ -4,7 +4,7 @@ use stwo::core::fields::qm31::QM31;
 
 use circuits::blake::HashValue;
 use circuits::wrappers::M31Wrapper;
-use circuits_stark_verifier::fri_proof::{FriCommitProof, FriProof};
+use circuits_stark_verifier::fri_proof::{FriCommitProof, FriProof, FriWitness};
 use circuits_stark_verifier::merkle::{AuthPath, AuthPaths};
 use circuits_stark_verifier::oods::EvalDomainSamples;
 use circuits_stark_verifier::proof::{Claim, InteractionAtOods, Proof};
@@ -189,9 +189,14 @@ impl CircuitSerialize for FriCommitProof<QM31> {
 
 impl CircuitSerialize for FriProof<QM31> {
     fn serialize(&self, output: &mut Vec<u32>) {
-        let Self { commit, auth_paths, fri_siblings } = self;
+        let Self {
+            commit,
+            auth_paths,
+            witness: FriWitness { circle_siblings, line_coset_vals_per_query_per_tree },
+        } = self;
         commit.serialize(output);
         auth_paths.serialize(output);
-        fri_siblings.serialize(output);
+        circle_siblings.serialize(output);
+        line_coset_vals_per_query_per_tree.serialize(output);
     }
 }
