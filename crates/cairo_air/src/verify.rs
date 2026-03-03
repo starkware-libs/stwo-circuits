@@ -1,19 +1,20 @@
 use crate::all_components::all_components;
-use crate::statement::{CairoStatement, MEMORY_VALUES_LIMBS};
+use crate::statement::{CairoStatement, MEMORY_VALUES_LIMBS, PUBLIC_DATA_LEN};
 use cairo_air::CairoProof;
 use cairo_air::air::PublicData;
 use cairo_air::flat_claims::FlatClaim;
 use circuits::blake::HashValue;
 use circuits::context::{Context, TraceContext};
-use circuits::ivalue::qm31_from_u32s;
+use circuits::ivalue::{NoValue, qm31_from_u32s};
 use circuits::ops::Guess;
 use circuits_stark_verifier::empty_component::EmptyComponent;
-use circuits_stark_verifier::proof::{Claim, Proof, ProofConfig};
+use circuits_stark_verifier::proof::{Claim, Proof, ProofConfig, empty_proof};
 use circuits_stark_verifier::proof_from_stark_proof::{
     pack_component_log_sizes, pack_enable_bits, proof_from_stark_proof,
 };
 use circuits_stark_verifier::verify::verify;
 use itertools::{Itertools, zip_eq};
+use num_traits::Zero;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
@@ -102,6 +103,41 @@ pub fn verify_fixed_cairo_circuit(
         return Err("Verification failed".to_string());
     }
     Ok(context)
+}
+
+/// Builds the Cairo verifier circuit topology without needing a proof.
+///
+/// The circuit structure is deterministic given the verifier config, so we can construct it using
+/// [NoValue] and an [empty_proof].
+pub fn build_cairo_verifier_circuit(verifier_config: &CairoVerifierConfig) -> Context<NoValue> {
+    let config = &verifier_config.proof_config;
+    let components = zip_eq(all_components::<NoValue>().into_values(), config.enabled_components())
+        .map(
+            |(component, enable_bit)| {
+                if enable_bit { component } else { Box::new(EmptyComponent {}) }
+            },
+        )
+        .collect_vec();
+
+    let n_outputs = verifier_config.n_outputs;
+    let program_len = verifier_config.program.len();
+    let public_data = vec![M31::zero(); PUBLIC_DATA_LEN + n_outputs + program_len];
+    let outputs = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; n_outputs];
+
+    let mut context = Context::<NoValue>::default();
+    let statement = CairoStatement::<NoValue>::new_ex(
+        &mut context,
+        public_data,
+        outputs,
+        verifier_config.program.clone(),
+        components,
+        verifier_config.preprocessed_root,
+    );
+
+    let proof_vars = empty_proof(config).guess(&mut context);
+    verify(&mut context, &proof_vars, config, &statement);
+    context.finalize_guessed_vars();
+    context
 }
 
 /// Converts a [CairoProof] to a [Proof] and [PublicData] for the circuit verifier.

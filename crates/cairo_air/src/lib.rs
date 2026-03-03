@@ -11,5 +11,6 @@ mod statement_test;
 
 pub mod all_components;
 pub mod privacy;
+pub mod privacy_program;
 pub mod sample_evaluations;
 pub mod verify;
