@@ -116,6 +116,34 @@ fn extract_component_inputs(
     inputs
 }
 
+fn make_blake_output_inputs(
+    preprocessed_trace: &PreProcessedTrace,
+    blake_inputs: Vec<InputType>,
+) -> Vec<blake_output::PackedInputType> {
+    let finalize_flag =
+        preprocessed_trace.get_column(&PreProcessedColumnId { id: "finalize_flag".to_owned() });
+
+    // Build the inputs for the blake_output component.
+    let mut blake_output_component_inputs: Vec<[UInt32; 8]> = vec![];
+
+    for (blake_input, flag_value) in blake_inputs.iter().zip_eq(finalize_flag.iter()) {
+        if *flag_value == 1 {
+            let state_after = blake_input.0[1];
+            blake_output_component_inputs.push(state_after);
+        }
+    }
+
+    // Pack them.
+    let padding = (16 - (blake_output_component_inputs.len() % 16)) % 16;
+    blake_output_component_inputs.extend(std::iter::repeat_n([UInt32::default(); 8], padding));
+    blake_output_component_inputs
+        .chunks_exact(N_LANES)
+        .map(|chunk| {
+            std::array::from_fn(|i| PackedUInt32::from_array(std::array::from_fn(|j| chunk[j][i])))
+        })
+        .collect()
+}
+
 impl ClaimGenerator {
     pub fn new(preprocessed_trace: Arc<PreProcessedTrace>) -> Self {
         Self { preprocessed_trace }
@@ -148,12 +176,7 @@ impl ClaimGenerator {
 
         // Write trace.
         let mut blake_message_state = blake_message::ClaimGenerator::default();
-        let (
-            trace,
-            interaction_claim_generator,
-            sub_component_inputs,
-            blake_output_component_input,
-        ) = write_trace_simd(
+        let (trace, interaction_claim_generator, sub_component_inputs) = write_trace_simd(
             packed_inputs,
             &self.preprocessed_trace,
             n_rows,
@@ -176,7 +199,12 @@ impl ClaimGenerator {
             triple_xor_32_state.add_packed_inputs(&inputs, 0);
         }
 
-        (trace, interaction_claim_generator, blake_message_state, blake_output_component_input)
+        (
+            trace,
+            interaction_claim_generator,
+            blake_message_state,
+            make_blake_output_inputs(preprocessed_trace, inputs),
+        )
     }
 }
 
@@ -198,12 +226,7 @@ fn write_trace_simd(
     n_rows: usize,
     blake_round_state: &mut blake_round::ClaimGenerator,
     blake_message_state: &mut blake_message::ClaimGenerator,
-) -> (
-    ComponentTrace<N_TRACE_COLUMNS>,
-    InteractionClaimGenerator,
-    SubComponentInputs,
-    Vec<blake_output::PackedInputType>,
-) {
+) -> (ComponentTrace<N_TRACE_COLUMNS>, InteractionClaimGenerator, SubComponentInputs) {
     let n_packed_rows = inputs.len();
     let log_n_packed_rows = n_packed_rows.ilog2();
     let log_size = log_n_packed_rows + LOG_N_LANES;
@@ -303,31 +326,6 @@ fn write_trace_simd(
         }
     }
 
-    // Build the inputs for the blake_output component.
-    let mut blake_output_component_inputs: Vec<[UInt32; 8]> = Vec::with_capacity(log_size as usize);
-
-    for (blake_input, flag) in inputs.iter().zip_eq(finalize_flag.iter()) {
-        let state_after = blake_input.0[1];
-        for (flag_idx_in_simd, flag_value) in flag.to_array().iter().enumerate() {
-            if *flag_value == M31::one() {
-                let res = std::array::from_fn(|i| state_after[i].as_array()[flag_idx_in_simd]);
-                blake_output_component_inputs.push(res);
-            }
-        }
-    }
-
-    // Pack them.
-    let padding = (16 - (blake_output_component_inputs.len() % 16)) % 16;
-    blake_output_component_inputs.extend(std::iter::repeat_n([UInt32::default(); 8], padding));
-    let blake_output_component_inputs_packed: Vec<[PackedUInt32; 8]> =
-        blake_output_component_inputs
-            .chunks_exact(N_LANES)
-            .map(|chunk| {
-                std::array::from_fn(|i| {
-                    PackedUInt32::from_array(std::array::from_fn(|j| chunk[j][i]))
-                })
-            })
-            .collect();
     (
         trace.par_iter_mut(),
         lookup_data.par_iter_mut(),
@@ -1848,7 +1846,7 @@ fn write_trace_simd(
         blake_message_state.add_packed_inputs(id, messages);
     }
     let interaction_claim_generator = InteractionClaimGenerator { n_rows, log_size, lookup_data };
-    (trace, interaction_claim_generator, sub_component_inputs, blake_output_component_inputs_packed)
+    (trace, interaction_claim_generator, sub_component_inputs)
 }
 
 #[derive(Uninitialized, IterMut, ParIterMut)]
