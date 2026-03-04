@@ -4,9 +4,15 @@ use cairo_air::utils::binary_deserialize_from_file;
 use cairo_air::verifier::INTERACTION_POW_BITS;
 use circuit_air::statement::all_circuit_components;
 use circuit_air::verify::{CircuitConfig, verify_circuit};
-use circuit_prover::prover::{preprare_circuit_proof_for_circuit_verifier, prove_circuit};
+use circuit_prover::finalize::finalize_context;
+use circuit_prover::prover::{
+    CircuitProof, preprare_circuit_proof_for_circuit_verifier, prove_circuit,
+    prove_circuit_assignment,
+};
+use circuit_prover::witness::preprocessed::PreprocessedCircuit;
 use circuits::blake::HashValue;
-use circuits::ivalue::qm31_from_u32s;
+use circuits::context::Context;
+use circuits::ivalue::{IValue, qm31_from_u32s};
 use circuits_stark_verifier::proof::ProofConfig;
 use itertools::Itertools;
 use stwo::core::fields::qm31::QM31;
@@ -17,6 +23,52 @@ use crate::privacy::{
 use crate::test::{verify_cairo, verify_cairo_with_component_set};
 use crate::utils::get_proof_file_path;
 use crate::verify::build_cairo_verifier_circuit;
+
+fn privacy_circuit_preprocessed_root() -> HashValue<QM31> {
+    let root = PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT;
+    HashValue(
+        qm31_from_u32s(root[0], root[1], root[2], root[3]),
+        qm31_from_u32s(root[4], root[5], root[6], root[7]),
+    )
+}
+
+fn verify_circuit_proof(
+    circuit_proof: CircuitProof,
+    preprocessed_root: HashValue<QM31>,
+) -> Context<QM31> {
+    let preprocessed_column_ids = circuit_proof.preprocessed_circuit.preprocessed_trace.ids();
+    let proof_config = ProofConfig::from_components(
+        &all_circuit_components::<QM31>(),
+        preprocessed_column_ids.len(),
+        &circuit_proof.pcs_config,
+        INTERACTION_POW_BITS,
+    );
+    let circuit_config = CircuitConfig {
+        config: circuit_proof.pcs_config,
+        output_addresses: circuit_proof.preprocessed_circuit.params.output_addresses.clone(),
+        n_blake_gates: circuit_proof.preprocessed_circuit.params.n_blake_gates,
+        preprocessed_column_ids,
+        preprocessed_root,
+    };
+    let (proof, public_data) =
+        preprare_circuit_proof_for_circuit_verifier(circuit_proof, proof_config);
+    verify_circuit(circuit_config, proof, public_data).unwrap()
+}
+
+/// Compares the topology of two contexts.
+/// Note that the values are not compared.
+fn compare_contexts_topology<Value: IValue, OtherValue: IValue>(
+    context_a: &Context<Value>,
+    context_b: &Context<OtherValue>,
+) {
+    // TODO(Gali): Consider comparing unused and maybe unused vars.
+    assert_eq!(context_a.circuit, context_b.circuit);
+    assert_eq!(context_a.stats, context_b.stats);
+    assert_eq!(context_a.guessed_vars, context_b.guessed_vars);
+    let constants_a = context_a.constants().iter().map(|(k, v)| (*k, v.idx)).collect_vec();
+    let constants_b = context_b.constants().iter().map(|(k, v)| (*k, v.idx)).collect_vec();
+    assert_eq!(constants_a, constants_b);
+}
 
 #[test]
 fn test_verify_privacy() {
@@ -32,13 +84,7 @@ fn test_verify_privacy() {
     let novalue_context = build_cairo_verifier_circuit(&const_config);
 
     // Check that building the verifier circuit via NoValue produces the same topology.
-    // TODO(Gali): Consider comparing unused and maybe unused vars.
-    assert_eq!(context.circuit, novalue_context.circuit);
-    assert_eq!(context.stats, novalue_context.stats);
-    assert_eq!(context.guessed_vars, novalue_context.guessed_vars);
-    let constants_a = context.constants().iter().map(|(k, v)| (*k, v.idx)).collect_vec();
-    let constants_b = novalue_context.constants().iter().map(|(k, v)| (*k, v.idx)).collect_vec();
-    assert_eq!(constants_a, constants_b);
+    compare_contexts_topology(&context, &novalue_context);
 }
 
 #[test]
@@ -49,36 +95,42 @@ fn test_verify_privacy_with_recursion() {
 
     let mut context = verify_cairo(&cairo_proof).unwrap();
     let circuit_proof = prove_circuit(&mut context);
-    let preprocessed_column_ids = circuit_proof.preprocessed_circuit.preprocessed_trace.ids();
-    let proof_config = ProofConfig::from_components(
-        &all_circuit_components::<QM31>(),
-        preprocessed_column_ids.len(),
-        &circuit_proof.pcs_config,
-        INTERACTION_POW_BITS,
-    );
-    let preprocessed_root = PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT;
-    let preprocessed_root = HashValue(
-        qm31_from_u32s(
-            preprocessed_root[0],
-            preprocessed_root[1],
-            preprocessed_root[2],
-            preprocessed_root[3],
-        ),
-        qm31_from_u32s(
-            preprocessed_root[4],
-            preprocessed_root[5],
-            preprocessed_root[6],
-            preprocessed_root[7],
-        ),
-    );
-    let circuit_config = CircuitConfig {
-        config: circuit_proof.pcs_config,
-        output_addresses: circuit_proof.preprocessed_circuit.params.output_addresses.clone(),
-        n_blake_gates: circuit_proof.preprocessed_circuit.params.n_blake_gates,
-        preprocessed_column_ids,
-        preprocessed_root,
-    };
-    let (proof, public_data) =
-        preprare_circuit_proof_for_circuit_verifier(circuit_proof, proof_config);
-    verify_circuit(circuit_config, proof, public_data).unwrap();
+    verify_circuit_proof(circuit_proof, privacy_circuit_preprocessed_root());
+}
+
+#[test]
+fn test_privacy_recursion_with_preprocessed_context() {
+    // Build the verifier circuit via NoValue and preprocess it.
+    let const_config = privacy_cairo_verifier_config();
+    let mut novalue_context = build_cairo_verifier_circuit(&const_config);
+    let preprocessed = PreprocessedCircuit::preprocess_circuit(&mut novalue_context);
+
+    // Verify the privacy proof to get a Context<QM31> with real values.
+    let proof_path = get_proof_file_path("privacy");
+    let proof_file = File::open(proof_path).unwrap();
+    let cairo_proof = binary_deserialize_from_file(&proof_file).unwrap();
+    let mut assignment_context =
+        verify_cairo_with_component_set(&cairo_proof, privacy_components()).unwrap();
+    let mut full_prove_context =
+        verify_cairo_with_component_set(&cairo_proof, privacy_components()).unwrap();
+
+    // Prove via the assignment flow: finalize separately, then prove with pre-computed
+    // preprocessed data.
+    finalize_context(&mut assignment_context);
+    let assignment_proof = prove_circuit_assignment(assignment_context.values(), preprocessed);
+    assert!(assignment_proof.stark_proof.is_ok());
+
+    // Prove via the full flow for comparison.
+    let full_proof = prove_circuit(&mut full_prove_context);
+    assert!(full_proof.stark_proof.is_ok());
+
+    // Verify both circuit proofs and compare the resulting verifier contexts.
+    // TODO(Gali): Add verify fixed circuit
+    let preprocessed_root = privacy_circuit_preprocessed_root();
+    let assignment_verifier_context = verify_circuit_proof(assignment_proof, preprocessed_root);
+    let full_verifier_context = verify_circuit_proof(full_proof, preprocessed_root);
+
+    // Compare the verifier contexts.
+    compare_contexts_topology(&assignment_verifier_context, &full_verifier_context);
+    assert_eq!(assignment_verifier_context.values(), full_verifier_context.values());
 }

@@ -20,6 +20,7 @@ use stwo_constraint_framework::Relation;
 pub type ComponentLogSize = u32;
 pub type ClaimedSum = QM31;
 
+#[derive(Debug, PartialEq)]
 pub struct CircuitClaim {
     pub log_sizes: [ComponentLogSize; N_COMPONENTS],
     pub output_values: Vec<QM31>,
@@ -51,6 +52,7 @@ impl CircuitInteractionElements {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct CircuitInteractionClaim {
     pub claimed_sums: [ClaimedSum; N_COMPONENTS],
 }

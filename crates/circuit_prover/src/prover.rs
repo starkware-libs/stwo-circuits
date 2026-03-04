@@ -1,4 +1,3 @@
-use crate::finalize::finalize_context;
 use crate::witness::components::qm31_ops;
 use crate::witness::preprocessed::PreprocessedCircuit;
 use crate::witness::trace::TraceGenerator;
@@ -9,7 +8,6 @@ use circuit_air::statement::INTERACTION_POW_BITS;
 use circuit_air::verify::CircuitPublicData;
 use circuit_air::{CircuitClaim, CircuitInteractionClaim, CircuitInteractionElements, lookup_sum};
 use circuits::context::Context;
-use circuits::ivalue::IValue;
 use circuits_stark_verifier::proof::Proof;
 use circuits_stark_verifier::proof::{Claim, ProofConfig};
 use circuits_stark_verifier::proof_from_stark_proof::{
@@ -36,6 +34,7 @@ use stwo::prover::{ProvingError, prove_ex};
 
 const COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND: u32 = 1;
 
+#[derive(Debug, PartialEq)]
 pub struct CircuitParams {
     pub trace_log_size: u32,
     pub first_permutation_row: usize,
@@ -81,13 +80,8 @@ pub fn to_component_provers(
     .collect()
 }
 
-pub fn preprocess_circuit<Value: IValue>(context: &mut Context<Value>) -> PreprocessedCircuit {
-    finalize_context(context);
-    PreprocessedCircuit::preprocess_circuit(&context.circuit)
-}
-
 pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
-    let preprocessed_circuit = preprocess_circuit(context);
+    let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(context);
     prove_circuit_assignment(context.values(), preprocessed_circuit)
 }
 

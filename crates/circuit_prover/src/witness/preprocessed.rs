@@ -1,9 +1,12 @@
+use crate::finalize::finalize_context;
 use crate::prover::CircuitParams;
 use crate::witness::components::prelude::BLAKE_SIGMA;
 use crate::witness::components::qm31_ops;
 use circuits::circuit::Blake;
 use circuits::circuit::{Circuit, Permutation};
 use circuits::circuit::{Eq, Gate};
+use circuits::context::Context;
+use circuits::ivalue::IValue;
 use itertools::{Itertools, zip_eq};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -345,7 +348,7 @@ fn add_blake_to_preprocessed_trace(
 
 /// A collection of preprocessed columns, whose values are publicly acknowledged, and independent of
 /// the proof.
-#[derive(Clone)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PreProcessedTrace {
     pub columns: Vec<Vec<usize>>,
     column_ids: Vec<PreProcessedColumnId>,
@@ -436,14 +439,21 @@ impl PreProcessedTrace {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub struct PreprocessedCircuit {
     pub preprocessed_trace: Arc<PreProcessedTrace>,
     pub params: CircuitParams,
 }
 
 impl PreprocessedCircuit {
+    /// Finalizes the context, then builds the preprocessed circuit.
+    pub fn preprocess_circuit(context: &mut Context<impl IValue>) -> Self {
+        finalize_context(context);
+        Self::from_finalized_circuit(&context.circuit)
+    }
+
     /// Builds the preprocessed circuit data (trace + params) from a finalized circuit.
-    pub fn preprocess_circuit(circuit: &Circuit) -> Self {
+    fn from_finalized_circuit(circuit: &Circuit) -> Self {
         let mut pp_trace = PreProcessedTrace {
             columns: vec![],
             column_ids: vec![],
