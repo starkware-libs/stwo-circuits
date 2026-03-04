@@ -60,7 +60,7 @@ pub struct CairoVerifierConfig {
 
 /// Verifies a [CairoProof] for a fixed [CairoVerifierConfig].
 pub fn verify_fixed_cairo_circuit(
-    verifier_config: CairoVerifierConfig,
+    verifier_config: &CairoVerifierConfig,
     proof: Proof<QM31>,
     public_claim: Vec<u32>,
     outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
@@ -69,7 +69,7 @@ pub fn verify_fixed_cairo_circuit(
         return Err("The proof claim does not match the expected number of outputs.".to_string());
     }
 
-    let config = verifier_config.proof_config;
+    let config = &verifier_config.proof_config;
     let components = zip_eq(all_components().into_values(), config.enabled_components())
         .map(
             |(component, enable_bit)| {
@@ -84,13 +84,13 @@ pub fn verify_fixed_cairo_circuit(
         &mut context,
         public_claim,
         outputs,
-        verifier_config.program,
+        verifier_config.program.clone(),
         components,
         verifier_config.preprocessed_root,
     );
 
     let proof_vars = proof.guess(&mut context);
-    verify(&mut context, &proof_vars, &config, &statement);
+    verify(&mut context, &proof_vars, config, &statement);
 
     // Check the verifier circuit gates topology only in test mode.
     #[cfg(test)]
