@@ -6,8 +6,8 @@ use circuit_air::statement::all_circuit_components;
 use circuit_air::verify::{CircuitConfig, verify_circuit};
 use circuit_prover::finalize::finalize_context;
 use circuit_prover::prover::{
-    CircuitProof, preprare_circuit_proof_for_circuit_verifier, prove_circuit,
-    prove_circuit_assignment,
+    BaseColumnPool, CircuitProof, SimdBackend, preprare_circuit_proof_for_circuit_verifier,
+    prove_circuit, prove_circuit_assignment,
 };
 use circuit_prover::witness::preprocessed::PreprocessedCircuit;
 use circuits::blake::HashValue;
@@ -103,7 +103,11 @@ fn test_verify_privacy_with_recursion() {
 
     let mut context = verify_cairo(&cairo_proof).unwrap();
     let preprocessed = PreprocessedCircuit::preprocess_circuit(&mut context);
-    let circuit_proof = prove_circuit_assignment(context.values(), &preprocessed);
+    let circuit_proof = prove_circuit_assignment(
+        context.values(),
+        &preprocessed,
+        &BaseColumnPool::<SimdBackend>::new(),
+    );
     // To test with a precomputed preprocessed root, change `None` to
     // `Some(privacy_circuit_preprocessed_root())`.
     verify_circuit_proof(&preprocessed, circuit_proof, None);
@@ -126,7 +130,11 @@ fn test_privacy_recursion_with_preprocessed_context() {
     // Prove via the assignment flow: finalize separately, then prove with pre-computed
     // preprocessed data.
     finalize_context(&mut assignment_context);
-    let assignment_proof = prove_circuit_assignment(assignment_context.values(), &preprocessed);
+    let assignment_proof = prove_circuit_assignment(
+        assignment_context.values(),
+        &preprocessed,
+        &BaseColumnPool::<SimdBackend>::new(),
+    );
     assert!(assignment_proof.stark_proof.is_ok());
 
     // Prove via the full flow for comparison.
