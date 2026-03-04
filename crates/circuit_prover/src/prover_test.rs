@@ -1,7 +1,6 @@
 use crate::finalize::finalize_context;
-use crate::prover::CircuitProof;
 use crate::prover::preprare_circuit_proof_for_circuit_verifier;
-use crate::prover::prove_circuit_assignment;
+use crate::prover::{prove_circuit_assignment, BaseColumnPool, CircuitProof, SimdBackend};
 use crate::witness::preprocessed::PreprocessedCircuit;
 use circuit_air::CircuitInteractionElements;
 use circuit_air::lookup_sum;
@@ -93,7 +92,11 @@ fn test_prove_and_stark_verify_blake_gate_context() {
         stark_proof,
         interaction_pow_nonce,
         channel_salt,
-    } = prove_circuit_assignment(blake_gate_context.values(), &preprocessed_circuit);
+    } = prove_circuit_assignment(
+        blake_gate_context.values(),
+        &preprocessed_circuit,
+        &BaseColumnPool::<SimdBackend>::new(),
+    );
     assert!(stark_proof.is_ok(), "Got error: {}", stark_proof.err().unwrap());
     let proof = stark_proof.unwrap();
 
@@ -158,7 +161,11 @@ fn test_prove_and_stark_verify_permutation_context() {
         components,
         stark_proof,
         channel_salt,
-    } = prove_circuit_assignment(permutation_context.values(), &preprocessed_circuit);
+    } = prove_circuit_assignment(
+        permutation_context.values(),
+        &preprocessed_circuit,
+        &BaseColumnPool::<SimdBackend>::new(),
+    );
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
 
@@ -220,7 +227,11 @@ fn test_prove_and_stark_verify_fibonacci_context() {
         components,
         stark_proof,
         channel_salt,
-    } = prove_circuit_assignment(fibonacci_context.values(), &preprocessed_circuit);
+    } = prove_circuit_assignment(
+        fibonacci_context.values(),
+        &preprocessed_circuit,
+        &BaseColumnPool::<SimdBackend>::new(),
+    );
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
 
@@ -277,7 +288,11 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     fibonacci_context.validate_circuit();
 
     let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut fibonacci_context);
-    let circuit_proof = prove_circuit_assignment(fibonacci_context.values(), &preprocessed_circuit);
+    let circuit_proof = prove_circuit_assignment(
+        fibonacci_context.values(),
+        &preprocessed_circuit,
+        &BaseColumnPool::<SimdBackend>::new(),
+    );
 
     let preprocessed_column_ids = preprocessed_circuit.preprocessed_trace.ids();
     let proof_config = ProofConfig::from_components(
