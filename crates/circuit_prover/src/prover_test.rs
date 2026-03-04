@@ -1,6 +1,8 @@
 use crate::finalize::finalize_context;
+use crate::prover::CircuitProof;
 use crate::prover::preprare_circuit_proof_for_circuit_verifier;
-use crate::prover::{CircuitProof, prove_circuit};
+use crate::prover::prove_circuit_assignment;
+use crate::witness::preprocessed::PreprocessedCircuit;
 use circuit_air::CircuitInteractionElements;
 use circuit_air::lookup_sum;
 use circuit_air::statement::{INTERACTION_POW_BITS, all_circuit_components};
@@ -82,16 +84,16 @@ fn test_prove_and_stark_verify_blake_gate_context() {
     blake_gate_context.finalize_guessed_vars();
     blake_gate_context.validate_circuit();
 
+    let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut blake_gate_context);
     let CircuitProof {
         components,
-        preprocessed_circuit,
         claim,
         interaction_claim,
         pcs_config,
         stark_proof,
         interaction_pow_nonce,
         channel_salt,
-    } = prove_circuit(&mut blake_gate_context);
+    } = prove_circuit_assignment(blake_gate_context.values(), &preprocessed_circuit);
     assert!(stark_proof.is_ok(), "Got error: {}", stark_proof.err().unwrap());
     let proof = stark_proof.unwrap();
 
@@ -147,16 +149,16 @@ fn test_prove_and_stark_verify_permutation_context() {
     permutation_context.finalize_guessed_vars();
     permutation_context.validate_circuit();
 
+    let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut permutation_context);
     let CircuitProof {
         pcs_config,
-        preprocessed_circuit,
         claim,
         interaction_pow_nonce,
         interaction_claim,
         components,
         stark_proof,
         channel_salt,
-    } = prove_circuit(&mut permutation_context);
+    } = prove_circuit_assignment(permutation_context.values(), &preprocessed_circuit);
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
 
@@ -209,16 +211,16 @@ fn test_prove_and_stark_verify_fibonacci_context() {
     fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
 
+    let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut fibonacci_context);
     let CircuitProof {
         pcs_config,
-        preprocessed_circuit,
         claim,
         interaction_pow_nonce,
         interaction_claim,
         components,
         stark_proof,
         channel_salt,
-    } = prove_circuit(&mut fibonacci_context);
+    } = prove_circuit_assignment(fibonacci_context.values(), &preprocessed_circuit);
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
 
@@ -274,9 +276,10 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
 
-    let circuit_proof = prove_circuit(&mut fibonacci_context);
+    let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut fibonacci_context);
+    let circuit_proof = prove_circuit_assignment(fibonacci_context.values(), &preprocessed_circuit);
 
-    let preprocessed_column_ids = circuit_proof.preprocessed_circuit.preprocessed_trace.ids();
+    let preprocessed_column_ids = preprocessed_circuit.preprocessed_trace.ids();
     let proof_config = ProofConfig::from_components(
         &all_circuit_components::<QM31>(),
         preprocessed_column_ids.len(),
@@ -300,8 +303,8 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     );
     let circuit_config = CircuitConfig {
         config: circuit_proof.pcs_config,
-        output_addresses: circuit_proof.preprocessed_circuit.params.output_addresses.clone(),
-        n_blake_gates: circuit_proof.preprocessed_circuit.params.n_blake_gates,
+        output_addresses: preprocessed_circuit.params.output_addresses.clone(),
+        n_blake_gates: preprocessed_circuit.params.n_blake_gates,
         preprocessed_column_ids,
         preprocessed_root,
     };
