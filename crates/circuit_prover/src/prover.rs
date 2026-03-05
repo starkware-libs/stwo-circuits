@@ -83,6 +83,7 @@ pub fn to_component_provers(
 
 pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(context);
+
     prove_circuit_assignment(
         context.values(),
         &preprocessed_circuit,
