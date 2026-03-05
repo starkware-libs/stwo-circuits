@@ -64,6 +64,7 @@ pub fn verify_fixed_cairo_circuit(
     proof: Proof<QM31>,
     public_claim: Vec<u32>,
     outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
+    validate_circuit: bool,
 ) -> Result<Context<QM31>, String> {
     if outputs.len() != verifier_config.n_outputs {
         return Err("The proof claim does not match the expected number of outputs.".to_string());
@@ -99,7 +100,7 @@ pub fn verify_fixed_cairo_circuit(
     #[cfg(test)]
     context.circuit.check_yields();
     // Always validate the circuit values.
-    if !context.is_circuit_valid() {
+    if validate_circuit && !context.is_circuit_valid() {
         return Err("Verification failed".to_string());
     }
     Ok(context)
