@@ -11,13 +11,11 @@ use itertools::{Itertools, zip_eq};
 use std::collections::HashMap;
 use std::sync::Arc;
 use stwo::core::fields::m31::BaseField;
-use stwo::core::poly::circle::CanonicCoset;
-use stwo::prover::backend::Backend;
-use stwo::prover::backend::Col;
-use stwo::prover::backend::Column;
 use stwo::prover::backend::simd::m31::{N_LANES, PackedM31};
+use stwo::prover::backend::{Backend, Col, Column};
 use stwo::prover::poly::BitReversedOrder;
 use stwo::prover::poly::circle::CircleEvaluation;
+use stwo_cairo_prover::witness::prelude::CanonicCoset;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 #[cfg(test)]
@@ -34,13 +32,6 @@ enum OpCode {
     Sub,
     Mul,
     PointwiseMul,
-}
-
-fn vec_to_evaluation<B: Backend>(
-    vec: Vec<usize>,
-) -> CircleEvaluation<B, BaseField, BitReversedOrder> {
-    let col = Col::<B, BaseField>::from_iter(vec.into_iter().map(BaseField::from));
-    CircleEvaluation::new(CanonicCoset::new(col.len().ilog2()).circle_domain(), col)
 }
 
 /// Adds the binary operation gates to the qm31 ops preprocessed trace.
@@ -420,7 +411,12 @@ impl PreProcessedTrace {
     }
 
     pub fn get_trace<B: Backend>(&self) -> Vec<CircleEvaluation<B, BaseField, BitReversedOrder>> {
-        self.columns.iter().map(|c| vec_to_evaluation::<B>(c.clone())).collect()
+        let to_evaluation = |vec: &[usize]| {
+            let col = Col::<B, BaseField>::from_iter(vec.iter().cloned().map(BaseField::from));
+            CircleEvaluation::new(CanonicCoset::new(col.len().ilog2()).circle_domain(), col)
+        };
+
+        self.columns.iter().map(|c| to_evaluation(c)).collect()
     }
 
     pub fn get_column(&self, id: &PreProcessedColumnId) -> &Vec<usize> {
