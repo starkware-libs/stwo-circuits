@@ -24,9 +24,11 @@ use stwo::core::pcs::PcsConfig;
 use stwo::core::poly::circle::CanonicCoset;
 use stwo::core::proof::ExtendedStarkProof;
 use stwo::core::proof_of_work::GrindOps;
+use stwo::core::utils::MaybeOwned;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 use stwo::prover::CommitmentSchemeProver;
+use stwo::prover::CommitmentTreeProver;
 use stwo::prover::ComponentProver;
 pub use stwo::prover::backend::simd::SimdBackend;
 pub use stwo::prover::mempool::BaseColumnPool;
@@ -115,21 +117,36 @@ pub fn prove_circuit_assignment(
         .half_coset,
     );
 
+    let preprocessed_trace = preprocessed_circuit.preprocessed_trace.get_trace::<SimdBackend>();
+    let preprocessed_trace_polys = SimdBackend::interpolate_columns(preprocessed_trace, &twiddles);
+
+    let store_polynomials_coefficients = true;
+    let preprocessed_tree = CommitmentTreeProver::<SimdBackend, Blake2sM31MerkleChannel>::new(
+        preprocessed_trace_polys,
+        pcs_config.fri_config.log_blowup_factor,
+        &twiddles,
+        store_polynomials_coefficients,
+        pcs_config.lifting_log_size,
+        base_column_pool,
+    );
+
     prove_circuit_with_precompute(
-        preprocessed_circuit,
         base_column_pool,
         &twiddles,
-        pcs_config,
+        preprocessed_circuit,
+        MaybeOwned::Owned(preprocessed_tree),
         values,
+        pcs_config,
     )
 }
 
-pub fn prove_circuit_with_precompute(
-    preprocessed_circuit: &PreprocessedCircuit,
+pub fn prove_circuit_with_precompute<'a>(
     base_column_pool: &BaseColumnPool<SimdBackend>,
     twiddles: &TwiddleTree<SimdBackend>,
-    pcs_config: PcsConfig,
+    preprocessed_circuit: &PreprocessedCircuit,
+    preprocessed_tree: MaybeOwned<'a, CommitmentTreeProver<SimdBackend, Blake2sM31MerkleChannel>>,
     values: &[QM31],
+    pcs_config: PcsConfig,
 ) -> CircuitProof {
     let PreprocessedCircuit { preprocessed_trace, params } = preprocessed_circuit;
     let CircuitParams { first_permutation_row, n_blake_gates, output_addresses, .. } = params;
@@ -156,9 +173,7 @@ pub fn prove_circuit_with_precompute(
     commitment_scheme.set_store_polynomials_coefficients();
 
     // Preprocessed trace.
-    let mut tree_builder = commitment_scheme.tree_builder();
-    tree_builder.extend_evals(preprocessed_trace.get_trace::<SimdBackend>());
-    tree_builder.commit(channel);
+    commitment_scheme.commit_tree(preprocessed_tree, channel);
 
     // Base trace.
     let mut tree_builder = commitment_scheme.tree_builder();
