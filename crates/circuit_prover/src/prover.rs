@@ -31,6 +31,7 @@ use stwo::prover::ComponentProver;
 pub use stwo::prover::backend::simd::SimdBackend;
 pub use stwo::prover::mempool::BaseColumnPool;
 use stwo::prover::poly::circle::PolyOps;
+use stwo::prover::poly::twiddles::TwiddleTree;
 use stwo::prover::{ProvingError, prove_ex};
 
 const COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND: u32 = 1;
@@ -82,6 +83,7 @@ pub fn to_component_provers(
 
 pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(context);
+
     prove_circuit_assignment(
         context.values(),
         &preprocessed_circuit,
@@ -94,23 +96,9 @@ pub fn prove_circuit_assignment(
     preprocessed_circuit: &PreprocessedCircuit,
     base_column_pool: &BaseColumnPool<SimdBackend>,
 ) -> CircuitProof {
-    let PreprocessedCircuit { preprocessed_trace, params } = preprocessed_circuit;
-    let CircuitParams {
-        trace_log_size,
-        first_permutation_row,
-        n_blake_gates,
-        output_addresses,
-        ..
-    } = params;
-    let trace_generator = TraceGenerator {
-        qm31_ops_trace_generator: qm31_ops::TraceGenerator {
-            first_permutation_row: *first_permutation_row,
-        },
-    };
-
+    let trace_log_size = preprocessed_circuit.params.trace_log_size;
     let mut pcs_config = PcsConfig::default();
     let lifting_log_size = trace_log_size + pcs_config.fri_config.log_blowup_factor;
-
     pcs_config.lifting_log_size = Some(lifting_log_size);
 
     // Precompute twiddles.
@@ -127,6 +115,31 @@ pub fn prove_circuit_assignment(
         .circle_domain()
         .half_coset,
     );
+
+    prove_circuit_with_precompute(
+        preprocessed_circuit,
+        base_column_pool,
+        &twiddles,
+        pcs_config,
+        values,
+    )
+}
+
+pub fn prove_circuit_with_precompute(
+    preprocessed_circuit: &PreprocessedCircuit,
+    base_column_pool: &BaseColumnPool<SimdBackend>,
+    twiddles: &TwiddleTree<SimdBackend>,
+    pcs_config: PcsConfig,
+    values: &[QM31],
+) -> CircuitProof {
+    let PreprocessedCircuit { preprocessed_trace, params } = preprocessed_circuit;
+    let CircuitParams { first_permutation_row, n_blake_gates, output_addresses, .. } = params;
+    let trace_generator = TraceGenerator {
+        qm31_ops_trace_generator: qm31_ops::TraceGenerator {
+            first_permutation_row: *first_permutation_row,
+        },
+    };
+
     // Setup protocol.
     let channel = &mut Blake2sM31Channel::default();
 
@@ -137,7 +150,7 @@ pub fn prove_circuit_assignment(
     let mut commitment_scheme =
         CommitmentSchemeProver::<SimdBackend, Blake2sM31MerkleChannel>::with_memory_pool(
             pcs_config,
-            &twiddles,
+            twiddles,
             base_column_pool,
         );
 
