@@ -43,24 +43,38 @@ impl ClaimGenerator {
 
         let (trace, lookup_data, sub_component_inputs) =
             write_trace_simd(self.packed_inputs, n_rows);
-        for inputs in sub_component_inputs.verify_bitwise_xor_8 {
-            verify_bitwise_xor_8_state.add_packed_inputs(&inputs, 0);
-        }
-        for inputs in sub_component_inputs.verify_bitwise_xor_8_b {
-            verify_bitwise_xor_8_state.add_packed_inputs(&inputs, 1);
-        }
-        for inputs in sub_component_inputs.verify_bitwise_xor_12 {
-            verify_bitwise_xor_12_state.add_packed_inputs(&inputs, 0);
-        }
-        for inputs in sub_component_inputs.verify_bitwise_xor_4 {
-            verify_bitwise_xor_4_state.add_packed_inputs(&inputs, 0);
-        }
-        for inputs in sub_component_inputs.verify_bitwise_xor_7 {
-            verify_bitwise_xor_7_state.add_packed_inputs(&inputs, 0);
-        }
-        for inputs in sub_component_inputs.verify_bitwise_xor_9 {
-            verify_bitwise_xor_9_state.add_packed_inputs(&inputs, 0);
-        }
+        rayon::scope(|s| {
+            s.spawn(|_| {
+                for inputs in sub_component_inputs.verify_bitwise_xor_8 {
+                    verify_bitwise_xor_8_state.add_packed_inputs(&inputs, 0);
+                }
+            });
+            s.spawn(|_| {
+                for inputs in sub_component_inputs.verify_bitwise_xor_8_b {
+                    verify_bitwise_xor_8_state.add_packed_inputs(&inputs, 1);
+                }
+            });
+            s.spawn(|_| {
+                for inputs in sub_component_inputs.verify_bitwise_xor_12 {
+                    verify_bitwise_xor_12_state.add_packed_inputs(&inputs, 0);
+                }
+            });
+            s.spawn(|_| {
+                for inputs in sub_component_inputs.verify_bitwise_xor_4 {
+                    verify_bitwise_xor_4_state.add_packed_inputs(&inputs, 0);
+                }
+            });
+            s.spawn(|_| {
+                for inputs in sub_component_inputs.verify_bitwise_xor_7 {
+                    verify_bitwise_xor_7_state.add_packed_inputs(&inputs, 0);
+                }
+            });
+            s.spawn(|_| {
+                for inputs in sub_component_inputs.verify_bitwise_xor_9 {
+                    verify_bitwise_xor_9_state.add_packed_inputs(&inputs, 0);
+                }
+            });
+        });
 
         (trace, Claim { log_size }, InteractionClaimGenerator { n_rows, log_size, lookup_data })
     }
