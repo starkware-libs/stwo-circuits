@@ -59,11 +59,15 @@ pub struct CairoVerifierConfig {
 }
 
 /// Verifies a [CairoProof] for a fixed [CairoVerifierConfig].
+///
+/// `skip_validation` can be set to true when the proof is known to be valid and this function is
+/// used to construct a circuit context for proving.
 pub fn verify_fixed_cairo_circuit(
     verifier_config: &CairoVerifierConfig,
     proof: Proof<QM31>,
     public_claim: Vec<u32>,
     outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
+    skip_validation: bool,
 ) -> Result<Context<QM31>, String> {
     if outputs.len() != verifier_config.n_outputs {
         return Err("The proof claim does not match the expected number of outputs.".to_string());
@@ -99,7 +103,7 @@ pub fn verify_fixed_cairo_circuit(
     #[cfg(test)]
     context.circuit.check_yields();
     // Always validate the circuit values.
-    if !context.is_circuit_valid() {
+    if !skip_validation && !context.is_circuit_valid() {
         return Err("Verification failed".to_string());
     }
     Ok(context)
