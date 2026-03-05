@@ -172,7 +172,7 @@ pub fn verify_cairo_with_component_set(
         n_outputs: cairo_proof.claim.public_data.public_memory.output.len(),
     };
 
-    verify_fixed_cairo_circuit(&verifier_config, proof, public_claim, outputs)
+    verify_fixed_cairo_circuit(&verifier_config, proof, public_claim, outputs, true)
 }
 
 #[test]
