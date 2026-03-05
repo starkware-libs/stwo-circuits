@@ -68,7 +68,29 @@ pub fn verify_fixed_cairo_circuit(
     if outputs.len() != verifier_config.n_outputs {
         return Err("The proof claim does not match the expected number of outputs.".to_string());
     }
+    let context = build_fixed_cairo_circuit(verifier_config, proof, public_claim, outputs);
 
+    // Check the verifier circuit gates topology only in test mode.
+    #[cfg(test)]
+    context.check_vars_used();
+    #[cfg(test)]
+    context.circuit.check_yields();
+    // Always validate the circuit values.
+    if !context.is_circuit_valid() {
+        return Err("Verification failed".to_string());
+    }
+    Ok(context)
+}
+
+/// Builds the Cairo verifier circuit context for a fixed circuit configuration.
+///
+/// The context can be used for proof verification or recursive proving.
+pub fn build_fixed_cairo_circuit(
+    verifier_config: &CairoVerifierConfig,
+    proof: Proof<QM31>,
+    public_claim: Vec<u32>,
+    outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
+) -> Context<QM31> {
     let config = &verifier_config.proof_config;
     let components = zip_eq(all_components().into_values(), config.enabled_components())
         .map(
@@ -91,18 +113,9 @@ pub fn verify_fixed_cairo_circuit(
 
     let proof_vars = proof.guess(&mut context);
     verify(&mut context, &proof_vars, config, &statement);
-
-    // Check the verifier circuit gates topology only in test mode.
-    #[cfg(test)]
-    context.check_vars_used();
     context.finalize_guessed_vars();
-    #[cfg(test)]
-    context.circuit.check_yields();
-    // Always validate the circuit values.
-    if !context.is_circuit_valid() {
-        return Err("Verification failed".to_string());
-    }
-    Ok(context)
+
+    context
 }
 
 /// Builds the Cairo verifier circuit topology without needing a proof.
