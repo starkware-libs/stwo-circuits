@@ -66,6 +66,13 @@ pub fn hash_leaf_qm31(context: &mut Context<impl IValue>, value: Var) -> HashVal
     blake(context, &[value], 16)
 }
 
+pub fn hash_packed_leaf_qm31s(
+    context: &mut Context<impl IValue>,
+    values: [Var; 4],
+) -> HashValue<Var> {
+    blake(context, &values, 64)
+}
+
 /// Computes the hash of an internal node in the Merkle tree.
 pub fn hash_node(
     context: &mut Context<impl IValue>,
