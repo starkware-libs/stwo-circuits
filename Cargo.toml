@@ -31,21 +31,21 @@ serde = "1.0.219"
 serde_json = "1.0"
 
 # stwo
-stwo = { git = "https://github.com/starkware-libs/stwo", rev = "833bb24e", features = [
+stwo = { git = "https://github.com/starkware-libs/stwo", rev = "e584a309", features = [
     "parallel",
 ], default-features = false }
-stwo-constraint-framework = {  git = "https://github.com/starkware-libs/stwo", rev = "833bb24e", features = [
+stwo-constraint-framework = {  git = "https://github.com/starkware-libs/stwo", rev = "e584a309", features = [
     "parallel",
 ] }
-stwo-air-utils-derive = { git = "https://github.com/starkware-libs/stwo", rev = "833bb24e" }
-stwo-air-utils = { git = "https://github.com/starkware-libs/stwo", rev = "833bb24e" }
+stwo-air-utils-derive = { git = "https://github.com/starkware-libs/stwo", rev = "e584a309" }
+stwo-air-utils = { git = "https://github.com/starkware-libs/stwo", rev = "e584a309" }
 
 # stwo-cairo
-cairo-air = { git = "https://github.com/starkware-libs/stwo-cairo", rev = "e9c0854e" }
-stwo_cairo_prover = { package = "stwo-cairo-prover", git = "https://github.com/starkware-libs/stwo-cairo", rev = "e9c0854e" }
-stwo_cairo_common = { package = "stwo-cairo-common", git = "https://github.com/starkware-libs/stwo-cairo", rev = "e9c0854e" }
-stwo_cairo_dev_utils = { package = "stwo-cairo-dev-utils", git = "https://github.com/starkware-libs/stwo-cairo", rev = "e9c0854e" }
-stwo_cairo_utils = { package = "stwo-cairo-utils", git = "https://github.com/starkware-libs/stwo-cairo", rev = "e9c0854e" }
+cairo-air = { git = "https://github.com/starkware-libs/stwo-cairo", rev = "0fe22c1f" }
+stwo_cairo_prover = { package = "stwo-cairo-prover", git = "https://github.com/starkware-libs/stwo-cairo", rev = "0fe22c1f" }
+stwo_cairo_common = { package = "stwo-cairo-common", git = "https://github.com/starkware-libs/stwo-cairo", rev = "0fe22c1f" }
+stwo_cairo_dev_utils = { package = "stwo-cairo-dev-utils", git = "https://github.com/starkware-libs/stwo-cairo", rev = "0fe22c1f" }
+stwo_cairo_utils = { package = "stwo-cairo-utils", git = "https://github.com/starkware-libs/stwo-cairo", rev = "0fe22c1f" }
 
 # local crates
 circuits = { path = "crates/circuits"}
