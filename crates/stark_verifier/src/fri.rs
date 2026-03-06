@@ -2,6 +2,7 @@ use circuits::blake::HashValue;
 use circuits::utils::select_by_index;
 use itertools::{Itertools, zip_eq};
 use stwo::core::circle::CirclePoint;
+use stwo::core::vcs_lifted::verifier::{LOG_PACKED_LEAF_SIZE, PACKED_LEAF_SIZE};
 
 use crate::channel::Channel;
 use crate::circle::{
@@ -11,7 +12,9 @@ use crate::circle::{
 use crate::fri_proof::{
     FriCommitProof, FriConfig, FriProof, FriWitness, compute_all_line_fold_steps,
 };
-use crate::merkle::{AuthPath, hash_leaf_qm31, hash_node, merkle_node, verify_merkle_path};
+use crate::merkle::{
+    AuthPath, hash_leaf_qm31, hash_node, hash_packed_leaf_qm31s, merkle_node, verify_merkle_path,
+};
 use crate::select_queries::Queries;
 use circuits::context::{Context, Var};
 use circuits::eval;
@@ -84,6 +87,7 @@ pub fn fri_decommit<Value: IValue>(
     )
     .enumerate()
     {
+        let log_layer_size = bits.len();
         let lowest_bits = bits.split_off(..*step).unwrap();
         let packed_lowest_bits = packed_bits.split_off(..*step).unwrap();
         // Validate that the fri query is in the correct position inside the guessed
@@ -92,18 +96,29 @@ pub fn fri_decommit<Value: IValue>(
 
         // Check merkle decommitment.
         for (query_idx, coset_values) in coset_per_query.iter().enumerate() {
+            let pack_leaves = log_layer_size >= 2 && *step > 1;
             // Compute the leaves.
-            let mut buf: Vec<HashValue<Var>> =
-                coset_values.iter().map(|val| hash_leaf_qm31(context, *val)).collect();
+            let (mut leaves, n_folds): (Vec<HashValue<Var>>, usize) = if pack_leaves {
+                (
+                    coset_values
+                        .chunks(PACKED_LEAF_SIZE)
+                        .map(|chunk| hash_packed_leaf_qm31s(context, chunk.try_into().unwrap()))
+                        .collect(),
+                    *step - LOG_PACKED_LEAF_SIZE as usize,
+                )
+            } else {
+                (coset_values.iter().map(|val| hash_leaf_qm31(context, *val)).collect(), *step)
+            };
+
             // Compute the the merkle root of the coset values.
             let coset_root = {
-                for fold in 0..*step {
-                    for i in 0..1 << (step - fold - 1) {
-                        let (even, odd) = (buf[2 * i], buf[2 * i + 1]);
-                        buf[i] = hash_node(context, even, odd);
+                for fold in 0..n_folds {
+                    for i in 0..1 << (n_folds - fold - 1) {
+                        let (even, odd) = (leaves[2 * i], leaves[2 * i + 1]);
+                        leaves[i] = hash_node(context, even, odd);
                     }
                 }
-                buf[0]
+                leaves[0]
             };
             // Verify the rest of the authentication path.
             let auth_path = auth_paths.at(tree_idx + 1, query_idx); // We add 1 because the outer loop is 0 based.

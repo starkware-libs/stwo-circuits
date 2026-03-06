@@ -1,4 +1,5 @@
 use itertools::{Itertools, zip_eq};
+use stwo::core::vcs_lifted::verifier::PACKED_LEAF_SIZE;
 
 use crate::oods::EvalDomainSamples;
 use crate::proof::N_TRACES;
@@ -64,6 +65,14 @@ fn hash_leaf_m31s(
 /// Computes the hash of a Merkle leaf with a single `QM31` value.
 pub fn hash_leaf_qm31(context: &mut Context<impl IValue>, value: Var) -> HashValue<Var> {
     blake(context, &[value], 16)
+}
+
+/// Computes the hash of a Merkle leaf with 4 `QM31` values.
+pub fn hash_packed_leaf_qm31s(
+    context: &mut Context<impl IValue>,
+    values: [Var; PACKED_LEAF_SIZE],
+) -> HashValue<Var> {
+    blake(context, &values, 64)
 }
 
 /// Computes the hash of an internal node in the Merkle tree.
