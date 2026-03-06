@@ -49,6 +49,7 @@ fn test_fri_decommit_with_jumps() {
             n_queries: 7,
             log_n_last_layer_coefs: 0,
             line_fold_step: 2,
+            pack_leaves: false,
         },
         interaction_pow_bits: 0,
     };

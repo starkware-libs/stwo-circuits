@@ -18,6 +18,9 @@ pub struct FriConfig {
     pub log_n_last_layer_coefs: usize,
     /// The step of the line folds in FRI's inner layers.
     pub line_fold_step: usize,
+    /// If true (resp. false), the leaves of the Merkle trees of the layers are the hash of 4
+    /// (resp. 1) QM31s.
+    pub pack_leaves: bool,
 }
 
 impl FriConfig {
