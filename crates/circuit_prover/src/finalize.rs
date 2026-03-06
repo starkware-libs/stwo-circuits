@@ -2,7 +2,8 @@ use circuits::ops::output;
 use stwo::prover::backend::simd::m31::N_LANES;
 
 use circuits::blake::{HashValue, blake};
-use circuits::context::{Context, Var};
+use circuits::circuit::Var;
+use circuits::context::Context;
 use circuits::eval;
 use circuits::ivalue::IValue;
 

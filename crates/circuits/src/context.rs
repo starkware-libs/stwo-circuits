@@ -3,6 +3,7 @@ use indexmap::IndexMap;
 use num_traits::{One, Zero};
 use stwo::core::fields::qm31::QM31;
 
+pub use crate::circuit::Var;
 use crate::circuit::{Add, Circuit};
 use crate::ivalue::IValue;
 use crate::ops::guess;
@@ -11,21 +12,6 @@ use crate::stats::Stats;
 #[cfg(test)]
 #[path = "context_test.rs"]
 pub mod test;
-
-/// Represents a variable in a [Circuit].
-///
-/// A [Var] represents a `QM31` value.
-/// In some cases, it may be restricted to an `M31` or a boolean value by adding constraints to the
-/// circuit. For example, `x = x * x` will enforce that `x` is either `0` or `1`.
-#[derive(Clone, Copy)]
-pub struct Var {
-    pub idx: usize,
-}
-impl std::fmt::Debug for Var {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[{}]", self.idx)
-    }
-}
 
 /// Represents the information required to build a [Circuit].
 ///
@@ -51,7 +37,7 @@ pub struct Context<Value: IValue> {
     /// `None` if the set of guessed variables has already been finalized.
     ///
     /// See [guess].
-    pub guessed_vars: Option<Vec<usize>>,
+    pub guessed_vars: Option<Vec<Var>>,
     /// Debug only. If true, equality is asserted when adding the `eq` gate; if false, no
     /// assertion is made during construction and equality can be checked later at validation.
     pub assert_eq_on_eval: bool,
@@ -139,8 +125,9 @@ impl<Value: IValue> Context<Value> {
     /// For guessed value, add a trivial constraint so that the new variable appears once as
     /// a yield.
     pub fn finalize_guessed_vars(&mut self) {
-        for idx in self.guessed_vars.take().unwrap().iter() {
-            self.circuit.add.push(Add { in0: *idx, in1: self.zero().idx, out: *idx });
+        let zero = self.zero();
+        for var in self.guessed_vars.take().unwrap().iter() {
+            self.circuit.add.push(Add { in0: *var, in1: zero, out: *var });
         }
     }
 }

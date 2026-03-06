@@ -48,11 +48,11 @@ fn fill_binary_op_columns<G: Gate>(
         (0..N_OP_CODES).for_each(|i| {
             columns[i].push(if i == op_code_idx { 1 } else { 0 });
         });
-        columns[4].push(in0);
-        columns[5].push(in1);
-        columns[6].push(out);
+        columns[4].push(in0.idx);
+        columns[5].push(in1.idx);
+        columns[6].push(out.idx);
         // TODO(Gali): Consider negating the multiplicities.
-        columns[7].push(multiplicities[out]);
+        columns[7].push(multiplicities[out.idx]);
     }
 }
 
@@ -90,15 +90,15 @@ fn fill_permutation_columns(
         for (input, output) in zip_eq(inputs, outputs) {
             // Input row.
             columns[4].push(0);
-            columns[5].push(input);
+            columns[5].push(input.idx);
             columns[6].push(permutation_address);
             columns[7].push(1);
 
             // Output row.
             columns[4].push(0);
             columns[5].push(permutation_address);
-            columns[6].push(output);
-            columns[7].push(multiplicities[output]);
+            columns[6].push(output.idx);
+            columns[7].push(multiplicities[output.idx]);
         }
 
         permutation_address += 1;
@@ -110,8 +110,8 @@ fn fill_eq_columns(eq_gates: &[Eq], columns: &mut [Vec<usize>; N_EQ_PP_COLUMNS])
     for gate in eq_gates.iter() {
         let [in0, in1] = gate.uses()[..] else { panic!("Expected 2 uses for gate") };
         assert!(gate.yields().is_empty(), "Expected no yields for Eq gate");
-        columns[0].push(in0);
-        columns[1].push(in1);
+        columns[0].push(in0.idx);
+        columns[1].push(in1.idx);
     }
 }
 
@@ -215,10 +215,10 @@ fn fill_blake_columns(
             columns[4].push(state_address);
 
             // Message addresses.
-            columns[5].push(*in0);
-            columns[6].push(*in1);
-            columns[7].push(*in2);
-            columns[8].push(*in3);
+            columns[5].push(in0.idx);
+            columns[6].push(in1.idx);
+            columns[7].push(in2.idx);
+            columns[8].push(in3.idx);
 
             // Enable
             columns[9].push(1);
@@ -232,10 +232,10 @@ fn fill_blake_columns(
         columns[10].push(state_address);
 
         let [out0, out1] = gate.yields()[..] else { panic!("Expected 2 yields for gate") };
-        columns[11].push(out0);
-        columns[12].push(out1);
-        columns[13].push(multiplicities[out0]);
-        columns[14].push(multiplicities[out1]);
+        columns[11].push(out0.idx);
+        columns[12].push(out1.idx);
+        columns[13].push(multiplicities[out0.idx]);
+        columns[14].push(multiplicities[out1.idx]);
 
         // Start a new blake chain.
         state_address += 1;
@@ -487,7 +487,7 @@ impl PreprocessedCircuit {
             trace_log_size,
             first_permutation_row: qm31_ops_trace_generator.first_permutation_row,
             n_blake_gates: circuit.blake.len(),
-            output_addresses: circuit.output.iter().map(|out| out.in0).collect(),
+            output_addresses: circuit.output.iter().map(|out| out.in0.idx).collect(),
         };
 
         Self { preprocessed_trace: Arc::new(pp_trace), params }
