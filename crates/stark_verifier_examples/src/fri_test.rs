@@ -1,5 +1,4 @@
 use circuits::context::TraceContext;
-use circuits::ivalue::qm31_from_u32s;
 use circuits::ops::Guess;
 use circuits::simd::Simd;
 use circuits::test_utils::simd_from_u32s;
@@ -12,7 +11,7 @@ use circuits_stark_verifier::proof::ProofConfig;
 use circuits_stark_verifier::select_queries::select_queries;
 use itertools::{chain, zip_eq};
 use num_traits::One;
-use stwo::core::channel::Blake2sM31Channel;
+use stwo::core::channel::{Blake2sM31Channel, Channel, MerkleChannel};
 use stwo::core::circle::Coset;
 use stwo::core::fields::m31::BaseField;
 use stwo::core::fields::qm31::{QM31, SecureField};
@@ -21,6 +20,7 @@ use stwo::core::poly::circle::CircleDomain;
 use stwo::core::queries::Queries;
 use stwo::core::vcs::blake2_hash::Blake2sM31Hasher;
 use stwo::core::vcs_lifted::blake2_merkle::{Blake2sM31MerkleChannel, Blake2sM31MerkleHasher};
+use stwo::core::vcs_lifted::verifier::LOG_PACKED_LEAF_SIZE;
 use stwo::prover::backend::CpuBackend;
 use stwo::prover::backend::cpu::CpuCirclePoly;
 use stwo::prover::fri::FriProver;
@@ -69,6 +69,7 @@ fn test_fri_decommit_with_jumps() {
     let witness = test_construct_fri_witness(&fri_proof, &all_line_fold_steps, &query_indices);
     let auth_paths =
         test_construct_fri_auth_paths(&fri_proof, &config, &query_indices, &all_line_fold_steps);
+    let last_layer_coefficients = fri_proof.proof.last_layer_poly.into_ordered_coefficients();
     let circuit_fri_proof = FriProof {
         commit: FriCommitProof {
             layer_commitments: chain!(
@@ -76,20 +77,28 @@ fn test_fri_decommit_with_jumps() {
                 fri_proof.proof.inner_layers.iter().map(|layer| layer.commitment.into()),
             )
             .collect(),
-            last_layer_coefs: fri_proof.proof.last_layer_poly.into_ordered_coefficients(),
+            last_layer_coefs: last_layer_coefficients.clone(),
         },
         auth_paths,
         witness,
     };
     let circuit_fri_proof = circuit_fri_proof.guess(&mut context);
 
-    // Folding alphas.
-    let alpha_values = [
-        qm31_from_u32s(1011730217, 238354028, 1321702146, 1634795701),
-        qm31_from_u32s(1690232064, 1294671291, 1616406021, 525755234),
-        qm31_from_u32s(1975580628, 2062626494, 1340534631, 1939928290),
-        qm31_from_u32s(160270922, 428202964, 1497289811, 1557635193),
-    ];
+    // Compute the folding alphas.
+    let proof_layer_commitments: Vec<_> = chain!(
+        [fri_proof.proof.first_layer.commitment],
+        fri_proof.proof.inner_layers.iter().map(|layer| layer.commitment),
+    )
+    .collect();
+    let mut channel = Blake2sM31Channel::default();
+    let alpha_values: Vec<_> = proof_layer_commitments
+        .iter()
+        .map(|commitment| {
+            Blake2sM31MerkleChannel::mix_root(&mut channel, *commitment);
+            channel.draw_secure_felt()
+        })
+        .collect();
+    channel.mix_felts(&last_layer_coefficients);
     let alphas: Vec<_> = alpha_values.iter().map(|x| context.constant(*x)).collect();
 
     fri_decommit(
@@ -170,32 +179,35 @@ pub fn test_construct_fri_auth_paths(
 ) -> AuthPaths<QM31> {
     let unsorted_query_locations = &query_locations;
     let layers = chain!([&proof.aux.first_layer], &proof.aux.inner_layers);
-    let n = config.log_evaluation_domain_size();
-    // Gather the layer log sizes.
-    let mut layer_log_sizes = vec![n, n - 1];
-    for step in all_line_fold_steps.iter().take(proof.aux.inner_layers.len() - 1) {
-        layer_log_sizes.push(layer_log_sizes.last().unwrap() - step);
-    }
-    let mut all_fold_steps = vec![1];
-    all_fold_steps.extend_from_slice(all_line_fold_steps);
-    let res = zip_eq(zip_eq(layer_log_sizes, layers), all_fold_steps)
-        .map(|((log_size, layer_proof), step)| {
+    let mut log_layer_size = config.log_evaluation_domain_size();
+    // The circle-to-line fold is hardcoded to 1 currently.
+    let all_fold_steps = [&[1], all_line_fold_steps].concat();
+    let mut fold_sum = 0;
+    let mut res = vec![];
+
+    for (layer_proof, step) in zip_eq(layers, all_fold_steps) {
+        res.push(
             unsorted_query_locations
                 .iter()
                 .map(|query| {
                     let mut pos = *query;
-                    pos >>= n - log_size + step;
+                    let pack_leaves = log_layer_size >= 2 && step > 1;
+                    let pack_shift = if pack_leaves { LOG_PACKED_LEAF_SIZE as usize } else { 0 };
+                    pos >>= fold_sum + step;
                     let mut auth_path: AuthPath<QM31> = AuthPath(vec![]);
-                    for j in step..log_size {
-                        let hash = layer_proof.decommitment.all_node_values[j][&(pos ^ 1)];
+                    for j in step..log_layer_size {
+                        let hash =
+                            layer_proof.decommitment.all_node_values[j - pack_shift][&(pos ^ 1)];
                         auth_path.0.push(hash.into());
                         pos >>= 1;
                     }
                     auth_path
                 })
-                .collect()
-        })
-        .collect();
+                .collect(),
+        );
+        log_layer_size -= step;
+        fold_sum += step;
+    }
 
     AuthPaths { data: res }
 }
