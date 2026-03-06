@@ -18,6 +18,7 @@ pub struct FriConfig {
     pub log_n_last_layer_coefs: usize,
     /// The step of the line folds in FRI's inner layers.
     pub line_fold_step: usize,
+    pub pack_leaves: bool,
 }
 
 impl FriConfig {
