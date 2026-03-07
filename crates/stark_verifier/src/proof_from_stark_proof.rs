@@ -175,15 +175,18 @@ fn construct_fri_auth_paths(
     let mut fold_sum = 0;
     let mut res = vec![];
 
+    const LOG_PACKED_LEAF_SIZE: u32 = 2;
     for (layer_proof, step) in zip_eq(layers, all_fold_steps) {
         res.push(
             unsorted_query_locations
                 .iter()
                 .map(|query| {
                     let mut pos = *query;
-                    pos >>= fold_sum + step;
+                    let packed = config.fri.pack_leaves && log_layer_size >= 2 && step > 1;
+                    let pack_shift = if packed { LOG_PACKED_LEAF_SIZE as usize} else { 0 };
+                    pos >>= fold_sum + step + pack_shift;
                     let mut auth_path: AuthPath<QM31> = AuthPath(vec![]);
-                    for j in step..log_layer_size {
+                    for j in step + pack_shift..log_layer_size {
                         let hash = layer_proof.decommitment.all_node_values[j][&(pos ^ 1)];
                         auth_path.0.push(hash.into());
                         pos >>= 1;
