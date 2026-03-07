@@ -26,7 +26,8 @@ use circuits::simd::Simd;
 pub mod test;
 
 // TODO(Leo): import from stwo once we update the dependency.
-const PACKED_LEAF_SIZE: usize = 4;
+pub const LOG_PACKED_LEAF_SIZE: u32 = 2;
+const PACKED_LEAF_SIZE: usize = 1 << LOG_PACKED_LEAF_SIZE;
 
 /// Commits to the FRI layers and returns the random alphas.
 pub fn fri_commit(

@@ -10,6 +10,7 @@ use stwo::core::fields::qm31::QM31;
 use stwo::core::proof::ExtendedStarkProof;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 
+use crate::fri::LOG_PACKED_LEAF_SIZE;
 use crate::fri_proof::FriWitness;
 use crate::fri_proof::compute_all_line_fold_steps;
 use crate::fri_proof::{FriCommitProof, FriProof};
@@ -181,9 +182,11 @@ fn construct_fri_auth_paths(
                 .iter()
                 .map(|query| {
                     let mut pos = *query;
+                    let packed = config.fri.pack_leaves && log_layer_size >= 2 && step > 1;
+                    let pack_shift = if packed { LOG_PACKED_LEAF_SIZE as usize } else { 0 };
                     pos >>= fold_sum + step;
                     let mut auth_path: AuthPath<QM31> = AuthPath(vec![]);
-                    for j in step..log_layer_size {
+                    for j in step - pack_shift..log_layer_size - pack_shift {
                         let hash = layer_proof.decommitment.all_node_values[j][&(pos ^ 1)];
                         auth_path.0.push(hash.into());
                         pos >>= 1;
