@@ -105,6 +105,7 @@ impl ProofConfig {
                     n_queries,
                     log_last_layer_degree_bound,
                     line_fold_step,
+                    pack_leaves,
                 },
             lifting_log_size: Some(lifting_log_size),
         } = pcs_config
@@ -129,8 +130,7 @@ impl ProofConfig {
                 n_queries: *n_queries,
                 log_n_last_layer_coefs: *log_last_layer_degree_bound as usize,
                 line_fold_step: *line_fold_step as usize,
-                // TODO(Leo): remove the hardcoding.
-                pack_leaves: false,
+                pack_leaves: *pack_leaves,
             },
             interaction_pow_bits,
         }

@@ -186,7 +186,7 @@ fn construct_fri_auth_paths(
                     let pack_shift = if packed { LOG_PACKED_LEAF_SIZE as usize} else { 0 };
                     pos >>= fold_sum + step + pack_shift;
                     let mut auth_path: AuthPath<QM31> = AuthPath(vec![]);
-                    for j in step + pack_shift..log_layer_size {
+                    for j in step - pack_shift..log_layer_size {
                         let hash = layer_proof.decommitment.all_node_values[j][&(pos ^ 1)];
                         auth_path.0.push(hash.into());
                         pos >>= 1;

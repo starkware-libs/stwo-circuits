@@ -121,9 +121,7 @@ pub fn fri_decommit<Value: IValue>(
             // Verify the rest of the authentication path.
             let auth_path = auth_paths.at(tree_idx + 1, query_idx); // We add 1 because the outer loop is 0 based.
             let bits_for_query = bits.iter().map(|b| b[query_idx]).collect_vec();
-            // TODO(Leo): it should be [2..] if pack_leaves is true.
-            let bits_tail = &bits_for_query[(bits_for_query.len() - auth_path.0.len())..];
-            verify_merkle_path(context, coset_root, &bits_tail, *root, auth_path);
+            verify_merkle_path(context, coset_root, &bits_for_query, *root, auth_path);
         }
 
         // Translate base_point to the base of the current coset.
