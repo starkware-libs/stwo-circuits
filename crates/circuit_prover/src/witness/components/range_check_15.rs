@@ -10,42 +10,30 @@ pub type PackedInputType = [PackedM31; 1];
 
 pub struct ClaimGenerator {
     pub mults: [AtomicMultiplicityColumn; 1],
-    input_to_row: HashMap<[M31; 1], usize>,
     preprocessed_trace: Arc<PreProcessedTrace>,
 }
 
 impl ClaimGenerator {
     pub fn new(preprocessed_trace: Arc<PreProcessedTrace>) -> Self {
         let mults = from_fn(|_| AtomicMultiplicityColumn::new(1 << LOG_SIZE));
-        let column_ids = [PreProcessedColumnId { id: "seq_15".to_owned() }];
 
-        Self {
-            mults,
-            input_to_row: make_input_to_row(&preprocessed_trace, column_ids),
-            preprocessed_trace,
-        }
+        Self { mults, preprocessed_trace }
     }
 
     pub fn write_trace(
         self,
     ) -> (ComponentTrace<N_TRACE_COLUMNS>, Claim, InteractionClaimGenerator) {
         let mults = self.mults.into_iter().map(|v| v.into_simd_vec()).collect::<Vec<_>>();
-
         let (trace, lookup_data) = write_trace_simd(&self.preprocessed_trace, mults);
 
         (trace, Claim {}, InteractionClaimGenerator { lookup_data })
     }
 
-    pub fn add_input(&self, input: &InputType, relation_index: usize) {
-        self.mults[relation_index]
-            .increase_at((*self.input_to_row.get(input).unwrap()).try_into().unwrap());
-    }
-
     pub fn add_packed_inputs(&self, packed_inputs: &[PackedInputType], relation_index: usize) {
         packed_inputs.into_par_iter().for_each(|packed_input| {
-            packed_input.unpack().into_iter().for_each(|input| {
-                self.add_input(&input, relation_index);
-            });
+            for [idx] in packed_input.unpack() {
+                self.mults[relation_index].increase_at(idx.0);
+            }
         });
     }
 }
