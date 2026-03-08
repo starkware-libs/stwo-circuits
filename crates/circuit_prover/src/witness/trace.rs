@@ -39,37 +39,96 @@ pub fn write_trace(
 ) -> (CircuitClaim, CircuitInteractionClaimGenerator) {
     let preprocessed_trace_ref = preprocessed_trace.as_ref();
 
-    // Write eq component.
-    let (eq_trace, eq_log_size, eq_lookup_data) =
-        eq::write_trace(context_values, preprocessed_trace_ref);
-    let mut trace_evals = eq_trace.to_evals();
+    let (
+        (
+            (eq_trace, eq_log_size, eq_lookup_data),
+            (qm31_ops_trace, qm31_ops_log_size, qm31_ops_lookup_data),
+        ),
+        (
+            verify_bitwise_xor_8_state,
+            verify_bitwise_xor_12_state,
+            verify_bitwise_xor_4_state,
+            verify_bitwise_xor_7_state,
+            verify_bitwise_xor_9_state,
+            range_check_16_state,
+            range_check_15_state,
+            mut triple_xor_32_state,
+            blake_gate_claim_generator,
+            mut blake_round_generator,
+            blake_round_sigma_generator,
+            mut blake_g_generator,
+        ),
+    ) = join(
+        || {
+            join(
+                || eq::write_trace(context_values, preprocessed_trace_ref),
+                || {
+                    qm31_ops::write_trace(
+                        context_values,
+                        preprocessed_trace_ref,
+                        &trace_generator.qm31_ops_trace_generator,
+                    )
+                },
+            )
+        },
+        || {
+            std::thread::scope(|s| {
+                let verify_bitwise_xor_8_handle = s.spawn(|| {
+                    verify_bitwise_xor_8::ClaimGenerator::new(preprocessed_trace.clone())
+                });
+                let verify_bitwise_xor_12_handle = s.spawn(|| {
+                    verify_bitwise_xor_12::ClaimGenerator::new(preprocessed_trace.clone())
+                });
+                let verify_bitwise_xor_4_handle = s.spawn(|| {
+                    verify_bitwise_xor_4::ClaimGenerator::new(preprocessed_trace.clone())
+                });
+                let verify_bitwise_xor_7_handle = s.spawn(|| {
+                    verify_bitwise_xor_7::ClaimGenerator::new(preprocessed_trace.clone())
+                });
+                let verify_bitwise_xor_9_handle = s.spawn(|| {
+                    verify_bitwise_xor_9::ClaimGenerator::new(preprocessed_trace.clone())
+                });
+                let range_check_16_handle =
+                    s.spawn(|| range_check_16::ClaimGenerator::new(preprocessed_trace.clone()));
+                let range_check_15_handle =
+                    s.spawn(|| range_check_15::ClaimGenerator::new(preprocessed_trace.clone()));
+                let triple_xor_32_handle = s.spawn(triple_xor_32::ClaimGenerator::new);
+                let blake_gate_handle =
+                    s.spawn(|| blake_gate::ClaimGenerator::new(preprocessed_trace.clone()));
+                let blake_round_handle = s.spawn(blake_round::ClaimGenerator::default);
+                let blake_round_sigma_handle =
+                    s.spawn(|| blake_round_sigma::ClaimGenerator::new(preprocessed_trace.clone()));
+                let blake_g_handle = s.spawn(blake_g::ClaimGenerator::new);
 
-    // Write qm31_ops component.
-    let (qm31_ops_trace, qm31_ops_log_size, qm31_ops_lookup_data) = qm31_ops::write_trace(
-        context_values,
-        preprocessed_trace_ref,
-        &trace_generator.qm31_ops_trace_generator,
+                (
+                    verify_bitwise_xor_8_handle
+                        .join()
+                        .expect("verify_bitwise_xor_8 init task failed"),
+                    verify_bitwise_xor_12_handle
+                        .join()
+                        .expect("verify_bitwise_xor_12 init task failed"),
+                    verify_bitwise_xor_4_handle
+                        .join()
+                        .expect("verify_bitwise_xor_4 init task failed"),
+                    verify_bitwise_xor_7_handle
+                        .join()
+                        .expect("verify_bitwise_xor_7 init task failed"),
+                    verify_bitwise_xor_9_handle
+                        .join()
+                        .expect("verify_bitwise_xor_9 init task failed"),
+                    range_check_16_handle.join().expect("range_check_16 init task failed"),
+                    range_check_15_handle.join().expect("range_check_15 init task failed"),
+                    triple_xor_32_handle.join().expect("triple_xor_32 init task failed"),
+                    blake_gate_handle.join().expect("blake_gate init task failed"),
+                    blake_round_handle.join().expect("blake_round init task failed"),
+                    blake_round_sigma_handle.join().expect("blake_round_sigma init task failed"),
+                    blake_g_handle.join().expect("blake_g init task failed"),
+                )
+            })
+        },
     );
+    let mut trace_evals = eq_trace.to_evals();
     trace_evals.extend(qm31_ops_trace.to_evals());
-
-    let verify_bitwise_xor_8_state =
-        verify_bitwise_xor_8::ClaimGenerator::new(preprocessed_trace.clone());
-    let verify_bitwise_xor_12_state =
-        verify_bitwise_xor_12::ClaimGenerator::new(preprocessed_trace.clone());
-    let verify_bitwise_xor_4_state =
-        verify_bitwise_xor_4::ClaimGenerator::new(preprocessed_trace.clone());
-    let verify_bitwise_xor_7_state =
-        verify_bitwise_xor_7::ClaimGenerator::new(preprocessed_trace.clone());
-    let verify_bitwise_xor_9_state =
-        verify_bitwise_xor_9::ClaimGenerator::new(preprocessed_trace.clone());
-    let range_check_16_state = range_check_16::ClaimGenerator::new(preprocessed_trace.clone());
-    let range_check_15_state = range_check_15::ClaimGenerator::new(preprocessed_trace.clone());
-    let mut triple_xor_32_state = triple_xor_32::ClaimGenerator::new();
-    let blake_gate_claim_generator = blake_gate::ClaimGenerator::new(preprocessed_trace.clone());
-    let mut blake_round_generator = blake_round::ClaimGenerator::default();
-    let blake_round_sigma_generator =
-        blake_round_sigma::ClaimGenerator::new(preprocessed_trace.clone());
-    let mut blake_g_generator = blake_g::ClaimGenerator::new();
 
     // Write blake gate component.
     let (
