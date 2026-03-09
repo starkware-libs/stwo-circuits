@@ -146,6 +146,7 @@ pub fn compute_half_coset_points<Value: IValue>(
     base_points: &CirclePoint<Simd>,
     log_size: u32,
 ) -> Vec<CirclePoint<Simd>> {
+    assert!(log_size > 0);
     let gen_pt = generator_point_simd(context, log_size as usize, base_points.x.len());
     let mut curr_pt = base_points.clone();
     let mut half_coset = vec![curr_pt.clone()];
