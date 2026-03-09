@@ -5,7 +5,7 @@ use crate::components::subroutines::create_blake_output::CreateBlakeOutput;
 use crate::components::subroutines::create_blake_round_input::CreateBlakeRoundInput;
 use crate::components::subroutines::qm_31_into_u_32::Qm31IntoU32;
 
-pub const N_TRACE_COLUMNS: usize = 135;
+pub const N_TRACE_COLUMNS: usize = 151;
 pub const RELATION_USES_PER_ROW: [RelationUse; 7] = [
     RelationUse { relation_id: "BlakeOutput", uses: 1 },
     RelationUse { relation_id: "BlakeRound", uses: 1 },
@@ -63,6 +63,7 @@ impl FrameworkEval for Eval {
     #[allow(non_snake_case)]
     fn evaluate<E: EvalAtRow>(&self, mut eval: E) -> E {
         let M31_0 = E::F::from(M31::from(0));
+        let M31_1 = E::F::from(M31::from(1));
         let M31_10 = E::F::from(M31::from(10));
         let M31_1061955672 = E::F::from(M31::from(1061955672));
         let M31_15470 = E::F::from(M31::from(15470));
@@ -86,6 +87,8 @@ impl FrameworkEval for Eval {
         let seq = eval.get_preprocessed_column(Seq::new(self.log_size()).id());
         let state_before_addr = eval
             .get_preprocessed_column(PreProcessedColumnId { id: "state_before_addr".to_owned() });
+        let compress_enabler = eval
+            .get_preprocessed_column(PreProcessedColumnId { id: "compress_enabler".to_owned() });
         let state_after_addr = eval
             .get_preprocessed_column(PreProcessedColumnId { id: "state_after_addr".to_owned() });
         let message0_addr =
@@ -96,8 +99,6 @@ impl FrameworkEval for Eval {
             eval.get_preprocessed_column(PreProcessedColumnId { id: "message2_addr".to_owned() });
         let message3_addr =
             eval.get_preprocessed_column(PreProcessedColumnId { id: "message3_addr".to_owned() });
-        let pp_enabler = eval
-            .get_preprocessed_column(PreProcessedColumnId { id: "compress_enabler".to_owned() });
         let input_state_before_limb0_limb_0_col0 = eval.next_trace_mask();
         let input_state_before_limb0_limb_1_col1 = eval.next_trace_mask();
         let input_state_before_limb1_limb_0_col2 = eval.next_trace_mask();
@@ -154,85 +155,101 @@ impl FrameworkEval for Eval {
         let xor_col53 = eval.next_trace_mask();
         let limbi_low_col54 = eval.next_trace_mask();
         let limbi_high_col55 = eval.next_trace_mask();
-        let limbi_low_col56 = eval.next_trace_mask();
-        let limbi_high_col57 = eval.next_trace_mask();
-        let limbi_low_col58 = eval.next_trace_mask();
-        let limbi_high_col59 = eval.next_trace_mask();
+        let limbi_inv_or_one_col56 = eval.next_trace_mask();
+        let limbi_low_col57 = eval.next_trace_mask();
+        let limbi_high_col58 = eval.next_trace_mask();
+        let limbi_inv_or_one_col59 = eval.next_trace_mask();
         let limbi_low_col60 = eval.next_trace_mask();
         let limbi_high_col61 = eval.next_trace_mask();
-        let limbi_low_col62 = eval.next_trace_mask();
-        let limbi_high_col63 = eval.next_trace_mask();
-        let limbi_low_col64 = eval.next_trace_mask();
-        let limbi_high_col65 = eval.next_trace_mask();
+        let limbi_inv_or_one_col62 = eval.next_trace_mask();
+        let limbi_low_col63 = eval.next_trace_mask();
+        let limbi_high_col64 = eval.next_trace_mask();
+        let limbi_inv_or_one_col65 = eval.next_trace_mask();
         let limbi_low_col66 = eval.next_trace_mask();
         let limbi_high_col67 = eval.next_trace_mask();
-        let limbi_low_col68 = eval.next_trace_mask();
-        let limbi_high_col69 = eval.next_trace_mask();
-        let limbi_low_col70 = eval.next_trace_mask();
-        let limbi_high_col71 = eval.next_trace_mask();
+        let limbi_inv_or_one_col68 = eval.next_trace_mask();
+        let limbi_low_col69 = eval.next_trace_mask();
+        let limbi_high_col70 = eval.next_trace_mask();
+        let limbi_inv_or_one_col71 = eval.next_trace_mask();
         let limbi_low_col72 = eval.next_trace_mask();
         let limbi_high_col73 = eval.next_trace_mask();
-        let limbi_low_col74 = eval.next_trace_mask();
-        let limbi_high_col75 = eval.next_trace_mask();
-        let limbi_low_col76 = eval.next_trace_mask();
-        let limbi_high_col77 = eval.next_trace_mask();
+        let limbi_inv_or_one_col74 = eval.next_trace_mask();
+        let limbi_low_col75 = eval.next_trace_mask();
+        let limbi_high_col76 = eval.next_trace_mask();
+        let limbi_inv_or_one_col77 = eval.next_trace_mask();
         let limbi_low_col78 = eval.next_trace_mask();
         let limbi_high_col79 = eval.next_trace_mask();
-        let limbi_low_col80 = eval.next_trace_mask();
-        let limbi_high_col81 = eval.next_trace_mask();
-        let limbi_low_col82 = eval.next_trace_mask();
-        let limbi_high_col83 = eval.next_trace_mask();
+        let limbi_inv_or_one_col80 = eval.next_trace_mask();
+        let limbi_low_col81 = eval.next_trace_mask();
+        let limbi_high_col82 = eval.next_trace_mask();
+        let limbi_inv_or_one_col83 = eval.next_trace_mask();
         let limbi_low_col84 = eval.next_trace_mask();
         let limbi_high_col85 = eval.next_trace_mask();
-        let blake_round_output_limb_0_col86 = eval.next_trace_mask();
-        let blake_round_output_limb_1_col87 = eval.next_trace_mask();
-        let blake_round_output_limb_2_col88 = eval.next_trace_mask();
-        let blake_round_output_limb_3_col89 = eval.next_trace_mask();
-        let blake_round_output_limb_4_col90 = eval.next_trace_mask();
-        let blake_round_output_limb_5_col91 = eval.next_trace_mask();
-        let blake_round_output_limb_6_col92 = eval.next_trace_mask();
-        let blake_round_output_limb_7_col93 = eval.next_trace_mask();
-        let blake_round_output_limb_8_col94 = eval.next_trace_mask();
-        let blake_round_output_limb_9_col95 = eval.next_trace_mask();
-        let blake_round_output_limb_10_col96 = eval.next_trace_mask();
-        let blake_round_output_limb_11_col97 = eval.next_trace_mask();
-        let blake_round_output_limb_12_col98 = eval.next_trace_mask();
-        let blake_round_output_limb_13_col99 = eval.next_trace_mask();
-        let blake_round_output_limb_14_col100 = eval.next_trace_mask();
-        let blake_round_output_limb_15_col101 = eval.next_trace_mask();
-        let blake_round_output_limb_16_col102 = eval.next_trace_mask();
-        let blake_round_output_limb_17_col103 = eval.next_trace_mask();
-        let blake_round_output_limb_18_col104 = eval.next_trace_mask();
-        let blake_round_output_limb_19_col105 = eval.next_trace_mask();
-        let blake_round_output_limb_20_col106 = eval.next_trace_mask();
-        let blake_round_output_limb_21_col107 = eval.next_trace_mask();
-        let blake_round_output_limb_22_col108 = eval.next_trace_mask();
-        let blake_round_output_limb_23_col109 = eval.next_trace_mask();
-        let blake_round_output_limb_24_col110 = eval.next_trace_mask();
-        let blake_round_output_limb_25_col111 = eval.next_trace_mask();
-        let blake_round_output_limb_26_col112 = eval.next_trace_mask();
-        let blake_round_output_limb_27_col113 = eval.next_trace_mask();
-        let blake_round_output_limb_28_col114 = eval.next_trace_mask();
-        let blake_round_output_limb_29_col115 = eval.next_trace_mask();
-        let blake_round_output_limb_30_col116 = eval.next_trace_mask();
-        let blake_round_output_limb_31_col117 = eval.next_trace_mask();
-        let blake_round_output_limb_32_col118 = eval.next_trace_mask();
-        let triple_xor_32_output_limb_0_col119 = eval.next_trace_mask();
-        let triple_xor_32_output_limb_1_col120 = eval.next_trace_mask();
-        let triple_xor_32_output_limb_0_col121 = eval.next_trace_mask();
-        let triple_xor_32_output_limb_1_col122 = eval.next_trace_mask();
-        let triple_xor_32_output_limb_0_col123 = eval.next_trace_mask();
-        let triple_xor_32_output_limb_1_col124 = eval.next_trace_mask();
-        let triple_xor_32_output_limb_0_col125 = eval.next_trace_mask();
-        let triple_xor_32_output_limb_1_col126 = eval.next_trace_mask();
-        let triple_xor_32_output_limb_0_col127 = eval.next_trace_mask();
-        let triple_xor_32_output_limb_1_col128 = eval.next_trace_mask();
-        let triple_xor_32_output_limb_0_col129 = eval.next_trace_mask();
-        let triple_xor_32_output_limb_1_col130 = eval.next_trace_mask();
-        let triple_xor_32_output_limb_0_col131 = eval.next_trace_mask();
-        let triple_xor_32_output_limb_1_col132 = eval.next_trace_mask();
-        let triple_xor_32_output_limb_0_col133 = eval.next_trace_mask();
-        let triple_xor_32_output_limb_1_col134 = eval.next_trace_mask();
+        let limbi_inv_or_one_col86 = eval.next_trace_mask();
+        let limbi_low_col87 = eval.next_trace_mask();
+        let limbi_high_col88 = eval.next_trace_mask();
+        let limbi_inv_or_one_col89 = eval.next_trace_mask();
+        let limbi_low_col90 = eval.next_trace_mask();
+        let limbi_high_col91 = eval.next_trace_mask();
+        let limbi_inv_or_one_col92 = eval.next_trace_mask();
+        let limbi_low_col93 = eval.next_trace_mask();
+        let limbi_high_col94 = eval.next_trace_mask();
+        let limbi_inv_or_one_col95 = eval.next_trace_mask();
+        let limbi_low_col96 = eval.next_trace_mask();
+        let limbi_high_col97 = eval.next_trace_mask();
+        let limbi_inv_or_one_col98 = eval.next_trace_mask();
+        let limbi_low_col99 = eval.next_trace_mask();
+        let limbi_high_col100 = eval.next_trace_mask();
+        let limbi_inv_or_one_col101 = eval.next_trace_mask();
+        let blake_round_output_limb_0_col102 = eval.next_trace_mask();
+        let blake_round_output_limb_1_col103 = eval.next_trace_mask();
+        let blake_round_output_limb_2_col104 = eval.next_trace_mask();
+        let blake_round_output_limb_3_col105 = eval.next_trace_mask();
+        let blake_round_output_limb_4_col106 = eval.next_trace_mask();
+        let blake_round_output_limb_5_col107 = eval.next_trace_mask();
+        let blake_round_output_limb_6_col108 = eval.next_trace_mask();
+        let blake_round_output_limb_7_col109 = eval.next_trace_mask();
+        let blake_round_output_limb_8_col110 = eval.next_trace_mask();
+        let blake_round_output_limb_9_col111 = eval.next_trace_mask();
+        let blake_round_output_limb_10_col112 = eval.next_trace_mask();
+        let blake_round_output_limb_11_col113 = eval.next_trace_mask();
+        let blake_round_output_limb_12_col114 = eval.next_trace_mask();
+        let blake_round_output_limb_13_col115 = eval.next_trace_mask();
+        let blake_round_output_limb_14_col116 = eval.next_trace_mask();
+        let blake_round_output_limb_15_col117 = eval.next_trace_mask();
+        let blake_round_output_limb_16_col118 = eval.next_trace_mask();
+        let blake_round_output_limb_17_col119 = eval.next_trace_mask();
+        let blake_round_output_limb_18_col120 = eval.next_trace_mask();
+        let blake_round_output_limb_19_col121 = eval.next_trace_mask();
+        let blake_round_output_limb_20_col122 = eval.next_trace_mask();
+        let blake_round_output_limb_21_col123 = eval.next_trace_mask();
+        let blake_round_output_limb_22_col124 = eval.next_trace_mask();
+        let blake_round_output_limb_23_col125 = eval.next_trace_mask();
+        let blake_round_output_limb_24_col126 = eval.next_trace_mask();
+        let blake_round_output_limb_25_col127 = eval.next_trace_mask();
+        let blake_round_output_limb_26_col128 = eval.next_trace_mask();
+        let blake_round_output_limb_27_col129 = eval.next_trace_mask();
+        let blake_round_output_limb_28_col130 = eval.next_trace_mask();
+        let blake_round_output_limb_29_col131 = eval.next_trace_mask();
+        let blake_round_output_limb_30_col132 = eval.next_trace_mask();
+        let blake_round_output_limb_31_col133 = eval.next_trace_mask();
+        let blake_round_output_limb_32_col134 = eval.next_trace_mask();
+        let triple_xor_32_output_limb_0_col135 = eval.next_trace_mask();
+        let triple_xor_32_output_limb_1_col136 = eval.next_trace_mask();
+        let triple_xor_32_output_limb_0_col137 = eval.next_trace_mask();
+        let triple_xor_32_output_limb_1_col138 = eval.next_trace_mask();
+        let triple_xor_32_output_limb_0_col139 = eval.next_trace_mask();
+        let triple_xor_32_output_limb_1_col140 = eval.next_trace_mask();
+        let triple_xor_32_output_limb_0_col141 = eval.next_trace_mask();
+        let triple_xor_32_output_limb_1_col142 = eval.next_trace_mask();
+        let triple_xor_32_output_limb_0_col143 = eval.next_trace_mask();
+        let triple_xor_32_output_limb_1_col144 = eval.next_trace_mask();
+        let triple_xor_32_output_limb_0_col145 = eval.next_trace_mask();
+        let triple_xor_32_output_limb_1_col146 = eval.next_trace_mask();
+        let triple_xor_32_output_limb_0_col147 = eval.next_trace_mask();
+        let triple_xor_32_output_limb_1_col148 = eval.next_trace_mask();
+        let triple_xor_32_output_limb_0_col149 = eval.next_trace_mask();
+        let triple_xor_32_output_limb_1_col150 = eval.next_trace_mask();
 
         #[allow(clippy::unused_unit)]
         #[allow(unused_variables)]
@@ -310,42 +327,58 @@ impl FrameworkEval for Eval {
             ],
             limbi_low_col54.clone(),
             limbi_high_col55.clone(),
-            limbi_low_col56.clone(),
-            limbi_high_col57.clone(),
-            limbi_low_col58.clone(),
-            limbi_high_col59.clone(),
+            limbi_inv_or_one_col56.clone(),
+            limbi_low_col57.clone(),
+            limbi_high_col58.clone(),
+            limbi_inv_or_one_col59.clone(),
             limbi_low_col60.clone(),
             limbi_high_col61.clone(),
-            limbi_low_col62.clone(),
-            limbi_high_col63.clone(),
-            limbi_low_col64.clone(),
-            limbi_high_col65.clone(),
+            limbi_inv_or_one_col62.clone(),
+            limbi_low_col63.clone(),
+            limbi_high_col64.clone(),
+            limbi_inv_or_one_col65.clone(),
             limbi_low_col66.clone(),
             limbi_high_col67.clone(),
-            limbi_low_col68.clone(),
-            limbi_high_col69.clone(),
-            limbi_low_col70.clone(),
-            limbi_high_col71.clone(),
+            limbi_inv_or_one_col68.clone(),
+            limbi_low_col69.clone(),
+            limbi_high_col70.clone(),
+            limbi_inv_or_one_col71.clone(),
             limbi_low_col72.clone(),
             limbi_high_col73.clone(),
-            limbi_low_col74.clone(),
-            limbi_high_col75.clone(),
-            limbi_low_col76.clone(),
-            limbi_high_col77.clone(),
+            limbi_inv_or_one_col74.clone(),
+            limbi_low_col75.clone(),
+            limbi_high_col76.clone(),
+            limbi_inv_or_one_col77.clone(),
             limbi_low_col78.clone(),
             limbi_high_col79.clone(),
-            limbi_low_col80.clone(),
-            limbi_high_col81.clone(),
-            limbi_low_col82.clone(),
-            limbi_high_col83.clone(),
+            limbi_inv_or_one_col80.clone(),
+            limbi_low_col81.clone(),
+            limbi_high_col82.clone(),
+            limbi_inv_or_one_col83.clone(),
             limbi_low_col84.clone(),
             limbi_high_col85.clone(),
+            limbi_inv_or_one_col86.clone(),
+            limbi_low_col87.clone(),
+            limbi_high_col88.clone(),
+            limbi_inv_or_one_col89.clone(),
+            limbi_low_col90.clone(),
+            limbi_high_col91.clone(),
+            limbi_inv_or_one_col92.clone(),
+            limbi_low_col93.clone(),
+            limbi_high_col94.clone(),
+            limbi_inv_or_one_col95.clone(),
+            limbi_low_col96.clone(),
+            limbi_high_col97.clone(),
+            limbi_inv_or_one_col98.clone(),
+            limbi_low_col99.clone(),
+            limbi_high_col100.clone(),
+            limbi_inv_or_one_col101.clone(),
             &self.common_lookup_elements,
             &mut eval,
         );
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            -E::EF::one(),
+            -E::EF::from(M31_1.clone()),
             &[
                 M31_40528774.clone(),
                 seq.clone(),
@@ -388,44 +421,44 @@ impl FrameworkEval for Eval {
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            E::EF::one(),
+            E::EF::from(M31_1.clone()),
             &[
                 M31_40528774.clone(),
                 seq.clone(),
                 M31_10.clone(),
-                blake_round_output_limb_0_col86.clone(),
-                blake_round_output_limb_1_col87.clone(),
-                blake_round_output_limb_2_col88.clone(),
-                blake_round_output_limb_3_col89.clone(),
-                blake_round_output_limb_4_col90.clone(),
-                blake_round_output_limb_5_col91.clone(),
-                blake_round_output_limb_6_col92.clone(),
-                blake_round_output_limb_7_col93.clone(),
-                blake_round_output_limb_8_col94.clone(),
-                blake_round_output_limb_9_col95.clone(),
-                blake_round_output_limb_10_col96.clone(),
-                blake_round_output_limb_11_col97.clone(),
-                blake_round_output_limb_12_col98.clone(),
-                blake_round_output_limb_13_col99.clone(),
-                blake_round_output_limb_14_col100.clone(),
-                blake_round_output_limb_15_col101.clone(),
-                blake_round_output_limb_16_col102.clone(),
-                blake_round_output_limb_17_col103.clone(),
-                blake_round_output_limb_18_col104.clone(),
-                blake_round_output_limb_19_col105.clone(),
-                blake_round_output_limb_20_col106.clone(),
-                blake_round_output_limb_21_col107.clone(),
-                blake_round_output_limb_22_col108.clone(),
-                blake_round_output_limb_23_col109.clone(),
-                blake_round_output_limb_24_col110.clone(),
-                blake_round_output_limb_25_col111.clone(),
-                blake_round_output_limb_26_col112.clone(),
-                blake_round_output_limb_27_col113.clone(),
-                blake_round_output_limb_28_col114.clone(),
-                blake_round_output_limb_29_col115.clone(),
-                blake_round_output_limb_30_col116.clone(),
-                blake_round_output_limb_31_col117.clone(),
-                blake_round_output_limb_32_col118.clone(),
+                blake_round_output_limb_0_col102.clone(),
+                blake_round_output_limb_1_col103.clone(),
+                blake_round_output_limb_2_col104.clone(),
+                blake_round_output_limb_3_col105.clone(),
+                blake_round_output_limb_4_col106.clone(),
+                blake_round_output_limb_5_col107.clone(),
+                blake_round_output_limb_6_col108.clone(),
+                blake_round_output_limb_7_col109.clone(),
+                blake_round_output_limb_8_col110.clone(),
+                blake_round_output_limb_9_col111.clone(),
+                blake_round_output_limb_10_col112.clone(),
+                blake_round_output_limb_11_col113.clone(),
+                blake_round_output_limb_12_col114.clone(),
+                blake_round_output_limb_13_col115.clone(),
+                blake_round_output_limb_14_col116.clone(),
+                blake_round_output_limb_15_col117.clone(),
+                blake_round_output_limb_16_col118.clone(),
+                blake_round_output_limb_17_col119.clone(),
+                blake_round_output_limb_18_col120.clone(),
+                blake_round_output_limb_19_col121.clone(),
+                blake_round_output_limb_20_col122.clone(),
+                blake_round_output_limb_21_col123.clone(),
+                blake_round_output_limb_22_col124.clone(),
+                blake_round_output_limb_23_col125.clone(),
+                blake_round_output_limb_24_col126.clone(),
+                blake_round_output_limb_25_col127.clone(),
+                blake_round_output_limb_26_col128.clone(),
+                blake_round_output_limb_27_col129.clone(),
+                blake_round_output_limb_28_col130.clone(),
+                blake_round_output_limb_29_col131.clone(),
+                blake_round_output_limb_30_col132.clone(),
+                blake_round_output_limb_31_col133.clone(),
+                blake_round_output_limb_32_col134.clone(),
             ],
         ));
 
@@ -447,141 +480,141 @@ impl FrameworkEval for Eval {
                 input_state_before_limb6_limb_1_col13.clone(),
                 input_state_before_limb7_limb_0_col14.clone(),
                 input_state_before_limb7_limb_1_col15.clone(),
-                blake_round_output_limb_0_col86.clone(),
-                blake_round_output_limb_1_col87.clone(),
-                blake_round_output_limb_2_col88.clone(),
-                blake_round_output_limb_3_col89.clone(),
-                blake_round_output_limb_4_col90.clone(),
-                blake_round_output_limb_5_col91.clone(),
-                blake_round_output_limb_6_col92.clone(),
-                blake_round_output_limb_7_col93.clone(),
-                blake_round_output_limb_8_col94.clone(),
-                blake_round_output_limb_9_col95.clone(),
-                blake_round_output_limb_10_col96.clone(),
-                blake_round_output_limb_11_col97.clone(),
-                blake_round_output_limb_12_col98.clone(),
-                blake_round_output_limb_13_col99.clone(),
-                blake_round_output_limb_14_col100.clone(),
-                blake_round_output_limb_15_col101.clone(),
-                blake_round_output_limb_16_col102.clone(),
-                blake_round_output_limb_17_col103.clone(),
-                blake_round_output_limb_18_col104.clone(),
-                blake_round_output_limb_19_col105.clone(),
-                blake_round_output_limb_20_col106.clone(),
-                blake_round_output_limb_21_col107.clone(),
-                blake_round_output_limb_22_col108.clone(),
-                blake_round_output_limb_23_col109.clone(),
-                blake_round_output_limb_24_col110.clone(),
-                blake_round_output_limb_25_col111.clone(),
-                blake_round_output_limb_26_col112.clone(),
-                blake_round_output_limb_27_col113.clone(),
-                blake_round_output_limb_28_col114.clone(),
-                blake_round_output_limb_29_col115.clone(),
-                blake_round_output_limb_30_col116.clone(),
-                blake_round_output_limb_31_col117.clone(),
+                blake_round_output_limb_0_col102.clone(),
+                blake_round_output_limb_1_col103.clone(),
+                blake_round_output_limb_2_col104.clone(),
+                blake_round_output_limb_3_col105.clone(),
+                blake_round_output_limb_4_col106.clone(),
+                blake_round_output_limb_5_col107.clone(),
+                blake_round_output_limb_6_col108.clone(),
+                blake_round_output_limb_7_col109.clone(),
+                blake_round_output_limb_8_col110.clone(),
+                blake_round_output_limb_9_col111.clone(),
+                blake_round_output_limb_10_col112.clone(),
+                blake_round_output_limb_11_col113.clone(),
+                blake_round_output_limb_12_col114.clone(),
+                blake_round_output_limb_13_col115.clone(),
+                blake_round_output_limb_14_col116.clone(),
+                blake_round_output_limb_15_col117.clone(),
+                blake_round_output_limb_16_col118.clone(),
+                blake_round_output_limb_17_col119.clone(),
+                blake_round_output_limb_18_col120.clone(),
+                blake_round_output_limb_19_col121.clone(),
+                blake_round_output_limb_20_col122.clone(),
+                blake_round_output_limb_21_col123.clone(),
+                blake_round_output_limb_22_col124.clone(),
+                blake_round_output_limb_23_col125.clone(),
+                blake_round_output_limb_24_col126.clone(),
+                blake_round_output_limb_25_col127.clone(),
+                blake_round_output_limb_26_col128.clone(),
+                blake_round_output_limb_27_col129.clone(),
+                blake_round_output_limb_28_col130.clone(),
+                blake_round_output_limb_29_col131.clone(),
+                blake_round_output_limb_30_col132.clone(),
+                blake_round_output_limb_31_col133.clone(),
             ],
-            triple_xor_32_output_limb_0_col119.clone(),
-            triple_xor_32_output_limb_1_col120.clone(),
-            triple_xor_32_output_limb_0_col121.clone(),
-            triple_xor_32_output_limb_1_col122.clone(),
-            triple_xor_32_output_limb_0_col123.clone(),
-            triple_xor_32_output_limb_1_col124.clone(),
-            triple_xor_32_output_limb_0_col125.clone(),
-            triple_xor_32_output_limb_1_col126.clone(),
-            triple_xor_32_output_limb_0_col127.clone(),
-            triple_xor_32_output_limb_1_col128.clone(),
-            triple_xor_32_output_limb_0_col129.clone(),
-            triple_xor_32_output_limb_1_col130.clone(),
-            triple_xor_32_output_limb_0_col131.clone(),
-            triple_xor_32_output_limb_1_col132.clone(),
-            triple_xor_32_output_limb_0_col133.clone(),
-            triple_xor_32_output_limb_1_col134.clone(),
+            triple_xor_32_output_limb_0_col135.clone(),
+            triple_xor_32_output_limb_1_col136.clone(),
+            triple_xor_32_output_limb_0_col137.clone(),
+            triple_xor_32_output_limb_1_col138.clone(),
+            triple_xor_32_output_limb_0_col139.clone(),
+            triple_xor_32_output_limb_1_col140.clone(),
+            triple_xor_32_output_limb_0_col141.clone(),
+            triple_xor_32_output_limb_1_col142.clone(),
+            triple_xor_32_output_limb_0_col143.clone(),
+            triple_xor_32_output_limb_1_col144.clone(),
+            triple_xor_32_output_limb_0_col145.clone(),
+            triple_xor_32_output_limb_1_col146.clone(),
+            triple_xor_32_output_limb_0_col147.clone(),
+            triple_xor_32_output_limb_1_col148.clone(),
+            triple_xor_32_output_limb_0_col149.clone(),
+            triple_xor_32_output_limb_1_col150.clone(),
             &self.common_lookup_elements,
             &mut eval,
         );
         // Blake output h[0].low() matches expected.
         eval.add_constraint(
-            (triple_xor_32_output_limb_0_col119.clone()
+            (triple_xor_32_output_limb_0_col135.clone()
                 - input_state_after_limb0_limb_0_col16.clone()),
         );
         // Blake output h[0].high() matches expected.
         eval.add_constraint(
-            (triple_xor_32_output_limb_1_col120.clone()
+            (triple_xor_32_output_limb_1_col136.clone()
                 - input_state_after_limb0_limb_1_col17.clone()),
         );
         // Blake output h[1].low() matches expected.
         eval.add_constraint(
-            (triple_xor_32_output_limb_0_col121.clone()
+            (triple_xor_32_output_limb_0_col137.clone()
                 - input_state_after_limb1_limb_0_col18.clone()),
         );
         // Blake output h[1].high() matches expected.
         eval.add_constraint(
-            (triple_xor_32_output_limb_1_col122.clone()
+            (triple_xor_32_output_limb_1_col138.clone()
                 - input_state_after_limb1_limb_1_col19.clone()),
         );
         // Blake output h[2].low() matches expected.
         eval.add_constraint(
-            (triple_xor_32_output_limb_0_col123.clone()
+            (triple_xor_32_output_limb_0_col139.clone()
                 - input_state_after_limb2_limb_0_col20.clone()),
         );
         // Blake output h[2].high() matches expected.
         eval.add_constraint(
-            (triple_xor_32_output_limb_1_col124.clone()
+            (triple_xor_32_output_limb_1_col140.clone()
                 - input_state_after_limb2_limb_1_col21.clone()),
         );
         // Blake output h[3].low() matches expected.
         eval.add_constraint(
-            (triple_xor_32_output_limb_0_col125.clone()
+            (triple_xor_32_output_limb_0_col141.clone()
                 - input_state_after_limb3_limb_0_col22.clone()),
         );
         // Blake output h[3].high() matches expected.
         eval.add_constraint(
-            (triple_xor_32_output_limb_1_col126.clone()
+            (triple_xor_32_output_limb_1_col142.clone()
                 - input_state_after_limb3_limb_1_col23.clone()),
         );
         // Blake output h[4].low() matches expected.
         eval.add_constraint(
-            (triple_xor_32_output_limb_0_col127.clone()
+            (triple_xor_32_output_limb_0_col143.clone()
                 - input_state_after_limb4_limb_0_col24.clone()),
         );
         // Blake output h[4].high() matches expected.
         eval.add_constraint(
-            (triple_xor_32_output_limb_1_col128.clone()
+            (triple_xor_32_output_limb_1_col144.clone()
                 - input_state_after_limb4_limb_1_col25.clone()),
         );
         // Blake output h[5].low() matches expected.
         eval.add_constraint(
-            (triple_xor_32_output_limb_0_col129.clone()
+            (triple_xor_32_output_limb_0_col145.clone()
                 - input_state_after_limb5_limb_0_col26.clone()),
         );
         // Blake output h[5].high() matches expected.
         eval.add_constraint(
-            (triple_xor_32_output_limb_1_col130.clone()
+            (triple_xor_32_output_limb_1_col146.clone()
                 - input_state_after_limb5_limb_1_col27.clone()),
         );
         // Blake output h[6].low() matches expected.
         eval.add_constraint(
-            (triple_xor_32_output_limb_0_col131.clone()
+            (triple_xor_32_output_limb_0_col147.clone()
                 - input_state_after_limb6_limb_0_col28.clone()),
         );
         // Blake output h[6].high() matches expected.
         eval.add_constraint(
-            (triple_xor_32_output_limb_1_col132.clone()
+            (triple_xor_32_output_limb_1_col148.clone()
                 - input_state_after_limb6_limb_1_col29.clone()),
         );
         // Blake output h[7].low() matches expected.
         eval.add_constraint(
-            (triple_xor_32_output_limb_0_col133.clone()
+            (triple_xor_32_output_limb_0_col149.clone()
                 - input_state_after_limb7_limb_0_col30.clone()),
         );
         // Blake output h[7].high() matches expected.
         eval.add_constraint(
-            (triple_xor_32_output_limb_1_col134.clone()
+            (triple_xor_32_output_limb_1_col150.clone()
                 - input_state_after_limb7_limb_1_col31.clone()),
         );
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            E::EF::one(),
+            E::EF::from(compress_enabler.clone()),
             &[
                 M31_1061955672.clone(),
                 state_before_addr.clone(),
@@ -606,7 +639,7 @@ impl FrameworkEval for Eval {
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            -E::EF::one(),
+            -E::EF::from(compress_enabler.clone()),
             &[
                 M31_1061955672.clone(),
                 state_after_addr.clone(),
@@ -631,7 +664,7 @@ impl FrameworkEval for Eval {
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            E::EF::from(pp_enabler.clone()),
+            E::EF::from(compress_enabler.clone()),
             &[
                 M31_378353459.clone(),
                 message0_addr.clone(),
@@ -644,7 +677,7 @@ impl FrameworkEval for Eval {
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            E::EF::from(pp_enabler.clone()),
+            E::EF::from(compress_enabler.clone()),
             &[
                 M31_378353459.clone(),
                 message1_addr.clone(),
@@ -657,7 +690,7 @@ impl FrameworkEval for Eval {
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            E::EF::from(pp_enabler.clone()),
+            E::EF::from(compress_enabler.clone()),
             &[
                 M31_378353459.clone(),
                 message2_addr.clone(),
@@ -670,7 +703,7 @@ impl FrameworkEval for Eval {
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            E::EF::from(pp_enabler.clone()),
+            E::EF::from(compress_enabler.clone()),
             &[
                 M31_378353459.clone(),
                 message3_addr.clone(),

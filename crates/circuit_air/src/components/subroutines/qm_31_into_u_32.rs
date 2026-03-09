@@ -34,36 +34,52 @@ impl Qm31IntoU32 {
         ]: [E::F; 17],
         limbi_low_col0: E::F,
         limbi_high_col1: E::F,
-        limbi_low_col2: E::F,
-        limbi_high_col3: E::F,
-        limbi_low_col4: E::F,
-        limbi_high_col5: E::F,
+        limbi_inv_or_one_col2: E::F,
+        limbi_low_col3: E::F,
+        limbi_high_col4: E::F,
+        limbi_inv_or_one_col5: E::F,
         limbi_low_col6: E::F,
         limbi_high_col7: E::F,
-        limbi_low_col8: E::F,
-        limbi_high_col9: E::F,
-        limbi_low_col10: E::F,
-        limbi_high_col11: E::F,
+        limbi_inv_or_one_col8: E::F,
+        limbi_low_col9: E::F,
+        limbi_high_col10: E::F,
+        limbi_inv_or_one_col11: E::F,
         limbi_low_col12: E::F,
         limbi_high_col13: E::F,
-        limbi_low_col14: E::F,
-        limbi_high_col15: E::F,
-        limbi_low_col16: E::F,
-        limbi_high_col17: E::F,
+        limbi_inv_or_one_col14: E::F,
+        limbi_low_col15: E::F,
+        limbi_high_col16: E::F,
+        limbi_inv_or_one_col17: E::F,
         limbi_low_col18: E::F,
         limbi_high_col19: E::F,
-        limbi_low_col20: E::F,
-        limbi_high_col21: E::F,
-        limbi_low_col22: E::F,
-        limbi_high_col23: E::F,
+        limbi_inv_or_one_col20: E::F,
+        limbi_low_col21: E::F,
+        limbi_high_col22: E::F,
+        limbi_inv_or_one_col23: E::F,
         limbi_low_col24: E::F,
         limbi_high_col25: E::F,
-        limbi_low_col26: E::F,
-        limbi_high_col27: E::F,
-        limbi_low_col28: E::F,
-        limbi_high_col29: E::F,
+        limbi_inv_or_one_col26: E::F,
+        limbi_low_col27: E::F,
+        limbi_high_col28: E::F,
+        limbi_inv_or_one_col29: E::F,
         limbi_low_col30: E::F,
         limbi_high_col31: E::F,
+        limbi_inv_or_one_col32: E::F,
+        limbi_low_col33: E::F,
+        limbi_high_col34: E::F,
+        limbi_inv_or_one_col35: E::F,
+        limbi_low_col36: E::F,
+        limbi_high_col37: E::F,
+        limbi_inv_or_one_col38: E::F,
+        limbi_low_col39: E::F,
+        limbi_high_col40: E::F,
+        limbi_inv_or_one_col41: E::F,
+        limbi_low_col42: E::F,
+        limbi_high_col43: E::F,
+        limbi_inv_or_one_col44: E::F,
+        limbi_low_col45: E::F,
+        limbi_high_col46: E::F,
+        limbi_inv_or_one_col47: E::F,
         common_lookup_elements: &relations::CommonLookupElements,
         eval: &mut E,
     ) -> [E::F; 0] {
@@ -90,17 +106,23 @@ impl Qm31IntoU32 {
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::one(),
+            E::EF::from(M31_1.clone()),
             &[M31_1008385708.clone(), limbi_low_col0.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::one(),
+            E::EF::from(M31_1.clone()),
             &[M31_1058718565.clone(), limbi_high_col1.clone()],
         ));
 
-        // limb 0 reconstruction.
+        //limbi is zero then limbi_low is zero.
+        eval.add_constraint(
+            (((qm_31_into_u_32_input_limb_0.clone() * limbi_inv_or_one_col2.clone())
+                - M31_1.clone())
+                * limbi_low_col0.clone()),
+        );
+        //limb 0 reconstruction.
         eval.add_constraint(
             (qm_31_into_u_32_input_limb_0.clone()
                 - (limbi_low_col0.clone() + (limbi_high_col1.clone() * M31_65536.clone()))),
@@ -119,20 +141,26 @@ impl Qm31IntoU32 {
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::one(),
-            &[M31_1008385708.clone(), limbi_low_col2.clone()],
+            E::EF::from(M31_1.clone()),
+            &[M31_1008385708.clone(), limbi_low_col3.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::one(),
-            &[M31_1058718565.clone(), limbi_high_col3.clone()],
+            E::EF::from(M31_1.clone()),
+            &[M31_1058718565.clone(), limbi_high_col4.clone()],
         ));
 
-        // limb 1 reconstruction.
+        //limbi is zero then limbi_low is zero.
+        eval.add_constraint(
+            (((qm_31_into_u_32_input_limb_1.clone() * limbi_inv_or_one_col5.clone())
+                - M31_1.clone())
+                * limbi_low_col3.clone()),
+        );
+        //limb 1 reconstruction.
         eval.add_constraint(
             (qm_31_into_u_32_input_limb_1.clone()
-                - (limbi_low_col2.clone() + (limbi_high_col3.clone() * M31_65536.clone()))),
+                - (limbi_low_col3.clone() + (limbi_high_col4.clone() * M31_65536.clone()))),
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
@@ -141,55 +169,32 @@ impl Qm31IntoU32 {
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
                 M31_1.clone(),
-                limbi_low_col2.clone(),
-                limbi_high_col3.clone(),
+                limbi_low_col3.clone(),
+                limbi_high_col4.clone(),
             ],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::one(),
-            &[M31_1008385708.clone(), limbi_low_col4.clone()],
-        ));
-
-        eval.add_to_relation(RelationEntry::new(
-            common_lookup_elements,
-            E::EF::one(),
-            &[M31_1058718565.clone(), limbi_high_col5.clone()],
-        ));
-
-        // limb 2 reconstruction.
-        eval.add_constraint(
-            (qm_31_into_u_32_input_limb_2.clone()
-                - (limbi_low_col4.clone() + (limbi_high_col5.clone() * M31_65536.clone()))),
-        );
-        eval.add_to_relation(RelationEntry::new(
-            common_lookup_elements,
-            -E::EF::from(M31_10.clone()),
-            &[
-                M31_1492981981.clone(),
-                qm_31_into_u_32_input_limb_16.clone(),
-                M31_2.clone(),
-                limbi_low_col4.clone(),
-                limbi_high_col5.clone(),
-            ],
-        ));
-
-        eval.add_to_relation(RelationEntry::new(
-            common_lookup_elements,
-            E::EF::one(),
+            E::EF::from(M31_1.clone()),
             &[M31_1008385708.clone(), limbi_low_col6.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::one(),
+            E::EF::from(M31_1.clone()),
             &[M31_1058718565.clone(), limbi_high_col7.clone()],
         ));
 
-        // limb 3 reconstruction.
+        //limbi is zero then limbi_low is zero.
         eval.add_constraint(
-            (qm_31_into_u_32_input_limb_3.clone()
+            (((qm_31_into_u_32_input_limb_2.clone() * limbi_inv_or_one_col8.clone())
+                - M31_1.clone())
+                * limbi_low_col6.clone()),
+        );
+        //limb 2 reconstruction.
+        eval.add_constraint(
+            (qm_31_into_u_32_input_limb_2.clone()
                 - (limbi_low_col6.clone() + (limbi_high_col7.clone() * M31_65536.clone()))),
         );
         eval.add_to_relation(RelationEntry::new(
@@ -198,7 +203,7 @@ impl Qm31IntoU32 {
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
-                M31_3.clone(),
+                M31_2.clone(),
                 limbi_low_col6.clone(),
                 limbi_high_col7.clone(),
             ],
@@ -206,20 +211,26 @@ impl Qm31IntoU32 {
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::one(),
-            &[M31_1008385708.clone(), limbi_low_col8.clone()],
+            E::EF::from(M31_1.clone()),
+            &[M31_1008385708.clone(), limbi_low_col9.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::one(),
-            &[M31_1058718565.clone(), limbi_high_col9.clone()],
+            E::EF::from(M31_1.clone()),
+            &[M31_1058718565.clone(), limbi_high_col10.clone()],
         ));
 
-        // limb 4 reconstruction.
+        //limbi is zero then limbi_low is zero.
         eval.add_constraint(
-            (qm_31_into_u_32_input_limb_4.clone()
-                - (limbi_low_col8.clone() + (limbi_high_col9.clone() * M31_65536.clone()))),
+            (((qm_31_into_u_32_input_limb_3.clone() * limbi_inv_or_one_col11.clone())
+                - M31_1.clone())
+                * limbi_low_col9.clone()),
+        );
+        //limb 3 reconstruction.
+        eval.add_constraint(
+            (qm_31_into_u_32_input_limb_3.clone()
+                - (limbi_low_col9.clone() + (limbi_high_col10.clone() * M31_65536.clone()))),
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
@@ -227,56 +238,33 @@ impl Qm31IntoU32 {
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
-                M31_4.clone(),
-                limbi_low_col8.clone(),
-                limbi_high_col9.clone(),
+                M31_3.clone(),
+                limbi_low_col9.clone(),
+                limbi_high_col10.clone(),
             ],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::one(),
-            &[M31_1008385708.clone(), limbi_low_col10.clone()],
-        ));
-
-        eval.add_to_relation(RelationEntry::new(
-            common_lookup_elements,
-            E::EF::one(),
-            &[M31_1058718565.clone(), limbi_high_col11.clone()],
-        ));
-
-        // limb 5 reconstruction.
-        eval.add_constraint(
-            (qm_31_into_u_32_input_limb_5.clone()
-                - (limbi_low_col10.clone() + (limbi_high_col11.clone() * M31_65536.clone()))),
-        );
-        eval.add_to_relation(RelationEntry::new(
-            common_lookup_elements,
-            -E::EF::from(M31_10.clone()),
-            &[
-                M31_1492981981.clone(),
-                qm_31_into_u_32_input_limb_16.clone(),
-                M31_5.clone(),
-                limbi_low_col10.clone(),
-                limbi_high_col11.clone(),
-            ],
-        ));
-
-        eval.add_to_relation(RelationEntry::new(
-            common_lookup_elements,
-            E::EF::one(),
+            E::EF::from(M31_1.clone()),
             &[M31_1008385708.clone(), limbi_low_col12.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::one(),
+            E::EF::from(M31_1.clone()),
             &[M31_1058718565.clone(), limbi_high_col13.clone()],
         ));
 
-        // limb 6 reconstruction.
+        //limbi is zero then limbi_low is zero.
         eval.add_constraint(
-            (qm_31_into_u_32_input_limb_6.clone()
+            (((qm_31_into_u_32_input_limb_4.clone() * limbi_inv_or_one_col14.clone())
+                - M31_1.clone())
+                * limbi_low_col12.clone()),
+        );
+        //limb 4 reconstruction.
+        eval.add_constraint(
+            (qm_31_into_u_32_input_limb_4.clone()
                 - (limbi_low_col12.clone() + (limbi_high_col13.clone() * M31_65536.clone()))),
         );
         eval.add_to_relation(RelationEntry::new(
@@ -285,7 +273,7 @@ impl Qm31IntoU32 {
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
-                M31_6.clone(),
+                M31_4.clone(),
                 limbi_low_col12.clone(),
                 limbi_high_col13.clone(),
             ],
@@ -293,20 +281,26 @@ impl Qm31IntoU32 {
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::one(),
-            &[M31_1008385708.clone(), limbi_low_col14.clone()],
+            E::EF::from(M31_1.clone()),
+            &[M31_1008385708.clone(), limbi_low_col15.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::one(),
-            &[M31_1058718565.clone(), limbi_high_col15.clone()],
+            E::EF::from(M31_1.clone()),
+            &[M31_1058718565.clone(), limbi_high_col16.clone()],
         ));
 
-        // limb 7 reconstruction.
+        //limbi is zero then limbi_low is zero.
         eval.add_constraint(
-            (qm_31_into_u_32_input_limb_7.clone()
-                - (limbi_low_col14.clone() + (limbi_high_col15.clone() * M31_65536.clone()))),
+            (((qm_31_into_u_32_input_limb_5.clone() * limbi_inv_or_one_col17.clone())
+                - M31_1.clone())
+                * limbi_low_col15.clone()),
+        );
+        //limb 5 reconstruction.
+        eval.add_constraint(
+            (qm_31_into_u_32_input_limb_5.clone()
+                - (limbi_low_col15.clone() + (limbi_high_col16.clone() * M31_65536.clone()))),
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
@@ -314,56 +308,33 @@ impl Qm31IntoU32 {
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
-                M31_7.clone(),
-                limbi_low_col14.clone(),
-                limbi_high_col15.clone(),
+                M31_5.clone(),
+                limbi_low_col15.clone(),
+                limbi_high_col16.clone(),
             ],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::one(),
-            &[M31_1008385708.clone(), limbi_low_col16.clone()],
-        ));
-
-        eval.add_to_relation(RelationEntry::new(
-            common_lookup_elements,
-            E::EF::one(),
-            &[M31_1058718565.clone(), limbi_high_col17.clone()],
-        ));
-
-        // limb 8 reconstruction.
-        eval.add_constraint(
-            (qm_31_into_u_32_input_limb_8.clone()
-                - (limbi_low_col16.clone() + (limbi_high_col17.clone() * M31_65536.clone()))),
-        );
-        eval.add_to_relation(RelationEntry::new(
-            common_lookup_elements,
-            -E::EF::from(M31_10.clone()),
-            &[
-                M31_1492981981.clone(),
-                qm_31_into_u_32_input_limb_16.clone(),
-                M31_8.clone(),
-                limbi_low_col16.clone(),
-                limbi_high_col17.clone(),
-            ],
-        ));
-
-        eval.add_to_relation(RelationEntry::new(
-            common_lookup_elements,
-            E::EF::one(),
+            E::EF::from(M31_1.clone()),
             &[M31_1008385708.clone(), limbi_low_col18.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::one(),
+            E::EF::from(M31_1.clone()),
             &[M31_1058718565.clone(), limbi_high_col19.clone()],
         ));
 
-        // limb 9 reconstruction.
+        //limbi is zero then limbi_low is zero.
         eval.add_constraint(
-            (qm_31_into_u_32_input_limb_9.clone()
+            (((qm_31_into_u_32_input_limb_6.clone() * limbi_inv_or_one_col20.clone())
+                - M31_1.clone())
+                * limbi_low_col18.clone()),
+        );
+        //limb 6 reconstruction.
+        eval.add_constraint(
+            (qm_31_into_u_32_input_limb_6.clone()
                 - (limbi_low_col18.clone() + (limbi_high_col19.clone() * M31_65536.clone()))),
         );
         eval.add_to_relation(RelationEntry::new(
@@ -372,7 +343,7 @@ impl Qm31IntoU32 {
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
-                M31_9.clone(),
+                M31_6.clone(),
                 limbi_low_col18.clone(),
                 limbi_high_col19.clone(),
             ],
@@ -380,20 +351,26 @@ impl Qm31IntoU32 {
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::one(),
-            &[M31_1008385708.clone(), limbi_low_col20.clone()],
+            E::EF::from(M31_1.clone()),
+            &[M31_1008385708.clone(), limbi_low_col21.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::one(),
-            &[M31_1058718565.clone(), limbi_high_col21.clone()],
+            E::EF::from(M31_1.clone()),
+            &[M31_1058718565.clone(), limbi_high_col22.clone()],
         ));
 
-        // limb 10 reconstruction.
+        //limbi is zero then limbi_low is zero.
         eval.add_constraint(
-            (qm_31_into_u_32_input_limb_10.clone()
-                - (limbi_low_col20.clone() + (limbi_high_col21.clone() * M31_65536.clone()))),
+            (((qm_31_into_u_32_input_limb_7.clone() * limbi_inv_or_one_col23.clone())
+                - M31_1.clone())
+                * limbi_low_col21.clone()),
+        );
+        //limb 7 reconstruction.
+        eval.add_constraint(
+            (qm_31_into_u_32_input_limb_7.clone()
+                - (limbi_low_col21.clone() + (limbi_high_col22.clone() * M31_65536.clone()))),
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
@@ -401,56 +378,33 @@ impl Qm31IntoU32 {
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
-                M31_10.clone().clone(),
-                limbi_low_col20.clone(),
-                limbi_high_col21.clone(),
+                M31_7.clone(),
+                limbi_low_col21.clone(),
+                limbi_high_col22.clone(),
             ],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::one(),
-            &[M31_1008385708.clone(), limbi_low_col22.clone()],
-        ));
-
-        eval.add_to_relation(RelationEntry::new(
-            common_lookup_elements,
-            E::EF::one(),
-            &[M31_1058718565.clone(), limbi_high_col23.clone()],
-        ));
-
-        // limb 11 reconstruction.
-        eval.add_constraint(
-            (qm_31_into_u_32_input_limb_11.clone()
-                - (limbi_low_col22.clone() + (limbi_high_col23.clone() * M31_65536.clone()))),
-        );
-        eval.add_to_relation(RelationEntry::new(
-            common_lookup_elements,
-            -E::EF::from(M31_10.clone()),
-            &[
-                M31_1492981981.clone(),
-                qm_31_into_u_32_input_limb_16.clone(),
-                M31_11.clone(),
-                limbi_low_col22.clone(),
-                limbi_high_col23.clone(),
-            ],
-        ));
-
-        eval.add_to_relation(RelationEntry::new(
-            common_lookup_elements,
-            E::EF::one(),
+            E::EF::from(M31_1.clone()),
             &[M31_1008385708.clone(), limbi_low_col24.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::one(),
+            E::EF::from(M31_1.clone()),
             &[M31_1058718565.clone(), limbi_high_col25.clone()],
         ));
 
-        // limb 12 reconstruction.
+        //limbi is zero then limbi_low is zero.
         eval.add_constraint(
-            (qm_31_into_u_32_input_limb_12.clone()
+            (((qm_31_into_u_32_input_limb_8.clone() * limbi_inv_or_one_col26.clone())
+                - M31_1.clone())
+                * limbi_low_col24.clone()),
+        );
+        //limb 8 reconstruction.
+        eval.add_constraint(
+            (qm_31_into_u_32_input_limb_8.clone()
                 - (limbi_low_col24.clone() + (limbi_high_col25.clone() * M31_65536.clone()))),
         );
         eval.add_to_relation(RelationEntry::new(
@@ -459,7 +413,7 @@ impl Qm31IntoU32 {
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
-                M31_12.clone(),
+                M31_8.clone(),
                 limbi_low_col24.clone(),
                 limbi_high_col25.clone(),
             ],
@@ -467,20 +421,166 @@ impl Qm31IntoU32 {
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::one(),
-            &[M31_1008385708.clone(), limbi_low_col26.clone()],
+            E::EF::from(M31_1.clone()),
+            &[M31_1008385708.clone(), limbi_low_col27.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::one(),
-            &[M31_1058718565.clone(), limbi_high_col27.clone()],
+            E::EF::from(M31_1.clone()),
+            &[M31_1058718565.clone(), limbi_high_col28.clone()],
         ));
 
-        // limb 13 reconstruction.
+        //limbi is zero then limbi_low is zero.
+        eval.add_constraint(
+            (((qm_31_into_u_32_input_limb_9.clone() * limbi_inv_or_one_col29.clone())
+                - M31_1.clone())
+                * limbi_low_col27.clone()),
+        );
+        //limb 9 reconstruction.
+        eval.add_constraint(
+            (qm_31_into_u_32_input_limb_9.clone()
+                - (limbi_low_col27.clone() + (limbi_high_col28.clone() * M31_65536.clone()))),
+        );
+        eval.add_to_relation(RelationEntry::new(
+            common_lookup_elements,
+            -E::EF::from(M31_10.clone()),
+            &[
+                M31_1492981981.clone(),
+                qm_31_into_u_32_input_limb_16.clone(),
+                M31_9.clone(),
+                limbi_low_col27.clone(),
+                limbi_high_col28.clone(),
+            ],
+        ));
+
+        eval.add_to_relation(RelationEntry::new(
+            common_lookup_elements,
+            E::EF::from(M31_1.clone()),
+            &[M31_1008385708.clone(), limbi_low_col30.clone()],
+        ));
+
+        eval.add_to_relation(RelationEntry::new(
+            common_lookup_elements,
+            E::EF::from(M31_1.clone()),
+            &[M31_1058718565.clone(), limbi_high_col31.clone()],
+        ));
+
+        //limbi is zero then limbi_low is zero.
+        eval.add_constraint(
+            (((qm_31_into_u_32_input_limb_10.clone() * limbi_inv_or_one_col32.clone())
+                - M31_1.clone())
+                * limbi_low_col30.clone()),
+        );
+        //limb 10 reconstruction.
+        eval.add_constraint(
+            (qm_31_into_u_32_input_limb_10.clone()
+                - (limbi_low_col30.clone() + (limbi_high_col31.clone() * M31_65536.clone()))),
+        );
+        eval.add_to_relation(RelationEntry::new(
+            common_lookup_elements,
+            -E::EF::from(M31_10.clone()),
+            &[
+                M31_1492981981.clone(),
+                qm_31_into_u_32_input_limb_16.clone(),
+                M31_10.clone(),
+                limbi_low_col30.clone(),
+                limbi_high_col31.clone(),
+            ],
+        ));
+
+        eval.add_to_relation(RelationEntry::new(
+            common_lookup_elements,
+            E::EF::from(M31_1.clone()),
+            &[M31_1008385708.clone(), limbi_low_col33.clone()],
+        ));
+
+        eval.add_to_relation(RelationEntry::new(
+            common_lookup_elements,
+            E::EF::from(M31_1.clone()),
+            &[M31_1058718565.clone(), limbi_high_col34.clone()],
+        ));
+
+        //limbi is zero then limbi_low is zero.
+        eval.add_constraint(
+            (((qm_31_into_u_32_input_limb_11.clone() * limbi_inv_or_one_col35.clone())
+                - M31_1.clone())
+                * limbi_low_col33.clone()),
+        );
+        //limb 11 reconstruction.
+        eval.add_constraint(
+            (qm_31_into_u_32_input_limb_11.clone()
+                - (limbi_low_col33.clone() + (limbi_high_col34.clone() * M31_65536.clone()))),
+        );
+        eval.add_to_relation(RelationEntry::new(
+            common_lookup_elements,
+            -E::EF::from(M31_10.clone()),
+            &[
+                M31_1492981981.clone(),
+                qm_31_into_u_32_input_limb_16.clone(),
+                M31_11.clone(),
+                limbi_low_col33.clone(),
+                limbi_high_col34.clone(),
+            ],
+        ));
+
+        eval.add_to_relation(RelationEntry::new(
+            common_lookup_elements,
+            E::EF::from(M31_1.clone()),
+            &[M31_1008385708.clone(), limbi_low_col36.clone()],
+        ));
+
+        eval.add_to_relation(RelationEntry::new(
+            common_lookup_elements,
+            E::EF::from(M31_1.clone()),
+            &[M31_1058718565.clone(), limbi_high_col37.clone()],
+        ));
+
+        //limbi is zero then limbi_low is zero.
+        eval.add_constraint(
+            (((qm_31_into_u_32_input_limb_12.clone() * limbi_inv_or_one_col38.clone())
+                - M31_1.clone())
+                * limbi_low_col36.clone()),
+        );
+        //limb 12 reconstruction.
+        eval.add_constraint(
+            (qm_31_into_u_32_input_limb_12.clone()
+                - (limbi_low_col36.clone() + (limbi_high_col37.clone() * M31_65536.clone()))),
+        );
+        eval.add_to_relation(RelationEntry::new(
+            common_lookup_elements,
+            -E::EF::from(M31_10.clone()),
+            &[
+                M31_1492981981.clone(),
+                qm_31_into_u_32_input_limb_16.clone(),
+                M31_12.clone(),
+                limbi_low_col36.clone(),
+                limbi_high_col37.clone(),
+            ],
+        ));
+
+        eval.add_to_relation(RelationEntry::new(
+            common_lookup_elements,
+            E::EF::from(M31_1.clone()),
+            &[M31_1008385708.clone(), limbi_low_col39.clone()],
+        ));
+
+        eval.add_to_relation(RelationEntry::new(
+            common_lookup_elements,
+            E::EF::from(M31_1.clone()),
+            &[M31_1058718565.clone(), limbi_high_col40.clone()],
+        ));
+
+        //limbi is zero then limbi_low is zero.
+        eval.add_constraint(
+            (((qm_31_into_u_32_input_limb_13.clone() * limbi_inv_or_one_col41.clone())
+                - M31_1.clone())
+                * limbi_low_col39.clone()),
+        );
+        //limb 13 reconstruction.
         eval.add_constraint(
             (qm_31_into_u_32_input_limb_13.clone()
-                - (limbi_low_col26.clone() + (limbi_high_col27.clone() * M31_65536.clone()))),
+                - (limbi_low_col39.clone() + (limbi_high_col40.clone() * M31_65536.clone()))),
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
@@ -489,27 +589,33 @@ impl Qm31IntoU32 {
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
                 M31_13.clone(),
-                limbi_low_col26.clone(),
-                limbi_high_col27.clone(),
+                limbi_low_col39.clone(),
+                limbi_high_col40.clone(),
             ],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::one(),
-            &[M31_1008385708.clone(), limbi_low_col28.clone()],
+            E::EF::from(M31_1.clone()),
+            &[M31_1008385708.clone(), limbi_low_col42.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::one(),
-            &[M31_1058718565.clone(), limbi_high_col29.clone()],
+            E::EF::from(M31_1.clone()),
+            &[M31_1058718565.clone(), limbi_high_col43.clone()],
         ));
 
-        // limb 14 reconstruction.
+        //limbi is zero then limbi_low is zero.
+        eval.add_constraint(
+            (((qm_31_into_u_32_input_limb_14.clone() * limbi_inv_or_one_col44.clone())
+                - M31_1.clone())
+                * limbi_low_col42.clone()),
+        );
+        //limb 14 reconstruction.
         eval.add_constraint(
             (qm_31_into_u_32_input_limb_14.clone()
-                - (limbi_low_col28.clone() + (limbi_high_col29.clone() * M31_65536.clone()))),
+                - (limbi_low_col42.clone() + (limbi_high_col43.clone() * M31_65536.clone()))),
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
@@ -518,37 +624,43 @@ impl Qm31IntoU32 {
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
                 M31_14.clone(),
-                limbi_low_col28.clone(),
-                limbi_high_col29.clone(),
+                limbi_low_col42.clone(),
+                limbi_high_col43.clone(),
             ],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::one(),
-            &[M31_1008385708.clone(), limbi_low_col30.clone()],
+            E::EF::from(M31_1.clone()),
+            &[M31_1008385708.clone(), limbi_low_col45.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::one(),
-            &[M31_1058718565.clone(), limbi_high_col31.clone()],
+            E::EF::from(M31_1.clone()),
+            &[M31_1058718565.clone(), limbi_high_col46.clone()],
         ));
 
-        // limb 15 reconstruction.
+        //limbi is zero then limbi_low is zero.
+        eval.add_constraint(
+            (((qm_31_into_u_32_input_limb_15.clone() * limbi_inv_or_one_col47.clone())
+                - M31_1.clone())
+                * limbi_low_col45.clone()),
+        );
+        //limb 15 reconstruction.
         eval.add_constraint(
             (qm_31_into_u_32_input_limb_15.clone()
-                - (limbi_low_col30.clone() + (limbi_high_col31.clone() * M31_65536.clone()))),
+                - (limbi_low_col45.clone() + (limbi_high_col46.clone() * M31_65536.clone()))),
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::from(M31_10),
+            -E::EF::from(M31_10.clone()),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
                 M31_15.clone(),
-                limbi_low_col30.clone(),
-                limbi_high_col31.clone(),
+                limbi_low_col45.clone(),
+                limbi_high_col46.clone(),
             ],
         ));
 

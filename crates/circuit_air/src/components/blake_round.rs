@@ -210,8 +210,6 @@ impl FrameworkEval for Eval {
         let blake_g_output_limb_7_col146 = eval.next_trace_mask();
         let enabler = eval.next_trace_mask();
 
-        eval.add_constraint(enabler.clone() * enabler.clone() - enabler.clone());
-
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
             E::EF::one(),
@@ -653,6 +651,8 @@ impl FrameworkEval for Eval {
             ],
         ));
 
+        // Enabler is a bit.
+        eval.add_constraint(((enabler.clone() * enabler.clone()) - enabler.clone()));
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
             E::EF::from(enabler.clone()),

@@ -12,4 +12,5 @@ pub mod proof_from_stark_proof;
 pub mod select_queries;
 pub mod sort_queries;
 pub mod statement;
+pub mod test_utils;
 pub mod verify;

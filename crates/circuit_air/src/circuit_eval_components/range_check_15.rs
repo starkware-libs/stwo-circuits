@@ -53,3 +53,64 @@ impl<Value: IValue> CircuitEval<Value> for Component {
         &RELATION_USES_PER_ROW
     }
 }
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+    use stwo::core::fields::qm31::QM31;
+
+    #[allow(unused_imports)]
+    use crate::components::prelude::PreProcessedColumnId;
+    use crate::sample_evaluations::*;
+    use circuits::context::Context;
+    use circuits::ivalue::qm31_from_u32s;
+    use circuits_stark_verifier::constraint_eval::*;
+    use circuits_stark_verifier::test_utils::TestComponentData;
+
+    use super::Component;
+
+    #[test]
+    fn test_evaluation_result() {
+        let component = Component {};
+        let mut context: Context<QM31> = Default::default();
+        context.enable_assert_eq_on_eval();
+        let trace_columns = [qm31_from_u32s(1659099300, 905558730, 651199673, 1375009625)];
+        let interaction_columns = [qm31_from_u32s(1005168032, 79980996, 1847888101, 1941984119)];
+        let component_data = TestComponentData::from_values(
+            &mut context,
+            &trace_columns,
+            &interaction_columns,
+            qm31_from_u32s(1115374022, 1127856551, 489657863, 643630026),
+            qm31_from_u32s(1398335417, 314974026, 1722107152, 821933968),
+            32768,
+        );
+        let random_coeff =
+            context.new_var(qm31_from_u32s(474642921, 876336632, 1911695779, 974600512));
+        let interaction_elements = [
+            context.new_var(qm31_from_u32s(445623802, 202571636, 1360224996, 131355117)),
+            context.new_var(qm31_from_u32s(476823935, 939223384, 62486082, 122423602)),
+        ];
+        let preprocessed_columns = HashMap::from([(
+            PreProcessedColumnId { id: "seq_15".to_owned() },
+            context.constant(qm31_from_u32s(1561133224, 586108960, 1063114695, 1758380471)),
+        )]);
+        let public_params = HashMap::from([]);
+        let mut accumulator = CompositionConstraintAccumulator::new(
+            &mut context,
+            preprocessed_columns,
+            public_params,
+            random_coeff,
+            interaction_elements,
+        );
+        accumulator.set_enable_bit(context.one());
+        component.evaluate(&mut context, &component_data, &mut accumulator);
+        accumulator.finalize_logup_in_pairs(
+            &mut context,
+            <TestComponentData as ComponentDataTrait<QM31>>::interaction_columns(&component_data),
+            &component_data,
+        );
+
+        let result = accumulator.finalize();
+        let result_value = context.get(result);
+        assert_eq!(result_value, RANGE_CHECK_15_SAMPLE_EVAL_RESULT)
+    }
+}
