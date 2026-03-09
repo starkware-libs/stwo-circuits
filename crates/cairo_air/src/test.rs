@@ -165,7 +165,7 @@ pub fn verify_cairo_with_component_set(
 
     let verifier_config = CairoVerifierConfig {
         preprocessed_root: get_preprocessed_root(
-            20 + cairo_proof.extended_stark_proof.proof.config.fri_config.log_blowup_factor,
+            proof_config.log_evaluation_domain_size().try_into().unwrap(),
         ),
         proof_config,
         program,
