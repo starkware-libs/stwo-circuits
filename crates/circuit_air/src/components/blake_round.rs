@@ -1,5 +1,3 @@
-// This file was created by the AIR team.
-
 use crate::components::prelude::*;
 
 pub const N_TRACE_COLUMNS: usize = 148;
@@ -209,8 +207,6 @@ impl FrameworkEval for Eval {
         let blake_g_output_limb_6_col145 = eval.next_trace_mask();
         let blake_g_output_limb_7_col146 = eval.next_trace_mask();
         let enabler = eval.next_trace_mask();
-
-        eval.add_constraint(enabler.clone() * enabler.clone() - enabler.clone());
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
@@ -653,6 +649,8 @@ impl FrameworkEval for Eval {
             ],
         ));
 
+        // Enabler is a bit.
+        eval.add_constraint(((enabler.clone() * enabler.clone()) - enabler.clone()));
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
             E::EF::from(enabler.clone()),

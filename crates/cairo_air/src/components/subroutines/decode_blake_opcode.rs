@@ -1,6 +1,6 @@
 // This file was created by the AIR team.
 
-use crate::components::prelude::*;
+use super::super::prelude::*;
 
 pub const RELATION_USES_PER_ROW: [RelationUse; 4] = [
     RelationUse { relation_id: "MemoryAddressToId", uses: 4 },
