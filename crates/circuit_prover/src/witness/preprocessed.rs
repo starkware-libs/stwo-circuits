@@ -247,8 +247,9 @@ fn fill_blake_columns(
 
     // TODO(Leo): remove after we remove the circuit gates padding.
     assert_eq!(
-        n_blake_compress, blake_compress_padding,
-        "Only padding through circuit gates for now."
+        n_blake_compress % N_LANES,
+        0,
+        "Only padding to multiple of N_LANES through circuit gates for now."
     );
 
     // Pad with the first element.

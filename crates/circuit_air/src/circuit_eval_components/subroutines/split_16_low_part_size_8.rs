@@ -9,6 +9,7 @@ pub fn accumulate_constraints<Value: IValue>(
     input: &[Var],
     context: &mut Context<Value>,
     component_data: &dyn ComponentDataTrait<Value>,
+    enabler: Var,
     acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
     let [split_16_low_part_size_8_input, ms_8_bits_col0] = input.try_into().unwrap();

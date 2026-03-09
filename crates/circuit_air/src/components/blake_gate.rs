@@ -61,7 +61,6 @@ impl FrameworkEval for Eval {
     #[allow(non_snake_case)]
     fn evaluate<E: EvalAtRow>(&self, mut eval: E) -> E {
         let M31_0 = E::F::from(M31::from(0));
-        let M31_1 = E::F::from(M31::from(1));
         let M31_10 = E::F::from(M31::from(10));
         let M31_1061955672 = E::F::from(M31::from(1061955672));
         let M31_15470 = E::F::from(M31::from(15470));
@@ -85,8 +84,6 @@ impl FrameworkEval for Eval {
         let seq = eval.get_preprocessed_column(Seq::new(self.log_size()).id());
         let state_before_addr = eval
             .get_preprocessed_column(PreProcessedColumnId { id: "state_before_addr".to_owned() });
-        let compress_enabler = eval
-            .get_preprocessed_column(PreProcessedColumnId { id: "compress_enabler".to_owned() });
         let state_after_addr = eval
             .get_preprocessed_column(PreProcessedColumnId { id: "state_after_addr".to_owned() });
         let message0_addr =
@@ -97,6 +94,8 @@ impl FrameworkEval for Eval {
             eval.get_preprocessed_column(PreProcessedColumnId { id: "message2_addr".to_owned() });
         let message3_addr =
             eval.get_preprocessed_column(PreProcessedColumnId { id: "message3_addr".to_owned() });
+        let blake_gate_enabler = eval
+            .get_preprocessed_column(PreProcessedColumnId { id: "compress_enabler".to_owned() });
         let input_state_before_limb0_limb_0_col0 = eval.next_trace_mask();
         let input_state_before_limb0_limb_1_col1 = eval.next_trace_mask();
         let input_state_before_limb1_limb_0_col2 = eval.next_trace_mask();
@@ -299,6 +298,7 @@ impl FrameworkEval for Eval {
             xor_col52.clone(),
             xor_col53.clone(),
             &self.common_lookup_elements,
+            E::EF::from(blake_gate_enabler.clone()),
             t0.clone(),
             t1.clone(),
             &mut eval,
@@ -372,11 +372,12 @@ impl FrameworkEval for Eval {
             limbi_high_col100.clone(),
             limbi_inv_or_one_col101.clone(),
             &self.common_lookup_elements,
+            blake_gate_enabler.clone(),
             &mut eval,
         );
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            -E::EF::from(M31_1.clone()),
+            -E::EF::from(blake_gate_enabler.clone()),
             &[
                 M31_40528774.clone(),
                 seq.clone(),
@@ -419,7 +420,7 @@ impl FrameworkEval for Eval {
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[
                 M31_40528774.clone(),
                 seq.clone(),
@@ -528,6 +529,7 @@ impl FrameworkEval for Eval {
             triple_xor_32_output_limb_0_col149.clone(),
             triple_xor_32_output_limb_1_col150.clone(),
             &self.common_lookup_elements,
+            E::EF::from(blake_gate_enabler.clone()),
             &mut eval,
         );
         // Blake output h[0].low() matches expected.
@@ -612,7 +614,7 @@ impl FrameworkEval for Eval {
         );
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            E::EF::from(compress_enabler.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[
                 M31_1061955672.clone(),
                 state_before_addr.clone(),
@@ -637,7 +639,7 @@ impl FrameworkEval for Eval {
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            -E::EF::from(compress_enabler.clone()),
+            -E::EF::from(blake_gate_enabler.clone()),
             &[
                 M31_1061955672.clone(),
                 state_after_addr.clone(),
@@ -662,7 +664,7 @@ impl FrameworkEval for Eval {
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            E::EF::from(compress_enabler.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[
                 M31_378353459.clone(),
                 message0_addr.clone(),
@@ -675,7 +677,7 @@ impl FrameworkEval for Eval {
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            E::EF::from(compress_enabler.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[
                 M31_378353459.clone(),
                 message1_addr.clone(),
@@ -688,7 +690,7 @@ impl FrameworkEval for Eval {
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            E::EF::from(compress_enabler.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[
                 M31_378353459.clone(),
                 message2_addr.clone(),
@@ -701,7 +703,7 @@ impl FrameworkEval for Eval {
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            E::EF::from(compress_enabler.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[
                 M31_378353459.clone(),
                 message3_addr.clone(),

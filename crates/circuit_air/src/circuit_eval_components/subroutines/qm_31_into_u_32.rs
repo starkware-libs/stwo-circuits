@@ -12,6 +12,7 @@ pub fn accumulate_constraints<Value: IValue>(
     input: &[Var],
     context: &mut Context<Value>,
     component_data: &dyn ComponentDataTrait<Value>,
+    enabler: Var,
     acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
     let [
@@ -84,12 +85,12 @@ pub fn accumulate_constraints<Value: IValue>(
 
     // Use RangeCheck_16.
     let tuple_0 = &[eval!(context, 1008385708), eval!(context, limbi_low_col0)];
-    let numerator_0 = eval!(context, 1);
+    let numerator_0 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_0, tuple_0);
 
     // Use RangeCheck_15.
     let tuple_1 = &[eval!(context, 1058718565), eval!(context, limbi_high_col1)];
-    let numerator_1 = eval!(context, 1);
+    let numerator_1 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_1, tuple_1);
 
     //limbi is zero then limbi_low is zero.
@@ -114,17 +115,17 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, limbi_low_col0),
         eval!(context, limbi_high_col1),
     ];
-    let numerator_4 = eval!(context, -(10));
+    let numerator_4 = eval!(context, -((enabler) * (10)));
     acc.add_to_relation(context, numerator_4, tuple_4);
 
     // Use RangeCheck_16.
     let tuple_5 = &[eval!(context, 1008385708), eval!(context, limbi_low_col3)];
-    let numerator_5 = eval!(context, 1);
+    let numerator_5 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_5, tuple_5);
 
     // Use RangeCheck_15.
     let tuple_6 = &[eval!(context, 1058718565), eval!(context, limbi_high_col4)];
-    let numerator_6 = eval!(context, 1);
+    let numerator_6 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_6, tuple_6);
 
     //limbi is zero then limbi_low is zero.
@@ -149,17 +150,17 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, limbi_low_col3),
         eval!(context, limbi_high_col4),
     ];
-    let numerator_9 = eval!(context, -(10));
+    let numerator_9 = eval!(context, -((enabler) * (10)));
     acc.add_to_relation(context, numerator_9, tuple_9);
 
     // Use RangeCheck_16.
     let tuple_10 = &[eval!(context, 1008385708), eval!(context, limbi_low_col6)];
-    let numerator_10 = eval!(context, 1);
+    let numerator_10 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_10, tuple_10);
 
     // Use RangeCheck_15.
     let tuple_11 = &[eval!(context, 1058718565), eval!(context, limbi_high_col7)];
-    let numerator_11 = eval!(context, 1);
+    let numerator_11 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_11, tuple_11);
 
     //limbi is zero then limbi_low is zero.
@@ -184,17 +185,17 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, limbi_low_col6),
         eval!(context, limbi_high_col7),
     ];
-    let numerator_14 = eval!(context, -(10));
+    let numerator_14 = eval!(context, -((enabler) * (10)));
     acc.add_to_relation(context, numerator_14, tuple_14);
 
     // Use RangeCheck_16.
     let tuple_15 = &[eval!(context, 1008385708), eval!(context, limbi_low_col9)];
-    let numerator_15 = eval!(context, 1);
+    let numerator_15 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_15, tuple_15);
 
     // Use RangeCheck_15.
     let tuple_16 = &[eval!(context, 1058718565), eval!(context, limbi_high_col10)];
-    let numerator_16 = eval!(context, 1);
+    let numerator_16 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_16, tuple_16);
 
     //limbi is zero then limbi_low is zero.
@@ -219,17 +220,17 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, limbi_low_col9),
         eval!(context, limbi_high_col10),
     ];
-    let numerator_19 = eval!(context, -(10));
+    let numerator_19 = eval!(context, -((enabler) * (10)));
     acc.add_to_relation(context, numerator_19, tuple_19);
 
     // Use RangeCheck_16.
     let tuple_20 = &[eval!(context, 1008385708), eval!(context, limbi_low_col12)];
-    let numerator_20 = eval!(context, 1);
+    let numerator_20 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_20, tuple_20);
 
     // Use RangeCheck_15.
     let tuple_21 = &[eval!(context, 1058718565), eval!(context, limbi_high_col13)];
-    let numerator_21 = eval!(context, 1);
+    let numerator_21 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_21, tuple_21);
 
     //limbi is zero then limbi_low is zero.
@@ -254,17 +255,17 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, limbi_low_col12),
         eval!(context, limbi_high_col13),
     ];
-    let numerator_24 = eval!(context, -(10));
+    let numerator_24 = eval!(context, -((enabler) * (10)));
     acc.add_to_relation(context, numerator_24, tuple_24);
 
     // Use RangeCheck_16.
     let tuple_25 = &[eval!(context, 1008385708), eval!(context, limbi_low_col15)];
-    let numerator_25 = eval!(context, 1);
+    let numerator_25 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_25, tuple_25);
 
     // Use RangeCheck_15.
     let tuple_26 = &[eval!(context, 1058718565), eval!(context, limbi_high_col16)];
-    let numerator_26 = eval!(context, 1);
+    let numerator_26 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_26, tuple_26);
 
     //limbi is zero then limbi_low is zero.
@@ -289,17 +290,17 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, limbi_low_col15),
         eval!(context, limbi_high_col16),
     ];
-    let numerator_29 = eval!(context, -(10));
+    let numerator_29 = eval!(context, -((enabler) * (10)));
     acc.add_to_relation(context, numerator_29, tuple_29);
 
     // Use RangeCheck_16.
     let tuple_30 = &[eval!(context, 1008385708), eval!(context, limbi_low_col18)];
-    let numerator_30 = eval!(context, 1);
+    let numerator_30 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_30, tuple_30);
 
     // Use RangeCheck_15.
     let tuple_31 = &[eval!(context, 1058718565), eval!(context, limbi_high_col19)];
-    let numerator_31 = eval!(context, 1);
+    let numerator_31 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_31, tuple_31);
 
     //limbi is zero then limbi_low is zero.
@@ -324,17 +325,17 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, limbi_low_col18),
         eval!(context, limbi_high_col19),
     ];
-    let numerator_34 = eval!(context, -(10));
+    let numerator_34 = eval!(context, -((enabler) * (10)));
     acc.add_to_relation(context, numerator_34, tuple_34);
 
     // Use RangeCheck_16.
     let tuple_35 = &[eval!(context, 1008385708), eval!(context, limbi_low_col21)];
-    let numerator_35 = eval!(context, 1);
+    let numerator_35 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_35, tuple_35);
 
     // Use RangeCheck_15.
     let tuple_36 = &[eval!(context, 1058718565), eval!(context, limbi_high_col22)];
-    let numerator_36 = eval!(context, 1);
+    let numerator_36 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_36, tuple_36);
 
     //limbi is zero then limbi_low is zero.
@@ -359,17 +360,17 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, limbi_low_col21),
         eval!(context, limbi_high_col22),
     ];
-    let numerator_39 = eval!(context, -(10));
+    let numerator_39 = eval!(context, -((enabler) * (10)));
     acc.add_to_relation(context, numerator_39, tuple_39);
 
     // Use RangeCheck_16.
     let tuple_40 = &[eval!(context, 1008385708), eval!(context, limbi_low_col24)];
-    let numerator_40 = eval!(context, 1);
+    let numerator_40 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_40, tuple_40);
 
     // Use RangeCheck_15.
     let tuple_41 = &[eval!(context, 1058718565), eval!(context, limbi_high_col25)];
-    let numerator_41 = eval!(context, 1);
+    let numerator_41 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_41, tuple_41);
 
     //limbi is zero then limbi_low is zero.
@@ -394,17 +395,17 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, limbi_low_col24),
         eval!(context, limbi_high_col25),
     ];
-    let numerator_44 = eval!(context, -(10));
+    let numerator_44 = eval!(context, -((enabler) * (10)));
     acc.add_to_relation(context, numerator_44, tuple_44);
 
     // Use RangeCheck_16.
     let tuple_45 = &[eval!(context, 1008385708), eval!(context, limbi_low_col27)];
-    let numerator_45 = eval!(context, 1);
+    let numerator_45 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_45, tuple_45);
 
     // Use RangeCheck_15.
     let tuple_46 = &[eval!(context, 1058718565), eval!(context, limbi_high_col28)];
-    let numerator_46 = eval!(context, 1);
+    let numerator_46 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_46, tuple_46);
 
     //limbi is zero then limbi_low is zero.
@@ -429,17 +430,17 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, limbi_low_col27),
         eval!(context, limbi_high_col28),
     ];
-    let numerator_49 = eval!(context, -(10));
+    let numerator_49 = eval!(context, -((enabler) * (10)));
     acc.add_to_relation(context, numerator_49, tuple_49);
 
     // Use RangeCheck_16.
     let tuple_50 = &[eval!(context, 1008385708), eval!(context, limbi_low_col30)];
-    let numerator_50 = eval!(context, 1);
+    let numerator_50 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_50, tuple_50);
 
     // Use RangeCheck_15.
     let tuple_51 = &[eval!(context, 1058718565), eval!(context, limbi_high_col31)];
-    let numerator_51 = eval!(context, 1);
+    let numerator_51 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_51, tuple_51);
 
     //limbi is zero then limbi_low is zero.
@@ -464,17 +465,17 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, limbi_low_col30),
         eval!(context, limbi_high_col31),
     ];
-    let numerator_54 = eval!(context, -(10));
+    let numerator_54 = eval!(context, -((enabler) * (10)));
     acc.add_to_relation(context, numerator_54, tuple_54);
 
     // Use RangeCheck_16.
     let tuple_55 = &[eval!(context, 1008385708), eval!(context, limbi_low_col33)];
-    let numerator_55 = eval!(context, 1);
+    let numerator_55 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_55, tuple_55);
 
     // Use RangeCheck_15.
     let tuple_56 = &[eval!(context, 1058718565), eval!(context, limbi_high_col34)];
-    let numerator_56 = eval!(context, 1);
+    let numerator_56 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_56, tuple_56);
 
     //limbi is zero then limbi_low is zero.
@@ -499,17 +500,17 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, limbi_low_col33),
         eval!(context, limbi_high_col34),
     ];
-    let numerator_59 = eval!(context, -(10));
+    let numerator_59 = eval!(context, -((enabler) * (10)));
     acc.add_to_relation(context, numerator_59, tuple_59);
 
     // Use RangeCheck_16.
     let tuple_60 = &[eval!(context, 1008385708), eval!(context, limbi_low_col36)];
-    let numerator_60 = eval!(context, 1);
+    let numerator_60 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_60, tuple_60);
 
     // Use RangeCheck_15.
     let tuple_61 = &[eval!(context, 1058718565), eval!(context, limbi_high_col37)];
-    let numerator_61 = eval!(context, 1);
+    let numerator_61 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_61, tuple_61);
 
     //limbi is zero then limbi_low is zero.
@@ -534,17 +535,17 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, limbi_low_col36),
         eval!(context, limbi_high_col37),
     ];
-    let numerator_64 = eval!(context, -(10));
+    let numerator_64 = eval!(context, -((enabler) * (10)));
     acc.add_to_relation(context, numerator_64, tuple_64);
 
     // Use RangeCheck_16.
     let tuple_65 = &[eval!(context, 1008385708), eval!(context, limbi_low_col39)];
-    let numerator_65 = eval!(context, 1);
+    let numerator_65 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_65, tuple_65);
 
     // Use RangeCheck_15.
     let tuple_66 = &[eval!(context, 1058718565), eval!(context, limbi_high_col40)];
-    let numerator_66 = eval!(context, 1);
+    let numerator_66 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_66, tuple_66);
 
     //limbi is zero then limbi_low is zero.
@@ -569,17 +570,17 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, limbi_low_col39),
         eval!(context, limbi_high_col40),
     ];
-    let numerator_69 = eval!(context, -(10));
+    let numerator_69 = eval!(context, -((enabler) * (10)));
     acc.add_to_relation(context, numerator_69, tuple_69);
 
     // Use RangeCheck_16.
     let tuple_70 = &[eval!(context, 1008385708), eval!(context, limbi_low_col42)];
-    let numerator_70 = eval!(context, 1);
+    let numerator_70 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_70, tuple_70);
 
     // Use RangeCheck_15.
     let tuple_71 = &[eval!(context, 1058718565), eval!(context, limbi_high_col43)];
-    let numerator_71 = eval!(context, 1);
+    let numerator_71 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_71, tuple_71);
 
     //limbi is zero then limbi_low is zero.
@@ -604,17 +605,17 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, limbi_low_col42),
         eval!(context, limbi_high_col43),
     ];
-    let numerator_74 = eval!(context, -(10));
+    let numerator_74 = eval!(context, -((enabler) * (10)));
     acc.add_to_relation(context, numerator_74, tuple_74);
 
     // Use RangeCheck_16.
     let tuple_75 = &[eval!(context, 1008385708), eval!(context, limbi_low_col45)];
-    let numerator_75 = eval!(context, 1);
+    let numerator_75 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_75, tuple_75);
 
     // Use RangeCheck_15.
     let tuple_76 = &[eval!(context, 1058718565), eval!(context, limbi_high_col46)];
-    let numerator_76 = eval!(context, 1);
+    let numerator_76 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_76, tuple_76);
 
     //limbi is zero then limbi_low is zero.
@@ -639,7 +640,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, limbi_low_col45),
         eval!(context, limbi_high_col46),
     ];
-    let numerator_79 = eval!(context, -(10));
+    let numerator_79 = eval!(context, -((enabler) * (10)));
     acc.add_to_relation(context, numerator_79, tuple_79);
     vec![]
 }

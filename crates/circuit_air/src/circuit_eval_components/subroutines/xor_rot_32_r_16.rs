@@ -12,6 +12,7 @@ pub fn accumulate_constraints<Value: IValue>(
     input: &[Var],
     context: &mut Context<Value>,
     component_data: &dyn ComponentDataTrait<Value>,
+    enabler: Var,
     acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
     let [
@@ -34,6 +35,7 @@ pub fn accumulate_constraints<Value: IValue>(
             &[eval!(context, xor_rot_32_r_16_input_limb_0), eval!(context, ms_8_bits_col0)],
             context,
             component_data,
+            enabler,
             acc,
         )
         .try_into()
@@ -44,6 +46,7 @@ pub fn accumulate_constraints<Value: IValue>(
             &[eval!(context, xor_rot_32_r_16_input_limb_1), eval!(context, ms_8_bits_col1)],
             context,
             component_data,
+            enabler,
             acc,
         )
         .try_into()
@@ -54,6 +57,7 @@ pub fn accumulate_constraints<Value: IValue>(
             &[eval!(context, xor_rot_32_r_16_input_limb_2), eval!(context, ms_8_bits_col2)],
             context,
             component_data,
+            enabler,
             acc,
         )
         .try_into()
@@ -64,6 +68,7 @@ pub fn accumulate_constraints<Value: IValue>(
             &[eval!(context, xor_rot_32_r_16_input_limb_3), eval!(context, ms_8_bits_col3)],
             context,
             component_data,
+            enabler,
             acc,
         )
         .try_into()
@@ -77,6 +82,7 @@ pub fn accumulate_constraints<Value: IValue>(
         ],
         context,
         component_data,
+        enabler,
         acc,
     );
 
@@ -84,6 +90,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[eval!(context, ms_8_bits_col0), eval!(context, ms_8_bits_col2), eval!(context, xor_col5)],
         context,
         component_data,
+        enabler,
         acc,
     );
 
@@ -95,6 +102,7 @@ pub fn accumulate_constraints<Value: IValue>(
         ],
         context,
         component_data,
+        enabler,
         acc,
     );
 
@@ -102,6 +110,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[eval!(context, ms_8_bits_col1), eval!(context, ms_8_bits_col3), eval!(context, xor_col7)],
         context,
         component_data,
+        enabler,
         acc,
     );
 
