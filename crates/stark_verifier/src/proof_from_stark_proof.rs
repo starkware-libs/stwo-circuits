@@ -214,22 +214,24 @@ pub fn construct_fri_witness(
     proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
     all_line_fold_steps: &[usize],
 ) -> FriWitness<QM31> {
-    let mut line_coset_vals_per_query_per_tree = vec![vec![]; all_line_fold_steps.len()];
-    let mut circle_siblings = vec![];
+    let all_layers = [
+        &[&proof.aux.fri.first_layer][..],
+        proof.aux.fri.inner_layers.iter().collect::<Vec<_>>().as_slice(),
+    ]
+    .concat();
+    let all_fold_steps = [&[1], all_line_fold_steps].concat();
+    let mut witness_per_query_per_tree = vec![vec![]; all_fold_steps.len()];
     for query in &proof.aux.unsorted_query_locations {
-        circle_siblings.push(proof.aux.fri.first_layer.all_values[0][&(query ^ 1)]);
-        let mut pos = query >> 1;
-        for (tree_idx, (layer, step)) in
-            zip_eq(&proof.aux.fri.inner_layers, all_line_fold_steps).enumerate()
-        {
+        let mut pos = *query;
+        for (tree_idx, (layer, step)) in zip_eq(&all_layers, &all_fold_steps).enumerate() {
             let start = (pos >> step) << step;
-            let line_coset_vals: Vec<_> =
+            let witness: Vec<_> =
                 (start..start + (1 << step)).map(|i| layer.all_values[0][&i]).collect();
-            line_coset_vals_per_query_per_tree[tree_idx].push(line_coset_vals);
+            witness_per_query_per_tree[tree_idx].push(witness);
             pos >>= step;
         }
     }
-    FriWitness { circle_siblings, line_coset_vals_per_query_per_tree }
+    FriWitness(witness_per_query_per_tree)
 }
 
 /// Packs the enable bits into QM31s.
