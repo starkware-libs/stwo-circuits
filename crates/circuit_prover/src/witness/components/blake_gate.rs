@@ -1,5 +1,3 @@
-// This file was created by the AIR team.
-
 #![allow(unused_parens)]
 #![allow(clippy::too_many_arguments)]
 use crate::witness::components::prelude::*;
@@ -8,6 +6,8 @@ use crate::witness::components::{
     verify_bitwise_xor_8,
 };
 use circuit_air::components::blake_gate::{InteractionClaim, N_TRACE_COLUMNS};
+use stwo::core::fields::FieldExpOps;
+use stwo_cairo_prover::witness::prelude::EqExtend;
 
 pub type InputType = ([[UInt32; 8]; 2], [M31; 16]);
 pub type PackedInputType = ([[PackedUInt32; 8]; 2], [PackedM31; 16]);
@@ -553,247 +553,317 @@ fn write_trace_simd(
 
                 let limbi_low_tmp_8e0ec_13 =
                     ((PackedUInt32::from_m31(input_message_limb0_col32)) & (UInt32_65535));
-                let limbi_high_tmp_8e0ec_14 =
-                    ((PackedUInt32::from_m31(input_message_limb0_col32)) >> (UInt32_16));
                 let limbi_low_col54 = limbi_low_tmp_8e0ec_13.low().as_m31();
                 *row[54] = limbi_low_col54;
-                let limbi_high_col55 = limbi_high_tmp_8e0ec_14.low().as_m31();
-                *row[55] = limbi_high_col55;
                 *sub_component_inputs.range_check_16[0] = [limbi_low_col54];
                 *lookup_data.range_check_16_0 = [M31_1008385708, limbi_low_col54];
+                let limbi_high_tmp_8e0ec_14 =
+                    ((PackedUInt32::from_m31(input_message_limb0_col32)) >> (UInt32_16));
+                let limbi_high_col55 = limbi_high_tmp_8e0ec_14.low().as_m31();
+                *row[55] = limbi_high_col55;
                 *sub_component_inputs.range_check_15[0] = [limbi_high_col55];
                 *lookup_data.range_check_15_0 = [M31_1058718565, limbi_high_col55];
+                let limbi_is_zero_tmp_8e0ec_15 = M31_0.eq(input_message_limb0_col32);
+                let limbi_inv_or_one_col56 =
+                    ((limbi_is_zero_tmp_8e0ec_15.as_m31()) + (input_message_limb0_col32)).inverse();
+                *row[56] = limbi_inv_or_one_col56;
                 *lookup_data.blake_message_0 =
                     [M31_1492981981, seq, M31_0, limbi_low_col54, limbi_high_col55];
-                let limbi_low_tmp_8e0ec_15 =
+                let limbi_low_tmp_8e0ec_16 =
                     ((PackedUInt32::from_m31(input_message_limb1_col33)) & (UInt32_65535));
-                let limbi_high_tmp_8e0ec_16 =
+                let limbi_low_col57 = limbi_low_tmp_8e0ec_16.low().as_m31();
+                *row[57] = limbi_low_col57;
+                *sub_component_inputs.range_check_16[1] = [limbi_low_col57];
+                *lookup_data.range_check_16_1 = [M31_1008385708, limbi_low_col57];
+                let limbi_high_tmp_8e0ec_17 =
                     ((PackedUInt32::from_m31(input_message_limb1_col33)) >> (UInt32_16));
-                let limbi_low_col56 = limbi_low_tmp_8e0ec_15.low().as_m31();
-                *row[56] = limbi_low_col56;
-                let limbi_high_col57 = limbi_high_tmp_8e0ec_16.low().as_m31();
-                *row[57] = limbi_high_col57;
-                *sub_component_inputs.range_check_16[1] = [limbi_low_col56];
-                *lookup_data.range_check_16_1 = [M31_1008385708, limbi_low_col56];
-                *sub_component_inputs.range_check_15[1] = [limbi_high_col57];
-                *lookup_data.range_check_15_1 = [M31_1058718565, limbi_high_col57];
+                let limbi_high_col58 = limbi_high_tmp_8e0ec_17.low().as_m31();
+                *row[58] = limbi_high_col58;
+                *sub_component_inputs.range_check_15[1] = [limbi_high_col58];
+                *lookup_data.range_check_15_1 = [M31_1058718565, limbi_high_col58];
+                let limbi_is_zero_tmp_8e0ec_18 = M31_0.eq(input_message_limb1_col33);
+                let limbi_inv_or_one_col59 =
+                    ((limbi_is_zero_tmp_8e0ec_18.as_m31()) + (input_message_limb1_col33)).inverse();
+                *row[59] = limbi_inv_or_one_col59;
                 *lookup_data.blake_message_1 =
-                    [M31_1492981981, seq, M31_1, limbi_low_col56, limbi_high_col57];
-                let limbi_low_tmp_8e0ec_17 =
-                    ((PackedUInt32::from_m31(input_message_limb2_col34)) & (UInt32_65535));
-                let limbi_high_tmp_8e0ec_18 =
-                    ((PackedUInt32::from_m31(input_message_limb2_col34)) >> (UInt32_16));
-                let limbi_low_col58 = limbi_low_tmp_8e0ec_17.low().as_m31();
-                *row[58] = limbi_low_col58;
-                let limbi_high_col59 = limbi_high_tmp_8e0ec_18.low().as_m31();
-                *row[59] = limbi_high_col59;
-                *sub_component_inputs.range_check_16[2] = [limbi_low_col58];
-                *lookup_data.range_check_16_2 = [M31_1008385708, limbi_low_col58];
-                *sub_component_inputs.range_check_15[2] = [limbi_high_col59];
-                *lookup_data.range_check_15_2 = [M31_1058718565, limbi_high_col59];
-                *lookup_data.blake_message_2 =
-                    [M31_1492981981, seq, M31_2, limbi_low_col58, limbi_high_col59];
+                    [M31_1492981981, seq, M31_1, limbi_low_col57, limbi_high_col58];
                 let limbi_low_tmp_8e0ec_19 =
-                    ((PackedUInt32::from_m31(input_message_limb3_col35)) & (UInt32_65535));
-                let limbi_high_tmp_8e0ec_20 =
-                    ((PackedUInt32::from_m31(input_message_limb3_col35)) >> (UInt32_16));
+                    ((PackedUInt32::from_m31(input_message_limb2_col34)) & (UInt32_65535));
                 let limbi_low_col60 = limbi_low_tmp_8e0ec_19.low().as_m31();
                 *row[60] = limbi_low_col60;
+                *sub_component_inputs.range_check_16[2] = [limbi_low_col60];
+                *lookup_data.range_check_16_2 = [M31_1008385708, limbi_low_col60];
+                let limbi_high_tmp_8e0ec_20 =
+                    ((PackedUInt32::from_m31(input_message_limb2_col34)) >> (UInt32_16));
                 let limbi_high_col61 = limbi_high_tmp_8e0ec_20.low().as_m31();
                 *row[61] = limbi_high_col61;
-                *sub_component_inputs.range_check_16[3] = [limbi_low_col60];
-                *lookup_data.range_check_16_3 = [M31_1008385708, limbi_low_col60];
-                *sub_component_inputs.range_check_15[3] = [limbi_high_col61];
-                *lookup_data.range_check_15_3 = [M31_1058718565, limbi_high_col61];
+                *sub_component_inputs.range_check_15[2] = [limbi_high_col61];
+                *lookup_data.range_check_15_2 = [M31_1058718565, limbi_high_col61];
+                let limbi_is_zero_tmp_8e0ec_21 = M31_0.eq(input_message_limb2_col34);
+                let limbi_inv_or_one_col62 =
+                    ((limbi_is_zero_tmp_8e0ec_21.as_m31()) + (input_message_limb2_col34)).inverse();
+                *row[62] = limbi_inv_or_one_col62;
+                *lookup_data.blake_message_2 =
+                    [M31_1492981981, seq, M31_2, limbi_low_col60, limbi_high_col61];
+                let limbi_low_tmp_8e0ec_22 =
+                    ((PackedUInt32::from_m31(input_message_limb3_col35)) & (UInt32_65535));
+                let limbi_low_col63 = limbi_low_tmp_8e0ec_22.low().as_m31();
+                *row[63] = limbi_low_col63;
+                *sub_component_inputs.range_check_16[3] = [limbi_low_col63];
+                *lookup_data.range_check_16_3 = [M31_1008385708, limbi_low_col63];
+                let limbi_high_tmp_8e0ec_23 =
+                    ((PackedUInt32::from_m31(input_message_limb3_col35)) >> (UInt32_16));
+                let limbi_high_col64 = limbi_high_tmp_8e0ec_23.low().as_m31();
+                *row[64] = limbi_high_col64;
+                *sub_component_inputs.range_check_15[3] = [limbi_high_col64];
+                *lookup_data.range_check_15_3 = [M31_1058718565, limbi_high_col64];
+                let limbi_is_zero_tmp_8e0ec_24 = M31_0.eq(input_message_limb3_col35);
+                let limbi_inv_or_one_col65 =
+                    ((limbi_is_zero_tmp_8e0ec_24.as_m31()) + (input_message_limb3_col35)).inverse();
+                *row[65] = limbi_inv_or_one_col65;
                 *lookup_data.blake_message_3 =
-                    [M31_1492981981, seq, M31_3, limbi_low_col60, limbi_high_col61];
-                let limbi_low_tmp_8e0ec_21 =
-                    ((PackedUInt32::from_m31(input_message_limb4_col36)) & (UInt32_65535));
-                let limbi_high_tmp_8e0ec_22 =
-                    ((PackedUInt32::from_m31(input_message_limb4_col36)) >> (UInt32_16));
-                let limbi_low_col62 = limbi_low_tmp_8e0ec_21.low().as_m31();
-                *row[62] = limbi_low_col62;
-                let limbi_high_col63 = limbi_high_tmp_8e0ec_22.low().as_m31();
-                *row[63] = limbi_high_col63;
-                *sub_component_inputs.range_check_16[4] = [limbi_low_col62];
-                *lookup_data.range_check_16_4 = [M31_1008385708, limbi_low_col62];
-                *sub_component_inputs.range_check_15[4] = [limbi_high_col63];
-                *lookup_data.range_check_15_4 = [M31_1058718565, limbi_high_col63];
-                *lookup_data.blake_message_4 =
-                    [M31_1492981981, seq, M31_4, limbi_low_col62, limbi_high_col63];
-                let limbi_low_tmp_8e0ec_23 =
-                    ((PackedUInt32::from_m31(input_message_limb5_col37)) & (UInt32_65535));
-                let limbi_high_tmp_8e0ec_24 =
-                    ((PackedUInt32::from_m31(input_message_limb5_col37)) >> (UInt32_16));
-                let limbi_low_col64 = limbi_low_tmp_8e0ec_23.low().as_m31();
-                *row[64] = limbi_low_col64;
-                let limbi_high_col65 = limbi_high_tmp_8e0ec_24.low().as_m31();
-                *row[65] = limbi_high_col65;
-                *sub_component_inputs.range_check_16[5] = [limbi_low_col64];
-                *lookup_data.range_check_16_5 = [M31_1008385708, limbi_low_col64];
-                *sub_component_inputs.range_check_15[5] = [limbi_high_col65];
-                *lookup_data.range_check_15_5 = [M31_1058718565, limbi_high_col65];
-                *lookup_data.blake_message_5 =
-                    [M31_1492981981, seq, M31_5, limbi_low_col64, limbi_high_col65];
+                    [M31_1492981981, seq, M31_3, limbi_low_col63, limbi_high_col64];
                 let limbi_low_tmp_8e0ec_25 =
-                    ((PackedUInt32::from_m31(input_message_limb6_col38)) & (UInt32_65535));
-                let limbi_high_tmp_8e0ec_26 =
-                    ((PackedUInt32::from_m31(input_message_limb6_col38)) >> (UInt32_16));
+                    ((PackedUInt32::from_m31(input_message_limb4_col36)) & (UInt32_65535));
                 let limbi_low_col66 = limbi_low_tmp_8e0ec_25.low().as_m31();
                 *row[66] = limbi_low_col66;
+                *sub_component_inputs.range_check_16[4] = [limbi_low_col66];
+                *lookup_data.range_check_16_4 = [M31_1008385708, limbi_low_col66];
+                let limbi_high_tmp_8e0ec_26 =
+                    ((PackedUInt32::from_m31(input_message_limb4_col36)) >> (UInt32_16));
                 let limbi_high_col67 = limbi_high_tmp_8e0ec_26.low().as_m31();
                 *row[67] = limbi_high_col67;
-                *sub_component_inputs.range_check_16[6] = [limbi_low_col66];
-                *lookup_data.range_check_16_6 = [M31_1008385708, limbi_low_col66];
-                *sub_component_inputs.range_check_15[6] = [limbi_high_col67];
-                *lookup_data.range_check_15_6 = [M31_1058718565, limbi_high_col67];
-                *lookup_data.blake_message_6 =
-                    [M31_1492981981, seq, M31_6, limbi_low_col66, limbi_high_col67];
-                let limbi_low_tmp_8e0ec_27 =
-                    ((PackedUInt32::from_m31(input_message_limb7_col39)) & (UInt32_65535));
-                let limbi_high_tmp_8e0ec_28 =
-                    ((PackedUInt32::from_m31(input_message_limb7_col39)) >> (UInt32_16));
-                let limbi_low_col68 = limbi_low_tmp_8e0ec_27.low().as_m31();
-                *row[68] = limbi_low_col68;
-                let limbi_high_col69 = limbi_high_tmp_8e0ec_28.low().as_m31();
-                *row[69] = limbi_high_col69;
-                *sub_component_inputs.range_check_16[7] = [limbi_low_col68];
-                *lookup_data.range_check_16_7 = [M31_1008385708, limbi_low_col68];
-                *sub_component_inputs.range_check_15[7] = [limbi_high_col69];
-                *lookup_data.range_check_15_7 = [M31_1058718565, limbi_high_col69];
-                *lookup_data.blake_message_7 =
-                    [M31_1492981981, seq, M31_7, limbi_low_col68, limbi_high_col69];
-                let limbi_low_tmp_8e0ec_29 =
-                    ((PackedUInt32::from_m31(input_message_limb8_col40)) & (UInt32_65535));
-                let limbi_high_tmp_8e0ec_30 =
-                    ((PackedUInt32::from_m31(input_message_limb8_col40)) >> (UInt32_16));
-                let limbi_low_col70 = limbi_low_tmp_8e0ec_29.low().as_m31();
-                *row[70] = limbi_low_col70;
-                let limbi_high_col71 = limbi_high_tmp_8e0ec_30.low().as_m31();
-                *row[71] = limbi_high_col71;
-                *sub_component_inputs.range_check_16[8] = [limbi_low_col70];
-                *lookup_data.range_check_16_8 = [M31_1008385708, limbi_low_col70];
-                *sub_component_inputs.range_check_15[8] = [limbi_high_col71];
-                *lookup_data.range_check_15_8 = [M31_1058718565, limbi_high_col71];
-                *lookup_data.blake_message_8 =
-                    [M31_1492981981, seq, M31_8, limbi_low_col70, limbi_high_col71];
+                *sub_component_inputs.range_check_15[4] = [limbi_high_col67];
+                *lookup_data.range_check_15_4 = [M31_1058718565, limbi_high_col67];
+                let limbi_is_zero_tmp_8e0ec_27 = M31_0.eq(input_message_limb4_col36);
+                let limbi_inv_or_one_col68 =
+                    ((limbi_is_zero_tmp_8e0ec_27.as_m31()) + (input_message_limb4_col36)).inverse();
+                *row[68] = limbi_inv_or_one_col68;
+                *lookup_data.blake_message_4 =
+                    [M31_1492981981, seq, M31_4, limbi_low_col66, limbi_high_col67];
+                let limbi_low_tmp_8e0ec_28 =
+                    ((PackedUInt32::from_m31(input_message_limb5_col37)) & (UInt32_65535));
+                let limbi_low_col69 = limbi_low_tmp_8e0ec_28.low().as_m31();
+                *row[69] = limbi_low_col69;
+                *sub_component_inputs.range_check_16[5] = [limbi_low_col69];
+                *lookup_data.range_check_16_5 = [M31_1008385708, limbi_low_col69];
+                let limbi_high_tmp_8e0ec_29 =
+                    ((PackedUInt32::from_m31(input_message_limb5_col37)) >> (UInt32_16));
+                let limbi_high_col70 = limbi_high_tmp_8e0ec_29.low().as_m31();
+                *row[70] = limbi_high_col70;
+                *sub_component_inputs.range_check_15[5] = [limbi_high_col70];
+                *lookup_data.range_check_15_5 = [M31_1058718565, limbi_high_col70];
+                let limbi_is_zero_tmp_8e0ec_30 = M31_0.eq(input_message_limb5_col37);
+                let limbi_inv_or_one_col71 =
+                    ((limbi_is_zero_tmp_8e0ec_30.as_m31()) + (input_message_limb5_col37)).inverse();
+                *row[71] = limbi_inv_or_one_col71;
+                *lookup_data.blake_message_5 =
+                    [M31_1492981981, seq, M31_5, limbi_low_col69, limbi_high_col70];
                 let limbi_low_tmp_8e0ec_31 =
-                    ((PackedUInt32::from_m31(input_message_limb9_col41)) & (UInt32_65535));
-                let limbi_high_tmp_8e0ec_32 =
-                    ((PackedUInt32::from_m31(input_message_limb9_col41)) >> (UInt32_16));
+                    ((PackedUInt32::from_m31(input_message_limb6_col38)) & (UInt32_65535));
                 let limbi_low_col72 = limbi_low_tmp_8e0ec_31.low().as_m31();
                 *row[72] = limbi_low_col72;
+                *sub_component_inputs.range_check_16[6] = [limbi_low_col72];
+                *lookup_data.range_check_16_6 = [M31_1008385708, limbi_low_col72];
+                let limbi_high_tmp_8e0ec_32 =
+                    ((PackedUInt32::from_m31(input_message_limb6_col38)) >> (UInt32_16));
                 let limbi_high_col73 = limbi_high_tmp_8e0ec_32.low().as_m31();
                 *row[73] = limbi_high_col73;
-                *sub_component_inputs.range_check_16[9] = [limbi_low_col72];
-                *lookup_data.range_check_16_9 = [M31_1008385708, limbi_low_col72];
-                *sub_component_inputs.range_check_15[9] = [limbi_high_col73];
-                *lookup_data.range_check_15_9 = [M31_1058718565, limbi_high_col73];
-                *lookup_data.blake_message_9 =
-                    [M31_1492981981, seq, M31_9, limbi_low_col72, limbi_high_col73];
-                let limbi_low_tmp_8e0ec_33 =
-                    ((PackedUInt32::from_m31(input_message_limb10_col42)) & (UInt32_65535));
-                let limbi_high_tmp_8e0ec_34 =
-                    ((PackedUInt32::from_m31(input_message_limb10_col42)) >> (UInt32_16));
-                let limbi_low_col74 = limbi_low_tmp_8e0ec_33.low().as_m31();
-                *row[74] = limbi_low_col74;
-                let limbi_high_col75 = limbi_high_tmp_8e0ec_34.low().as_m31();
-                *row[75] = limbi_high_col75;
-                *sub_component_inputs.range_check_16[10] = [limbi_low_col74];
-                *lookup_data.range_check_16_10 = [M31_1008385708, limbi_low_col74];
-                *sub_component_inputs.range_check_15[10] = [limbi_high_col75];
-                *lookup_data.range_check_15_10 = [M31_1058718565, limbi_high_col75];
-                *lookup_data.blake_message_10 =
-                    [M31_1492981981, seq, M31_10, limbi_low_col74, limbi_high_col75];
-                let limbi_low_tmp_8e0ec_35 =
-                    ((PackedUInt32::from_m31(input_message_limb11_col43)) & (UInt32_65535));
-                let limbi_high_tmp_8e0ec_36 =
-                    ((PackedUInt32::from_m31(input_message_limb11_col43)) >> (UInt32_16));
-                let limbi_low_col76 = limbi_low_tmp_8e0ec_35.low().as_m31();
-                *row[76] = limbi_low_col76;
-                let limbi_high_col77 = limbi_high_tmp_8e0ec_36.low().as_m31();
-                *row[77] = limbi_high_col77;
-                *sub_component_inputs.range_check_16[11] = [limbi_low_col76];
-                *lookup_data.range_check_16_11 = [M31_1008385708, limbi_low_col76];
-                *sub_component_inputs.range_check_15[11] = [limbi_high_col77];
-                *lookup_data.range_check_15_11 = [M31_1058718565, limbi_high_col77];
-                *lookup_data.blake_message_11 =
-                    [M31_1492981981, seq, M31_11, limbi_low_col76, limbi_high_col77];
+                *sub_component_inputs.range_check_15[6] = [limbi_high_col73];
+                *lookup_data.range_check_15_6 = [M31_1058718565, limbi_high_col73];
+                let limbi_is_zero_tmp_8e0ec_33 = M31_0.eq(input_message_limb6_col38);
+                let limbi_inv_or_one_col74 =
+                    ((limbi_is_zero_tmp_8e0ec_33.as_m31()) + (input_message_limb6_col38)).inverse();
+                *row[74] = limbi_inv_or_one_col74;
+                *lookup_data.blake_message_6 =
+                    [M31_1492981981, seq, M31_6, limbi_low_col72, limbi_high_col73];
+                let limbi_low_tmp_8e0ec_34 =
+                    ((PackedUInt32::from_m31(input_message_limb7_col39)) & (UInt32_65535));
+                let limbi_low_col75 = limbi_low_tmp_8e0ec_34.low().as_m31();
+                *row[75] = limbi_low_col75;
+                *sub_component_inputs.range_check_16[7] = [limbi_low_col75];
+                *lookup_data.range_check_16_7 = [M31_1008385708, limbi_low_col75];
+                let limbi_high_tmp_8e0ec_35 =
+                    ((PackedUInt32::from_m31(input_message_limb7_col39)) >> (UInt32_16));
+                let limbi_high_col76 = limbi_high_tmp_8e0ec_35.low().as_m31();
+                *row[76] = limbi_high_col76;
+                *sub_component_inputs.range_check_15[7] = [limbi_high_col76];
+                *lookup_data.range_check_15_7 = [M31_1058718565, limbi_high_col76];
+                let limbi_is_zero_tmp_8e0ec_36 = M31_0.eq(input_message_limb7_col39);
+                let limbi_inv_or_one_col77 =
+                    ((limbi_is_zero_tmp_8e0ec_36.as_m31()) + (input_message_limb7_col39)).inverse();
+                *row[77] = limbi_inv_or_one_col77;
+                *lookup_data.blake_message_7 =
+                    [M31_1492981981, seq, M31_7, limbi_low_col75, limbi_high_col76];
                 let limbi_low_tmp_8e0ec_37 =
-                    ((PackedUInt32::from_m31(input_message_limb12_col44)) & (UInt32_65535));
-                let limbi_high_tmp_8e0ec_38 =
-                    ((PackedUInt32::from_m31(input_message_limb12_col44)) >> (UInt32_16));
+                    ((PackedUInt32::from_m31(input_message_limb8_col40)) & (UInt32_65535));
                 let limbi_low_col78 = limbi_low_tmp_8e0ec_37.low().as_m31();
                 *row[78] = limbi_low_col78;
+                *sub_component_inputs.range_check_16[8] = [limbi_low_col78];
+                *lookup_data.range_check_16_8 = [M31_1008385708, limbi_low_col78];
+                let limbi_high_tmp_8e0ec_38 =
+                    ((PackedUInt32::from_m31(input_message_limb8_col40)) >> (UInt32_16));
                 let limbi_high_col79 = limbi_high_tmp_8e0ec_38.low().as_m31();
                 *row[79] = limbi_high_col79;
-                *sub_component_inputs.range_check_16[12] = [limbi_low_col78];
-                *lookup_data.range_check_16_12 = [M31_1008385708, limbi_low_col78];
-                *sub_component_inputs.range_check_15[12] = [limbi_high_col79];
-                *lookup_data.range_check_15_12 = [M31_1058718565, limbi_high_col79];
-                *lookup_data.blake_message_12 =
-                    [M31_1492981981, seq, M31_12, limbi_low_col78, limbi_high_col79];
-                let limbi_low_tmp_8e0ec_39 =
-                    ((PackedUInt32::from_m31(input_message_limb13_col45)) & (UInt32_65535));
-                let limbi_high_tmp_8e0ec_40 =
-                    ((PackedUInt32::from_m31(input_message_limb13_col45)) >> (UInt32_16));
-                let limbi_low_col80 = limbi_low_tmp_8e0ec_39.low().as_m31();
-                *row[80] = limbi_low_col80;
-                let limbi_high_col81 = limbi_high_tmp_8e0ec_40.low().as_m31();
-                *row[81] = limbi_high_col81;
-                *sub_component_inputs.range_check_16[13] = [limbi_low_col80];
-                *lookup_data.range_check_16_13 = [M31_1008385708, limbi_low_col80];
-                *sub_component_inputs.range_check_15[13] = [limbi_high_col81];
-                *lookup_data.range_check_15_13 = [M31_1058718565, limbi_high_col81];
-                *lookup_data.blake_message_13 =
-                    [M31_1492981981, seq, M31_13, limbi_low_col80, limbi_high_col81];
-                let limbi_low_tmp_8e0ec_41 =
-                    ((PackedUInt32::from_m31(input_message_limb14_col46)) & (UInt32_65535));
-                let limbi_high_tmp_8e0ec_42 =
-                    ((PackedUInt32::from_m31(input_message_limb14_col46)) >> (UInt32_16));
-                let limbi_low_col82 = limbi_low_tmp_8e0ec_41.low().as_m31();
-                *row[82] = limbi_low_col82;
-                let limbi_high_col83 = limbi_high_tmp_8e0ec_42.low().as_m31();
-                *row[83] = limbi_high_col83;
-                *sub_component_inputs.range_check_16[14] = [limbi_low_col82];
-                *lookup_data.range_check_16_14 = [M31_1008385708, limbi_low_col82];
-                *sub_component_inputs.range_check_15[14] = [limbi_high_col83];
-                *lookup_data.range_check_15_14 = [M31_1058718565, limbi_high_col83];
-                *lookup_data.blake_message_14 =
-                    [M31_1492981981, seq, M31_14, limbi_low_col82, limbi_high_col83];
+                *sub_component_inputs.range_check_15[8] = [limbi_high_col79];
+                *lookup_data.range_check_15_8 = [M31_1058718565, limbi_high_col79];
+                let limbi_is_zero_tmp_8e0ec_39 = M31_0.eq(input_message_limb8_col40);
+                let limbi_inv_or_one_col80 =
+                    ((limbi_is_zero_tmp_8e0ec_39.as_m31()) + (input_message_limb8_col40)).inverse();
+                *row[80] = limbi_inv_or_one_col80;
+                *lookup_data.blake_message_8 =
+                    [M31_1492981981, seq, M31_8, limbi_low_col78, limbi_high_col79];
+                let limbi_low_tmp_8e0ec_40 =
+                    ((PackedUInt32::from_m31(input_message_limb9_col41)) & (UInt32_65535));
+                let limbi_low_col81 = limbi_low_tmp_8e0ec_40.low().as_m31();
+                *row[81] = limbi_low_col81;
+                *sub_component_inputs.range_check_16[9] = [limbi_low_col81];
+                *lookup_data.range_check_16_9 = [M31_1008385708, limbi_low_col81];
+                let limbi_high_tmp_8e0ec_41 =
+                    ((PackedUInt32::from_m31(input_message_limb9_col41)) >> (UInt32_16));
+                let limbi_high_col82 = limbi_high_tmp_8e0ec_41.low().as_m31();
+                *row[82] = limbi_high_col82;
+                *sub_component_inputs.range_check_15[9] = [limbi_high_col82];
+                *lookup_data.range_check_15_9 = [M31_1058718565, limbi_high_col82];
+                let limbi_is_zero_tmp_8e0ec_42 = M31_0.eq(input_message_limb9_col41);
+                let limbi_inv_or_one_col83 =
+                    ((limbi_is_zero_tmp_8e0ec_42.as_m31()) + (input_message_limb9_col41)).inverse();
+                *row[83] = limbi_inv_or_one_col83;
+                *lookup_data.blake_message_9 =
+                    [M31_1492981981, seq, M31_9, limbi_low_col81, limbi_high_col82];
                 let limbi_low_tmp_8e0ec_43 =
-                    ((PackedUInt32::from_m31(input_message_limb15_col47)) & (UInt32_65535));
-                let limbi_high_tmp_8e0ec_44 =
-                    ((PackedUInt32::from_m31(input_message_limb15_col47)) >> (UInt32_16));
+                    ((PackedUInt32::from_m31(input_message_limb10_col42)) & (UInt32_65535));
                 let limbi_low_col84 = limbi_low_tmp_8e0ec_43.low().as_m31();
                 *row[84] = limbi_low_col84;
+                *sub_component_inputs.range_check_16[10] = [limbi_low_col84];
+                *lookup_data.range_check_16_10 = [M31_1008385708, limbi_low_col84];
+                let limbi_high_tmp_8e0ec_44 =
+                    ((PackedUInt32::from_m31(input_message_limb10_col42)) >> (UInt32_16));
                 let limbi_high_col85 = limbi_high_tmp_8e0ec_44.low().as_m31();
                 *row[85] = limbi_high_col85;
-                *sub_component_inputs.range_check_16[15] = [limbi_low_col84];
-                *lookup_data.range_check_16_15 = [M31_1008385708, limbi_low_col84];
-                *sub_component_inputs.range_check_15[15] = [limbi_high_col85];
-                *lookup_data.range_check_15_15 = [M31_1058718565, limbi_high_col85];
+                *sub_component_inputs.range_check_15[10] = [limbi_high_col85];
+                *lookup_data.range_check_15_10 = [M31_1058718565, limbi_high_col85];
+                let limbi_is_zero_tmp_8e0ec_45 = M31_0.eq(input_message_limb10_col42);
+                let limbi_inv_or_one_col86 = ((limbi_is_zero_tmp_8e0ec_45.as_m31())
+                    + (input_message_limb10_col42))
+                    .inverse();
+                *row[86] = limbi_inv_or_one_col86;
+                *lookup_data.blake_message_10 =
+                    [M31_1492981981, seq, M31_10, limbi_low_col84, limbi_high_col85];
+                let limbi_low_tmp_8e0ec_46 =
+                    ((PackedUInt32::from_m31(input_message_limb11_col43)) & (UInt32_65535));
+                let limbi_low_col87 = limbi_low_tmp_8e0ec_46.low().as_m31();
+                *row[87] = limbi_low_col87;
+                *sub_component_inputs.range_check_16[11] = [limbi_low_col87];
+                *lookup_data.range_check_16_11 = [M31_1008385708, limbi_low_col87];
+                let limbi_high_tmp_8e0ec_47 =
+                    ((PackedUInt32::from_m31(input_message_limb11_col43)) >> (UInt32_16));
+                let limbi_high_col88 = limbi_high_tmp_8e0ec_47.low().as_m31();
+                *row[88] = limbi_high_col88;
+                *sub_component_inputs.range_check_15[11] = [limbi_high_col88];
+                *lookup_data.range_check_15_11 = [M31_1058718565, limbi_high_col88];
+                let limbi_is_zero_tmp_8e0ec_48 = M31_0.eq(input_message_limb11_col43);
+                let limbi_inv_or_one_col89 = ((limbi_is_zero_tmp_8e0ec_48.as_m31())
+                    + (input_message_limb11_col43))
+                    .inverse();
+                *row[89] = limbi_inv_or_one_col89;
+                *lookup_data.blake_message_11 =
+                    [M31_1492981981, seq, M31_11, limbi_low_col87, limbi_high_col88];
+                let limbi_low_tmp_8e0ec_49 =
+                    ((PackedUInt32::from_m31(input_message_limb12_col44)) & (UInt32_65535));
+                let limbi_low_col90 = limbi_low_tmp_8e0ec_49.low().as_m31();
+                *row[90] = limbi_low_col90;
+                *sub_component_inputs.range_check_16[12] = [limbi_low_col90];
+                *lookup_data.range_check_16_12 = [M31_1008385708, limbi_low_col90];
+                let limbi_high_tmp_8e0ec_50 =
+                    ((PackedUInt32::from_m31(input_message_limb12_col44)) >> (UInt32_16));
+                let limbi_high_col91 = limbi_high_tmp_8e0ec_50.low().as_m31();
+                *row[91] = limbi_high_col91;
+                *sub_component_inputs.range_check_15[12] = [limbi_high_col91];
+                *lookup_data.range_check_15_12 = [M31_1058718565, limbi_high_col91];
+                let limbi_is_zero_tmp_8e0ec_51 = M31_0.eq(input_message_limb12_col44);
+                let limbi_inv_or_one_col92 = ((limbi_is_zero_tmp_8e0ec_51.as_m31())
+                    + (input_message_limb12_col44))
+                    .inverse();
+                *row[92] = limbi_inv_or_one_col92;
+                *lookup_data.blake_message_12 =
+                    [M31_1492981981, seq, M31_12, limbi_low_col90, limbi_high_col91];
+                let limbi_low_tmp_8e0ec_52 =
+                    ((PackedUInt32::from_m31(input_message_limb13_col45)) & (UInt32_65535));
+                let limbi_low_col93 = limbi_low_tmp_8e0ec_52.low().as_m31();
+                *row[93] = limbi_low_col93;
+                *sub_component_inputs.range_check_16[13] = [limbi_low_col93];
+                *lookup_data.range_check_16_13 = [M31_1008385708, limbi_low_col93];
+                let limbi_high_tmp_8e0ec_53 =
+                    ((PackedUInt32::from_m31(input_message_limb13_col45)) >> (UInt32_16));
+                let limbi_high_col94 = limbi_high_tmp_8e0ec_53.low().as_m31();
+                *row[94] = limbi_high_col94;
+                *sub_component_inputs.range_check_15[13] = [limbi_high_col94];
+                *lookup_data.range_check_15_13 = [M31_1058718565, limbi_high_col94];
+                let limbi_is_zero_tmp_8e0ec_54 = M31_0.eq(input_message_limb13_col45);
+                let limbi_inv_or_one_col95 = ((limbi_is_zero_tmp_8e0ec_54.as_m31())
+                    + (input_message_limb13_col45))
+                    .inverse();
+                *row[95] = limbi_inv_or_one_col95;
+                *lookup_data.blake_message_13 =
+                    [M31_1492981981, seq, M31_13, limbi_low_col93, limbi_high_col94];
+                let limbi_low_tmp_8e0ec_55 =
+                    ((PackedUInt32::from_m31(input_message_limb14_col46)) & (UInt32_65535));
+                let limbi_low_col96 = limbi_low_tmp_8e0ec_55.low().as_m31();
+                *row[96] = limbi_low_col96;
+                *sub_component_inputs.range_check_16[14] = [limbi_low_col96];
+                *lookup_data.range_check_16_14 = [M31_1008385708, limbi_low_col96];
+                let limbi_high_tmp_8e0ec_56 =
+                    ((PackedUInt32::from_m31(input_message_limb14_col46)) >> (UInt32_16));
+                let limbi_high_col97 = limbi_high_tmp_8e0ec_56.low().as_m31();
+                *row[97] = limbi_high_col97;
+                *sub_component_inputs.range_check_15[14] = [limbi_high_col97];
+                *lookup_data.range_check_15_14 = [M31_1058718565, limbi_high_col97];
+                let limbi_is_zero_tmp_8e0ec_57 = M31_0.eq(input_message_limb14_col46);
+                let limbi_inv_or_one_col98 = ((limbi_is_zero_tmp_8e0ec_57.as_m31())
+                    + (input_message_limb14_col46))
+                    .inverse();
+                *row[98] = limbi_inv_or_one_col98;
+                *lookup_data.blake_message_14 =
+                    [M31_1492981981, seq, M31_14, limbi_low_col96, limbi_high_col97];
+                let limbi_low_tmp_8e0ec_58 =
+                    ((PackedUInt32::from_m31(input_message_limb15_col47)) & (UInt32_65535));
+                let limbi_low_col99 = limbi_low_tmp_8e0ec_58.low().as_m31();
+                *row[99] = limbi_low_col99;
+                *sub_component_inputs.range_check_16[15] = [limbi_low_col99];
+                *lookup_data.range_check_16_15 = [M31_1008385708, limbi_low_col99];
+                let limbi_high_tmp_8e0ec_59 =
+                    ((PackedUInt32::from_m31(input_message_limb15_col47)) >> (UInt32_16));
+                let limbi_high_col100 = limbi_high_tmp_8e0ec_59.low().as_m31();
+                *row[100] = limbi_high_col100;
+                *sub_component_inputs.range_check_15[15] = [limbi_high_col100];
+                *lookup_data.range_check_15_15 = [M31_1058718565, limbi_high_col100];
+                let limbi_is_zero_tmp_8e0ec_60 = M31_0.eq(input_message_limb15_col47);
+                let limbi_inv_or_one_col101 = ((limbi_is_zero_tmp_8e0ec_60.as_m31())
+                    + (input_message_limb15_col47))
+                    .inverse();
+                *row[101] = limbi_inv_or_one_col101;
                 *lookup_data.blake_message_15 =
-                    [M31_1492981981, seq, M31_15, limbi_low_col84, limbi_high_col85];
-                let qm_31_into_u_32_output_tmp_8e0ec_45 = [
+                    [M31_1492981981, seq, M31_15, limbi_low_col99, limbi_high_col100];
+                let qm_31_into_u_32_output_tmp_8e0ec_61 = [
                     PackedUInt32::from_limbs([limbi_low_col54, limbi_high_col55]),
-                    PackedUInt32::from_limbs([limbi_low_col56, limbi_high_col57]),
-                    PackedUInt32::from_limbs([limbi_low_col58, limbi_high_col59]),
+                    PackedUInt32::from_limbs([limbi_low_col57, limbi_high_col58]),
                     PackedUInt32::from_limbs([limbi_low_col60, limbi_high_col61]),
-                    PackedUInt32::from_limbs([limbi_low_col62, limbi_high_col63]),
-                    PackedUInt32::from_limbs([limbi_low_col64, limbi_high_col65]),
+                    PackedUInt32::from_limbs([limbi_low_col63, limbi_high_col64]),
                     PackedUInt32::from_limbs([limbi_low_col66, limbi_high_col67]),
-                    PackedUInt32::from_limbs([limbi_low_col68, limbi_high_col69]),
-                    PackedUInt32::from_limbs([limbi_low_col70, limbi_high_col71]),
+                    PackedUInt32::from_limbs([limbi_low_col69, limbi_high_col70]),
                     PackedUInt32::from_limbs([limbi_low_col72, limbi_high_col73]),
-                    PackedUInt32::from_limbs([limbi_low_col74, limbi_high_col75]),
-                    PackedUInt32::from_limbs([limbi_low_col76, limbi_high_col77]),
+                    PackedUInt32::from_limbs([limbi_low_col75, limbi_high_col76]),
                     PackedUInt32::from_limbs([limbi_low_col78, limbi_high_col79]),
-                    PackedUInt32::from_limbs([limbi_low_col80, limbi_high_col81]),
-                    PackedUInt32::from_limbs([limbi_low_col82, limbi_high_col83]),
+                    PackedUInt32::from_limbs([limbi_low_col81, limbi_high_col82]),
                     PackedUInt32::from_limbs([limbi_low_col84, limbi_high_col85]),
+                    PackedUInt32::from_limbs([limbi_low_col87, limbi_high_col88]),
+                    PackedUInt32::from_limbs([limbi_low_col90, limbi_high_col91]),
+                    PackedUInt32::from_limbs([limbi_low_col93, limbi_high_col94]),
+                    PackedUInt32::from_limbs([limbi_low_col96, limbi_high_col97]),
+                    PackedUInt32::from_limbs([limbi_low_col99, limbi_high_col100]),
                 ];
-                *blake_message_input = (seq, qm_31_into_u_32_output_tmp_8e0ec_45);
+                *blake_message_input = (seq, qm_31_into_u_32_output_tmp_8e0ec_61);
 
                 *lookup_data.blake_round_0 = [
                     M31_40528774,
@@ -858,8 +928,7 @@ fn write_trace_simd(
                         seq,
                     ),
                 );
-
-                let blake_round_output_round_0_tmp_8e0ec_47 = blake_round_state.deduce_output((
+                let blake_round_output_round_0_tmp_8e0ec_63 = blake_round_state.deduce_output((
                     seq,
                     M31_0,
                     (
@@ -889,49 +958,49 @@ fn write_trace_simd(
                     M31_1,
                     (
                         [
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[0],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[1],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[2],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[3],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[4],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[5],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[6],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[7],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[8],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[9],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[10],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[11],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[12],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[13],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[14],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[15],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[0],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[1],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[2],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[3],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[4],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[5],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[6],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[7],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[8],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[9],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[10],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[11],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[12],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[13],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[14],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[15],
                         ],
-                        blake_round_output_round_0_tmp_8e0ec_47.2.1,
+                        blake_round_output_round_0_tmp_8e0ec_63.2.1,
                     ),
                 );
-                let blake_round_output_round_1_tmp_8e0ec_48 = blake_round_state.deduce_output((
+                let blake_round_output_round_1_tmp_8e0ec_64 = blake_round_state.deduce_output((
                     seq,
                     M31_1,
                     (
                         [
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[0],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[1],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[2],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[3],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[4],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[5],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[6],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[7],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[8],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[9],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[10],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[11],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[12],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[13],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[14],
-                            blake_round_output_round_0_tmp_8e0ec_47.2.0[15],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[0],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[1],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[2],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[3],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[4],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[5],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[6],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[7],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[8],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[9],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[10],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[11],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[12],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[13],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[14],
+                            blake_round_output_round_0_tmp_8e0ec_63.2.0[15],
                         ],
-                        blake_round_output_round_0_tmp_8e0ec_47.2.1,
+                        blake_round_output_round_0_tmp_8e0ec_63.2.1,
                     ),
                 ));
                 *sub_component_inputs.blake_round[2] = (
@@ -939,49 +1008,49 @@ fn write_trace_simd(
                     M31_2,
                     (
                         [
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[0],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[1],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[2],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[3],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[4],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[5],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[6],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[7],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[8],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[9],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[10],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[11],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[12],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[13],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[14],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[15],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[0],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[1],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[2],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[3],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[4],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[5],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[6],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[7],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[8],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[9],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[10],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[11],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[12],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[13],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[14],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[15],
                         ],
-                        blake_round_output_round_1_tmp_8e0ec_48.2.1,
+                        blake_round_output_round_1_tmp_8e0ec_64.2.1,
                     ),
                 );
-                let blake_round_output_round_2_tmp_8e0ec_49 = blake_round_state.deduce_output((
+                let blake_round_output_round_2_tmp_8e0ec_65 = blake_round_state.deduce_output((
                     seq,
                     M31_2,
                     (
                         [
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[0],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[1],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[2],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[3],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[4],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[5],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[6],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[7],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[8],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[9],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[10],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[11],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[12],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[13],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[14],
-                            blake_round_output_round_1_tmp_8e0ec_48.2.0[15],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[0],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[1],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[2],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[3],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[4],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[5],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[6],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[7],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[8],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[9],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[10],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[11],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[12],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[13],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[14],
+                            blake_round_output_round_1_tmp_8e0ec_64.2.0[15],
                         ],
-                        blake_round_output_round_1_tmp_8e0ec_48.2.1,
+                        blake_round_output_round_1_tmp_8e0ec_64.2.1,
                     ),
                 ));
                 *sub_component_inputs.blake_round[3] = (
@@ -989,49 +1058,49 @@ fn write_trace_simd(
                     M31_3,
                     (
                         [
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[0],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[1],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[2],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[3],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[4],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[5],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[6],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[7],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[8],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[9],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[10],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[11],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[12],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[13],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[14],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[15],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[0],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[1],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[2],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[3],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[4],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[5],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[6],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[7],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[8],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[9],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[10],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[11],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[12],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[13],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[14],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[15],
                         ],
-                        blake_round_output_round_2_tmp_8e0ec_49.2.1,
+                        blake_round_output_round_2_tmp_8e0ec_65.2.1,
                     ),
                 );
-                let blake_round_output_round_3_tmp_8e0ec_50 = blake_round_state.deduce_output((
+                let blake_round_output_round_3_tmp_8e0ec_66 = blake_round_state.deduce_output((
                     seq,
                     M31_3,
                     (
                         [
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[0],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[1],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[2],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[3],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[4],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[5],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[6],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[7],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[8],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[9],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[10],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[11],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[12],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[13],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[14],
-                            blake_round_output_round_2_tmp_8e0ec_49.2.0[15],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[0],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[1],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[2],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[3],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[4],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[5],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[6],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[7],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[8],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[9],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[10],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[11],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[12],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[13],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[14],
+                            blake_round_output_round_2_tmp_8e0ec_65.2.0[15],
                         ],
-                        blake_round_output_round_2_tmp_8e0ec_49.2.1,
+                        blake_round_output_round_2_tmp_8e0ec_65.2.1,
                     ),
                 ));
                 *sub_component_inputs.blake_round[4] = (
@@ -1039,49 +1108,49 @@ fn write_trace_simd(
                     M31_4,
                     (
                         [
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[0],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[1],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[2],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[3],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[4],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[5],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[6],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[7],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[8],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[9],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[10],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[11],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[12],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[13],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[14],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[15],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[0],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[1],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[2],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[3],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[4],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[5],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[6],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[7],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[8],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[9],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[10],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[11],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[12],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[13],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[14],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[15],
                         ],
-                        blake_round_output_round_3_tmp_8e0ec_50.2.1,
+                        blake_round_output_round_3_tmp_8e0ec_66.2.1,
                     ),
                 );
-                let blake_round_output_round_4_tmp_8e0ec_51 = blake_round_state.deduce_output((
+                let blake_round_output_round_4_tmp_8e0ec_67 = blake_round_state.deduce_output((
                     seq,
                     M31_4,
                     (
                         [
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[0],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[1],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[2],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[3],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[4],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[5],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[6],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[7],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[8],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[9],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[10],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[11],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[12],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[13],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[14],
-                            blake_round_output_round_3_tmp_8e0ec_50.2.0[15],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[0],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[1],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[2],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[3],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[4],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[5],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[6],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[7],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[8],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[9],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[10],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[11],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[12],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[13],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[14],
+                            blake_round_output_round_3_tmp_8e0ec_66.2.0[15],
                         ],
-                        blake_round_output_round_3_tmp_8e0ec_50.2.1,
+                        blake_round_output_round_3_tmp_8e0ec_66.2.1,
                     ),
                 ));
                 *sub_component_inputs.blake_round[5] = (
@@ -1089,49 +1158,49 @@ fn write_trace_simd(
                     M31_5,
                     (
                         [
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[0],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[1],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[2],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[3],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[4],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[5],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[6],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[7],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[8],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[9],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[10],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[11],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[12],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[13],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[14],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[15],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[0],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[1],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[2],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[3],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[4],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[5],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[6],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[7],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[8],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[9],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[10],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[11],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[12],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[13],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[14],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[15],
                         ],
-                        blake_round_output_round_4_tmp_8e0ec_51.2.1,
+                        blake_round_output_round_4_tmp_8e0ec_67.2.1,
                     ),
                 );
-                let blake_round_output_round_5_tmp_8e0ec_52 = blake_round_state.deduce_output((
+                let blake_round_output_round_5_tmp_8e0ec_68 = blake_round_state.deduce_output((
                     seq,
                     M31_5,
                     (
                         [
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[0],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[1],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[2],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[3],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[4],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[5],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[6],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[7],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[8],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[9],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[10],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[11],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[12],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[13],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[14],
-                            blake_round_output_round_4_tmp_8e0ec_51.2.0[15],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[0],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[1],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[2],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[3],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[4],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[5],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[6],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[7],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[8],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[9],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[10],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[11],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[12],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[13],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[14],
+                            blake_round_output_round_4_tmp_8e0ec_67.2.0[15],
                         ],
-                        blake_round_output_round_4_tmp_8e0ec_51.2.1,
+                        blake_round_output_round_4_tmp_8e0ec_67.2.1,
                     ),
                 ));
                 *sub_component_inputs.blake_round[6] = (
@@ -1139,49 +1208,49 @@ fn write_trace_simd(
                     M31_6,
                     (
                         [
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[0],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[1],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[2],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[3],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[4],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[5],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[6],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[7],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[8],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[9],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[10],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[11],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[12],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[13],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[14],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[15],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[0],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[1],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[2],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[3],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[4],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[5],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[6],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[7],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[8],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[9],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[10],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[11],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[12],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[13],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[14],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[15],
                         ],
-                        blake_round_output_round_5_tmp_8e0ec_52.2.1,
+                        blake_round_output_round_5_tmp_8e0ec_68.2.1,
                     ),
                 );
-                let blake_round_output_round_6_tmp_8e0ec_53 = blake_round_state.deduce_output((
+                let blake_round_output_round_6_tmp_8e0ec_69 = blake_round_state.deduce_output((
                     seq,
                     M31_6,
                     (
                         [
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[0],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[1],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[2],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[3],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[4],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[5],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[6],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[7],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[8],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[9],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[10],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[11],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[12],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[13],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[14],
-                            blake_round_output_round_5_tmp_8e0ec_52.2.0[15],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[0],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[1],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[2],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[3],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[4],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[5],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[6],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[7],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[8],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[9],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[10],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[11],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[12],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[13],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[14],
+                            blake_round_output_round_5_tmp_8e0ec_68.2.0[15],
                         ],
-                        blake_round_output_round_5_tmp_8e0ec_52.2.1,
+                        blake_round_output_round_5_tmp_8e0ec_68.2.1,
                     ),
                 ));
                 *sub_component_inputs.blake_round[7] = (
@@ -1189,49 +1258,49 @@ fn write_trace_simd(
                     M31_7,
                     (
                         [
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[0],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[1],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[2],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[3],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[4],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[5],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[6],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[7],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[8],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[9],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[10],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[11],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[12],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[13],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[14],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[15],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[0],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[1],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[2],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[3],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[4],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[5],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[6],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[7],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[8],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[9],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[10],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[11],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[12],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[13],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[14],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[15],
                         ],
-                        blake_round_output_round_6_tmp_8e0ec_53.2.1,
+                        blake_round_output_round_6_tmp_8e0ec_69.2.1,
                     ),
                 );
-                let blake_round_output_round_7_tmp_8e0ec_54 = blake_round_state.deduce_output((
+                let blake_round_output_round_7_tmp_8e0ec_70 = blake_round_state.deduce_output((
                     seq,
                     M31_7,
                     (
                         [
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[0],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[1],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[2],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[3],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[4],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[5],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[6],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[7],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[8],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[9],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[10],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[11],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[12],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[13],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[14],
-                            blake_round_output_round_6_tmp_8e0ec_53.2.0[15],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[0],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[1],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[2],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[3],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[4],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[5],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[6],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[7],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[8],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[9],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[10],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[11],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[12],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[13],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[14],
+                            blake_round_output_round_6_tmp_8e0ec_69.2.0[15],
                         ],
-                        blake_round_output_round_6_tmp_8e0ec_53.2.1,
+                        blake_round_output_round_6_tmp_8e0ec_69.2.1,
                     ),
                 ));
                 *sub_component_inputs.blake_round[8] = (
@@ -1239,49 +1308,49 @@ fn write_trace_simd(
                     M31_8,
                     (
                         [
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[0],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[1],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[2],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[3],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[4],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[5],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[6],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[7],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[8],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[9],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[10],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[11],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[12],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[13],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[14],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[15],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[0],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[1],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[2],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[3],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[4],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[5],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[6],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[7],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[8],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[9],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[10],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[11],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[12],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[13],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[14],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[15],
                         ],
-                        blake_round_output_round_7_tmp_8e0ec_54.2.1,
+                        blake_round_output_round_7_tmp_8e0ec_70.2.1,
                     ),
                 );
-                let blake_round_output_round_8_tmp_8e0ec_55 = blake_round_state.deduce_output((
+                let blake_round_output_round_8_tmp_8e0ec_71 = blake_round_state.deduce_output((
                     seq,
                     M31_8,
                     (
                         [
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[0],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[1],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[2],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[3],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[4],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[5],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[6],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[7],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[8],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[9],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[10],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[11],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[12],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[13],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[14],
-                            blake_round_output_round_7_tmp_8e0ec_54.2.0[15],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[0],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[1],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[2],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[3],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[4],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[5],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[6],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[7],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[8],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[9],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[10],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[11],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[12],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[13],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[14],
+                            blake_round_output_round_7_tmp_8e0ec_70.2.0[15],
                         ],
-                        blake_round_output_round_7_tmp_8e0ec_54.2.1,
+                        blake_round_output_round_7_tmp_8e0ec_70.2.1,
                     ),
                 ));
                 *sub_component_inputs.blake_round[9] = (
@@ -1289,405 +1358,415 @@ fn write_trace_simd(
                     M31_9,
                     (
                         [
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[0],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[1],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[2],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[3],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[4],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[5],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[6],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[7],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[8],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[9],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[10],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[11],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[12],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[13],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[14],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[15],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[0],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[1],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[2],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[3],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[4],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[5],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[6],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[7],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[8],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[9],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[10],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[11],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[12],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[13],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[14],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[15],
                         ],
-                        blake_round_output_round_8_tmp_8e0ec_55.2.1,
+                        blake_round_output_round_8_tmp_8e0ec_71.2.1,
                     ),
                 );
-                let blake_round_output_round_9_tmp_8e0ec_56 = blake_round_state.deduce_output((
+                let blake_round_output_round_9_tmp_8e0ec_72 = blake_round_state.deduce_output((
                     seq,
                     M31_9,
                     (
                         [
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[0],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[1],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[2],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[3],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[4],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[5],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[6],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[7],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[8],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[9],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[10],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[11],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[12],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[13],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[14],
-                            blake_round_output_round_8_tmp_8e0ec_55.2.0[15],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[0],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[1],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[2],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[3],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[4],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[5],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[6],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[7],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[8],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[9],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[10],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[11],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[12],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[13],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[14],
+                            blake_round_output_round_8_tmp_8e0ec_71.2.0[15],
                         ],
-                        blake_round_output_round_8_tmp_8e0ec_55.2.1,
+                        blake_round_output_round_8_tmp_8e0ec_71.2.1,
                     ),
                 ));
-                let blake_round_output_limb_0_col86 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[0].low().as_m31();
-                *row[86] = blake_round_output_limb_0_col86;
-                let blake_round_output_limb_1_col87 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[0].high().as_m31();
-                *row[87] = blake_round_output_limb_1_col87;
-                let blake_round_output_limb_2_col88 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[1].low().as_m31();
-                *row[88] = blake_round_output_limb_2_col88;
-                let blake_round_output_limb_3_col89 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[1].high().as_m31();
-                *row[89] = blake_round_output_limb_3_col89;
-                let blake_round_output_limb_4_col90 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[2].low().as_m31();
-                *row[90] = blake_round_output_limb_4_col90;
-                let blake_round_output_limb_5_col91 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[2].high().as_m31();
-                *row[91] = blake_round_output_limb_5_col91;
-                let blake_round_output_limb_6_col92 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[3].low().as_m31();
-                *row[92] = blake_round_output_limb_6_col92;
-                let blake_round_output_limb_7_col93 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[3].high().as_m31();
-                *row[93] = blake_round_output_limb_7_col93;
-                let blake_round_output_limb_8_col94 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[4].low().as_m31();
-                *row[94] = blake_round_output_limb_8_col94;
-                let blake_round_output_limb_9_col95 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[4].high().as_m31();
-                *row[95] = blake_round_output_limb_9_col95;
-                let blake_round_output_limb_10_col96 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[5].low().as_m31();
-                *row[96] = blake_round_output_limb_10_col96;
-                let blake_round_output_limb_11_col97 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[5].high().as_m31();
-                *row[97] = blake_round_output_limb_11_col97;
-                let blake_round_output_limb_12_col98 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[6].low().as_m31();
-                *row[98] = blake_round_output_limb_12_col98;
-                let blake_round_output_limb_13_col99 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[6].high().as_m31();
-                *row[99] = blake_round_output_limb_13_col99;
-                let blake_round_output_limb_14_col100 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[7].low().as_m31();
-                *row[100] = blake_round_output_limb_14_col100;
-                let blake_round_output_limb_15_col101 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[7].high().as_m31();
-                *row[101] = blake_round_output_limb_15_col101;
-                let blake_round_output_limb_16_col102 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[8].low().as_m31();
-                *row[102] = blake_round_output_limb_16_col102;
-                let blake_round_output_limb_17_col103 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[8].high().as_m31();
-                *row[103] = blake_round_output_limb_17_col103;
-                let blake_round_output_limb_18_col104 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[9].low().as_m31();
-                *row[104] = blake_round_output_limb_18_col104;
-                let blake_round_output_limb_19_col105 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[9].high().as_m31();
-                *row[105] = blake_round_output_limb_19_col105;
-                let blake_round_output_limb_20_col106 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[10].low().as_m31();
-                *row[106] = blake_round_output_limb_20_col106;
-                let blake_round_output_limb_21_col107 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[10].high().as_m31();
-                *row[107] = blake_round_output_limb_21_col107;
-                let blake_round_output_limb_22_col108 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[11].low().as_m31();
-                *row[108] = blake_round_output_limb_22_col108;
-                let blake_round_output_limb_23_col109 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[11].high().as_m31();
-                *row[109] = blake_round_output_limb_23_col109;
-                let blake_round_output_limb_24_col110 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[12].low().as_m31();
-                *row[110] = blake_round_output_limb_24_col110;
-                let blake_round_output_limb_25_col111 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[12].high().as_m31();
-                *row[111] = blake_round_output_limb_25_col111;
-                let blake_round_output_limb_26_col112 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[13].low().as_m31();
-                *row[112] = blake_round_output_limb_26_col112;
-                let blake_round_output_limb_27_col113 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[13].high().as_m31();
-                *row[113] = blake_round_output_limb_27_col113;
-                let blake_round_output_limb_28_col114 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[14].low().as_m31();
-                *row[114] = blake_round_output_limb_28_col114;
-                let blake_round_output_limb_29_col115 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[14].high().as_m31();
-                *row[115] = blake_round_output_limb_29_col115;
-                let blake_round_output_limb_30_col116 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[15].low().as_m31();
-                *row[116] = blake_round_output_limb_30_col116;
-                let blake_round_output_limb_31_col117 =
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[15].high().as_m31();
-                *row[117] = blake_round_output_limb_31_col117;
-                let blake_round_output_limb_32_col118 = blake_round_output_round_9_tmp_8e0ec_56.2.1;
-                *row[118] = blake_round_output_limb_32_col118;
+                let blake_round_output_limb_0_col102 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[0].low().as_m31();
+                *row[102] = blake_round_output_limb_0_col102;
+                let blake_round_output_limb_1_col103 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[0].high().as_m31();
+                *row[103] = blake_round_output_limb_1_col103;
+                let blake_round_output_limb_2_col104 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[1].low().as_m31();
+                *row[104] = blake_round_output_limb_2_col104;
+                let blake_round_output_limb_3_col105 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[1].high().as_m31();
+                *row[105] = blake_round_output_limb_3_col105;
+                let blake_round_output_limb_4_col106 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[2].low().as_m31();
+                *row[106] = blake_round_output_limb_4_col106;
+                let blake_round_output_limb_5_col107 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[2].high().as_m31();
+                *row[107] = blake_round_output_limb_5_col107;
+                let blake_round_output_limb_6_col108 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[3].low().as_m31();
+                *row[108] = blake_round_output_limb_6_col108;
+                let blake_round_output_limb_7_col109 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[3].high().as_m31();
+                *row[109] = blake_round_output_limb_7_col109;
+                let blake_round_output_limb_8_col110 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[4].low().as_m31();
+                *row[110] = blake_round_output_limb_8_col110;
+                let blake_round_output_limb_9_col111 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[4].high().as_m31();
+                *row[111] = blake_round_output_limb_9_col111;
+                let blake_round_output_limb_10_col112 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[5].low().as_m31();
+                *row[112] = blake_round_output_limb_10_col112;
+                let blake_round_output_limb_11_col113 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[5].high().as_m31();
+                *row[113] = blake_round_output_limb_11_col113;
+                let blake_round_output_limb_12_col114 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[6].low().as_m31();
+                *row[114] = blake_round_output_limb_12_col114;
+                let blake_round_output_limb_13_col115 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[6].high().as_m31();
+                *row[115] = blake_round_output_limb_13_col115;
+                let blake_round_output_limb_14_col116 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[7].low().as_m31();
+                *row[116] = blake_round_output_limb_14_col116;
+                let blake_round_output_limb_15_col117 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[7].high().as_m31();
+                *row[117] = blake_round_output_limb_15_col117;
+                let blake_round_output_limb_16_col118 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[8].low().as_m31();
+                *row[118] = blake_round_output_limb_16_col118;
+                let blake_round_output_limb_17_col119 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[8].high().as_m31();
+                *row[119] = blake_round_output_limb_17_col119;
+                let blake_round_output_limb_18_col120 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[9].low().as_m31();
+                *row[120] = blake_round_output_limb_18_col120;
+                let blake_round_output_limb_19_col121 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[9].high().as_m31();
+                *row[121] = blake_round_output_limb_19_col121;
+                let blake_round_output_limb_20_col122 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[10].low().as_m31();
+                *row[122] = blake_round_output_limb_20_col122;
+                let blake_round_output_limb_21_col123 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[10].high().as_m31();
+                *row[123] = blake_round_output_limb_21_col123;
+                let blake_round_output_limb_22_col124 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[11].low().as_m31();
+                *row[124] = blake_round_output_limb_22_col124;
+                let blake_round_output_limb_23_col125 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[11].high().as_m31();
+                *row[125] = blake_round_output_limb_23_col125;
+                let blake_round_output_limb_24_col126 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[12].low().as_m31();
+                *row[126] = blake_round_output_limb_24_col126;
+                let blake_round_output_limb_25_col127 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[12].high().as_m31();
+                *row[127] = blake_round_output_limb_25_col127;
+                let blake_round_output_limb_26_col128 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[13].low().as_m31();
+                *row[128] = blake_round_output_limb_26_col128;
+                let blake_round_output_limb_27_col129 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[13].high().as_m31();
+                *row[129] = blake_round_output_limb_27_col129;
+                let blake_round_output_limb_28_col130 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[14].low().as_m31();
+                *row[130] = blake_round_output_limb_28_col130;
+                let blake_round_output_limb_29_col131 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[14].high().as_m31();
+                *row[131] = blake_round_output_limb_29_col131;
+                let blake_round_output_limb_30_col132 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[15].low().as_m31();
+                *row[132] = blake_round_output_limb_30_col132;
+                let blake_round_output_limb_31_col133 =
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[15].high().as_m31();
+                *row[133] = blake_round_output_limb_31_col133;
+                let blake_round_output_limb_32_col134 = blake_round_output_round_9_tmp_8e0ec_72.2.1;
+                *row[134] = blake_round_output_limb_32_col134;
                 *lookup_data.blake_round_1 = [
                     M31_40528774,
                     seq,
                     M31_10,
-                    blake_round_output_limb_0_col86,
-                    blake_round_output_limb_1_col87,
-                    blake_round_output_limb_2_col88,
-                    blake_round_output_limb_3_col89,
-                    blake_round_output_limb_4_col90,
-                    blake_round_output_limb_5_col91,
-                    blake_round_output_limb_6_col92,
-                    blake_round_output_limb_7_col93,
-                    blake_round_output_limb_8_col94,
-                    blake_round_output_limb_9_col95,
-                    blake_round_output_limb_10_col96,
-                    blake_round_output_limb_11_col97,
-                    blake_round_output_limb_12_col98,
-                    blake_round_output_limb_13_col99,
-                    blake_round_output_limb_14_col100,
-                    blake_round_output_limb_15_col101,
-                    blake_round_output_limb_16_col102,
-                    blake_round_output_limb_17_col103,
-                    blake_round_output_limb_18_col104,
-                    blake_round_output_limb_19_col105,
-                    blake_round_output_limb_20_col106,
-                    blake_round_output_limb_21_col107,
-                    blake_round_output_limb_22_col108,
-                    blake_round_output_limb_23_col109,
-                    blake_round_output_limb_24_col110,
-                    blake_round_output_limb_25_col111,
-                    blake_round_output_limb_26_col112,
-                    blake_round_output_limb_27_col113,
-                    blake_round_output_limb_28_col114,
-                    blake_round_output_limb_29_col115,
-                    blake_round_output_limb_30_col116,
-                    blake_round_output_limb_31_col117,
-                    blake_round_output_limb_32_col118,
+                    blake_round_output_limb_0_col102,
+                    blake_round_output_limb_1_col103,
+                    blake_round_output_limb_2_col104,
+                    blake_round_output_limb_3_col105,
+                    blake_round_output_limb_4_col106,
+                    blake_round_output_limb_5_col107,
+                    blake_round_output_limb_6_col108,
+                    blake_round_output_limb_7_col109,
+                    blake_round_output_limb_8_col110,
+                    blake_round_output_limb_9_col111,
+                    blake_round_output_limb_10_col112,
+                    blake_round_output_limb_11_col113,
+                    blake_round_output_limb_12_col114,
+                    blake_round_output_limb_13_col115,
+                    blake_round_output_limb_14_col116,
+                    blake_round_output_limb_15_col117,
+                    blake_round_output_limb_16_col118,
+                    blake_round_output_limb_17_col119,
+                    blake_round_output_limb_18_col120,
+                    blake_round_output_limb_19_col121,
+                    blake_round_output_limb_20_col122,
+                    blake_round_output_limb_21_col123,
+                    blake_round_output_limb_22_col124,
+                    blake_round_output_limb_23_col125,
+                    blake_round_output_limb_24_col126,
+                    blake_round_output_limb_25_col127,
+                    blake_round_output_limb_26_col128,
+                    blake_round_output_limb_27_col129,
+                    blake_round_output_limb_28_col130,
+                    blake_round_output_limb_29_col131,
+                    blake_round_output_limb_30_col132,
+                    blake_round_output_limb_31_col133,
+                    blake_round_output_limb_32_col134,
                 ];
 
                 // Create Blake Output.
 
                 *sub_component_inputs.triple_xor_32[0] = [
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[0],
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[8],
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[0],
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[8],
                     blake_gate_input.0[0][0],
                 ];
-                let triple_xor_32_output_tmp_8e0ec_57 = PackedTripleXor32::deduce_output([
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[0],
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[8],
+                let triple_xor_32_output_tmp_8e0ec_73 = PackedTripleXor32::deduce_output([
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[0],
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[8],
                     blake_gate_input.0[0][0],
                 ]);
-                let triple_xor_32_output_limb_0_col119 =
-                    triple_xor_32_output_tmp_8e0ec_57.low().as_m31();
-                *row[119] = triple_xor_32_output_limb_0_col119;
-                let triple_xor_32_output_limb_1_col120 =
-                    triple_xor_32_output_tmp_8e0ec_57.high().as_m31();
-                *row[120] = triple_xor_32_output_limb_1_col120;
+                let triple_xor_32_output_limb_0_col135 =
+                    triple_xor_32_output_tmp_8e0ec_73.low().as_m31();
+                *row[135] = triple_xor_32_output_limb_0_col135;
+                let triple_xor_32_output_limb_1_col136 =
+                    triple_xor_32_output_tmp_8e0ec_73.high().as_m31();
+                *row[136] = triple_xor_32_output_limb_1_col136;
                 *lookup_data.triple_xor_32_0 = [
                     M31_990559919,
-                    blake_round_output_limb_0_col86,
-                    blake_round_output_limb_1_col87,
-                    blake_round_output_limb_16_col102,
-                    blake_round_output_limb_17_col103,
+                    blake_round_output_limb_0_col102,
+                    blake_round_output_limb_1_col103,
+                    blake_round_output_limb_16_col118,
+                    blake_round_output_limb_17_col119,
                     input_state_before_limb0_limb_0_col0,
                     input_state_before_limb0_limb_1_col1,
-                    triple_xor_32_output_limb_0_col119,
-                    triple_xor_32_output_limb_1_col120,
+                    triple_xor_32_output_limb_0_col135,
+                    triple_xor_32_output_limb_1_col136,
                 ];
                 *sub_component_inputs.triple_xor_32[1] = [
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[1],
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[9],
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[1],
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[9],
                     blake_gate_input.0[0][1],
                 ];
-                let triple_xor_32_output_tmp_8e0ec_58 = PackedTripleXor32::deduce_output([
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[1],
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[9],
+                let triple_xor_32_output_tmp_8e0ec_74 = PackedTripleXor32::deduce_output([
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[1],
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[9],
                     blake_gate_input.0[0][1],
                 ]);
-                let triple_xor_32_output_limb_0_col121 =
-                    triple_xor_32_output_tmp_8e0ec_58.low().as_m31();
-                *row[121] = triple_xor_32_output_limb_0_col121;
-                let triple_xor_32_output_limb_1_col122 =
-                    triple_xor_32_output_tmp_8e0ec_58.high().as_m31();
-                *row[122] = triple_xor_32_output_limb_1_col122;
+                let triple_xor_32_output_limb_0_col137 =
+                    triple_xor_32_output_tmp_8e0ec_74.low().as_m31();
+                *row[137] = triple_xor_32_output_limb_0_col137;
+                let triple_xor_32_output_limb_1_col138 =
+                    triple_xor_32_output_tmp_8e0ec_74.high().as_m31();
+                *row[138] = triple_xor_32_output_limb_1_col138;
                 *lookup_data.triple_xor_32_1 = [
                     M31_990559919,
-                    blake_round_output_limb_2_col88,
-                    blake_round_output_limb_3_col89,
-                    blake_round_output_limb_18_col104,
-                    blake_round_output_limb_19_col105,
+                    blake_round_output_limb_2_col104,
+                    blake_round_output_limb_3_col105,
+                    blake_round_output_limb_18_col120,
+                    blake_round_output_limb_19_col121,
                     input_state_before_limb1_limb_0_col2,
                     input_state_before_limb1_limb_1_col3,
-                    triple_xor_32_output_limb_0_col121,
-                    triple_xor_32_output_limb_1_col122,
+                    triple_xor_32_output_limb_0_col137,
+                    triple_xor_32_output_limb_1_col138,
                 ];
                 *sub_component_inputs.triple_xor_32[2] = [
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[2],
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[10],
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[2],
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[10],
                     blake_gate_input.0[0][2],
                 ];
-                let triple_xor_32_output_tmp_8e0ec_59 = PackedTripleXor32::deduce_output([
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[2],
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[10],
+                let triple_xor_32_output_tmp_8e0ec_75 = PackedTripleXor32::deduce_output([
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[2],
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[10],
                     blake_gate_input.0[0][2],
                 ]);
-                let triple_xor_32_output_limb_0_col123 =
-                    triple_xor_32_output_tmp_8e0ec_59.low().as_m31();
-                *row[123] = triple_xor_32_output_limb_0_col123;
-                let triple_xor_32_output_limb_1_col124 =
-                    triple_xor_32_output_tmp_8e0ec_59.high().as_m31();
-                *row[124] = triple_xor_32_output_limb_1_col124;
+                let triple_xor_32_output_limb_0_col139 =
+                    triple_xor_32_output_tmp_8e0ec_75.low().as_m31();
+                *row[139] = triple_xor_32_output_limb_0_col139;
+                let triple_xor_32_output_limb_1_col140 =
+                    triple_xor_32_output_tmp_8e0ec_75.high().as_m31();
+                *row[140] = triple_xor_32_output_limb_1_col140;
                 *lookup_data.triple_xor_32_2 = [
                     M31_990559919,
-                    blake_round_output_limb_4_col90,
-                    blake_round_output_limb_5_col91,
-                    blake_round_output_limb_20_col106,
-                    blake_round_output_limb_21_col107,
+                    blake_round_output_limb_4_col106,
+                    blake_round_output_limb_5_col107,
+                    blake_round_output_limb_20_col122,
+                    blake_round_output_limb_21_col123,
                     input_state_before_limb2_limb_0_col4,
                     input_state_before_limb2_limb_1_col5,
-                    triple_xor_32_output_limb_0_col123,
-                    triple_xor_32_output_limb_1_col124,
+                    triple_xor_32_output_limb_0_col139,
+                    triple_xor_32_output_limb_1_col140,
                 ];
                 *sub_component_inputs.triple_xor_32[3] = [
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[3],
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[11],
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[3],
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[11],
                     blake_gate_input.0[0][3],
                 ];
-                let triple_xor_32_output_tmp_8e0ec_60 = PackedTripleXor32::deduce_output([
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[3],
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[11],
+                let triple_xor_32_output_tmp_8e0ec_76 = PackedTripleXor32::deduce_output([
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[3],
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[11],
                     blake_gate_input.0[0][3],
                 ]);
-                let triple_xor_32_output_limb_0_col125 =
-                    triple_xor_32_output_tmp_8e0ec_60.low().as_m31();
-                *row[125] = triple_xor_32_output_limb_0_col125;
-                let triple_xor_32_output_limb_1_col126 =
-                    triple_xor_32_output_tmp_8e0ec_60.high().as_m31();
-                *row[126] = triple_xor_32_output_limb_1_col126;
+                let triple_xor_32_output_limb_0_col141 =
+                    triple_xor_32_output_tmp_8e0ec_76.low().as_m31();
+                *row[141] = triple_xor_32_output_limb_0_col141;
+                let triple_xor_32_output_limb_1_col142 =
+                    triple_xor_32_output_tmp_8e0ec_76.high().as_m31();
+                *row[142] = triple_xor_32_output_limb_1_col142;
                 *lookup_data.triple_xor_32_3 = [
                     M31_990559919,
-                    blake_round_output_limb_6_col92,
-                    blake_round_output_limb_7_col93,
-                    blake_round_output_limb_22_col108,
-                    blake_round_output_limb_23_col109,
+                    blake_round_output_limb_6_col108,
+                    blake_round_output_limb_7_col109,
+                    blake_round_output_limb_22_col124,
+                    blake_round_output_limb_23_col125,
                     input_state_before_limb3_limb_0_col6,
                     input_state_before_limb3_limb_1_col7,
-                    triple_xor_32_output_limb_0_col125,
-                    triple_xor_32_output_limb_1_col126,
+                    triple_xor_32_output_limb_0_col141,
+                    triple_xor_32_output_limb_1_col142,
                 ];
                 *sub_component_inputs.triple_xor_32[4] = [
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[4],
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[12],
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[4],
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[12],
                     blake_gate_input.0[0][4],
                 ];
-                let triple_xor_32_output_tmp_8e0ec_61 = PackedTripleXor32::deduce_output([
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[4],
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[12],
+                let triple_xor_32_output_tmp_8e0ec_77 = PackedTripleXor32::deduce_output([
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[4],
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[12],
                     blake_gate_input.0[0][4],
                 ]);
-                let triple_xor_32_output_limb_0_col127 =
-                    triple_xor_32_output_tmp_8e0ec_61.low().as_m31();
-                *row[127] = triple_xor_32_output_limb_0_col127;
-                let triple_xor_32_output_limb_1_col128 =
-                    triple_xor_32_output_tmp_8e0ec_61.high().as_m31();
-                *row[128] = triple_xor_32_output_limb_1_col128;
+                let triple_xor_32_output_limb_0_col143 =
+                    triple_xor_32_output_tmp_8e0ec_77.low().as_m31();
+                *row[143] = triple_xor_32_output_limb_0_col143;
+                let triple_xor_32_output_limb_1_col144 =
+                    triple_xor_32_output_tmp_8e0ec_77.high().as_m31();
+                *row[144] = triple_xor_32_output_limb_1_col144;
                 *lookup_data.triple_xor_32_4 = [
                     M31_990559919,
-                    blake_round_output_limb_8_col94,
-                    blake_round_output_limb_9_col95,
-                    blake_round_output_limb_24_col110,
-                    blake_round_output_limb_25_col111,
+                    blake_round_output_limb_8_col110,
+                    blake_round_output_limb_9_col111,
+                    blake_round_output_limb_24_col126,
+                    blake_round_output_limb_25_col127,
                     input_state_before_limb4_limb_0_col8,
                     input_state_before_limb4_limb_1_col9,
-                    triple_xor_32_output_limb_0_col127,
-                    triple_xor_32_output_limb_1_col128,
+                    triple_xor_32_output_limb_0_col143,
+                    triple_xor_32_output_limb_1_col144,
                 ];
                 *sub_component_inputs.triple_xor_32[5] = [
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[5],
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[13],
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[5],
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[13],
                     blake_gate_input.0[0][5],
                 ];
-                let triple_xor_32_output_tmp_8e0ec_62 = PackedTripleXor32::deduce_output([
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[5],
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[13],
+                let triple_xor_32_output_tmp_8e0ec_78 = PackedTripleXor32::deduce_output([
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[5],
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[13],
                     blake_gate_input.0[0][5],
                 ]);
-                let triple_xor_32_output_limb_0_col129 =
-                    triple_xor_32_output_tmp_8e0ec_62.low().as_m31();
-                *row[129] = triple_xor_32_output_limb_0_col129;
-                let triple_xor_32_output_limb_1_col130 =
-                    triple_xor_32_output_tmp_8e0ec_62.high().as_m31();
-                *row[130] = triple_xor_32_output_limb_1_col130;
+                let triple_xor_32_output_limb_0_col145 =
+                    triple_xor_32_output_tmp_8e0ec_78.low().as_m31();
+                *row[145] = triple_xor_32_output_limb_0_col145;
+                let triple_xor_32_output_limb_1_col146 =
+                    triple_xor_32_output_tmp_8e0ec_78.high().as_m31();
+                *row[146] = triple_xor_32_output_limb_1_col146;
                 *lookup_data.triple_xor_32_5 = [
                     M31_990559919,
-                    blake_round_output_limb_10_col96,
-                    blake_round_output_limb_11_col97,
-                    blake_round_output_limb_26_col112,
-                    blake_round_output_limb_27_col113,
+                    blake_round_output_limb_10_col112,
+                    blake_round_output_limb_11_col113,
+                    blake_round_output_limb_26_col128,
+                    blake_round_output_limb_27_col129,
                     input_state_before_limb5_limb_0_col10,
                     input_state_before_limb5_limb_1_col11,
-                    triple_xor_32_output_limb_0_col129,
-                    triple_xor_32_output_limb_1_col130,
+                    triple_xor_32_output_limb_0_col145,
+                    triple_xor_32_output_limb_1_col146,
                 ];
                 *sub_component_inputs.triple_xor_32[6] = [
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[6],
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[14],
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[6],
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[14],
                     blake_gate_input.0[0][6],
                 ];
-                let triple_xor_32_output_tmp_8e0ec_63 = PackedTripleXor32::deduce_output([
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[6],
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[14],
+                let triple_xor_32_output_tmp_8e0ec_79 = PackedTripleXor32::deduce_output([
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[6],
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[14],
                     blake_gate_input.0[0][6],
                 ]);
-                let triple_xor_32_output_limb_0_col131 =
-                    triple_xor_32_output_tmp_8e0ec_63.low().as_m31();
-                *row[131] = triple_xor_32_output_limb_0_col131;
-                let triple_xor_32_output_limb_1_col132 =
-                    triple_xor_32_output_tmp_8e0ec_63.high().as_m31();
-                *row[132] = triple_xor_32_output_limb_1_col132;
+                let triple_xor_32_output_limb_0_col147 =
+                    triple_xor_32_output_tmp_8e0ec_79.low().as_m31();
+                *row[147] = triple_xor_32_output_limb_0_col147;
+                let triple_xor_32_output_limb_1_col148 =
+                    triple_xor_32_output_tmp_8e0ec_79.high().as_m31();
+                *row[148] = triple_xor_32_output_limb_1_col148;
                 *lookup_data.triple_xor_32_6 = [
                     M31_990559919,
-                    blake_round_output_limb_12_col98,
-                    blake_round_output_limb_13_col99,
-                    blake_round_output_limb_28_col114,
-                    blake_round_output_limb_29_col115,
+                    blake_round_output_limb_12_col114,
+                    blake_round_output_limb_13_col115,
+                    blake_round_output_limb_28_col130,
+                    blake_round_output_limb_29_col131,
                     input_state_before_limb6_limb_0_col12,
                     input_state_before_limb6_limb_1_col13,
-                    triple_xor_32_output_limb_0_col131,
-                    triple_xor_32_output_limb_1_col132,
+                    triple_xor_32_output_limb_0_col147,
+                    triple_xor_32_output_limb_1_col148,
                 ];
                 *sub_component_inputs.triple_xor_32[7] = [
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[7],
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[15],
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[7],
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[15],
                     blake_gate_input.0[0][7],
                 ];
-                let triple_xor_32_output_tmp_8e0ec_64 = PackedTripleXor32::deduce_output([
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[7],
-                    blake_round_output_round_9_tmp_8e0ec_56.2.0[15],
+                let triple_xor_32_output_tmp_8e0ec_80 = PackedTripleXor32::deduce_output([
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[7],
+                    blake_round_output_round_9_tmp_8e0ec_72.2.0[15],
                     blake_gate_input.0[0][7],
                 ]);
-                let triple_xor_32_output_limb_0_col133 =
-                    triple_xor_32_output_tmp_8e0ec_64.low().as_m31();
-                *row[133] = triple_xor_32_output_limb_0_col133;
-                let triple_xor_32_output_limb_1_col134 =
-                    triple_xor_32_output_tmp_8e0ec_64.high().as_m31();
-                *row[134] = triple_xor_32_output_limb_1_col134;
+                let triple_xor_32_output_limb_0_col149 =
+                    triple_xor_32_output_tmp_8e0ec_80.low().as_m31();
+                *row[149] = triple_xor_32_output_limb_0_col149;
+                let triple_xor_32_output_limb_1_col150 =
+                    triple_xor_32_output_tmp_8e0ec_80.high().as_m31();
+                *row[150] = triple_xor_32_output_limb_1_col150;
                 *lookup_data.triple_xor_32_7 = [
                     M31_990559919,
-                    blake_round_output_limb_14_col100,
-                    blake_round_output_limb_15_col101,
-                    blake_round_output_limb_30_col116,
-                    blake_round_output_limb_31_col117,
+                    blake_round_output_limb_14_col116,
+                    blake_round_output_limb_15_col117,
+                    blake_round_output_limb_30_col132,
+                    blake_round_output_limb_31_col133,
                     input_state_before_limb7_limb_0_col14,
                     input_state_before_limb7_limb_1_col15,
-                    triple_xor_32_output_limb_0_col133,
-                    triple_xor_32_output_limb_1_col134,
+                    triple_xor_32_output_limb_0_col149,
+                    triple_xor_32_output_limb_1_col150,
+                ];
+                let _create_blake_output_output_tmp_8e0ec_81 = [
+                    triple_xor_32_output_tmp_8e0ec_73,
+                    triple_xor_32_output_tmp_8e0ec_74,
+                    triple_xor_32_output_tmp_8e0ec_75,
+                    triple_xor_32_output_tmp_8e0ec_76,
+                    triple_xor_32_output_tmp_8e0ec_77,
+                    triple_xor_32_output_tmp_8e0ec_78,
+                    triple_xor_32_output_tmp_8e0ec_79,
+                    triple_xor_32_output_tmp_8e0ec_80,
                 ];
 
                 *lookup_data.blake_output_0 = [

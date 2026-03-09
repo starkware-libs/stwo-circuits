@@ -1,5 +1,3 @@
-// This file was created by the AIR team.
-
 #![allow(unused_parens)]
 #![allow(clippy::too_many_arguments)]
 use circuit_air::components::blake_round::{Claim, InteractionClaim, N_TRACE_COLUMNS};

@@ -43,16 +43,16 @@ pub fn accumulate_constraints<Value: IValue>(
     ] = input.try_into().unwrap();
     let blake_output0_addr =
         acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_output0_addr".to_owned() });
-    let blake_output0_multiplicity =
+    let blake_output0_mults =
         acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_output0_mults".to_owned() });
     let blake_output1_addr =
         acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_output1_addr".to_owned() });
-    let blake_output1_multiplicity =
+    let blake_output1_mults =
         acc.get_preprocessed_column(&PreProcessedColumnId { id: "blake_output1_mults".to_owned() });
     let final_state_addr =
         acc.get_preprocessed_column(&PreProcessedColumnId { id: "final_state_addr".to_owned() });
 
-    // output_limb0.
+    //output_limb0.
     let constraint_0_value = eval!(
         context,
         (output_limb0_col16)
@@ -60,7 +60,8 @@ pub fn accumulate_constraints<Value: IValue>(
                 + ((input_final_state_limb0_limb_1_col1) * (65536)))
     );
     acc.add_constraint(context, constraint_0_value);
-    // output_limb1.
+
+    //output_limb1.
     let constraint_1_value = eval!(
         context,
         (output_limb1_col17)
@@ -68,7 +69,8 @@ pub fn accumulate_constraints<Value: IValue>(
                 + ((input_final_state_limb1_limb_1_col3) * (65536)))
     );
     acc.add_constraint(context, constraint_1_value);
-    // output_limb2.
+
+    //output_limb2.
     let constraint_2_value = eval!(
         context,
         (output_limb2_col18)
@@ -76,7 +78,8 @@ pub fn accumulate_constraints<Value: IValue>(
                 + ((input_final_state_limb2_limb_1_col5) * (65536)))
     );
     acc.add_constraint(context, constraint_2_value);
-    // output_limb3.
+
+    //output_limb3.
     let constraint_3_value = eval!(
         context,
         (output_limb3_col19)
@@ -84,7 +87,8 @@ pub fn accumulate_constraints<Value: IValue>(
                 + ((input_final_state_limb3_limb_1_col7) * (65536)))
     );
     acc.add_constraint(context, constraint_3_value);
-    // output_limb4.
+
+    //output_limb4.
     let constraint_4_value = eval!(
         context,
         (output_limb4_col20)
@@ -92,7 +96,8 @@ pub fn accumulate_constraints<Value: IValue>(
                 + ((input_final_state_limb4_limb_1_col9) * (65536)))
     );
     acc.add_constraint(context, constraint_4_value);
-    // output_limb5.
+
+    //output_limb5.
     let constraint_5_value = eval!(
         context,
         (output_limb5_col21)
@@ -100,7 +105,8 @@ pub fn accumulate_constraints<Value: IValue>(
                 + ((input_final_state_limb5_limb_1_col11) * (65536)))
     );
     acc.add_constraint(context, constraint_5_value);
-    // output_limb6.
+
+    //output_limb6.
     let constraint_6_value = eval!(
         context,
         (output_limb6_col22)
@@ -108,7 +114,8 @@ pub fn accumulate_constraints<Value: IValue>(
                 + ((input_final_state_limb6_limb_1_col13) * (65536)))
     );
     acc.add_constraint(context, constraint_6_value);
-    // output_limb7.
+
+    //output_limb7.
     let constraint_7_value = eval!(
         context,
         (output_limb7_col23)
@@ -118,7 +125,7 @@ pub fn accumulate_constraints<Value: IValue>(
     acc.add_constraint(context, constraint_7_value);
 
     // Use BlakeOutput.
-    let tuple_0 = &[
+    let tuple_8 = &[
         eval!(context, 1061955672),
         eval!(context, final_state_addr),
         eval!(context, input_final_state_limb0_limb_0_col0),
@@ -138,11 +145,11 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, input_final_state_limb7_limb_0_col14),
         eval!(context, input_final_state_limb7_limb_1_col15),
     ];
-    let numerator_0 = eval!(context, 1);
-    acc.add_to_relation(context, numerator_0, tuple_0);
+    let numerator_8 = eval!(context, 1);
+    acc.add_to_relation(context, numerator_8, tuple_8);
 
     // Yield Gate.
-    let tuple_1 = &[
+    let tuple_9 = &[
         eval!(context, 378353459),
         eval!(context, blake_output0_addr),
         eval!(context, output_limb0_col16),
@@ -150,11 +157,11 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, output_limb2_col18),
         eval!(context, output_limb3_col19),
     ];
-    let numerator_1 = eval!(context, -(blake_output0_multiplicity));
-    acc.add_to_relation(context, numerator_1, tuple_1);
+    let numerator_9 = eval!(context, -(blake_output0_mults));
+    acc.add_to_relation(context, numerator_9, tuple_9);
 
     // Yield Gate.
-    let tuple_2 = &[
+    let tuple_10 = &[
         eval!(context, 378353459),
         eval!(context, blake_output1_addr),
         eval!(context, output_limb4_col20),
@@ -162,8 +169,8 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, output_limb6_col22),
         eval!(context, output_limb7_col23),
     ];
-    let numerator_2 = eval!(context, -(blake_output1_multiplicity));
-    acc.add_to_relation(context, numerator_2, tuple_2);
+    let numerator_10 = eval!(context, -(blake_output1_mults));
+    acc.add_to_relation(context, numerator_10, tuple_10);
 }
 
 pub struct Component {}
@@ -191,5 +198,112 @@ impl<Value: IValue> CircuitEval<Value> for Component {
 
     fn relation_uses_per_row(&self) -> &[RelationUse] {
         &RELATION_USES_PER_ROW
+    }
+}
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+    use stwo::core::fields::qm31::QM31;
+
+    #[allow(unused_imports)]
+    use crate::components::prelude::PreProcessedColumnId;
+    use crate::sample_evaluations::*;
+    use circuits::context::Context;
+    use circuits::ivalue::qm31_from_u32s;
+    use circuits_stark_verifier::constraint_eval::*;
+    use circuits_stark_verifier::test_utils::TestComponentData;
+
+    use super::Component;
+
+    #[test]
+    fn test_evaluation_result() {
+        let component = Component {};
+        let mut context: Context<QM31> = Default::default();
+        context.enable_assert_eq_on_eval();
+        let trace_columns = [
+            qm31_from_u32s(1659099300, 905558730, 651199673, 1375009625),
+            qm31_from_u32s(1591990121, 771341002, 584090809, 1375009625),
+            qm31_from_u32s(1793317658, 1173994186, 785417401, 1375009625),
+            qm31_from_u32s(1726208479, 1039776458, 718308537, 1375009625),
+            qm31_from_u32s(1390662584, 368687818, 382764217, 1375009625),
+            qm31_from_u32s(1323553405, 234470090, 315655353, 1375009625),
+            qm31_from_u32s(1524880942, 637123274, 516981945, 1375009625),
+            qm31_from_u32s(1457771763, 502905546, 449873081, 1375009625),
+            qm31_from_u32s(48489085, 1979300555, 1188070585, 1375009625),
+            qm31_from_u32s(2128863553, 1845082826, 1120961721, 1375009625),
+            qm31_from_u32s(1852335767, 645078115, 2059236183, 343880121),
+            qm31_from_u32s(1919444946, 779295843, 2126345047, 343880121),
+            qm31_from_u32s(1986554125, 913513571, 45970264, 343880122),
+            qm31_from_u32s(2053663304, 1047731299, 113079128, 343880122),
+            qm31_from_u32s(1583899051, 108207203, 1790800727, 343880121),
+            qm31_from_u32s(1651008230, 242424931, 1857909591, 343880121),
+            qm31_from_u32s(1718117409, 376642659, 1925018455, 343880121),
+            qm31_from_u32s(1785226588, 510860387, 1992127319, 343880121),
+            qm31_from_u32s(1315462335, 1718819938, 1522365270, 343880121),
+            qm31_from_u32s(1382571514, 1853037666, 1589474134, 343880121),
+            qm31_from_u32s(1986820986, 913513739, 45970432, 343880178),
+            qm31_from_u32s(1919711807, 779296011, 2126345215, 343880177),
+            qm31_from_u32s(2121039344, 1181949195, 180188160, 343880178),
+            qm31_from_u32s(2053930165, 1047731467, 113079296, 343880178),
+        ];
+        let interaction_columns = [
+            qm31_from_u32s(1005168032, 79980996, 1847888101, 1941984119),
+            qm31_from_u32s(1072277211, 214198724, 1914996965, 1941984119),
+        ];
+        let component_data = TestComponentData::from_values(
+            &mut context,
+            &trace_columns,
+            &interaction_columns,
+            qm31_from_u32s(1115374022, 1127856551, 489657863, 643630026),
+            qm31_from_u32s(1398335417, 314974026, 1722107152, 821933968),
+            32768,
+        );
+        let random_coeff =
+            context.new_var(qm31_from_u32s(474642921, 876336632, 1911695779, 974600512));
+        let interaction_elements = [
+            context.new_var(qm31_from_u32s(445623802, 202571636, 1360224996, 131355117)),
+            context.new_var(qm31_from_u32s(476823935, 939223384, 62486082, 122423602)),
+        ];
+        let preprocessed_columns = HashMap::from([
+            (
+                PreProcessedColumnId { id: "final_state_addr".to_owned() },
+                context.constant(qm31_from_u32s(2105944151, 1569844783, 443153106, 72036792)),
+            ),
+            (
+                PreProcessedColumnId { id: "blake_output0_addr".to_owned() },
+                context.constant(qm31_from_u32s(545782490, 1513343251, 1892890443, 1820346206)),
+            ),
+            (
+                PreProcessedColumnId { id: "blake_output0_mults".to_owned() },
+                context.constant(qm31_from_u32s(887099387, 492597255, 1065933015, 342073962)),
+            ),
+            (
+                PreProcessedColumnId { id: "blake_output1_addr".to_owned() },
+                context.constant(qm31_from_u32s(332029597, 1058897354, 1974660943, 1310732131)),
+            ),
+            (
+                PreProcessedColumnId { id: "blake_output1_mults".to_owned() },
+                context.constant(qm31_from_u32s(1768943895, 692885502, 53437623, 1816514837)),
+            ),
+        ]);
+        let public_params = HashMap::from([]);
+        let mut accumulator = CompositionConstraintAccumulator::new(
+            &mut context,
+            preprocessed_columns,
+            public_params,
+            random_coeff,
+            interaction_elements,
+        );
+        accumulator.set_enable_bit(context.one());
+        component.evaluate(&mut context, &component_data, &mut accumulator);
+        accumulator.finalize_logup_in_pairs(
+            &mut context,
+            <TestComponentData as ComponentDataTrait<QM31>>::interaction_columns(&component_data),
+            &component_data,
+        );
+
+        let result = accumulator.finalize();
+        let result_value = context.get(result);
+        assert_eq!(result_value, BLAKE_OUTPUT_SAMPLE_EVAL_RESULT)
     }
 }

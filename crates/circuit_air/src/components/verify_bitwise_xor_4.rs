@@ -1,5 +1,3 @@
-// This file was created by the AIR team.
-
 use crate::components::prelude::*;
 
 pub const N_TRACE_COLUMNS: usize = 1;

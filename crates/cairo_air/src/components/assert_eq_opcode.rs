@@ -1,6 +1,6 @@
 // This file was created by the AIR team.
 
-use crate::components::prelude::*;
+use super::prelude::*;
 
 pub const N_TRACE_COLUMNS: usize = 12;
 pub const N_INTERACTION_COLUMNS: usize = 12;
@@ -148,10 +148,10 @@ mod tests {
     #[allow(unused_imports)]
     use crate::components::prelude::PreProcessedColumnId;
     use crate::sample_evaluations::*;
-    use crate::test::TestComponentData;
     use circuits::context::Context;
     use circuits::ivalue::qm31_from_u32s;
     use circuits_stark_verifier::constraint_eval::*;
+    use circuits_stark_verifier::test_utils::TestComponentData;
 
     use super::Component;
 
