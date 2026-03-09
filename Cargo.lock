@@ -1316,6 +1316,8 @@ dependencies = [
  "expect-test",
  "itertools 0.12.1",
  "num-traits",
+ "rand_chacha 0.3.1",
+ "rand_core 0.6.4",
  "rayon",
  "stwo",
  "stwo-air-utils",

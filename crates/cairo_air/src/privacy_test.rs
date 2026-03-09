@@ -6,8 +6,8 @@ use circuit_air::statement::all_circuit_components;
 use circuit_air::verify::{CircuitConfig, verify_circuit};
 use circuit_prover::finalize::finalize_context;
 use circuit_prover::prover::{
-    BaseColumnPool, CircuitProof, SimdBackend, preprare_circuit_proof_for_circuit_verifier,
-    prove_circuit, prove_circuit_assignment,
+    BaseColumnPool, CircuitProof, SimdBackend, add_zk_blinding,
+    preprare_circuit_proof_for_circuit_verifier, prove_circuit, prove_circuit_assignment,
 };
 use circuit_prover::witness::preprocessed::PreprocessedCircuit;
 use circuits::blake::HashValue;
@@ -102,6 +102,13 @@ fn test_verify_privacy_with_recursion() {
     let cairo_proof = binary_deserialize_from_file(&proof_file).unwrap();
 
     let mut context = verify_cairo(&cairo_proof).unwrap();
+
+    let trace_commitment = cairo_proof.extended_stark_proof.proof.commitments.0[1];
+    add_zk_blinding(
+        &mut context,
+        trace_commitment.0,
+        cairo_proof.extended_stark_proof.proof.config.fri_config.n_queries,
+    );
     let preprocessed = PreprocessedCircuit::preprocess_circuit(&mut context);
     let circuit_proof = prove_circuit_assignment(
         context.values(),
