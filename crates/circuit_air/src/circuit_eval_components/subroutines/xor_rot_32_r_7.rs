@@ -12,6 +12,7 @@ pub fn accumulate_constraints<Value: IValue>(
     input: &[Var],
     context: &mut Context<Value>,
     component_data: &dyn ComponentDataTrait<Value>,
+    enabler: Var,
     acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
     let [
@@ -77,6 +78,7 @@ pub fn accumulate_constraints<Value: IValue>(
         ],
         context,
         component_data,
+        enabler,
         acc,
     );
 
@@ -84,6 +86,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[eval!(context, ms_9_bits_col0), eval!(context, ms_9_bits_col2), eval!(context, xor_col5)],
         context,
         component_data,
+        enabler,
         acc,
     );
 
@@ -95,6 +98,7 @@ pub fn accumulate_constraints<Value: IValue>(
         ],
         context,
         component_data,
+        enabler,
         acc,
     );
 
@@ -102,6 +106,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[eval!(context, ms_9_bits_col1), eval!(context, ms_9_bits_col3), eval!(context, xor_col7)],
         context,
         component_data,
+        enabler,
         acc,
     );
 

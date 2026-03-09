@@ -43,7 +43,7 @@ fn blake_padding_counts(
     let mut blake_output_padding = target_blake_output_rows - n_blake_output_rows;
 
     let target_blake_compress_rows =
-        std::cmp::max(n_blake_compress_rows.next_power_of_two(), N_LANES);
+        std::cmp::max(n_blake_compress_rows.next_multiple_of(N_LANES), N_LANES);
     let compress_aligned = target_blake_compress_rows == n_blake_compress_rows;
 
     if blake_output_padding == 0 && compress_aligned {
@@ -65,7 +65,7 @@ fn blake_padding_counts(
     // for.
     let n_blake_compress_rows_before_last = n_blake_compress_rows + n_single_block_padding_gates;
     let mut target_blake_compress_rows =
-        std::cmp::max(n_blake_compress_rows_before_last.next_power_of_two(), N_LANES);
+        std::cmp::max(n_blake_compress_rows_before_last.next_multiple_of(N_LANES), N_LANES);
     let mut blake_compress_padding = target_blake_compress_rows - n_blake_compress_rows_before_last;
 
     // The reserved final gate must contribute at least one compress row.
