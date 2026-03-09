@@ -187,16 +187,18 @@ impl CircuitSerialize for FriCommitProof<QM31> {
     }
 }
 
+impl CircuitSerialize for FriWitness<QM31> {
+    fn serialize(&self, output: &mut Vec<u32>) {
+        let Self(witness_per_query_per_tree) = self;
+        witness_per_query_per_tree.serialize(output);
+    }
+}
+
 impl CircuitSerialize for FriProof<QM31> {
     fn serialize(&self, output: &mut Vec<u32>) {
-        let Self {
-            commit,
-            auth_paths,
-            witness: FriWitness { circle_siblings, line_coset_vals_per_query_per_tree },
-        } = self;
+        let Self { commit, auth_paths, witness } = self;
         commit.serialize(output);
         auth_paths.serialize(output);
-        circle_siblings.serialize(output);
-        line_coset_vals_per_query_per_tree.serialize(output);
+        witness.serialize(output);
     }
 }

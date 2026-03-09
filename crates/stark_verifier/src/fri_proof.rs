@@ -56,39 +56,27 @@ impl<Value: IValue> Guess<Value> for FriCommitProof<Value> {
 }
 
 /// Witness for the FRI decommitment phase.
+///
+/// For each FRI layer, for each query, the values of the layer polynomial on the FRI witness domain
+/// (either a circle domain or a coset), containing that query.
 #[derive(Debug, PartialEq)]
-pub struct FriWitness<T> {
-    /// The siblings for the first FRI layer (circle-to-line). Currently the folding step is 1 so
-    /// only one sibling per query is required.
-    pub circle_siblings: Vec<T>,
-    /// For each inner layer, for each query, the values of the layer poly on the FRI coset
-    /// containing the query.
-    pub line_coset_vals_per_query_per_tree: Vec<Vec<Vec<T>>>,
-}
+pub struct FriWitness<T>(pub Vec<Vec<Vec<T>>>);
 
 impl<Value: IValue> Guess<Value> for FriWitness<Value> {
     type Target = FriWitness<Var>;
 
     fn guess(&self, context: &mut Context<Value>) -> Self::Target {
-        Self::Target {
-            circle_siblings: self.circle_siblings.guess(context),
-            line_coset_vals_per_query_per_tree: self
-                .line_coset_vals_per_query_per_tree
-                .guess(context),
-        }
+        FriWitness(self.0.guess(context))
     }
 }
 
 impl<T> FriWitness<T> {
     /// Validates that the size of the members of the struct are consistent with the config.
-    pub fn validate_structure(&self, config: &FriConfig, all_line_fold_steps: &[usize]) {
-        assert_eq!(self.circle_siblings.len(), config.n_queries);
-        assert_eq!(self.line_coset_vals_per_query_per_tree.len(), all_line_fold_steps.len());
-        for (fri_coset_per_query, step) in
-            zip_eq(&self.line_coset_vals_per_query_per_tree, all_line_fold_steps)
-        {
-            assert_eq!(fri_coset_per_query.len(), config.n_queries);
-            fri_coset_per_query.iter().all(|coset| coset.len() == 1 << step);
+    pub fn validate_structure(&self, config: &FriConfig, all_fold_steps: &[usize]) {
+        assert_eq!(self.0.len(), all_fold_steps.len());
+        for (witness_per_query, step) in zip_eq(&self.0, all_fold_steps) {
+            assert_eq!(witness_per_query.len(), config.n_queries);
+            witness_per_query.iter().all(|witness| witness.len() == 1 << step);
         }
     }
 }
@@ -120,7 +108,7 @@ impl<T> FriProof<T> {
         let mut all_fold_steps = vec![1];
         all_fold_steps.extend_from_slice(&all_line_fold_steps);
         let mut fold_sum = 0;
-        for (tree_data, fold_step) in zip_eq(&auth_paths.data, all_fold_steps) {
+        for (tree_data, fold_step) in zip_eq(&auth_paths.data, &all_fold_steps) {
             assert_eq!(tree_data.len(), config.n_queries);
             for query_data in tree_data {
                 assert_eq!(query_data.0.len(), first_layer_log_size - fold_sum - fold_step);
@@ -129,7 +117,7 @@ impl<T> FriProof<T> {
         }
 
         // Check the witness.
-        witness.validate_structure(config, &all_line_fold_steps);
+        witness.validate_structure(config, &all_fold_steps);
     }
 }
 
@@ -167,7 +155,7 @@ pub fn empty_fri_proof(config: &FriConfig) -> FriProof<NoValue> {
     }
     let auth_paths = AuthPaths { data: auth_paths };
 
-    let line_coset_vals_per_query_per_tree = all_line_fold_steps
+    let witness_per_query_per_tree = all_fold_steps
         .iter()
         .map(|step| vec![vec![NoValue; 1 << step]; config.n_queries])
         .collect();
@@ -177,10 +165,7 @@ pub fn empty_fri_proof(config: &FriConfig) -> FriProof<NoValue> {
             last_layer_coefs: vec![NoValue; 1 << config.log_n_last_layer_coefs],
         },
         auth_paths,
-        witness: FriWitness {
-            circle_siblings: vec![NoValue; config.n_queries],
-            line_coset_vals_per_query_per_tree,
-        },
+        witness: FriWitness(witness_per_query_per_tree),
     }
 }
 
