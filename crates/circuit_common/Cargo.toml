@@ -1,0 +1,14 @@
+[package]
+name = "circuit-common"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+itertools.workspace = true
+stwo.workspace = true
+stwo-constraint-framework.workspace = true
+stwo_cairo_common.workspace = true
+circuits.workspace = true
+
+[dev-dependencies]
+expect-test.workspace = true

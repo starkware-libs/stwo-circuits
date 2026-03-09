@@ -1,0 +1,14 @@
+pub mod finalize;
+pub mod preprocessed;
+
+#[derive(Debug, PartialEq)]
+pub struct CircuitParams {
+    pub trace_log_size: u32,
+    pub first_permutation_row: usize,
+    pub n_blake_gates: usize,
+    pub output_addresses: Vec<usize>,
+}
+
+pub struct TraceGenerator {
+    pub first_permutation_row: usize,
+}

@@ -1,5 +1,4 @@
 use crate::witness::components::qm31_ops;
-use crate::witness::preprocessed::PreprocessedCircuit;
 use crate::witness::trace::TraceGenerator;
 use crate::witness::trace::write_interaction_trace;
 use crate::witness::trace::write_trace;
@@ -7,6 +6,9 @@ use circuit_air::components::CircuitComponents;
 use circuit_air::statement::INTERACTION_POW_BITS;
 use circuit_air::verify::CircuitPublicData;
 use circuit_air::{CircuitClaim, CircuitInteractionClaim, CircuitInteractionElements, lookup_sum};
+use circuit_common::CircuitParams;
+use circuit_common::preprocessed::PreProcessedTrace;
+use circuit_common::preprocessed::PreprocessedCircuit;
 use circuits::context::Context;
 use circuits_stark_verifier::proof::Proof;
 use circuits_stark_verifier::proof::{Claim, ProofConfig};
@@ -19,6 +21,7 @@ use num_traits::Zero;
 use stwo::core::air::Component;
 use stwo::core::channel::Blake2sM31Channel;
 use stwo::core::channel::Channel;
+use stwo::core::fields::m31::BaseField;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::PcsConfig;
 use stwo::core::poly::circle::CanonicCoset;
@@ -31,20 +34,15 @@ use stwo::prover::CommitmentSchemeProver;
 use stwo::prover::CommitmentTreeProver;
 use stwo::prover::ComponentProver;
 pub use stwo::prover::backend::simd::SimdBackend;
+use stwo::prover::backend::{Backend, Col, Column};
 pub use stwo::prover::mempool::BaseColumnPool;
+use stwo::prover::poly::BitReversedOrder;
+use stwo::prover::poly::circle::CircleEvaluation;
 use stwo::prover::poly::circle::PolyOps;
 use stwo::prover::poly::twiddles::TwiddleTree;
 use stwo::prover::{ProvingError, prove_ex};
 
 const COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND: u32 = 1;
-
-#[derive(Debug, PartialEq)]
-pub struct CircuitParams {
-    pub trace_log_size: u32,
-    pub first_permutation_row: usize,
-    pub n_blake_gates: usize,
-    pub output_addresses: Vec<usize>,
-}
 
 pub struct CircuitProof {
     pub pcs_config: PcsConfig,
@@ -83,6 +81,17 @@ pub fn to_component_provers(
     .collect()
 }
 
+pub fn get_trace<B: Backend>(
+    ppt: &PreProcessedTrace,
+) -> Vec<CircleEvaluation<B, BaseField, BitReversedOrder>> {
+    let to_evaluation = |vec: &[usize]| {
+        let col = Col::<B, BaseField>::from_iter(vec.iter().cloned().map(BaseField::from));
+        CircleEvaluation::new(CanonicCoset::new(col.len().ilog2()).circle_domain(), col)
+    };
+
+    ppt.columns.iter().map(|c| to_evaluation(c)).collect()
+}
+
 pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
     let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(context);
     prove_circuit_assignment(
@@ -117,7 +126,8 @@ pub fn prove_circuit_assignment(
         .half_coset,
     );
 
-    let preprocessed_trace = preprocessed_circuit.preprocessed_trace.get_trace::<SimdBackend>();
+    let preprocessed_trace =
+        get_trace::<SimdBackend>(preprocessed_circuit.preprocessed_trace.as_ref());
     let preprocessed_trace_polys = SimdBackend::interpolate_columns(preprocessed_trace, &twiddles);
 
     let store_polynomials_coefficients = true;

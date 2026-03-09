@@ -1,10 +1,12 @@
 use circuits::ops::output;
-use stwo::prover::backend::simd::m31::N_LANES;
 
 use circuits::blake::{HashValue, blake};
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::ivalue::IValue;
+
+// TODO(Anat): Take from somewhere stable.
+const N_LANES: usize = 16;
 
 fn pad_qm31_ops(context: &mut Context<impl IValue>) {
     let qm31_ops_n_rows = context.circuit.add.len()

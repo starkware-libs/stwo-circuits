@@ -1,7 +1,6 @@
+use crate::CircuitParams;
+use crate::TraceGenerator;
 use crate::finalize::finalize_context;
-use crate::prover::CircuitParams;
-use crate::witness::components::prelude::BLAKE_SIGMA;
-use crate::witness::components::qm31_ops;
 use circuits::circuit::Blake;
 use circuits::circuit::{Circuit, Permutation};
 use circuits::circuit::{Eq, Gate};
@@ -12,15 +11,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use stwo::core::fields::m31::BaseField;
 use stwo::prover::backend::simd::m31::{N_LANES, PackedM31};
-use stwo::prover::backend::{Backend, Col, Column};
-use stwo::prover::poly::BitReversedOrder;
-use stwo::prover::poly::circle::CircleEvaluation;
-use stwo_cairo_prover::witness::prelude::CanonicCoset;
+use stwo_cairo_common::preprocessed_columns::blake::BLAKE_SIGMA;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
-
-#[cfg(test)]
-#[path = "preprocessed_test.rs"]
-pub mod test;
 
 const N_QM31_OPS_PP_COLUMNS: usize = 8;
 const N_EQ_PP_COLUMNS: usize = 2;
@@ -122,7 +114,7 @@ fn add_qm31_ops_to_preprocessed_trace(
     circuit: &Circuit,
     multiplicities: &[usize],
     pp_trace: &mut PreProcessedTrace,
-) -> qm31_ops::TraceGenerator {
+) -> TraceGenerator {
     let Circuit { n_vars, add, sub, mul, pointwise_mul, eq: _, blake: _, permutation, output: _ } =
         circuit;
     let mut qm31_ops_columns: [_; N_QM31_OPS_PP_COLUMNS] = std::array::from_fn(|_| vec![]);
@@ -136,7 +128,7 @@ fn add_qm31_ops_to_preprocessed_trace(
         &mut qm31_ops_columns,
     );
     let qm31_ops_trace_generator =
-        qm31_ops::TraceGenerator { first_permutation_row: qm31_ops_columns[0].len() };
+        TraceGenerator { first_permutation_row: qm31_ops_columns[0].len() };
 
     fill_permutation_columns(permutation, multiplicities, &mut qm31_ops_columns, *n_vars);
 
@@ -408,15 +400,6 @@ impl PreProcessedTrace {
 
     pub fn ids(&self) -> Vec<PreProcessedColumnId> {
         self.column_ids.clone()
-    }
-
-    pub fn get_trace<B: Backend>(&self) -> Vec<CircleEvaluation<B, BaseField, BitReversedOrder>> {
-        let to_evaluation = |vec: &[usize]| {
-            let col = Col::<B, BaseField>::from_iter(vec.iter().cloned().map(BaseField::from));
-            CircleEvaluation::new(CanonicCoset::new(col.len().ilog2()).circle_domain(), col)
-        };
-
-        self.columns.iter().map(|c| to_evaluation(c)).collect()
     }
 
     pub fn get_column(&self, id: &PreProcessedColumnId) -> &Vec<usize> {

@@ -1,13 +1,14 @@
-use crate::finalize::finalize_context;
-use crate::prover::preprare_circuit_proof_for_circuit_verifier;
 use crate::prover::{BaseColumnPool, CircuitProof, SimdBackend, prove_circuit_assignment};
-use crate::witness::preprocessed::PreprocessedCircuit;
+use crate::prover::{get_trace, preprare_circuit_proof_for_circuit_verifier};
 use circuit_air::CircuitInteractionElements;
 use circuit_air::lookup_sum;
 use circuit_air::statement::{INTERACTION_POW_BITS, all_circuit_components};
 use circuit_air::verify::{CircuitConfig, verify_circuit};
+use circuit_common::finalize::finalize_context;
+use circuit_common::preprocessed::PreprocessedCircuit;
 use circuits::blake::HashValue;
 use circuits::blake::blake;
+use circuits::circuit::{Add, Blake, Circuit, Eq, Mul, PointwiseMul, Sub};
 use circuits::context::Var;
 use circuits::eval;
 use circuits::ivalue::{IValue, qm31_from_u32s};
@@ -15,6 +16,7 @@ use circuits::ops::{output, permute};
 use circuits::{context::Context, ops::guess};
 use circuits_stark_verifier::proof::ProofConfig;
 use expect_test::expect;
+use itertools::Itertools;
 use num_traits::{One, Zero};
 use stwo::core::air::Component;
 use stwo::core::channel::Blake2sM31Channel;
@@ -22,6 +24,7 @@ use stwo::core::channel::Channel;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::{CommitmentSchemeVerifier, TreeVec};
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
+use stwo::prover::backend::Column;
 
 // Not a power of 2 so that we can test component padding.
 const N: usize = 1030;
@@ -75,6 +78,119 @@ pub fn build_blake_gate_context() -> Context<QM31> {
     }
 
     context
+}
+
+#[test]
+fn test_preprocess_circuit() {
+    let mut circuit = Circuit::default();
+    circuit.add.push(Add { in0: 0, in1: 1, out: 2 });
+    circuit.add.push(Add { in0: 3, in1: 4, out: 5 });
+    circuit.sub.push(Sub { in0: 6, in1: 7, out: 8 });
+    circuit.sub.push(Sub { in0: 9, in1: 10, out: 11 });
+    circuit.mul.push(Mul { in0: 12, in1: 13, out: 14 });
+    circuit.mul.push(Mul { in0: 15, in1: 16, out: 17 });
+    circuit.pointwise_mul.push(PointwiseMul { in0: 18, in1: 19, out: 20 });
+    circuit.pointwise_mul.push(PointwiseMul { in0: 21, in1: 22, out: 23 });
+    circuit.eq.push(Eq { in0: 0, in1: 1 });
+    circuit.eq.push(Eq { in0: 0, in1: 2 });
+    for i in 0..16 {
+        let in0 = (i * 4) % 24;
+        let in1 = (i * 4 + 1) % 24;
+        let in2 = (i * 4 + 2) % 24;
+        let in3 = (i * 4 + 3) % 24;
+        circuit.blake.push(Blake {
+            input: vec![[in0, in1, in2, in3]],
+            n_bytes: 64,
+            out0: 24 + 2 * i,
+            out1: 24 + 2 * i + 1,
+        });
+    }
+    circuit.n_vars = 56;
+
+    let preprocessed_trace = get_trace::<SimdBackend>(
+        PreprocessedCircuit::from_finalized_circuit(&circuit).preprocessed_trace.as_ref(),
+    );
+
+    assert_eq!(preprocessed_trace.len(), 73);
+    let lengths = preprocessed_trace.iter().map(|column| column.values.len()).collect_vec();
+    expect![[r#"
+        [
+            2,
+            2,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            8,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            16,
+            32,
+            64,
+            128,
+            256,
+            256,
+            256,
+            256,
+            512,
+            1024,
+            2048,
+            4096,
+            8192,
+            16384,
+            16384,
+            16384,
+            16384,
+            32768,
+            65536,
+            65536,
+            65536,
+            65536,
+            131072,
+            262144,
+            262144,
+            262144,
+            262144,
+            524288,
+            1048576,
+            1048576,
+            1048576,
+            1048576,
+        ]
+    "#]]
+    .assert_debug_eq(&lengths);
 }
 
 #[test]
