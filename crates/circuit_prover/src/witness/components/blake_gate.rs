@@ -6,6 +6,7 @@ use crate::witness::components::{
     verify_bitwise_xor_8,
 };
 use circuit_air::components::blake_gate::{InteractionClaim, N_TRACE_COLUMNS};
+use itertools::zip_eq;
 use stwo::core::fields::FieldExpOps;
 use stwo_cairo_prover::witness::prelude::EqExtend;
 
@@ -122,12 +123,16 @@ fn make_blake_output_inputs(
 ) -> Vec<blake_output::PackedInputType> {
     let finalize_flag =
         preprocessed_trace.get_column(&PreProcessedColumnId { id: "finalize_flag".to_owned() });
+    let enabler =
+        preprocessed_trace.get_column(&PreProcessedColumnId { id: "compress_enabler".to_owned() });
 
     // Build the inputs for the blake_output component.
     let mut blake_output_component_inputs: Vec<[UInt32; 8]> = vec![];
 
-    for (blake_input, flag_value) in blake_inputs.iter().zip_eq(finalize_flag.iter()) {
-        if *flag_value == 1 {
+    for ((blake_input, flag_value), enabler_value) in
+        zip_eq(zip_eq(blake_inputs, finalize_flag), enabler)
+    {
+        if *flag_value == 1 && *enabler_value == 1 {
             let state_after = blake_input.0[1];
             blake_output_component_inputs.push(state_after);
         }
@@ -168,9 +173,13 @@ impl ClaimGenerator {
         let mut inputs = extract_component_inputs(preprocessed_trace, context_values);
         let n_rows = inputs.len();
         assert_ne!(n_rows, 0);
-        let size = std::cmp::max(n_rows.next_power_of_two(), N_LANES);
         // TODO(Leo): remove after we remove the circuit gates padding.
-        assert_eq!(size, n_rows, "Only padding through circuit gates for now.");
+        assert_eq!(
+            n_rows % N_LANES,
+            0,
+            "Padding to multiple of N_LANES is done through circuit gates for now."
+        );
+        let size = std::cmp::max(n_rows.next_power_of_two(), N_LANES);
         inputs.resize(size, *inputs.first().unwrap());
         let packed_inputs = pack_values(&inputs);
 
@@ -184,19 +193,19 @@ impl ClaimGenerator {
             &mut blake_message_state,
         );
         for inputs in sub_component_inputs.verify_bitwise_xor_8 {
-            verify_bitwise_xor_8_state.add_packed_inputs(&inputs, 0);
+            verify_bitwise_xor_8_state.add_packed_inputs(&inputs[..n_rows / N_LANES], 0);
         }
         for inputs in sub_component_inputs.range_check_16 {
-            range_check_16_state.add_packed_inputs(&inputs, 0);
+            range_check_16_state.add_packed_inputs(&inputs[..n_rows / N_LANES], 0);
         }
         for inputs in sub_component_inputs.range_check_15 {
-            range_check_15_state.add_packed_inputs(&inputs, 0);
+            range_check_15_state.add_packed_inputs(&inputs[..n_rows / N_LANES], 0);
         }
         for inputs in sub_component_inputs.blake_round {
-            blake_round_state.add_packed_inputs(&inputs, 0);
+            blake_round_state.add_packed_inputs(&inputs[..n_rows / N_LANES], 0);
         }
         for inputs in sub_component_inputs.triple_xor_32 {
-            triple_xor_32_state.add_packed_inputs(&inputs, 0);
+            triple_xor_32_state.add_packed_inputs(&inputs[..n_rows / N_LANES], 0);
         }
 
         (
@@ -1927,12 +1936,15 @@ pub struct InteractionClaimGenerator {
     pub lookup_data: LookupData,
 }
 impl InteractionClaimGenerator {
+    #[allow(non_snake_case)]
     pub fn write_interaction_trace(
         self,
         common_lookup_elements: &relations::CommonLookupElements,
     ) -> (Vec<CircleEvaluation<SimdBackend, M31, BitReversedOrder>>, InteractionClaim) {
-        let enabler_col = Enabler::new(self.n_rows);
+        let blake_gate_enabler_col = Enabler::new(self.n_rows);
         let mut logup_gen = unsafe { LogupTraceGenerator::uninitialized(self.log_size) };
+
+        let M31_10 = PackedM31::broadcast(M31::from(10));
 
         // Sum logup terms in pairs.
         let mut col_gen = logup_gen.new_col();
@@ -1942,10 +1954,16 @@ impl InteractionClaimGenerator {
             &self.lookup_data.verify_bitwise_xor_8_1,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom0 + denom1, denom0 * denom1);
+                writer.write_frac(
+                    (PackedQM31::from(blake_gate_enabler) * denom0)
+                        + (PackedQM31::from(blake_gate_enabler) * denom1),
+                    denom0 * denom1,
+                );
             });
         col_gen.finalize_col();
 
@@ -1956,11 +1974,18 @@ impl InteractionClaimGenerator {
             &self.lookup_data.verify_bitwise_xor_8_3,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom0 + denom1, denom0 * denom1);
+                writer.write_frac(
+                    (PackedQM31::from(blake_gate_enabler) * denom0)
+                        + (PackedQM31::from(blake_gate_enabler) * denom1),
+                    denom0 * denom1,
+                );
             });
+
         col_gen.finalize_col();
 
         let mut col_gen = logup_gen.new_col();
@@ -1970,10 +1995,16 @@ impl InteractionClaimGenerator {
             &self.lookup_data.range_check_15_0,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom0 + denom1, denom0 * denom1);
+                writer.write_frac(
+                    (PackedQM31::from(blake_gate_enabler) * denom0)
+                        + (PackedQM31::from(blake_gate_enabler) * denom1),
+                    denom0 * denom1,
+                );
             });
         col_gen.finalize_col();
 
@@ -1984,11 +2015,14 @@ impl InteractionClaimGenerator {
             &self.lookup_data.range_check_16_1,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(
-                    denom0 - PackedQM31::broadcast(QM31::from(10)) * denom1,
+                    (PackedQM31::from(blake_gate_enabler) * denom0)
+                        + (-(PackedQM31::from((M31_10) * (blake_gate_enabler)) * denom1)),
                     denom0 * denom1,
                 );
             });
@@ -2001,11 +2035,14 @@ impl InteractionClaimGenerator {
             &self.lookup_data.blake_message_1,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(
-                    denom1 - PackedQM31::broadcast(QM31::from(10)) * denom0,
+                    (-(PackedQM31::from((M31_10) * (blake_gate_enabler)) * denom0))
+                        + (PackedQM31::from(blake_gate_enabler) * denom1),
                     denom0 * denom1,
                 );
             });
@@ -2018,10 +2055,16 @@ impl InteractionClaimGenerator {
             &self.lookup_data.range_check_15_2,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom0 + denom1, denom0 * denom1);
+                writer.write_frac(
+                    (PackedQM31::from(blake_gate_enabler) * denom0)
+                        + (PackedQM31::from(blake_gate_enabler) * denom1),
+                    denom0 * denom1,
+                );
             });
         col_gen.finalize_col();
 
@@ -2032,11 +2075,14 @@ impl InteractionClaimGenerator {
             &self.lookup_data.range_check_16_3,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(
-                    denom0 - PackedQM31::broadcast(QM31::from(10)) * denom1,
+                    (PackedQM31::from(blake_gate_enabler) * denom0)
+                        + (-(PackedQM31::from((M31_10) * (blake_gate_enabler)) * denom1)),
                     denom0 * denom1,
                 );
             });
@@ -2049,11 +2095,14 @@ impl InteractionClaimGenerator {
             &self.lookup_data.blake_message_3,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(
-                    denom1 - PackedQM31::broadcast(QM31::from(10)) * denom0,
+                    (-(PackedQM31::from((M31_10) * (blake_gate_enabler)) * denom0))
+                        + (PackedQM31::from(blake_gate_enabler) * denom1),
                     denom0 * denom1,
                 );
             });
@@ -2066,10 +2115,16 @@ impl InteractionClaimGenerator {
             &self.lookup_data.range_check_15_4,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom0 + denom1, denom0 * denom1);
+                writer.write_frac(
+                    (PackedQM31::from(blake_gate_enabler) * denom0)
+                        + (PackedQM31::from(blake_gate_enabler) * denom1),
+                    denom0 * denom1,
+                );
             });
         col_gen.finalize_col();
 
@@ -2080,11 +2135,14 @@ impl InteractionClaimGenerator {
             &self.lookup_data.range_check_16_5,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(
-                    denom0 - PackedQM31::broadcast(QM31::from(10)) * denom1,
+                    (PackedQM31::from(blake_gate_enabler) * denom0)
+                        + (-(PackedQM31::from((M31_10) * (blake_gate_enabler)) * denom1)),
                     denom0 * denom1,
                 );
             });
@@ -2097,11 +2155,14 @@ impl InteractionClaimGenerator {
             &self.lookup_data.blake_message_5,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(
-                    denom1 - PackedQM31::broadcast(QM31::from(10)) * denom0,
+                    (-(PackedQM31::from((M31_10) * (blake_gate_enabler)) * denom0))
+                        + (PackedQM31::from(blake_gate_enabler) * denom1),
                     denom0 * denom1,
                 );
             });
@@ -2114,10 +2175,16 @@ impl InteractionClaimGenerator {
             &self.lookup_data.range_check_15_6,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom0 + denom1, denom0 * denom1);
+                writer.write_frac(
+                    (PackedQM31::from(blake_gate_enabler) * denom0)
+                        + (PackedQM31::from(blake_gate_enabler) * denom1),
+                    denom0 * denom1,
+                );
             });
         col_gen.finalize_col();
 
@@ -2128,11 +2195,14 @@ impl InteractionClaimGenerator {
             &self.lookup_data.range_check_16_7,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(
-                    denom0 - PackedQM31::broadcast(QM31::from(10)) * denom1,
+                    (PackedQM31::from(blake_gate_enabler) * denom0)
+                        + (-(PackedQM31::from((M31_10) * (blake_gate_enabler)) * denom1)),
                     denom0 * denom1,
                 );
             });
@@ -2145,11 +2215,14 @@ impl InteractionClaimGenerator {
             &self.lookup_data.blake_message_7,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(
-                    denom1 - PackedQM31::broadcast(QM31::from(10)) * denom0,
+                    (-(PackedQM31::from((M31_10) * (blake_gate_enabler)) * denom0))
+                        + (PackedQM31::from(blake_gate_enabler) * denom1),
                     denom0 * denom1,
                 );
             });
@@ -2162,10 +2235,16 @@ impl InteractionClaimGenerator {
             &self.lookup_data.range_check_15_8,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom0 + denom1, denom0 * denom1);
+                writer.write_frac(
+                    (PackedQM31::from(blake_gate_enabler) * denom0)
+                        + (PackedQM31::from(blake_gate_enabler) * denom1),
+                    denom0 * denom1,
+                );
             });
         col_gen.finalize_col();
 
@@ -2176,11 +2255,14 @@ impl InteractionClaimGenerator {
             &self.lookup_data.range_check_16_9,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(
-                    denom0 - PackedQM31::broadcast(QM31::from(10)) * denom1,
+                    (PackedQM31::from(blake_gate_enabler) * denom0)
+                        + (-(PackedQM31::from((M31_10) * (blake_gate_enabler)) * denom1)),
                     denom0 * denom1,
                 );
             });
@@ -2193,11 +2275,14 @@ impl InteractionClaimGenerator {
             &self.lookup_data.blake_message_9,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(
-                    denom1 - PackedQM31::broadcast(QM31::from(10)) * denom0,
+                    (-(PackedQM31::from((M31_10) * (blake_gate_enabler)) * denom0))
+                        + (PackedQM31::from(blake_gate_enabler) * denom1),
                     denom0 * denom1,
                 );
             });
@@ -2210,10 +2295,16 @@ impl InteractionClaimGenerator {
             &self.lookup_data.range_check_15_10,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom0 + denom1, denom0 * denom1);
+                writer.write_frac(
+                    (PackedQM31::from(blake_gate_enabler) * denom0)
+                        + (PackedQM31::from(blake_gate_enabler) * denom1),
+                    denom0 * denom1,
+                );
             });
         col_gen.finalize_col();
 
@@ -2224,11 +2315,14 @@ impl InteractionClaimGenerator {
             &self.lookup_data.range_check_16_11,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(
-                    denom0 - PackedQM31::broadcast(QM31::from(10)) * denom1,
+                    (PackedQM31::from(blake_gate_enabler) * denom0)
+                        + (-(PackedQM31::from((M31_10) * (blake_gate_enabler)) * denom1)),
                     denom0 * denom1,
                 );
             });
@@ -2241,11 +2335,14 @@ impl InteractionClaimGenerator {
             &self.lookup_data.blake_message_11,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(
-                    denom1 - PackedQM31::broadcast(QM31::from(10)) * denom0,
+                    (-(PackedQM31::from((M31_10) * (blake_gate_enabler)) * denom0))
+                        + (PackedQM31::from(blake_gate_enabler) * denom1),
                     denom0 * denom1,
                 );
             });
@@ -2258,10 +2355,16 @@ impl InteractionClaimGenerator {
             &self.lookup_data.range_check_15_12,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom0 + denom1, denom0 * denom1);
+                writer.write_frac(
+                    (PackedQM31::from(blake_gate_enabler) * denom0)
+                        + (PackedQM31::from(blake_gate_enabler) * denom1),
+                    denom0 * denom1,
+                );
             });
         col_gen.finalize_col();
 
@@ -2272,11 +2375,14 @@ impl InteractionClaimGenerator {
             &self.lookup_data.range_check_16_13,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(
-                    denom0 - PackedQM31::broadcast(QM31::from(10)) * denom1,
+                    (PackedQM31::from(blake_gate_enabler) * denom0)
+                        + (-(PackedQM31::from((M31_10) * (blake_gate_enabler)) * denom1)),
                     denom0 * denom1,
                 );
             });
@@ -2289,11 +2395,14 @@ impl InteractionClaimGenerator {
             &self.lookup_data.blake_message_13,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(
-                    denom1 - PackedQM31::broadcast(QM31::from(10)) * denom0,
+                    (-(PackedQM31::from((M31_10) * (blake_gate_enabler)) * denom0))
+                        + (PackedQM31::from(blake_gate_enabler) * denom1),
                     denom0 * denom1,
                 );
             });
@@ -2306,10 +2415,16 @@ impl InteractionClaimGenerator {
             &self.lookup_data.range_check_15_14,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom0 + denom1, denom0 * denom1);
+                writer.write_frac(
+                    (PackedQM31::from(blake_gate_enabler) * denom0)
+                        + (PackedQM31::from(blake_gate_enabler) * denom1),
+                    denom0 * denom1,
+                );
             });
         col_gen.finalize_col();
 
@@ -2320,11 +2435,14 @@ impl InteractionClaimGenerator {
             &self.lookup_data.range_check_16_15,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(
-                    denom0 - PackedQM31::broadcast(QM31::from(10)) * denom1,
+                    (PackedQM31::from(blake_gate_enabler) * denom0)
+                        + (-(PackedQM31::from((M31_10) * (blake_gate_enabler)) * denom1)),
                     denom0 * denom1,
                 );
             });
@@ -2337,11 +2455,14 @@ impl InteractionClaimGenerator {
             &self.lookup_data.blake_message_15,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(
-                    denom1 - PackedQM31::broadcast(QM31::from(10)) * denom0,
+                    (-(PackedQM31::from((M31_10) * (blake_gate_enabler)) * denom0))
+                        + (PackedQM31::from(blake_gate_enabler) * denom1),
                     denom0 * denom1,
                 );
             });
@@ -2350,10 +2471,16 @@ impl InteractionClaimGenerator {
         let mut col_gen = logup_gen.new_col();
         (col_gen.par_iter_mut(), &self.lookup_data.blake_round_0, &self.lookup_data.blake_round_1)
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom0 - denom1, denom0 * denom1);
+                writer.write_frac(
+                    (PackedQM31::from(blake_gate_enabler) * denom0)
+                        + (-(PackedQM31::from(blake_gate_enabler) * denom1)),
+                    denom0 * denom1,
+                );
             });
         col_gen.finalize_col();
 
@@ -2364,10 +2491,16 @@ impl InteractionClaimGenerator {
             &self.lookup_data.triple_xor_32_1,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom0 + denom1, denom0 * denom1);
+                writer.write_frac(
+                    (PackedQM31::from(blake_gate_enabler) * denom0)
+                        + (PackedQM31::from(blake_gate_enabler) * denom1),
+                    denom0 * denom1,
+                );
             });
         col_gen.finalize_col();
 
@@ -2378,10 +2511,16 @@ impl InteractionClaimGenerator {
             &self.lookup_data.triple_xor_32_3,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom0 + denom1, denom0 * denom1);
+                writer.write_frac(
+                    (PackedQM31::from(blake_gate_enabler) * denom0)
+                        + (PackedQM31::from(blake_gate_enabler) * denom1),
+                    denom0 * denom1,
+                );
             });
         col_gen.finalize_col();
 
@@ -2392,10 +2531,16 @@ impl InteractionClaimGenerator {
             &self.lookup_data.triple_xor_32_5,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom0 + denom1, denom0 * denom1);
+                writer.write_frac(
+                    (PackedQM31::from(blake_gate_enabler) * denom0)
+                        + (PackedQM31::from(blake_gate_enabler) * denom1),
+                    denom0 * denom1,
+                );
             });
         col_gen.finalize_col();
 
@@ -2406,10 +2551,16 @@ impl InteractionClaimGenerator {
             &self.lookup_data.triple_xor_32_7,
         )
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .enumerate()
+            .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(denom0 + denom1, denom0 * denom1);
+                writer.write_frac(
+                    (PackedQM31::from(blake_gate_enabler) * denom0)
+                        + (PackedQM31::from(blake_gate_enabler) * denom1),
+                    denom0 * denom1,
+                );
             });
         col_gen.finalize_col();
 
@@ -2422,10 +2573,12 @@ impl InteractionClaimGenerator {
             .into_par_iter()
             .enumerate()
             .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(
-                    denom1 * enabler_col.packed_at(i) - denom0 * enabler_col.packed_at(i),
+                    (-(PackedQM31::from(blake_gate_enabler) * denom0))
+                        + (PackedQM31::from(blake_gate_enabler) * denom1),
                     denom0 * denom1,
                 );
             });
@@ -2436,10 +2589,12 @@ impl InteractionClaimGenerator {
             .into_par_iter()
             .enumerate()
             .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(
-                    denom0 * enabler_col.packed_at(i) + denom1 * enabler_col.packed_at(i),
+                    (PackedQM31::from(blake_gate_enabler) * denom0)
+                        + (PackedQM31::from(blake_gate_enabler) * denom1),
                     denom0 * denom1,
                 );
             });
@@ -2450,10 +2605,12 @@ impl InteractionClaimGenerator {
             .into_par_iter()
             .enumerate()
             .for_each(|(i, (writer, values0, values1))| {
+                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
                 writer.write_frac(
-                    denom0 * enabler_col.packed_at(i) + denom1 * enabler_col.packed_at(i),
+                    (PackedQM31::from(blake_gate_enabler) * denom0)
+                        + (PackedQM31::from(blake_gate_enabler) * denom1),
                     denom0 * denom1,
                 );
             });

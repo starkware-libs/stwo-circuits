@@ -134,24 +134,28 @@ impl FrameworkEval for Eval {
             ],
             xor_col12.clone(),
             &self.common_lookup_elements,
+            E::EF::one(),
             &mut eval,
         );
         BitwiseXorNumBits8::evaluate(
             [xor_col12.clone(), split_16_low_part_size_8_output_tmp_298db_9_limb_0.clone()],
             xor_col13.clone(),
             &self.common_lookup_elements,
+            E::EF::one(),
             &mut eval,
         );
         BitwiseXorNumBits8::evaluate(
             [ms_8_bits_col6.clone(), ms_8_bits_col8.clone()],
             xor_col14.clone(),
             &self.common_lookup_elements,
+            E::EF::one(),
             &mut eval,
         );
         BitwiseXorNumBits8::evaluate(
             [xor_col14.clone(), ms_8_bits_col10.clone()],
             xor_col15.clone(),
             &self.common_lookup_elements,
+            E::EF::one(),
             &mut eval,
         );
         BitwiseXorNumBits8B::evaluate(
