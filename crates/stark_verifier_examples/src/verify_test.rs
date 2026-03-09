@@ -94,9 +94,7 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
         ProofModifier::WrongFriSibling => {
             let err = result.unwrap_err();
             // The error should be when validating the query position inside its witness coset.
-            let expected_value = context.get(
-                proof_vars.fri.witness.line_coset_vals_per_query_per_tree.last().unwrap()[0][1],
-            );
+            let expected_value = context.get(proof_vars.fri.witness.0.last().unwrap()[0][1]);
             assert!(err.contains(&expected_value.to_string()));
         }
     }
