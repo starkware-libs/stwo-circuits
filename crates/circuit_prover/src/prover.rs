@@ -9,6 +9,10 @@ use circuit_common::CircuitParams;
 use circuit_common::Qm31OpsTraceGenerator;
 use circuit_common::preprocessed::PreprocessedCircuit;
 use circuits::context::Context;
+use circuits::eval;
+use circuits::ivalue::IValue;
+use circuits::ivalue::qm31_from_u32s;
+use circuits::ops::eq;
 use circuits_stark_verifier::proof::Proof;
 use circuits_stark_verifier::proof::{Claim, ProofConfig};
 use circuits_stark_verifier::proof_from_stark_proof::{
@@ -17,6 +21,8 @@ use circuits_stark_verifier::proof_from_stark_proof::{
 use itertools::Itertools;
 use itertools::chain;
 use num_traits::Zero;
+use rand_core::RngCore;
+use rand_core::SeedableRng;
 use stwo::core::air::Component;
 use stwo::core::channel::Blake2sM31Channel;
 use stwo::core::channel::Channel;
@@ -74,6 +80,39 @@ pub fn to_component_provers(
         &components.range_check_16 as &dyn ComponentProver<SimdBackend>,
     ])
     .collect()
+}
+
+/// Adds ZK blinding to the circuit by adding random values to the qm31_ops and eq components.
+pub fn add_zk_blinding(context: &mut Context<impl IValue>, seed_bytes: [u8; 32], n_padding: usize) {
+    let mut rng = rand_chacha::ChaCha20Rng::from_seed(seed_bytes);
+    for _ in 0..n_padding {
+        // Note that we don't use the guess function here because we want to be able to run this
+        // function after finalize_guessed_vars.
+        let value1 = qm31_from_u32s(rng.next_u32(), rng.next_u32(), rng.next_u32(), rng.next_u32());
+        let var1 = context.new_var(IValue::from_qm31(value1));
+        context.circuit.add.push(circuits::circuit::Add {
+            in0: var1.idx,
+            in1: context.zero().idx,
+            out: var1.idx,
+        });
+        let value2 = qm31_from_u32s(rng.next_u32(), rng.next_u32(), rng.next_u32(), rng.next_u32());
+        let var2 = context.new_var(IValue::from_qm31(value2));
+        context.circuit.add.push(circuits::circuit::Add {
+            in0: context.zero().idx,
+            in1: var2.idx,
+            out: var2.idx,
+        });
+        eval!(context, (var1) + (var2));
+
+        let value3 = qm31_from_u32s(rng.next_u32(), rng.next_u32(), rng.next_u32(), rng.next_u32());
+        let var3 = context.new_var(IValue::from_qm31(value3));
+        context.circuit.add.push(circuits::circuit::Add {
+            in0: var3.idx,
+            in1: context.zero().idx,
+            out: var3.idx,
+        });
+        eq(context, var3, var3);
+    }
 }
 
 pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
