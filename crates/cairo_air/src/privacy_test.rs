@@ -4,12 +4,12 @@ use cairo_air::utils::binary_deserialize_from_file;
 use cairo_air::verifier::INTERACTION_POW_BITS;
 use circuit_air::statement::all_circuit_components;
 use circuit_air::verify::{CircuitConfig, verify_circuit};
-use circuit_prover::finalize::finalize_context;
+use circuit_common::finalize::finalize_context;
+use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_prover::prover::{
     BaseColumnPool, CircuitProof, SimdBackend, preprare_circuit_proof_for_circuit_verifier,
     prove_circuit, prove_circuit_assignment,
 };
-use circuit_prover::witness::preprocessed::PreprocessedCircuit;
 use circuits::blake::HashValue;
 use circuits::context::Context;
 use circuits::ivalue::{IValue, qm31_from_u32s};

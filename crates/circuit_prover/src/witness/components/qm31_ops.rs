@@ -7,10 +7,6 @@ use circuit_air::components::qm31_ops::N_TRACE_COLUMNS;
 pub type InputType = [[M31; 4]; 3];
 pub type PackedInputType = [[PackedM31; 4]; 3];
 
-pub struct TraceGenerator {
-    pub first_permutation_row: usize,
-}
-
 /// Retrieves the component's inputs from the context values, using the addresses provided in the
 /// preprocessed trace.
 #[allow(clippy::uninit_vec)]
@@ -19,7 +15,7 @@ pub fn extract_component_inputs(
     in1_address: &[usize],
     out_address: &[usize],
     context_values: &[QM31],
-    trace_generator: &TraceGenerator,
+    trace_generator: &Qm31OpsTraceGenerator,
 ) -> Vec<InputType> {
     let first_permutation_row = trace_generator.first_permutation_row;
     let n_total_rows = in0_address.len();
@@ -69,7 +65,7 @@ pub fn extract_component_inputs(
 pub fn write_trace(
     context_values: &[QM31],
     preprocessed_trace: &PreProcessedTrace,
-    trace_generator: &TraceGenerator,
+    trace_generator: &Qm31OpsTraceGenerator,
 ) -> (ComponentTrace<N_TRACE_COLUMNS>, ComponentLogSize, LookupData) {
     let add_flag =
         preprocessed_trace.get_column(&PreProcessedColumnId { id: "qm31_ops_add_flag".to_owned() });

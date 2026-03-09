@@ -3,6 +3,7 @@ members = [
     "crates/cairo_air",
     "crates/circuits",
     "crates/circuit_air",
+    "crates/circuit_common",
     "crates/circuit_serialize",
     "crates/circuit_prover",
     "crates/stark_verifier",
@@ -38,6 +39,7 @@ stwo_cairo_dev_utils = { package = "stwo-cairo-dev-utils", git = "https://github
 stwo_cairo_utils = { package = "stwo-cairo-utils", git = "https://github.com/starkware-libs/stwo-cairo", rev = "333ba16d" }
 circuits = { path = "crates/circuits"}
 circuit-air = { path = "crates/circuit_air"}
+circuit-common = { path = "crates/circuit_common" }
 circuit-prover = { path = "crates/circuit_prover"}
 circuits-stark-verifier = { path = "crates/stark_verifier"}
 circuits-stark-verifier-examples = { path = "crates/stark_verifier_examples"}
