@@ -10,6 +10,7 @@ pub fn accumulate_constraints<Value: IValue>(
     input: &[Var],
     context: &mut Context<Value>,
     component_data: &dyn ComponentDataTrait<Value>,
+    enabler: Var,
     acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
     let [
@@ -91,7 +92,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, triple_xor_32_output_limb_0_col0),
         eval!(context, triple_xor_32_output_limb_1_col1),
     ];
-    let numerator_0 = eval!(context, 1);
+    let numerator_0 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_0, tuple_0);
 
     // Use TripleXor32.
@@ -106,7 +107,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, triple_xor_32_output_limb_0_col2),
         eval!(context, triple_xor_32_output_limb_1_col3),
     ];
-    let numerator_1 = eval!(context, 1);
+    let numerator_1 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_1, tuple_1);
 
     // Use TripleXor32.
@@ -121,7 +122,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, triple_xor_32_output_limb_0_col4),
         eval!(context, triple_xor_32_output_limb_1_col5),
     ];
-    let numerator_2 = eval!(context, 1);
+    let numerator_2 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_2, tuple_2);
 
     // Use TripleXor32.
@@ -136,7 +137,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, triple_xor_32_output_limb_0_col6),
         eval!(context, triple_xor_32_output_limb_1_col7),
     ];
-    let numerator_3 = eval!(context, 1);
+    let numerator_3 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_3, tuple_3);
 
     // Use TripleXor32.
@@ -151,7 +152,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, triple_xor_32_output_limb_0_col8),
         eval!(context, triple_xor_32_output_limb_1_col9),
     ];
-    let numerator_4 = eval!(context, 1);
+    let numerator_4 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_4, tuple_4);
 
     // Use TripleXor32.
@@ -166,7 +167,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, triple_xor_32_output_limb_0_col10),
         eval!(context, triple_xor_32_output_limb_1_col11),
     ];
-    let numerator_5 = eval!(context, 1);
+    let numerator_5 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_5, tuple_5);
 
     // Use TripleXor32.
@@ -181,7 +182,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, triple_xor_32_output_limb_0_col12),
         eval!(context, triple_xor_32_output_limb_1_col13),
     ];
-    let numerator_6 = eval!(context, 1);
+    let numerator_6 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_6, tuple_6);
 
     // Use TripleXor32.
@@ -196,7 +197,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, triple_xor_32_output_limb_0_col14),
         eval!(context, triple_xor_32_output_limb_1_col15),
     ];
-    let numerator_7 = eval!(context, 1);
+    let numerator_7 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_7, tuple_7);
     vec![]
 }

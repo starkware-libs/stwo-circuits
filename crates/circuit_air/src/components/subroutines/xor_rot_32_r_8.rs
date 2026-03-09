@@ -66,12 +66,14 @@ impl XorRot32R8 {
             ],
             xor_col4.clone(),
             common_lookup_elements,
+            E::EF::one(),
             eval,
         );
         BitwiseXorNumBits8::evaluate(
             [ms_8_bits_col0.clone(), ms_8_bits_col2.clone()],
             xor_col5.clone(),
             common_lookup_elements,
+            E::EF::one(),
             eval,
         );
         BitwiseXorNumBits8B::evaluate(
