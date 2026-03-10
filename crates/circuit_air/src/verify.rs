@@ -1,8 +1,4 @@
-use circuits::{
-    blake::HashValue,
-    context::{Context, TraceContext},
-    ops::Guess,
-};
+use circuits::{blake::HashValue, context::Context, ivalue::IValue, ops::Guess};
 use circuits_stark_verifier::{
     proof::{Proof, ProofConfig},
     verify::verify,
@@ -24,12 +20,12 @@ pub struct CircuitConfig {
     pub preprocessed_root: HashValue<QM31>,
 }
 
-pub fn verify_circuit(
+pub fn build_verification_circuit<Value: IValue>(
     circuit_config: CircuitConfig,
-    proof: Proof<QM31>,
+    proof: Proof<Value>,
     public_data: CircuitPublicData,
-) -> Result<Context<QM31>, String> {
-    let mut context = TraceContext::default();
+) -> Result<Context<Value>, String> {
+    let mut context = Context::default();
     let statement = CircuitStatement::new(
         &mut context,
         &circuit_config.output_addresses,
@@ -44,11 +40,21 @@ pub fn verify_circuit(
     let proof_vars = proof.guess(&mut context);
 
     verify(&mut context, &proof_vars, &proof_config, &statement);
-    context.check_vars_used();
-    #[cfg(test)]
     context.finalize_guessed_vars();
     #[cfg(test)]
     context.circuit.check_yields();
+
+    Ok(context)
+}
+
+pub fn verify_circuit(
+    circuit_config: CircuitConfig,
+    proof: Proof<QM31>,
+    public_data: CircuitPublicData,
+) -> Result<Context<QM31>, String> {
+    let context = build_verification_circuit(circuit_config, proof, public_data)?;
+    context.check_vars_used();
+
     if !context.is_circuit_valid() {
         return Err("Verification failed".to_string());
     }
