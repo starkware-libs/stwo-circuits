@@ -13,7 +13,7 @@ use circuits::blake::HashValue;
 use circuits::context::Context;
 use circuits::ivalue::{IValue, NoValue};
 use circuits::stats::Stats;
-use circuits_stark_verifier::proof::{ProofConfig, ProofInfo};
+use circuits_stark_verifier::proof::{Proof, ProofConfig, ProofInfo};
 use itertools::Itertools;
 use num_traits::Zero;
 use stwo::core::fields::qm31::QM31;
@@ -31,23 +31,46 @@ fn verify_circuit_proof(
     circuit_proof: CircuitProof,
     preprocessed_root: HashValue<QM31>,
 ) -> Context<QM31> {
+    verify_circuit_proofs(preprocessed_circuit, vec![circuit_proof], vec![preprocessed_root])
+}
+
+/// Verifies with a circuit a vector of proofs of execution of other circuits.
+///
+/// If `preprocessed_root` is `None`, the verifier takes the preprocessed root from the first input
+/// proof. This is unsound and is only done to make testing easier.
+fn verify_circuit_proofs(
+    preprocessed_circuit: &PreprocessedCircuit,
+    circuit_proofs: Vec<CircuitProof>,
+    preprocessed_roots: Vec<HashValue<QM31>>,
+) -> Context<QM31> {
     let preprocessed_column_ids = preprocessed_circuit.preprocessed_trace.ids();
+    let preprocessed_column_ids_len = preprocessed_column_ids.len();
+    let pcs_config = circuit_proofs[0].pcs_config;
+    assert!(circuit_proofs.iter().all(|proof| proof.pcs_config == pcs_config));
     let proof_config = ProofConfig::from_components(
         &all_circuit_components::<QM31>(),
-        preprocessed_column_ids.len(),
-        &circuit_proof.pcs_config,
+        preprocessed_column_ids_len,
+        &pcs_config,
         circuit_air::statement::INTERACTION_POW_BITS,
     );
-    let circuit_config = CircuitConfig {
-        config: circuit_proof.pcs_config,
-        output_addresses: preprocessed_circuit.params.output_addresses.clone(),
-        n_blake_gates: preprocessed_circuit.params.n_blake_gates,
-        preprocessed_column_ids,
-        preprocessed_root,
-    };
-    let (proof, public_data) =
-        prepare_circuit_proof_for_circuit_verifier(circuit_proof, &proof_config);
-    verify_circuit(circuit_config, proof, public_data).unwrap()
+
+    let circuit_config_vec = preprocessed_roots
+        .into_iter()
+        .map(|preprocessed_root| CircuitConfig {
+            config: pcs_config,
+            output_addresses: preprocessed_circuit.params.output_addresses.clone(),
+            n_blake_gates: preprocessed_circuit.params.n_blake_gates,
+            preprocessed_column_ids: preprocessed_column_ids.clone(),
+            preprocessed_root,
+        })
+        .collect_vec();
+    let (proofs_vec, public_data_vec): (Vec<Proof<QM31>>, Vec<CircuitPublicData>) = circuit_proofs
+        .into_iter()
+        .map(|circuit_proof| {
+            prepare_circuit_proof_for_circuit_verifier(circuit_proof, &proof_config)
+        })
+        .unzip();
+    verify_circuit(circuit_config_vec, proofs_vec, public_data_vec).unwrap()
 }
 
 /// Compares the topology of two contexts.
@@ -109,6 +132,39 @@ fn test_verify_privacy_with_recursion() {
         circuit_proof.stark_proof.as_ref().unwrap().proof.commitments.0[0].into();
 
     verify_circuit_proof(&preprocessed, circuit_proof, preprocessed_root);
+}
+
+#[test]
+fn test_verify_privacy_with_2_to_1_recursion() {
+    let proof_path = get_proof_file_path("privacy");
+    let proof_file = File::open(proof_path).unwrap();
+    let cairo_proof = binary_deserialize_from_file(&proof_file).unwrap();
+
+    let mut context = verify_cairo_with_component_set(&cairo_proof, privacy_components()).unwrap();
+    let preprocessed = PreprocessedCircuit::preprocess_circuit(&mut context);
+    let circuit_proof_1 = prove_circuit_assignment(
+        context.values(),
+        &preprocessed,
+        &BaseColumnPool::<SimdBackend>::new(),
+        PcsConfig::default(),
+    );
+    let circuit_proof_2 = prove_circuit_assignment(
+        context.values(),
+        &preprocessed,
+        &BaseColumnPool::<SimdBackend>::new(),
+        PcsConfig::default(),
+    );
+
+    let preprocessed_roots: Vec<HashValue<QM31>> = vec![
+        circuit_proof_1.stark_proof.as_ref().unwrap().proof.commitments.0[0].into(),
+        circuit_proof_2.stark_proof.as_ref().unwrap().proof.commitments.0[0].into(),
+    ];
+
+    verify_circuit_proofs(
+        &preprocessed,
+        vec![circuit_proof_1, circuit_proof_2],
+        preprocessed_roots,
+    );
 }
 
 #[test]
