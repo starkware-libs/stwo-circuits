@@ -35,13 +35,11 @@ pub struct FriCommitProof<T> {
 
 impl<T> FriCommitProof<T> {
     /// Validates that the size of the members of the struct are consistent with the config.
-    pub fn validate_structure(&self, config: &FriConfig) {
-        // Starting from the last layer, each layer increases the log2 of the polynomial degree by
-        // one. The final degree should be the same as the trace size.
-        assert_eq!(
-            config.log_n_last_layer_coefs + self.layer_commitments.len(),
-            config.log_trace_size
-        );
+    pub fn validate_structure(&self, config: &FriConfig, all_line_fold_steps: &[usize]) {
+        // The computation of `all_line_fold_step` guarantees also that
+        // `layer_commitments.len() = log_n_last_layer_coefs + ∑ fold_step_for_layer`, where
+        // the sum runs over the FRI layers.
+        assert_eq!(self.layer_commitments.len(), 1 + all_line_fold_steps.len());
         assert_eq!(self.last_layer_coefs.len(), 1 << config.log_n_last_layer_coefs);
     }
 }
@@ -110,11 +108,11 @@ impl<T> FriProof<T> {
     /// Validates that the size of the members of the struct are consistent with the config.
     pub fn validate_structure(&self, config: &FriConfig) {
         let FriProof { commit, auth_paths, witness } = self;
-        commit.validate_structure(config);
         let all_line_fold_steps = compute_all_line_fold_steps(
             config.log_trace_size - 1 - config.log_n_last_layer_coefs,
             config.line_fold_step,
         );
+        commit.validate_structure(config, &all_line_fold_steps);
 
         // Check that the authentication paths' lengths are consistent with the folding schedule.
         assert_eq!(auth_paths.data.len(), all_line_fold_steps.len() + 1);
