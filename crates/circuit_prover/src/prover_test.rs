@@ -1,11 +1,11 @@
-use crate::finalize::finalize_context;
 use crate::prover::preprare_circuit_proof_for_circuit_verifier;
 use crate::prover::{BaseColumnPool, CircuitProof, SimdBackend, prove_circuit_assignment};
-use crate::witness::preprocessed::PreprocessedCircuit;
 use circuit_air::CircuitInteractionElements;
 use circuit_air::lookup_sum;
 use circuit_air::statement::{INTERACTION_POW_BITS, all_circuit_components};
 use circuit_air::verify::{CircuitConfig, verify_circuit};
+use circuit_common::finalize::finalize_context;
+use circuit_common::preprocessed::PreprocessedCircuit;
 use circuits::blake::HashValue;
 use circuits::blake::blake;
 use circuits::context::Var;

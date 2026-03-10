@@ -15,10 +15,11 @@ use crate::witness::components::verify_bitwise_xor_7;
 use crate::witness::components::verify_bitwise_xor_8;
 use crate::witness::components::verify_bitwise_xor_9;
 use crate::witness::components::verify_bitwise_xor_12;
-use crate::witness::preprocessed::PreProcessedTrace;
 use circuit_air::CircuitClaim;
 use circuit_air::CircuitInteractionClaim;
 use circuit_air::CircuitInteractionElements;
+use circuit_common::Qm31OpsTraceGenerator;
+use circuit_common::preprocessed::PreProcessedTrace;
 use itertools::Itertools;
 use rayon::join;
 use stwo::core::fields::qm31::QM31;
@@ -27,7 +28,7 @@ use stwo::prover::TreeBuilder;
 use stwo::prover::backend::simd::SimdBackend;
 
 pub struct TraceGenerator {
-    pub qm31_ops_trace_generator: qm31_ops::TraceGenerator,
+    pub qm31_ops_trace_generator: Qm31OpsTraceGenerator,
 }
 
 pub fn write_trace(

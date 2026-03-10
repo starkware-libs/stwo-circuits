@@ -1,5 +1,3 @@
-use crate::witness::components::qm31_ops;
-use crate::witness::preprocessed::PreprocessedCircuit;
 use crate::witness::trace::TraceGenerator;
 use crate::witness::trace::write_interaction_trace;
 use crate::witness::trace::write_trace;
@@ -7,6 +5,9 @@ use circuit_air::components::CircuitComponents;
 use circuit_air::statement::INTERACTION_POW_BITS;
 use circuit_air::verify::CircuitPublicData;
 use circuit_air::{CircuitClaim, CircuitInteractionClaim, CircuitInteractionElements, lookup_sum};
+use circuit_common::CircuitParams;
+use circuit_common::Qm31OpsTraceGenerator;
+use circuit_common::preprocessed::PreprocessedCircuit;
 use circuits::context::Context;
 use circuits_stark_verifier::proof::Proof;
 use circuits_stark_verifier::proof::{Claim, ProofConfig};
@@ -37,14 +38,6 @@ use stwo::prover::poly::twiddles::TwiddleTree;
 use stwo::prover::{ProvingError, prove_ex};
 
 const COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND: u32 = 1;
-
-#[derive(Debug, PartialEq)]
-pub struct CircuitParams {
-    pub trace_log_size: u32,
-    pub first_permutation_row: usize,
-    pub n_blake_gates: usize,
-    pub output_addresses: Vec<usize>,
-}
 
 pub struct CircuitProof {
     pub pcs_config: PcsConfig,
@@ -151,7 +144,7 @@ pub fn prove_circuit_with_precompute<'a>(
     let PreprocessedCircuit { preprocessed_trace, params } = preprocessed_circuit;
     let CircuitParams { first_permutation_row, n_blake_gates, output_addresses, .. } = params;
     let trace_generator = TraceGenerator {
-        qm31_ops_trace_generator: qm31_ops::TraceGenerator {
+        qm31_ops_trace_generator: Qm31OpsTraceGenerator {
             first_permutation_row: *first_permutation_row,
         },
     };
