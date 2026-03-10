@@ -204,6 +204,166 @@ impl std::fmt::Debug for Blake {
     }
 }
 
+/// Represents a Blake2s G mixing function gate.
+/// State words `a, b, c, d` are each a single QM31 wire with packed limbs: `(low_u16, high_u16,
+/// 0, 0)`. Message words `m0, m1` are single M31 wires `(value, 0, 0, 0)`.
+#[derive(PartialEq, Eq)]
+pub struct BlakeGGate {
+    pub a: usize,
+    pub b: usize,
+    pub c: usize,
+    pub d: usize,
+    pub m0: usize,
+    pub m1: usize,
+    pub out_a: usize,
+    pub out_b: usize,
+    pub out_c: usize,
+    pub out_d: usize,
+}
+impl BlakeGGate {
+    /// Reconstructs a u32 from a packed-limbs QM31: `low + high * 65536`.
+    fn unpack_u32(v: QM31) -> u32 {
+        v.0.0.0 + v.0.1.0 * 65536
+    }
+
+    /// Creates a packed-limbs QM31 from a u32: `(low_u16, high_u16, 0, 0)`.
+    fn pack_u32(v: u32) -> QM31 {
+        use crate::ivalue::qm31_from_u32s;
+        qm31_from_u32s(v & 0xFFFF, v >> 16, 0, 0)
+    }
+}
+impl Gate for BlakeGGate {
+    fn check(&self, values: &[QM31]) -> Result<(), String> {
+        let mut a = Self::unpack_u32(values[self.a]);
+        let mut b = Self::unpack_u32(values[self.b]);
+        let mut c = Self::unpack_u32(values[self.c]);
+        let mut d = Self::unpack_u32(values[self.d]);
+        let m0 = Self::unpack_u32(values[self.m0]);
+        let m1 = Self::unpack_u32(values[self.m1]);
+
+        a = a.wrapping_add(b).wrapping_add(m0);
+        d = (d ^ a).rotate_right(16);
+        c = c.wrapping_add(d);
+        b = (b ^ c).rotate_right(12);
+        a = a.wrapping_add(b).wrapping_add(m1);
+        d = (d ^ a).rotate_right(8);
+        c = c.wrapping_add(d);
+        b = (b ^ c).rotate_right(7);
+
+        check_eq(values[self.out_a], Self::pack_u32(a))?;
+        check_eq(values[self.out_b], Self::pack_u32(b))?;
+        check_eq(values[self.out_c], Self::pack_u32(c))?;
+        check_eq(values[self.out_d], Self::pack_u32(d))?;
+        Ok(())
+    }
+
+    fn uses(&self) -> Vec<usize> {
+        vec![self.a, self.b, self.c, self.d, self.m0, self.m1]
+    }
+
+    fn yields(&self) -> Vec<usize> {
+        vec![self.out_a, self.out_b, self.out_c, self.out_d]
+    }
+}
+
+impl std::fmt::Debug for BlakeGGate {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "([{}],[{}],[{}],[{}]) = G([{}],[{}],[{}],[{}],[{}],[{}])",
+            self.out_a,
+            self.out_b,
+            self.out_c,
+            self.out_d,
+            self.a,
+            self.b,
+            self.c,
+            self.d,
+            self.m0,
+            self.m1
+        )
+    }
+}
+
+/// Represents a triple XOR gate: `out = a ^ b ^ c` (u32 XOR).
+/// All operands are single QM31 wires with packed limbs `(low_u16, high_u16, 0, 0)`.
+#[derive(PartialEq, Eq)]
+pub struct TripleXorGate {
+    pub a: usize,
+    pub b: usize,
+    pub c: usize,
+    pub out: usize,
+}
+impl Gate for TripleXorGate {
+    fn check(&self, values: &[QM31]) -> Result<(), String> {
+        let a = BlakeGGate::unpack_u32(values[self.a]);
+        let b = BlakeGGate::unpack_u32(values[self.b]);
+        let c = BlakeGGate::unpack_u32(values[self.c]);
+        check_eq(values[self.out], BlakeGGate::pack_u32(a ^ b ^ c))
+    }
+
+    fn uses(&self) -> Vec<usize> {
+        vec![self.a, self.b, self.c]
+    }
+
+    fn yields(&self) -> Vec<usize> {
+        vec![self.out]
+    }
+}
+
+impl std::fmt::Debug for TripleXorGate {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{}] = [{}] ^ [{}] ^ [{}]", self.out, self.a, self.b, self.c)
+    }
+}
+
+/// Converts an M31 value `(x, 0, 0, 0)` to a [`U32Wrapper`](crate::wrappers::U32Wrapper)
+/// packed-limbs representation `(low_u16, high_u15, 0, 0)`, proving the value fits in 31 bits.
+#[derive(PartialEq, Eq)]
+pub struct M31ToU32Gate {
+    pub input: usize,
+    pub out: usize,
+}
+impl Gate for M31ToU32Gate {
+    fn check(&self, values: &[QM31]) -> Result<(), String> {
+        let input = values[self.input];
+        if input.0.1.0 != 0 || input.1.0.0 != 0 || input.1.1.0 != 0 {
+            return Err(format!("SplitM31: input coords 1-3 not zero, got {input}"));
+        }
+        let x = input.0.0.0;
+        let out = values[self.out];
+        if out.1.0.0 != 0 || out.1.1.0 != 0 {
+            return Err(format!("SplitM31: output coords 2-3 not zero, got {out}"));
+        }
+        let low = out.0.0.0;
+        let high = out.0.1.0;
+        if low + high * 65536 != x {
+            return Err(format!("SplitM31: {low} + {high} * 65536 != {x}"));
+        }
+        if low >= (1 << 16) {
+            return Err(format!("SplitM31: low {low} >= 2^16"));
+        }
+        if high >= (1 << 15) {
+            return Err(format!("SplitM31: high {high} >= 2^15"));
+        }
+        Ok(())
+    }
+
+    fn uses(&self) -> Vec<usize> {
+        vec![self.input]
+    }
+
+    fn yields(&self) -> Vec<usize> {
+        vec![self.out]
+    }
+}
+
+impl std::fmt::Debug for M31ToU32Gate {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{}] = m31_to_u32([{}])", self.out, self.input)
+    }
+}
+
 /// Represents a permutation gate in the circuit.
 /// The gate enforces that the input values as a multi-set are equal to the output values
 /// as a multi-set.
@@ -283,6 +443,9 @@ pub struct Circuit {
     pub pointwise_mul: Vec<PointwiseMul>,
     pub eq: Vec<Eq>,
     pub blake: Vec<Blake>,
+    pub blake_g: Vec<BlakeGGate>,
+    pub triple_xor: Vec<TripleXorGate>,
+    pub m31_to_u32: Vec<M31ToU32Gate>,
     pub permutation: Vec<Permutation>,
     pub output: Vec<Output>,
 }
@@ -290,8 +453,20 @@ pub struct Circuit {
 impl Circuit {
     /// Returns an iterator over all the gates in the circuit.
     pub fn all_gates(&self) -> impl Iterator<Item = &dyn Gate> {
-        let Circuit { n_vars: _, add, sub, mul, pointwise_mul, eq, blake, permutation, output } =
-            self;
+        let Circuit {
+            n_vars: _,
+            add,
+            sub,
+            mul,
+            pointwise_mul,
+            eq,
+            blake,
+            blake_g,
+            triple_xor,
+            m31_to_u32,
+            permutation,
+            output,
+        } = self;
         chain!(
             add.iter().map(|g| g as &dyn Gate),
             sub.iter().map(|g| g as &dyn Gate),
@@ -299,6 +474,9 @@ impl Circuit {
             pointwise_mul.iter().map(|g| g as &dyn Gate),
             eq.iter().map(|g| g as &dyn Gate),
             blake.iter().map(|g| g as &dyn Gate),
+            blake_g.iter().map(|g| g as &dyn Gate),
+            triple_xor.iter().map(|g| g as &dyn Gate),
+            m31_to_u32.iter().map(|g| g as &dyn Gate),
             permutation.iter().map(|g| g as &dyn Gate),
             output.iter().map(|g| g as &dyn Gate),
         )

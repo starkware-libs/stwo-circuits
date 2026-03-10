@@ -12,5 +12,8 @@ pub struct Stats {
     pub blake_updates: usize,
     /// The number of inputs to permutation gates.
     pub permutation_inputs: usize,
+    pub blake_g: usize,
+    pub triple_xor: usize,
+    pub m31_to_u32: usize,
     pub outputs: usize,
 }
