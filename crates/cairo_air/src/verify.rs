@@ -5,7 +5,7 @@ use cairo_air::air::PublicData;
 use cairo_air::flat_claims::FlatClaim;
 use circuits::blake::HashValue;
 use circuits::context::{Context, TraceContext};
-use circuits::ivalue::{NoValue, qm31_from_u32s};
+use circuits::ivalue::NoValue;
 use circuits::ops::Guess;
 use circuits_stark_verifier::empty_component::EmptyComponent;
 use circuits_stark_verifier::proof::{Claim, Proof, ProofConfig, empty_proof};
@@ -45,10 +45,7 @@ pub fn get_preprocessed_root(lifting_log_size: u32) -> HashValue<QM31> {
         ],
         _ => panic!("Unsupported lifting_log_size: {lifting_log_size}"),
     };
-    HashValue(
-        qm31_from_u32s(root[0], root[1], root[2], root[3]),
-        qm31_from_u32s(root[4], root[5], root[6], root[7]),
-    )
+    root.into()
 }
 
 pub struct CairoVerifierConfig {
