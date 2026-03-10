@@ -81,6 +81,7 @@ impl Qm31IntoU32 {
         limbi_high_col46: E::F,
         limbi_inv_or_one_col47: E::F,
         common_lookup_elements: &relations::CommonLookupElements,
+        blake_gate_enabler: E::F,
         eval: &mut E,
     ) -> [E::F; 0] {
         let M31_0 = E::F::from(M31::from(0));
@@ -106,13 +107,13 @@ impl Qm31IntoU32 {
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1008385708.clone(), limbi_low_col0.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1058718565.clone(), limbi_high_col1.clone()],
         ));
 
@@ -129,7 +130,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::from(M31_10.clone()),
+            -E::EF::from((M31_10.clone() * blake_gate_enabler.clone())),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -141,13 +142,13 @@ impl Qm31IntoU32 {
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1008385708.clone(), limbi_low_col3.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1058718565.clone(), limbi_high_col4.clone()],
         ));
 
@@ -164,7 +165,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::from(M31_10.clone()),
+            -E::EF::from((M31_10.clone() * blake_gate_enabler.clone())),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -176,13 +177,13 @@ impl Qm31IntoU32 {
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1008385708.clone(), limbi_low_col6.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1058718565.clone(), limbi_high_col7.clone()],
         ));
 
@@ -199,7 +200,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::from(M31_10.clone()),
+            -E::EF::from((M31_10.clone() * blake_gate_enabler.clone())),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -211,13 +212,13 @@ impl Qm31IntoU32 {
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1008385708.clone(), limbi_low_col9.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1058718565.clone(), limbi_high_col10.clone()],
         ));
 
@@ -234,7 +235,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::from(M31_10.clone()),
+            -E::EF::from((M31_10.clone() * blake_gate_enabler.clone())),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -246,13 +247,13 @@ impl Qm31IntoU32 {
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1008385708.clone(), limbi_low_col12.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1058718565.clone(), limbi_high_col13.clone()],
         ));
 
@@ -269,7 +270,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::from(M31_10.clone()),
+            -E::EF::from((M31_10.clone() * blake_gate_enabler.clone())),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -281,13 +282,13 @@ impl Qm31IntoU32 {
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1008385708.clone(), limbi_low_col15.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1058718565.clone(), limbi_high_col16.clone()],
         ));
 
@@ -304,7 +305,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::from(M31_10.clone()),
+            -E::EF::from((M31_10.clone() * blake_gate_enabler.clone())),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -316,13 +317,13 @@ impl Qm31IntoU32 {
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1008385708.clone(), limbi_low_col18.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1058718565.clone(), limbi_high_col19.clone()],
         ));
 
@@ -339,7 +340,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::from(M31_10.clone()),
+            -E::EF::from((M31_10.clone() * blake_gate_enabler.clone())),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -351,13 +352,13 @@ impl Qm31IntoU32 {
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1008385708.clone(), limbi_low_col21.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1058718565.clone(), limbi_high_col22.clone()],
         ));
 
@@ -374,7 +375,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::from(M31_10.clone()),
+            -E::EF::from((M31_10.clone() * blake_gate_enabler.clone())),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -386,13 +387,13 @@ impl Qm31IntoU32 {
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1008385708.clone(), limbi_low_col24.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1058718565.clone(), limbi_high_col25.clone()],
         ));
 
@@ -409,7 +410,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::from(M31_10.clone()),
+            -E::EF::from((M31_10.clone() * blake_gate_enabler.clone())),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -421,13 +422,13 @@ impl Qm31IntoU32 {
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1008385708.clone(), limbi_low_col27.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1058718565.clone(), limbi_high_col28.clone()],
         ));
 
@@ -444,7 +445,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::from(M31_10.clone()),
+            -E::EF::from((M31_10.clone() * blake_gate_enabler.clone())),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -456,13 +457,13 @@ impl Qm31IntoU32 {
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1008385708.clone(), limbi_low_col30.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1058718565.clone(), limbi_high_col31.clone()],
         ));
 
@@ -479,7 +480,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::from(M31_10.clone()),
+            -E::EF::from((M31_10.clone() * blake_gate_enabler.clone())),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -491,13 +492,13 @@ impl Qm31IntoU32 {
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1008385708.clone(), limbi_low_col33.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1058718565.clone(), limbi_high_col34.clone()],
         ));
 
@@ -514,7 +515,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::from(M31_10.clone()),
+            -E::EF::from((M31_10.clone() * blake_gate_enabler.clone())),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -526,13 +527,13 @@ impl Qm31IntoU32 {
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1008385708.clone(), limbi_low_col36.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1058718565.clone(), limbi_high_col37.clone()],
         ));
 
@@ -549,7 +550,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::from(M31_10.clone()),
+            -E::EF::from((M31_10.clone() * blake_gate_enabler.clone())),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -561,13 +562,13 @@ impl Qm31IntoU32 {
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1008385708.clone(), limbi_low_col39.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1058718565.clone(), limbi_high_col40.clone()],
         ));
 
@@ -584,7 +585,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::from(M31_10.clone()),
+            -E::EF::from((M31_10.clone() * blake_gate_enabler.clone())),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -596,13 +597,13 @@ impl Qm31IntoU32 {
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1008385708.clone(), limbi_low_col42.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1058718565.clone(), limbi_high_col43.clone()],
         ));
 
@@ -619,7 +620,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::from(M31_10.clone()),
+            -E::EF::from((M31_10.clone() * blake_gate_enabler.clone())),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
@@ -631,13 +632,13 @@ impl Qm31IntoU32 {
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1008385708.clone(), limbi_low_col45.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(blake_gate_enabler.clone()),
             &[M31_1058718565.clone(), limbi_high_col46.clone()],
         ));
 
@@ -654,7 +655,7 @@ impl Qm31IntoU32 {
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            -E::EF::from(M31_10.clone()),
+            -E::EF::from((M31_10.clone() * blake_gate_enabler.clone())),
             &[
                 M31_1492981981.clone(),
                 qm_31_into_u_32_input_limb_16.clone(),
