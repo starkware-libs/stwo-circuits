@@ -10,5 +10,8 @@ pub struct Stats {
     pub pointwise_mul: usize,
     pub guess: usize,
     pub blake_updates: usize,
+    pub blake_g: usize,
+    pub triple_xor: usize,
+    pub m31_to_u32: usize,
     pub outputs: usize,
 }
