@@ -15,7 +15,7 @@ use circuits::blake::HashValue;
 use circuits::context::Context;
 use circuits::ivalue::{IValue, NoValue};
 use circuits::stats::Stats;
-use circuits_stark_verifier::proof::{ProofConfig, ProofInfo, empty_proof};
+use circuits_stark_verifier::proof::{Proof, ProofConfig, ProofInfo, empty_proof};
 use itertools::Itertools;
 use num_traits::Zero;
 use stwo::core::fields::qm31::QM31;
@@ -44,24 +44,43 @@ fn verify_circuit_proof(
     circuit_proof: CircuitProof,
     preprocessed_root: Option<HashValue<QM31>>,
 ) -> Context<QM31> {
+    verify_circuit_proofs(preprocessed_circuit, vec![circuit_proof], preprocessed_root)
+}
+
+/// Verifies with a circuit a vector of proofs of execution of other circuits.
+///
+/// If `preprocessed_root` is `None`, the verifier takes the preprocessed root from the first input
+/// proof. This is unsound and is only done to make testing easier.
+fn verify_circuit_proofs(
+    preprocessed_circuit: &PreprocessedCircuit,
+    circuit_proofs: Vec<CircuitProof>,
+    preprocessed_root: Option<HashValue<QM31>>,
+) -> Context<QM31> {
     let preprocessed_column_ids = preprocessed_circuit.preprocessed_trace.ids();
-    let proof_config = ProofConfig::from_components(
-        &all_circuit_components::<QM31>(),
-        preprocessed_column_ids.len(),
-        &circuit_proof.pcs_config,
-        circuit_air::statement::INTERACTION_POW_BITS,
-    );
+    let preprocessed_column_ids_len = preprocessed_column_ids.len();
+    let pcs_config = circuit_proofs[0].pcs_config;
+    assert!(circuit_proofs.iter().all(|proof| proof.pcs_config == pcs_config));
     let mut circuit_config = CircuitConfig {
-        config: circuit_proof.pcs_config,
+        config: pcs_config,
         output_addresses: preprocessed_circuit.params.output_addresses.clone(),
         n_blake_gates: preprocessed_circuit.params.n_blake_gates,
         preprocessed_column_ids,
         preprocessed_root: HashValue(QM31::zero(), QM31::zero()),
     };
-    let (proof, public_data) =
-        preprare_circuit_proof_for_circuit_verifier(circuit_proof, &proof_config);
-    circuit_config.preprocessed_root = preprocessed_root.unwrap_or(proof.preprocessed_root);
-    verify_circuit(circuit_config, proof, public_data).unwrap()
+    let proof_config = ProofConfig::from_components(
+        &all_circuit_components::<QM31>(),
+        preprocessed_column_ids_len,
+        &pcs_config,
+        circuit_air::statement::INTERACTION_POW_BITS,
+    );
+    let (proofs_vec, public_data_vec): (Vec<Proof<QM31>>, Vec<CircuitPublicData>) = circuit_proofs
+        .into_iter()
+        .map(|circuit_proof| {
+            preprare_circuit_proof_for_circuit_verifier(circuit_proof, &proof_config)
+        })
+        .unzip();
+    circuit_config.preprocessed_root = preprocessed_root.unwrap_or(proofs_vec[0].preprocessed_root);
+    verify_circuit(circuit_config, proofs_vec, public_data_vec).unwrap()
 }
 
 /// Compares the topology of two contexts.
@@ -120,6 +139,29 @@ fn test_verify_privacy_with_recursion() {
     // To test with a precomputed preprocessed root, change `None` to
     // `Some(privacy_circuit_preprocessed_root())`.
     verify_circuit_proof(&preprocessed, circuit_proof, None);
+}
+
+#[test]
+fn test_verify_privacy_with_2_to_1_recursion() {
+    let proof_path = get_proof_file_path("privacy");
+    let proof_file = File::open(proof_path).unwrap();
+    let cairo_proof = binary_deserialize_from_file(&proof_file).unwrap();
+
+    let mut context = verify_cairo(&cairo_proof).unwrap();
+    let preprocessed = PreprocessedCircuit::preprocess_circuit(&mut context);
+    let circuit_proof_1 = prove_circuit_assignment(
+        context.values(),
+        &preprocessed,
+        &BaseColumnPool::<SimdBackend>::new(),
+    );
+    let circuit_proof_2 = prove_circuit_assignment(
+        context.values(),
+        &preprocessed,
+        &BaseColumnPool::<SimdBackend>::new(),
+    );
+    // To test with a precomputed preprocessed root, change `None` to
+    // `Some(privacy_circuit_preprocessed_root())`.
+    verify_circuit_proofs(&preprocessed, vec![circuit_proof_1, circuit_proof_2], None);
 }
 
 #[test]
@@ -215,7 +257,7 @@ fn test_privacy_consts() {
         output_values: vec![QM31::zero(); preprocessed_circuit.params.output_addresses.len()],
     };
     let mut verifier_context =
-        build_verification_circuit(circuit_config, proof, public_data).unwrap();
+        build_verification_circuit(circuit_config, vec![proof], vec![public_data]).unwrap();
     let constants = verifier_context.constants().keys().cloned().collect_vec();
     let blake_value = QM31::blake(constants.as_slice(), constants.len() * 16);
     assert_eq!(blake_value, PRIVACY_RECURSION_CIRCUIT_CONSTS_HASH.into());
