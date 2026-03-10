@@ -78,6 +78,11 @@ fn blake_iv_public_logup_sum(
     n_blake_gates: usize,
     common_lookup_elements: &CommonLookupElements,
 ) -> QM31 {
+    // Each Blake gate uses the initial state once and creates one row in blake_output.
+    // Then blake_output is padded to a power of two, and each padding row uses the
+    // initial state once. In total we have n_blake_gates.next_power_of_two() uses.
+    let initial_state_uses = n_blake_gates.next_power_of_two();
+
     let state_id = M31::from(1061955672);
     let initial_state = blake2s_initial_state();
     let initial_state_limbs = [
@@ -120,7 +125,7 @@ fn blake_iv_public_logup_sum(
         initial_state_limbs[15],
     ];
     let denom: QM31 = common_lookup_elements.combine(&limbs);
-    denom.inverse() * M31::from(n_blake_gates)
+    denom.inverse() * M31::from(initial_state_uses)
 }
 
 pub fn lookup_sum(
