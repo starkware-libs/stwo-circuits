@@ -4,7 +4,7 @@ use circuits::simd::Simd;
 use circuits::test_utils::simd_from_u32s;
 use circuits_stark_verifier::fri::fri_decommit;
 use circuits_stark_verifier::fri_proof::{
-    FriCommitProof, FriProof, FriWitness, compute_all_line_fold_steps,
+    FriCommitProof, FriProof, FriWitness, compute_all_fold_steps,
 };
 use circuits_stark_verifier::merkle::{AuthPath, AuthPaths};
 use circuits_stark_verifier::proof::ProofConfig;
@@ -27,10 +27,14 @@ use stwo::prover::fri::FriProver;
 use stwo::prover::poly::BitReversedOrder;
 use stwo::prover::poly::circle::{PolyOps, SecureEvaluation};
 
+const FOLD_STEP: usize = 2;
+const LOG_BLOWUP_FACTOR: u32 = 2;
+const LOG_TRACE_SIZE: u32 = 6;
+const N_QUERIES: usize = 7;
+
 #[test]
 fn test_fri_decommit_with_jumps() {
     let fri_proof = create_fri_proof();
-    let log_domain_size = 8;
 
     let mut context = TraceContext::default();
     // Make a dummy config.
@@ -44,11 +48,11 @@ fn test_fri_decommit_with_jumps() {
         cumulative_sum_columns: vec![],
         n_components: 0,
         fri: circuits_stark_verifier::fri_proof::FriConfig {
-            log_trace_size: 6,
-            log_blowup_factor: 2,
-            n_queries: 7,
+            log_trace_size: LOG_TRACE_SIZE as usize,
+            log_blowup_factor: LOG_BLOWUP_FACTOR as usize,
+            n_queries: N_QUERIES,
             log_n_last_layer_coefs: 0,
-            line_fold_step: 2,
+            fold_step: FOLD_STEP,
         },
         interaction_pow_bits: 0,
     };
@@ -56,7 +60,8 @@ fn test_fri_decommit_with_jumps() {
     // Compute FRI input.
     let query_indices: Vec<usize> = vec![0, 12, 34, 56, 78, 89, 101];
     let input = simd_from_u32s(&mut context, query_indices.iter().map(|x| *x as u32).collect());
-    let queries = select_queries(&mut context, &input, log_domain_size);
+    let queries =
+        select_queries(&mut context, &input, LOG_TRACE_SIZE as usize + LOG_BLOWUP_FACTOR as usize);
     let fri_input: Vec<_> = query_indices
         .iter()
         .map(|query| context.constant(fri_proof.aux.first_layer.all_values[0][query]))
@@ -65,9 +70,7 @@ fn test_fri_decommit_with_jumps() {
         queries.bits.iter().map(|simd| Simd::unpack(&mut context, simd)).collect();
 
     // Compute the circuit FriProof.
-    let all_line_fold_steps = compute_all_line_fold_steps(5, 2);
-    // TODO(Leo): remove hardcoded 1 in next PR.
-    let all_fold_steps = [&[1], all_line_fold_steps.as_slice()].concat();
+    let all_fold_steps = compute_all_fold_steps(config.log_trace_size(), FOLD_STEP);
     let witness = test_construct_fri_witness(&fri_proof, &all_fold_steps, &query_indices);
     let auth_paths =
         test_construct_fri_auth_paths(&fri_proof, &config, &query_indices, &all_fold_steps);
@@ -129,10 +132,7 @@ fn polynomial_evaluation(
 }
 
 fn create_fri_proof() -> ExtendedFriProof<Blake2sM31Hasher> {
-    const LOG_BLOWUP_FACTOR: u32 = 2;
-    const LOG_TRACE_SIZE: u32 = 6;
-
-    let config = FriConfig::new(0, LOG_BLOWUP_FACTOR, 3, 2);
+    let config = FriConfig::new(0, LOG_BLOWUP_FACTOR, N_QUERIES, FOLD_STEP as u32);
     let column = polynomial_evaluation(LOG_TRACE_SIZE, LOG_BLOWUP_FACTOR);
     let twiddles = CpuBackend::precompute_twiddles(column.domain.half_coset);
     let prover = FriProver::<CpuBackend, Blake2sM31MerkleChannel>::commit(
