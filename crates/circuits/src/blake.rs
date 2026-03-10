@@ -31,6 +31,15 @@ impl From<Blake2sHash> for HashValue<QM31> {
     }
 }
 
+impl From<[u32; 8]> for HashValue<QM31> {
+    fn from(value: [u32; 8]) -> Self {
+        HashValue(
+            qm31_from_u32s(value[0], value[1], value[2], value[3]),
+            qm31_from_u32s(value[4], value[5], value[6], value[7]),
+        )
+    }
+}
+
 /// Convert QM31 to 16 bytes (4 u32s)
 fn to_bytes(value: QM31) -> [u8; 16] {
     let mut bytes = [0u8; 16];

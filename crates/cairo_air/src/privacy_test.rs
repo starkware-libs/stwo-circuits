@@ -12,7 +12,7 @@ use circuit_prover::prover::{
 use circuit_prover::witness::preprocessed::PreprocessedCircuit;
 use circuits::blake::HashValue;
 use circuits::context::Context;
-use circuits::ivalue::{IValue, qm31_from_u32s};
+use circuits::ivalue::IValue;
 use circuits_stark_verifier::proof::ProofConfig;
 use itertools::Itertools;
 use num_traits::Zero;
@@ -27,11 +27,7 @@ use crate::verify::build_cairo_verifier_circuit;
 
 #[expect(dead_code)]
 fn privacy_circuit_preprocessed_root() -> HashValue<QM31> {
-    let root = PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT;
-    HashValue(
-        qm31_from_u32s(root[0], root[1], root[2], root[3]),
-        qm31_from_u32s(root[4], root[5], root[6], root[7]),
-    )
+    PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT.into()
 }
 
 /// Verifies with a circuit a proof of execution of another circuit.
