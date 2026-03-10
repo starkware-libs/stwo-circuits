@@ -181,7 +181,7 @@ fn test_privacy_consts() {
             log_blowup_factor,
             log_last_layer_degree_bound: 0,
             n_queries: 70,
-            line_fold_step: 1,
+            fold_step: 1,
         },
         lifting_log_size: Some(lifting_log_size),
     };

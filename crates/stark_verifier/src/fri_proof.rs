@@ -17,7 +17,7 @@ pub struct FriConfig {
     /// Log2 of the number of coefficients in the last layer of FRI.
     pub log_n_last_layer_coefs: usize,
     /// The step of the line folds in FRI's inner layers.
-    pub line_fold_step: usize,
+    pub fold_step: usize,
 }
 
 impl FriConfig {
@@ -35,11 +35,11 @@ pub struct FriCommitProof<T> {
 
 impl<T> FriCommitProof<T> {
     /// Validates that the size of the members of the struct are consistent with the config.
-    pub fn validate_structure(&self, config: &FriConfig, all_line_fold_steps: &[usize]) {
-        // The computation of `all_line_fold_step` guarantees also that
+    pub fn validate_structure(&self, config: &FriConfig, all_fold_steps: &[usize]) {
+        // The computation of `all_fold_step` guarantees also that
         // `config.log_trace_size = log_n_last_layer_coefs + ∑ fold_step_for_layer`, where
         // the sum runs over the FRI layers.
-        assert_eq!(self.layer_commitments.len(), 1 + all_line_fold_steps.len());
+        assert_eq!(self.layer_commitments.len(), all_fold_steps.len());
         assert_eq!(self.last_layer_coefs.len(), 1 << config.log_n_last_layer_coefs);
     }
 }
@@ -96,17 +96,15 @@ impl<T> FriProof<T> {
     /// Validates that the size of the members of the struct are consistent with the config.
     pub fn validate_structure(&self, config: &FriConfig) {
         let FriProof { commit, auth_paths, witness } = self;
-        let all_line_fold_steps = compute_all_line_fold_steps(
-            config.log_trace_size - 1 - config.log_n_last_layer_coefs,
-            config.line_fold_step,
+        let all_fold_steps = compute_all_fold_steps(
+            config.log_trace_size - config.log_n_last_layer_coefs,
+            config.fold_step,
         );
-        commit.validate_structure(config, &all_line_fold_steps);
+        commit.validate_structure(config, &all_fold_steps);
 
         // Check that the authentication paths' lengths are consistent with the folding schedule.
-        assert_eq!(auth_paths.data.len(), all_line_fold_steps.len() + 1);
+        assert_eq!(auth_paths.data.len(), all_fold_steps.len());
         let first_layer_log_size = config.log_evaluation_domain_size();
-        let mut all_fold_steps = vec![1];
-        all_fold_steps.extend_from_slice(&all_line_fold_steps);
         let mut fold_sum = 0;
         for (tree_data, fold_step) in zip_eq(&auth_paths.data, &all_fold_steps) {
             assert_eq!(tree_data.len(), config.n_queries);
@@ -135,12 +133,10 @@ impl<Value: IValue> Guess<Value> for FriProof<Value> {
 
 pub fn empty_fri_proof(config: &FriConfig) -> FriProof<NoValue> {
     let empty_hash = HashValue(NoValue, NoValue);
-    let all_line_fold_steps = compute_all_line_fold_steps(
-        config.log_trace_size - 1 - config.log_n_last_layer_coefs,
-        config.line_fold_step,
+    let all_fold_steps = compute_all_fold_steps(
+        config.log_trace_size - config.log_n_last_layer_coefs,
+        config.fold_step,
     );
-    let mut all_fold_steps = vec![1];
-    all_fold_steps.extend_from_slice(&all_line_fold_steps);
     let mut log_layer_size = config.log_evaluation_domain_size();
     let mut auth_paths = vec![];
 
@@ -169,20 +165,16 @@ pub fn empty_fri_proof(config: &FriConfig) -> FriProof<NoValue> {
     }
 }
 
-/// Computes all the line-to-line folding steps.
+/// Computes all the FRI folding steps.
 ///
 /// # Arguments
 ///
-/// - `line_degree_log_ratio`: (log degree of FRI's second layer poly) - (log degree of FRI's last
-///   layer).
-/// - `line_fold_step`: the folding step of all the line-to-line folds except possibly the last.
-pub fn compute_all_line_fold_steps(
-    line_degree_log_ratio: usize,
-    line_fold_step: usize,
-) -> Vec<usize> {
-    let n_folds = line_degree_log_ratio.div_ceil(line_fold_step);
-    let rem = line_degree_log_ratio % line_fold_step;
-    let mut line_fold_steps = vec![line_fold_step; n_folds];
-    line_fold_steps[n_folds - 1] = if rem == 0 { line_fold_step } else { rem };
-    line_fold_steps
+/// - `degree_log_ratio`: (log degree of committed polynomial) - (log degree of FRI's last layer).
+/// - `fold_step`: the folding step of all the FRI folds except possibly the last.
+pub fn compute_all_fold_steps(degree_log_ratio: usize, fold_step: usize) -> Vec<usize> {
+    let n_folds = degree_log_ratio.div_ceil(fold_step);
+    let rem = degree_log_ratio % fold_step;
+    let mut all_fold_steps = vec![fold_step; n_folds];
+    all_fold_steps[n_folds - 1] = if rem == 0 { fold_step } else { rem };
+    all_fold_steps
 }
