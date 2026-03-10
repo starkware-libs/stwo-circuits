@@ -19,7 +19,8 @@ use num_traits::Zero;
 use stwo::core::fields::qm31::QM31;
 
 use crate::privacy::{
-    PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT, privacy_cairo_verifier_config, privacy_components,
+    PRIVACY_CAIRO_VERIFIER_CONSTS_HASH, PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT,
+    privacy_cairo_verifier_config, privacy_components,
 };
 use crate::test::{verify_cairo, verify_cairo_with_component_set};
 use crate::utils::get_proof_file_path;
@@ -152,4 +153,20 @@ fn test_privacy_recursion_with_preprocessed_context() {
     // Compare the verifier contexts.
     compare_contexts_topology(&assignment_verifier_context, &full_verifier_context);
     assert_eq!(assignment_verifier_context.values(), full_verifier_context.values());
+}
+
+#[test]
+fn test_privacy_consts() {
+    let const_config = privacy_cairo_verifier_config();
+    let mut novalue_context = build_cairo_verifier_circuit(&const_config);
+    let n_constants = novalue_context.constants().len();
+
+    let constants = novalue_context.constants().keys().cloned().collect_vec();
+    let blake_value = QM31::blake(constants.as_slice(), constants.len() * 16);
+
+    assert_eq!(blake_value, PRIVACY_CAIRO_VERIFIER_CONSTS_HASH.into());
+
+    // Finalization should not add any new constants.
+    finalize_context(&mut novalue_context);
+    assert_eq!(novalue_context.constants().len(), n_constants);
 }
