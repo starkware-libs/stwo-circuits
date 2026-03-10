@@ -268,9 +268,10 @@ fn fill_blake_columns(
     let n_blake_output = columns[10].len();
     let blake_output_padding = std::cmp::max(n_blake_output.next_power_of_two(), N_LANES);
 
-    // TODO(Leo): remove after we remove the circuit gates padding.
-    assert_eq!(n_blake_output, blake_output_padding, "Only padding through circuit gates for now.");
-    (10..13).for_each(|i| columns[i].resize(blake_output_padding, *columns[i].first().unwrap()));
+    // Pad final_state_addr with zeros, so padding rows read the Blake initial state as the final
+    // state
+    columns[10].resize(blake_output_padding, 0);
+    (11..13).for_each(|i| columns[i].resize(blake_output_padding, *columns[i].first().unwrap()));
     (13..15).for_each(|i| columns[i].resize(blake_output_padding, 0)); // Multiplicity columns.
 }
 
