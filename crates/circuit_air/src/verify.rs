@@ -22,13 +22,51 @@ pub struct CircuitConfig {
 }
 
 pub fn build_verification_circuit<Value: IValue>(
-    circuit_config: CircuitConfig,
-    proof: Proof<Value>,
-    public_data: CircuitPublicData,
+    circuit_config_vec: Vec<CircuitConfig>,
+    proofs_vec: Vec<Proof<Value>>,
+    public_data_vec: Vec<CircuitPublicData>,
 ) -> Result<Context<Value>, String> {
     let mut context = Context::default();
+    assert_eq!(public_data_vec.len(), proofs_vec.len());
+    assert_eq!(circuit_config_vec.len(), proofs_vec.len());
+    // for (proof, public_data, circuit_config) in izip!(proofs_vec, public_data_vec,
+    // circuit_config_vec) {     verify_circuit_single_proof(&mut context, proof,
+    // &circuit_config, &public_data); };
+    proofs_vec.into_iter().zip(public_data_vec).zip(circuit_config_vec).for_each(
+        |((proof, public_data), circuit_config)| {
+            verify_circuit_single_proof(&mut context, proof, &circuit_config, &public_data);
+        },
+    );
+    context.finalize_guessed_vars();
+    #[cfg(test)]
+    context.circuit.check_yields();
+
+    Ok(context)
+}
+
+pub fn verify_circuit(
+    circuit_config_vec: Vec<CircuitConfig>,
+    proofs_vec: Vec<Proof<QM31>>,
+    public_data_vec: Vec<CircuitPublicData>,
+) -> Result<Context<QM31>, String> {
+    let context = build_verification_circuit(circuit_config_vec, proofs_vec, public_data_vec)?;
+    #[cfg(test)]
+    context.check_vars_used();
+
+    if !context.is_circuit_valid() {
+        return Err("Verification failed".to_string());
+    }
+    Ok(context)
+}
+
+pub fn verify_circuit_single_proof<Value: IValue>(
+    context: &mut Context<Value>,
+    proof: Proof<Value>,
+    circuit_config: &CircuitConfig,
+    public_data: &CircuitPublicData,
+) {
     let statement = CircuitStatement::new(
-        &mut context,
+        context,
         &circuit_config.output_addresses,
         &public_data.output_values,
         circuit_config.n_blake_gates,
@@ -38,27 +76,7 @@ pub fn build_verification_circuit<Value: IValue>(
 
     let proof_config =
         ProofConfig::from_statement(&statement, &circuit_config.config, INTERACTION_POW_BITS);
-    let proof_vars = proof.guess(&mut context);
+    let proof_vars = proof.guess(context);
 
-    verify(&mut context, &proof_vars, &proof_config, &statement);
-    context.finalize_guessed_vars();
-    #[cfg(test)]
-    context.circuit.check_yields();
-
-    Ok(context)
-}
-
-pub fn verify_circuit(
-    circuit_config: CircuitConfig,
-    proof: Proof<QM31>,
-    public_data: CircuitPublicData,
-) -> Result<Context<QM31>, String> {
-    let context = build_verification_circuit(circuit_config, proof, public_data)?;
-    #[cfg(test)]
-    context.check_vars_used();
-
-    if !context.is_circuit_valid() {
-        return Err("Verification failed".to_string());
-    }
-    Ok(context)
+    verify(context, &proof_vars, &proof_config, &statement);
 }

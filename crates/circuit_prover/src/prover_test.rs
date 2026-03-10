@@ -208,7 +208,7 @@ fn circuit_verify(
     };
     let (proof, public_data) =
         prepare_circuit_proof_for_circuit_verifier(circuit_proof, &proof_config);
-    verify_circuit(circuit_config, proof, public_data).unwrap();
+    verify_circuit(vec![circuit_config], vec![proof], vec![public_data]).unwrap();
 }
 
 const FIBONACCI_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
