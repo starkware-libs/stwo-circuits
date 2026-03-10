@@ -9,9 +9,7 @@ use crate::circle::{
     add_points_simd, compute_half_coset_points, double_x_simd, minus_generator_point_simd,
     repeated_double_point_simd,
 };
-use crate::fri_proof::{
-    FriCommitProof, FriConfig, FriProof, FriWitness, compute_all_line_fold_steps,
-};
+use crate::fri_proof::{FriCommitProof, FriConfig, FriProof, FriWitness, compute_all_fold_steps};
 use crate::merkle::{hash_leaf_qm31, hash_node, hash_packed_leaf_qm31s, verify_merkle_path};
 use crate::select_queries::Queries;
 use circuits::context::{Context, Var};
@@ -55,31 +53,29 @@ pub fn fri_decommit<Value: IValue>(
         auth_paths,
         witness: FriWitness(witness_per_query_per_tree),
     } = proof;
-    let all_line_fold_steps = compute_all_line_fold_steps(
-        config.log_trace_size - 1 - config.log_n_last_layer_coefs,
-        config.line_fold_step,
+    let all_fold_steps = compute_all_fold_steps(
+        config.log_trace_size - config.log_n_last_layer_coefs,
+        config.fold_step,
     );
-    // TODO(Leo): remove the hardcoded 1 in next PR.
-    let all_fold_steps = [&[1], all_line_fold_steps.as_slice()].concat();
     let n_layers = all_fold_steps.len();
     let mut fri_data = fri_input.to_vec();
     let mut base_point = queries.points.clone();
     let mut packed_bits = queries.bits.as_slice();
 
     for (tree_idx, ((root, step), witness_per_query)) in
-        zip_eq(zip_eq(layer_commitments, all_fold_steps), witness_per_query_per_tree).enumerate()
+        zip_eq(zip_eq(layer_commitments, &all_fold_steps), witness_per_query_per_tree).enumerate()
     {
         let is_circle_to_line = tree_idx == 0;
         let log_layer_size = bits.len();
-        let lowest_bits = bits.split_off(..step).unwrap();
-        let packed_lowest_bits = packed_bits.split_off(..step).unwrap();
+        let lowest_bits = bits.split_off(..*step).unwrap();
+        let packed_lowest_bits = packed_bits.split_off(..*step).unwrap();
         // Validate that the fri query is in the correct position inside the guessed
         // `witness_per_query`.
         validate_query_position_in_coset(context, witness_per_query, &fri_data, lowest_bits);
 
         // Check merkle decommitment.
         for (query_idx, witness) in witness_per_query.iter().enumerate() {
-            let pack_leaves = log_layer_size >= 2 && step > 1;
+            let pack_leaves = log_layer_size >= 2 && *step > 1;
             // Compute the leaves.
             let (mut leaves, n_folds): (Vec<HashValue<Var>>, usize) = if pack_leaves {
                 (
@@ -90,7 +86,7 @@ pub fn fri_decommit<Value: IValue>(
                     step - LOG_PACKED_LEAF_SIZE as usize,
                 )
             } else {
-                (witness.iter().map(|val| hash_leaf_qm31(context, *val)).collect(), step)
+                (witness.iter().map(|val| hash_leaf_qm31(context, *val)).collect(), *step)
             };
 
             // Compute the merkle root of the witness values.
@@ -115,10 +111,10 @@ pub fn fri_decommit<Value: IValue>(
             translate_to_base_point(context, base_point, packed_lowest_bits, is_circle_to_line);
         // Compute twiddles.
         let twiddles_per_fold_per_query =
-            compute_twiddles_from_base_point(context, &base_point, step, is_circle_to_line);
+            compute_twiddles_from_base_point(context, &base_point, *step, is_circle_to_line);
 
         // Compute alpha, alpha^2, ..., alpha^(2^(step - 1));
-        let mut alpha_powers = Vec::with_capacity(step);
+        let mut alpha_powers = Vec::with_capacity(*step);
         let mut alpha_pow = alphas[tree_idx];
         alpha_powers.push(alpha_pow);
         for _ in 0..step - 1 {
@@ -135,13 +131,13 @@ pub fn fri_decommit<Value: IValue>(
 
         // Don't add unused gates in the last iteration.
         if tree_idx != n_layers - 1 {
-            let n_doubles = if is_circle_to_line { step - 1 } else { step };
+            let n_doubles = if is_circle_to_line { *step - 1 } else { *step };
             base_point = repeated_double_point_simd(context, &base_point, n_doubles);
         }
     }
     // The last base point's y-coords hasn't been used by `compute_twiddles_from_base_point` if the
     // last step was = 1.
-    if *all_line_fold_steps.last().unwrap() == 1 {
+    if *all_fold_steps.last().unwrap() == 1 {
         Simd::mark_partly_used(context, &base_point.y);
     }
 
