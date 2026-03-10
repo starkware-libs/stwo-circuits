@@ -104,7 +104,7 @@ impl ProofConfig {
                     log_blowup_factor,
                     n_queries,
                     log_last_layer_degree_bound,
-                    line_fold_step,
+                    fold_step,
                 },
             lifting_log_size: Some(lifting_log_size),
         } = pcs_config
@@ -128,7 +128,7 @@ impl ProofConfig {
                 log_blowup_factor: *log_blowup_factor as usize,
                 n_queries: *n_queries,
                 log_n_last_layer_coefs: *log_last_layer_degree_bound as usize,
-                line_fold_step: *line_fold_step as usize,
+                fold_step: *fold_step as usize,
             },
             interaction_pow_bits,
         }

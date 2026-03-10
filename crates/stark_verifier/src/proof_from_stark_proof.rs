@@ -12,7 +12,7 @@ use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 use stwo::core::vcs_lifted::verifier::LOG_PACKED_LEAF_SIZE;
 
 use crate::fri_proof::FriWitness;
-use crate::fri_proof::compute_all_line_fold_steps;
+use crate::fri_proof::compute_all_fold_steps;
 use crate::fri_proof::{FriCommitProof, FriProof};
 use crate::merkle::{AuthPath, AuthPaths};
 use crate::oods::EvalDomainSamples;
@@ -38,9 +38,9 @@ pub fn proof_from_stark_proof(
     let interaction_pow_high = (interaction_pow_nonce >> 32) as u32;
     let interaction_pow_low = (interaction_pow_nonce & 0xFFFFFFFF) as u32;
 
-    let all_line_fold_steps = compute_all_line_fold_steps(
-        config.fri.log_trace_size - 1 - config.fri.log_n_last_layer_coefs,
-        config.fri.line_fold_step,
+    let all_fold_steps = compute_all_fold_steps(
+        config.fri.log_trace_size - config.fri.log_n_last_layer_coefs,
+        config.fri.fold_step,
     );
 
     Proof {
@@ -71,8 +71,8 @@ pub fn proof_from_stark_proof(
                 .collect(),
                 last_layer_coefs: (*fri_proof.last_layer_poly).to_vec(),
             },
-            auth_paths: construct_fri_auth_paths(proof, config, &all_line_fold_steps),
-            witness: construct_fri_witness(proof, &all_line_fold_steps),
+            auth_paths: construct_fri_auth_paths(proof, config, &all_fold_steps),
+            witness: construct_fri_witness(proof, &all_fold_steps),
         },
         proof_of_work_nonce: qm31_from_u32s(pow_low, pow_high, 0, 0),
         interaction_pow_nonce: qm31_from_u32s(interaction_pow_low, interaction_pow_high, 0, 0),
@@ -166,13 +166,11 @@ fn construct_eval_domain_auth_paths(
 fn construct_fri_auth_paths(
     proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
     config: &ProofConfig,
-    all_line_fold_steps: &[usize],
+    all_fold_steps: &[usize],
 ) -> AuthPaths<QM31> {
     let unsorted_query_locations = &proof.aux.unsorted_query_locations;
     let layers = chain!([&proof.aux.fri.first_layer], &proof.aux.fri.inner_layers);
     let mut log_layer_size = config.log_evaluation_domain_size();
-    // The circle-to-line fold is hardcoded to 1 currently.
-    let all_fold_steps = [&[1], all_line_fold_steps].concat();
     let mut fold_sum = 0;
     let mut res = vec![];
 
@@ -182,11 +180,11 @@ fn construct_fri_auth_paths(
                 .iter()
                 .map(|query| {
                     let mut pos = *query;
-                    let pack_leaves = log_layer_size >= LOG_PACKED_LEAF_SIZE as usize && step > 1;
+                    let pack_leaves = log_layer_size >= LOG_PACKED_LEAF_SIZE as usize && *step > 1;
                     let pack_shift = if pack_leaves { LOG_PACKED_LEAF_SIZE as usize } else { 0 };
                     pos >>= fold_sum + step;
                     let mut auth_path: AuthPath<QM31> = AuthPath(vec![]);
-                    for j in step..log_layer_size {
+                    for j in *step..log_layer_size {
                         let hash =
                             layer_proof.decommitment.all_node_values[j - pack_shift][&(pos ^ 1)];
                         auth_path.0.push(hash.into());
@@ -213,18 +211,17 @@ fn construct_fri_auth_paths(
 ///   query.
 pub fn construct_fri_witness(
     proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
-    all_line_fold_steps: &[usize],
+    all_fold_steps: &[usize],
 ) -> FriWitness<QM31> {
     let all_layers: Vec<_> = chain![
         std::slice::from_ref(&proof.aux.fri.first_layer),
         proof.aux.fri.inner_layers.iter(),
     ]
     .collect();
-    let all_fold_steps = [&[1], all_line_fold_steps].concat();
     let mut witness_per_query_per_tree = vec![vec![]; all_fold_steps.len()];
     for query in &proof.aux.unsorted_query_locations {
         let mut pos = *query;
-        for (tree_idx, (layer, step)) in zip_eq(&all_layers, &all_fold_steps).enumerate() {
+        for (tree_idx, (layer, step)) in zip_eq(&all_layers, all_fold_steps).enumerate() {
             let start = (pos >> step) << step;
             let witness: Vec<_> =
                 (start..start + (1 << step)).map(|i| layer.all_values[0][&i]).collect();
