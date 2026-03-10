@@ -6,7 +6,6 @@ use circuit_air::statement::{INTERACTION_POW_BITS, all_circuit_components};
 use circuit_air::verify::{CircuitConfig, verify_circuit};
 use circuit_common::finalize::finalize_context;
 use circuit_common::preprocessed::PreprocessedCircuit;
-use circuits::blake::HashValue;
 use circuits::blake::blake;
 use circuits::context::Var;
 use circuits::eval;
@@ -301,21 +300,7 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
         &circuit_proof.pcs_config,
         INTERACTION_POW_BITS,
     );
-    let preprocessed_root = FIBONACCI_CIRCUIT_PREPROCESSED_ROOT;
-    let preprocessed_root = HashValue(
-        qm31_from_u32s(
-            preprocessed_root[0],
-            preprocessed_root[1],
-            preprocessed_root[2],
-            preprocessed_root[3],
-        ),
-        qm31_from_u32s(
-            preprocessed_root[4],
-            preprocessed_root[5],
-            preprocessed_root[6],
-            preprocessed_root[7],
-        ),
-    );
+    let preprocessed_root = FIBONACCI_CIRCUIT_PREPROCESSED_ROOT.into();
     let circuit_config = CircuitConfig {
         config: circuit_proof.pcs_config,
         output_addresses: preprocessed_circuit.params.output_addresses.clone(),
