@@ -258,10 +258,13 @@ fn compute_twiddles_from_base_point<Value: IValue>(
     let n_queries = base_point.x.len();
     let mut twiddles_per_fold_per_query: Vec<Vec<Vec<Var>>> =
         vec![vec![vec![]; fold_step]; n_queries];
-    let mut x_coords: Vec<Simd> = compute_half_coset_points(context, base_point, fold_step as u32)
-        .into_iter()
-        .map(|p| p.x)
-        .collect();
+    let half_coset = compute_half_coset_points(context, base_point, fold_step as u32);
+    // If the half_coset doesn't consist only of the base point (which happens iff fold step = 1),
+    // then the y-coordinate of the last point of the half coset is not necessarily used.
+    if let Some(last_pt) = half_coset.iter().skip(1).last() {
+        Simd::mark_partly_used(context, &last_pt.y);
+    }
+    let mut x_coords: Vec<Simd> = half_coset.into_iter().map(|p| p.x).collect();
     for i in 0..fold_step {
         for x in &x_coords {
             let x_inv = x.inv(context);
