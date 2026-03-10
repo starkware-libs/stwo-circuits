@@ -131,8 +131,20 @@ fn add_qm31_ops_to_preprocessed_trace(
     multiplicities: &[usize],
     pp_trace: &mut PreProcessedTrace,
 ) -> Qm31OpsTraceGenerator {
-    let Circuit { n_vars, add, sub, mul, pointwise_mul, eq: _, blake: _, permutation, output: _ } =
-        circuit;
+    let Circuit {
+        n_vars,
+        add,
+        sub,
+        mul,
+        pointwise_mul,
+        eq: _,
+        blake: _,
+        blake_g: _,
+        triple_xor: _,
+        m31_to_u32: _,
+        permutation,
+        output: _,
+    } = circuit;
     let mut qm31_ops_columns: [_; N_QM31_OPS_PP_COLUMNS] = std::array::from_fn(|_| vec![]);
     fill_binary_op_columns(add, OpCode::Add, multiplicities, &mut qm31_ops_columns);
     fill_binary_op_columns(sub, OpCode::Sub, multiplicities, &mut qm31_ops_columns);
@@ -176,6 +188,9 @@ fn add_eq_to_preprocessed_trace(circuit: &Circuit, pp_trace: &mut PreProcessedTr
         pointwise_mul: _,
         eq,
         blake: _,
+        blake_g: _,
+        triple_xor: _,
+        m31_to_u32: _,
         permutation: _,
         output: _,
     } = circuit;
@@ -313,6 +328,9 @@ fn add_blake_to_preprocessed_trace(
         pointwise_mul: _,
         eq: _,
         blake,
+        blake_g: _,
+        triple_xor: _,
+        m31_to_u32: _,
         permutation: _,
         output: _,
     } = circuit;

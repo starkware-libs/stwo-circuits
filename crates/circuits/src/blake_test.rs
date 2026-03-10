@@ -2,7 +2,7 @@ use blake2::{Blake2s256, Digest};
 use rstest::rstest;
 use stwo::core::vcs::blake2_hash::reduce_to_m31;
 
-use crate::blake::{blake, qm31_from_bytes};
+use crate::blake::{blake, blake_from_gates, qm31_from_bytes};
 use crate::context::TraceContext;
 use crate::ivalue::qm31_from_u32s;
 use crate::ops::{Guess, eq, guess};
@@ -47,4 +47,33 @@ fn test_blake(#[case] wrong_output: bool) {
     context.circuit.check_yields();
 
     assert_eq!(context.is_circuit_valid(), !wrong_output);
+}
+
+#[test]
+fn test_blake_from_gates() {
+    let mut context = TraceContext::default();
+
+    let input_values = [
+        qm31_from_u32s(1, 2, 3, 4),
+        qm31_from_u32s(5, 6, 7, 8),
+        qm31_from_u32s(9, 10, 11, 12),
+        qm31_from_u32s(13, 14, 15, 16),
+        qm31_from_u32s(17, 0, 0, 0),
+    ];
+
+    let input = input_values.guess(&mut context);
+
+    // Monolithic blake.
+    let out_mono = blake(&mut context, &input, 66);
+
+    // Decomposed blake using gates.
+    let out_decomposed = blake_from_gates(&mut context, &input, 66);
+
+    // Compare outputs.
+    eq(&mut context, out_mono.0, out_decomposed.0);
+    eq(&mut context, out_mono.1, out_decomposed.1);
+
+    context.finalize_guessed_vars();
+    context.circuit.check_yields();
+    assert!(context.is_circuit_valid());
 }

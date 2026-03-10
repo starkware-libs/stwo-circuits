@@ -66,3 +66,23 @@ impl<T: Debug> Debug for M31Wrapper<T> {
         write!(f, "M31({:?})", self.0)
     }
 }
+
+/// Represents a u32 value stored as packed limbs in a QM31 wire: `(low_u16, high_u16, 0, 0)`.
+#[derive(Clone, Copy, PartialEq)]
+pub struct U32Wrapper<T>(T);
+
+impl<T> U32Wrapper<T> {
+    pub fn get(&self) -> &T {
+        &self.0
+    }
+
+    pub fn new_unsafe(var: T) -> Self {
+        Self(var)
+    }
+}
+
+impl<T: Debug> Debug for U32Wrapper<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "U32({:?})", self.0)
+    }
+}
