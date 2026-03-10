@@ -23,24 +23,14 @@ pub struct CircuitConfig {
 
 pub fn build_verification_circuit<Value: IValue>(
     circuit_config: CircuitConfig,
-    proof: Proof<Value>,
-    public_data: CircuitPublicData,
+    proofs_vec: Vec<Proof<Value>>,
+    public_data_vec: Vec<CircuitPublicData>,
 ) -> Result<Context<Value>, String> {
     let mut context = Context::default();
-    let statement = CircuitStatement::new(
-        &mut context,
-        &circuit_config.output_addresses,
-        &public_data.output_values,
-        circuit_config.n_blake_gates,
-        circuit_config.preprocessed_column_ids.clone(),
-        circuit_config.preprocessed_root,
-    );
-
-    let proof_config =
-        ProofConfig::from_statement(&statement, &circuit_config.config, INTERACTION_POW_BITS);
-    let proof_vars = proof.guess(&mut context);
-
-    verify(&mut context, &proof_vars, &proof_config, &statement);
+    assert_eq!(public_data_vec.len(), proofs_vec.len());
+    proofs_vec.into_iter().zip(public_data_vec).for_each(|(proof, public_data)| {
+        verify_circuit_single_proof(&mut context, proof, &circuit_config, &public_data);
+    });
     context.finalize_guessed_vars();
     #[cfg(test)]
     context.circuit.check_yields();
@@ -50,10 +40,10 @@ pub fn build_verification_circuit<Value: IValue>(
 
 pub fn verify_circuit(
     circuit_config: CircuitConfig,
-    proof: Proof<QM31>,
-    public_data: CircuitPublicData,
+    proofs_vec: Vec<Proof<QM31>>,
+    public_data_vec: Vec<CircuitPublicData>,
 ) -> Result<Context<QM31>, String> {
-    let context = build_verification_circuit(circuit_config, proof, public_data)?;
+    let context = build_verification_circuit(circuit_config, proofs_vec, public_data_vec)?;
     #[cfg(test)]
     context.check_vars_used();
 
@@ -61,4 +51,26 @@ pub fn verify_circuit(
         return Err("Verification failed".to_string());
     }
     Ok(context)
+}
+
+pub fn verify_circuit_single_proof<Value: IValue>(
+    context: &mut Context<Value>,
+    proof: Proof<Value>,
+    circuit_config: &CircuitConfig,
+    public_data: &CircuitPublicData,
+) {
+    let statement = CircuitStatement::new(
+        context,
+        &circuit_config.output_addresses,
+        &public_data.output_values,
+        circuit_config.n_blake_gates,
+        circuit_config.preprocessed_column_ids.clone(),
+        circuit_config.preprocessed_root,
+    );
+
+    let proof_config =
+        ProofConfig::from_statement(&statement, &circuit_config.config, INTERACTION_POW_BITS);
+    let proof_vars = proof.guess(context);
+
+    verify(context, &proof_vars, &proof_config, &statement);
 }
