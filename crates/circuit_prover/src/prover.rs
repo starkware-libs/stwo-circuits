@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::witness::trace::TraceGenerator;
 use crate::witness::trace::write_interaction_trace;
 use crate::witness::trace::write_trace;
@@ -39,12 +41,13 @@ use stwo::prover::{ProvingError, prove_ex};
 
 const COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND: u32 = 1;
 
+#[derive(Clone)]
 pub struct CircuitProof {
     pub pcs_config: PcsConfig,
     pub claim: CircuitClaim,
     pub interaction_pow_nonce: u64,
     pub interaction_claim: CircuitInteractionClaim,
-    pub components: Vec<Box<dyn Component>>,
+    pub components: Vec<Rc<dyn Component>>,
     pub stark_proof: Result<ExtendedStarkProof<Blake2sM31MerkleHasher>, ProvingError>,
     pub channel_salt: u32,
 }

@@ -16,6 +16,8 @@ pub mod verify_bitwise_xor_7;
 pub mod verify_bitwise_xor_8;
 pub mod verify_bitwise_xor_9;
 
+use std::rc::Rc;
+
 use crate::{CircuitClaim, CircuitInteractionClaim, CircuitInteractionElements};
 use stwo::core::air::Component;
 use stwo_constraint_framework::TraceLocationAllocator;
@@ -225,23 +227,23 @@ impl CircuitComponents {
         }
     }
 
-    pub fn components(self) -> Vec<Box<dyn Component>> {
+    pub fn components(self) -> Vec<Rc<dyn Component>> {
         vec![
-            Box::new(self.eq) as Box<dyn Component>,
-            Box::new(self.qm31_ops) as Box<dyn Component>,
-            Box::new(self.blake_gate) as Box<dyn Component>,
-            Box::new(self.blake_round) as Box<dyn Component>,
-            Box::new(self.blake_round_sigma) as Box<dyn Component>,
-            Box::new(self.blake_g) as Box<dyn Component>,
-            Box::new(self.blake_output) as Box<dyn Component>,
-            Box::new(self.triple_xor_32) as Box<dyn Component>,
-            Box::new(self.verify_bitwise_xor_8) as Box<dyn Component>,
-            Box::new(self.verify_bitwise_xor_12) as Box<dyn Component>,
-            Box::new(self.verify_bitwise_xor_4) as Box<dyn Component>,
-            Box::new(self.verify_bitwise_xor_7) as Box<dyn Component>,
-            Box::new(self.verify_bitwise_xor_9) as Box<dyn Component>,
-            Box::new(self.range_check_15) as Box<dyn Component>,
-            Box::new(self.range_check_16) as Box<dyn Component>,
+            Rc::new(self.eq) as Rc<dyn Component>,
+            Rc::new(self.qm31_ops) as Rc<dyn Component>,
+            Rc::new(self.blake_gate) as Rc<dyn Component>,
+            Rc::new(self.blake_round) as Rc<dyn Component>,
+            Rc::new(self.blake_round_sigma) as Rc<dyn Component>,
+            Rc::new(self.blake_g) as Rc<dyn Component>,
+            Rc::new(self.blake_output) as Rc<dyn Component>,
+            Rc::new(self.triple_xor_32) as Rc<dyn Component>,
+            Rc::new(self.verify_bitwise_xor_8) as Rc<dyn Component>,
+            Rc::new(self.verify_bitwise_xor_12) as Rc<dyn Component>,
+            Rc::new(self.verify_bitwise_xor_4) as Rc<dyn Component>,
+            Rc::new(self.verify_bitwise_xor_7) as Rc<dyn Component>,
+            Rc::new(self.verify_bitwise_xor_9) as Rc<dyn Component>,
+            Rc::new(self.range_check_15) as Rc<dyn Component>,
+            Rc::new(self.range_check_16) as Rc<dyn Component>,
         ]
     }
 }
