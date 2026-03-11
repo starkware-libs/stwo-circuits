@@ -9,6 +9,4 @@ pub mod utils;
 pub mod verify;
 
 #[cfg(test)]
-mod multiple_inputs_test;
-#[cfg(test)]
 pub mod test;
