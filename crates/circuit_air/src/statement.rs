@@ -112,7 +112,8 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
                 blake_iv_elements.push(high);
             }
             let blake_iv_denom = combine_term(context, &blake_iv_elements, interaction_elements);
-            let n_blakes = context.constant((self.n_blake_gates as u32).into());
+            let n_iv_uses = self.n_blake_gates.next_power_of_two();
+            let n_blakes = context.constant((n_iv_uses as u32).into());
             let blake_iv_yield = div(context, n_blakes, blake_iv_denom);
             sum = eval!(context, (sum) - (blake_iv_yield));
         }

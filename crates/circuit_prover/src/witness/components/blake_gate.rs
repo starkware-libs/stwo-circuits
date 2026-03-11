@@ -126,6 +126,8 @@ fn make_blake_output_inputs(
     let enabler =
         preprocessed_trace.get_column(&PreProcessedColumnId { id: "compress_enabler".to_owned() });
 
+    let blake_initial_state: [UInt32; 8] = from_fn(|i| blake2s_initial_state()[i].into());
+
     // Build the inputs for the blake_output component.
     let mut blake_output_component_inputs: Vec<[UInt32; 8]> = vec![];
 
@@ -138,9 +140,10 @@ fn make_blake_output_inputs(
         }
     }
 
+    let target_n_outputs = blake_output_component_inputs.len().next_power_of_two();
+    blake_output_component_inputs.resize(target_n_outputs, blake_initial_state);
+
     // Pack them.
-    let padding = (16 - (blake_output_component_inputs.len() % 16)) % 16;
-    blake_output_component_inputs.extend(std::iter::repeat_n([UInt32::default(); 8], padding));
     blake_output_component_inputs
         .chunks_exact(N_LANES)
         .map(|chunk| {
