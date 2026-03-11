@@ -310,9 +310,7 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     };
     let (proof, public_data) =
         preprare_circuit_proof_for_circuit_verifier(circuit_proof, proof_config);
-    let proofs_vec = vec![proof];
-    let public_data_vec = vec![public_data];
-    verify_circuit(circuit_config, proofs_vec, public_data_vec).unwrap();
+    verify_circuit(circuit_config, vec![proof], vec![public_data]).unwrap();
 }
 
 #[test]
