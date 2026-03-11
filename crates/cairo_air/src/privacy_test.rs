@@ -142,15 +142,19 @@ fn test_verify_privacy_with_2_to_1_recursion() {
 
     let mut context = verify_cairo(&cairo_proof).unwrap();
     let preprocessed = PreprocessedCircuit::preprocess_circuit(&mut context);
-    let circuit_proof = prove_circuit_assignment(
+    let circuit_proof_1 = prove_circuit_assignment(
         context.values(),
         &preprocessed,
         &BaseColumnPool::<SimdBackend>::new(),
     );
-    let proof_vec = vec![circuit_proof.clone(), circuit_proof.clone()];
+    let circuit_proof_2 = prove_circuit_assignment(
+        context.values(),
+        &preprocessed,
+        &BaseColumnPool::<SimdBackend>::new(),
+    );
     // To test with a precomputed preprocessed root, change `None` to
     // `Some(privacy_circuit_preprocessed_root())`.
-    verify_circuit_proofs(&preprocessed, proof_vec, None);
+    verify_circuit_proofs(&preprocessed, vec![circuit_proof_1, circuit_proof_2], None);
 }
 
 #[test]
