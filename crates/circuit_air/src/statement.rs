@@ -20,7 +20,7 @@ use stwo::core::fields::qm31::QM31;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 // TODO(ilya): Update this to to correct values.
-pub const INTERACTION_POW_BITS: u32 = 8;
+pub const INTERACTION_POW_BITS: u32 = 20;
 
 pub struct CircuitStatement<Value: IValue> {
     pub components: Vec<Box<dyn CircuitEval<Value>>>,
