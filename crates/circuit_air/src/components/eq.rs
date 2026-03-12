@@ -1,7 +1,7 @@
 use crate::components::prelude::*;
 use circuits_stark_verifier::constraint_eval::{ComponentDataTrait, RelationUse};
 
-pub const N_TRACE_COLUMNS: usize = 8;
+pub const N_TRACE_COLUMNS: usize = 4;
 pub const N_INTERACTION_COLUMNS: usize = 4;
 
 pub struct Eval {
@@ -27,26 +27,10 @@ impl FrameworkEval for Eval {
         let in1_address =
             eval.get_preprocessed_column(PreProcessedColumnId { id: "eq_in1_address".to_owned() });
 
-        let in0_col0 = eval.next_trace_mask();
-        let in0_col1 = eval.next_trace_mask();
-        let in0_col2 = eval.next_trace_mask();
-        let in0_col3 = eval.next_trace_mask();
-        let in1_col4 = eval.next_trace_mask();
-        let in1_col5 = eval.next_trace_mask();
-        let in1_col6 = eval.next_trace_mask();
-        let in1_col7 = eval.next_trace_mask();
-
-        // in0 col 0 equals in1 col 4.
-        eval.add_constraint(in0_col0.clone() - in1_col4.clone());
-
-        // in0 col 1 equals in1 col 5.
-        eval.add_constraint(in0_col1.clone() - in1_col5.clone());
-
-        // in0 col 2 equals in1 col 6.
-        eval.add_constraint(in0_col2.clone() - in1_col6.clone());
-
-        // in0 col 3 equals in1 col 7.
-        eval.add_constraint(in0_col3.clone() - in1_col7.clone());
+        let in_col0 = eval.next_trace_mask();
+        let in_col1 = eval.next_trace_mask();
+        let in_col2 = eval.next_trace_mask();
+        let in_col3 = eval.next_trace_mask();
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
@@ -54,10 +38,10 @@ impl FrameworkEval for Eval {
             &[
                 m31_gate_relation_id.clone(),
                 in0_address.clone(),
-                in0_col0.clone(),
-                in0_col1.clone(),
-                in0_col2.clone(),
-                in0_col3.clone(),
+                in_col0.clone(),
+                in_col1.clone(),
+                in_col2.clone(),
+                in_col3.clone(),
             ],
         ));
 
@@ -67,10 +51,10 @@ impl FrameworkEval for Eval {
             &[
                 m31_gate_relation_id.clone(),
                 in1_address.clone(),
-                in1_col4.clone(),
-                in1_col5.clone(),
-                in1_col6.clone(),
-                in1_col7.clone(),
+                in_col0.clone(),
+                in_col1.clone(),
+                in_col2.clone(),
+                in_col3.clone(),
             ],
         ));
 
@@ -106,37 +90,19 @@ impl<Value: IValue> CircuitEval<Value> for CircuitEqComponent {
         let in1_address =
             acc.get_preprocessed_column(&PreProcessedColumnId { id: "eq_in1_address".to_owned() });
 
-        let [in0_col0, in0_col1, in0_col2, in0_col3, in1_col4, in1_col5, in1_col6, in1_col7] =
-            *component_data.trace_columns()
-        else {
+        let [in_col0, in_col1, in_col2, in_col3] = *component_data.trace_columns() else {
             panic!("Expected {N_TRACE_COLUMNS} trace columns")
         };
-
-        // in0 col 0 equals in1 col 4.
-        let constraint0_val = eval!(context, (in0_col0) - (in1_col4));
-        acc.add_constraint(context, constraint0_val);
-
-        // in0 col 1 equals in1 col 5.
-        let constraint1_val = eval!(context, (in0_col1) - (in1_col5));
-        acc.add_constraint(context, constraint1_val);
-
-        // in0 col 2 equals in1 col 6.
-        let constraint2_val = eval!(context, (in0_col2) - (in1_col6));
-        acc.add_constraint(context, constraint2_val);
-
-        // in0 col 3 equals in1 col 7.
-        let constraint3_val = eval!(context, (in0_col3) - (in1_col7));
-        acc.add_constraint(context, constraint3_val);
 
         acc.add_to_relation(
             context,
             context.one(),
-            &[m31_gate_relation_id, in0_address, in0_col0, in0_col1, in0_col2, in0_col3],
+            &[m31_gate_relation_id, in0_address, in_col0, in_col1, in_col2, in_col3],
         );
         acc.add_to_relation(
             context,
             context.one(),
-            &[m31_gate_relation_id, in1_address, in1_col4, in1_col5, in1_col6, in1_col7],
+            &[m31_gate_relation_id, in1_address, in_col0, in_col1, in_col2, in_col3],
         );
     }
 
