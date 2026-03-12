@@ -38,7 +38,7 @@ pub fn privacy_cairo_verifier_config() -> CairoVerifierConfig {
 
     let pcs_config = PcsConfig {
         pow_bits: 26,
-        fri_config: FriConfig::new(0, 2, 35, 1),
+        fri_config: FriConfig::new(0, 2, 35, 3),
         lifting_log_size: Some(22),
     };
 
