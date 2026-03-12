@@ -147,30 +147,39 @@ impl<Value: IValue> Guess<Value> for FriProof<Value> {
 
 pub fn empty_fri_proof(config: &FriConfig) -> FriProof<NoValue> {
     let empty_hash = HashValue(NoValue, NoValue);
-    let auth_paths = AuthPaths {
-        data: (0..config.log_trace_size)
-            .map(|tree_idx| {
-                vec![
-                    // Reduce size by 1 because we take the sibling of the leaf from `fri_siblings`
-                    // rather than `auth_paths`.
-                    AuthPath(vec![empty_hash; config.log_evaluation_domain_size() - tree_idx - 1]);
-                    config.n_queries
-                ]
-            })
-            .collect(),
-    };
 
     let all_line_fold_steps = compute_all_line_fold_steps(
         config.log_trace_size - 1 - config.log_n_last_layer_coefs,
         config.line_fold_step,
     );
+
+    // The first fold step is always 1 (circle-to-line), followed by the line fold steps.
+    let mut all_fold_steps = vec![1];
+    all_fold_steps.extend_from_slice(&all_line_fold_steps);
+
+    let auth_paths = AuthPaths {
+        data: {
+            let first_layer_log_size = config.log_evaluation_domain_size();
+            let mut fold_sum = 0;
+            all_fold_steps
+                .iter()
+                .map(|fold_step| {
+                    let auth_path_len = first_layer_log_size - fold_sum - fold_step;
+                    fold_sum += fold_step;
+                    vec![AuthPath(vec![empty_hash; auth_path_len]); config.n_queries]
+                })
+                .collect()
+        },
+    };
+
+    let n_trees = 1 + all_line_fold_steps.len();
     let line_coset_vals_per_query_per_tree = all_line_fold_steps
         .iter()
         .map(|step| vec![vec![NoValue; 1 << step]; config.n_queries])
         .collect();
     FriProof {
         commit: FriCommitProof {
-            layer_commitments: vec![empty_hash; config.log_trace_size],
+            layer_commitments: vec![empty_hash; n_trees],
             last_layer_coefs: vec![NoValue; 1 << config.log_n_last_layer_coefs],
         },
         auth_paths,
