@@ -1,8 +1,8 @@
 use crate::witness::components::prelude::*;
 use circuit_air::components::eq::N_TRACE_COLUMNS;
 
-pub type InputType = [[M31; 4]; 2];
-pub type PackedInputType = [[PackedM31; 4]; 2];
+pub type InputType = [M31; 4];
+pub type PackedInputType = [PackedM31; 4];
 
 /// Retrieves the component's inputs from the context values, using the addresses provided in the
 /// preprocessed trace.
@@ -20,14 +20,22 @@ pub fn extract_component_inputs(
         inputs.set_len(n_rows);
     }
 
-    (inputs.par_iter_mut(), in0_address.par_iter(), in1_address.par_iter())
-        .into_par_iter()
-        .for_each(|(input, in0_address, in1_address)| {
-            *input = [
-                context_values[*in0_address].to_m31_array(),
-                context_values[*in1_address].to_m31_array(),
-            ];
-        });
+    // Sanity check that the inputs are equal
+    #[cfg(debug_assertions)]
+    (in0_address.par_iter(), in1_address.par_iter()).into_par_iter().for_each(
+        |(in0_address, in1_address)| {
+            assert_eq!(
+                context_values[*in0_address], context_values[*in1_address],
+                "Eq gate: in0 and in1 must have equal values"
+            );
+        },
+    );
+
+    (inputs.par_iter_mut(), in0_address.par_iter()).into_par_iter().for_each(
+        |(input, in0_address)| {
+            *input = context_values[*in0_address].to_m31_array();
+        },
+    );
 
     inputs
 }
@@ -80,30 +88,22 @@ fn write_trace_simd(
     (trace.par_iter_mut(), lookup_data.par_iter_mut(), inputs.into_par_iter())
         .into_par_iter()
         .enumerate()
-        .for_each(|(row_index, (row, lookup_data, qm_31_ops_input))| {
+        .for_each(|(row_index, (row, lookup_data, input))| {
             let in0_address = in0_address[row_index];
             let in1_address = in1_address[row_index];
 
-            let in0_col0 = qm_31_ops_input[0][0];
-            *row[0] = in0_col0;
-            let in0_col1 = qm_31_ops_input[0][1];
-            *row[1] = in0_col1;
-            let in0_col2 = qm_31_ops_input[0][2];
-            *row[2] = in0_col2;
-            let in0_col3 = qm_31_ops_input[0][3];
-            *row[3] = in0_col3;
-            let in1_col4 = qm_31_ops_input[1][0];
-            *row[4] = in1_col4;
-            let in1_col5 = qm_31_ops_input[1][1];
-            *row[5] = in1_col5;
-            let in1_col6 = qm_31_ops_input[1][2];
-            *row[6] = in1_col6;
-            let in1_col7 = qm_31_ops_input[1][3];
-            *row[7] = in1_col7;
+            let in_col0 = input[0];
+            *row[0] = in_col0;
+            let in_col1 = input[1];
+            *row[1] = in_col1;
+            let in_col2 = input[2];
+            *row[2] = in_col2;
+            let in_col3 = input[3];
+            *row[3] = in_col3;
             *lookup_data.in_0 =
-                [m31_gate_relation_id, in0_address, in0_col0, in0_col1, in0_col2, in0_col3];
+                [m31_gate_relation_id, in0_address, in_col0, in_col1, in_col2, in_col3];
             *lookup_data.in_1 =
-                [m31_gate_relation_id, in1_address, in1_col4, in1_col5, in1_col6, in1_col7];
+                [m31_gate_relation_id, in1_address, in_col0, in_col1, in_col2, in_col3];
         });
 
     (trace, lookup_data)

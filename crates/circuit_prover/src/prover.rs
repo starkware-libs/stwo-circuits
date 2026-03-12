@@ -1,5 +1,3 @@
-use crate::witness::components::qm31_ops;
-use crate::witness::preprocessed::PreprocessedCircuit;
 use crate::witness::trace::TraceGenerator;
 use crate::witness::trace::write_interaction_trace;
 use crate::witness::trace::write_trace;
@@ -7,6 +5,9 @@ use circuit_air::components::CircuitComponents;
 use circuit_air::statement::INTERACTION_POW_BITS;
 use circuit_air::verify::CircuitPublicData;
 use circuit_air::{CircuitClaim, CircuitInteractionClaim, CircuitInteractionElements, lookup_sum};
+use circuit_common::CircuitParams;
+use circuit_common::Qm31OpsTraceGenerator;
+use circuit_common::preprocessed::PreprocessedCircuit;
 use circuits::context::Context;
 use circuits_stark_verifier::proof::Proof;
 use circuits_stark_verifier::proof::{Claim, ProofConfig};
@@ -24,9 +25,11 @@ use stwo::core::pcs::PcsConfig;
 use stwo::core::poly::circle::CanonicCoset;
 use stwo::core::proof::ExtendedStarkProof;
 use stwo::core::proof_of_work::GrindOps;
+use stwo::core::utils::MaybeOwned;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 use stwo::prover::CommitmentSchemeProver;
+use stwo::prover::CommitmentTreeProver;
 use stwo::prover::ComponentProver;
 pub use stwo::prover::backend::simd::SimdBackend;
 pub use stwo::prover::mempool::BaseColumnPool;
@@ -35,14 +38,6 @@ use stwo::prover::poly::twiddles::TwiddleTree;
 use stwo::prover::{ProvingError, prove_ex};
 
 const COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND: u32 = 1;
-
-#[derive(Debug, PartialEq)]
-pub struct CircuitParams {
-    pub trace_log_size: u32,
-    pub first_permutation_row: usize,
-    pub n_blake_gates: usize,
-    pub output_addresses: Vec<usize>,
-}
 
 pub struct CircuitProof {
     pub pcs_config: PcsConfig,
@@ -115,26 +110,41 @@ pub fn prove_circuit_assignment(
         .half_coset,
     );
 
+    let preprocessed_trace = preprocessed_circuit.preprocessed_trace.get_trace::<SimdBackend>();
+    let preprocessed_trace_polys = SimdBackend::interpolate_columns(preprocessed_trace, &twiddles);
+
+    let store_polynomials_coefficients = true;
+    let preprocessed_tree = CommitmentTreeProver::<SimdBackend, Blake2sM31MerkleChannel>::new(
+        preprocessed_trace_polys,
+        pcs_config.fri_config.log_blowup_factor,
+        &twiddles,
+        store_polynomials_coefficients,
+        pcs_config.lifting_log_size,
+        base_column_pool,
+    );
+
     prove_circuit_with_precompute(
-        preprocessed_circuit,
         base_column_pool,
         &twiddles,
-        pcs_config,
+        preprocessed_circuit,
+        MaybeOwned::Owned(preprocessed_tree),
         values,
+        pcs_config,
     )
 }
 
-pub fn prove_circuit_with_precompute(
-    preprocessed_circuit: &PreprocessedCircuit,
+pub fn prove_circuit_with_precompute<'a>(
     base_column_pool: &BaseColumnPool<SimdBackend>,
     twiddles: &TwiddleTree<SimdBackend>,
-    pcs_config: PcsConfig,
+    preprocessed_circuit: &PreprocessedCircuit,
+    preprocessed_tree: MaybeOwned<'a, CommitmentTreeProver<SimdBackend, Blake2sM31MerkleChannel>>,
     values: &[QM31],
+    pcs_config: PcsConfig,
 ) -> CircuitProof {
     let PreprocessedCircuit { preprocessed_trace, params } = preprocessed_circuit;
     let CircuitParams { first_permutation_row, n_blake_gates, output_addresses, .. } = params;
     let trace_generator = TraceGenerator {
-        qm31_ops_trace_generator: qm31_ops::TraceGenerator {
+        qm31_ops_trace_generator: Qm31OpsTraceGenerator {
             first_permutation_row: *first_permutation_row,
         },
     };
@@ -156,9 +166,7 @@ pub fn prove_circuit_with_precompute(
     commitment_scheme.set_store_polynomials_coefficients();
 
     // Preprocessed trace.
-    let mut tree_builder = commitment_scheme.tree_builder();
-    tree_builder.extend_evals(preprocessed_trace.get_trace::<SimdBackend>());
-    tree_builder.commit(channel);
+    commitment_scheme.commit_tree(preprocessed_tree, channel);
 
     // Base trace.
     let mut tree_builder = commitment_scheme.tree_builder();

@@ -1,5 +1,3 @@
-// This file was created by the AIR team.
-
 #![allow(unused_parens)]
 #![allow(clippy::too_many_arguments)]
 use cairo_air::components::blake_g::{Claim, InteractionClaim, N_TRACE_COLUMNS};

@@ -1289,6 +1289,7 @@ version = "0.1.0"
 dependencies = [
  "cairo-air",
  "circuit-air",
+ "circuit-common",
  "circuit-prover",
  "circuits",
  "circuits-stark-verifier",
@@ -1305,11 +1306,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "circuit-common"
+version = "0.1.0"
+dependencies = [
+ "circuits",
+ "expect-test",
+ "itertools 0.12.1",
+ "stwo",
+ "stwo-cairo-common",
+ "stwo-constraint-framework",
+]
+
+[[package]]
 name = "circuit-prover"
 version = "0.1.0"
 dependencies = [
  "cairo-air",
  "circuit-air",
+ "circuit-common",
  "circuits",
  "circuits-stark-verifier",
  "expect-test",

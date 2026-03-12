@@ -7,12 +7,12 @@ use cairo_air::PreProcessedTraceVariant;
 use cairo_air::flat_claims::FlatClaim;
 use cairo_air::utils::{binary_deserialize_from_file, binary_serialize_to_file};
 use cairo_air::verifier::INTERACTION_POW_BITS;
-use circuits::context::{Context, Var};
-use circuits::ivalue::{IValue, NoValue};
+use circuits::context::Context;
+use circuits::ivalue::NoValue;
 use circuits::ops::Guess;
-use circuits_stark_verifier::constraint_eval::{CircuitEval, ComponentDataTrait};
+use circuits_stark_verifier::constraint_eval::CircuitEval;
 use circuits_stark_verifier::empty_component::EmptyComponent;
-use circuits_stark_verifier::proof::{InteractionAtOods, ProofConfig, empty_proof};
+use circuits_stark_verifier::proof::{ProofConfig, empty_proof};
 use circuits_stark_verifier::verify::verify;
 use itertools::Itertools;
 use itertools::zip_eq;
@@ -34,79 +34,6 @@ use crate::verify::{
     CairoVerifierConfig, get_preprocessed_root, prepare_cairo_proof_for_circuit_verifier,
     verify_fixed_cairo_circuit,
 };
-
-pub struct TestComponentData {
-    trace: Vec<Var>,
-    interaction_trace: Vec<InteractionAtOods<Var>>,
-    claimed_sum: Var,
-    n_instances_var: Var,
-    n_instances_bits: Vec<Var>,
-}
-
-impl TestComponentData {
-    pub fn from_values(
-        context: &mut Context<QM31>,
-        trace_values: &[QM31],
-        interaction_values: &[QM31],
-        last_row_sum: QM31,
-        claimed_sum: QM31,
-        n_instances: usize,
-    ) -> Self {
-        let trace = trace_values.iter().map(|v| context.new_var(*v)).collect_vec();
-        let mut interaction_trace = interaction_values
-            .iter()
-            .flat_map(|v| v.to_m31_array())
-            .map(|m31| InteractionAtOods { at_oods: context.new_var(m31.into()), at_prev: None })
-            .collect_vec();
-        if !interaction_trace.is_empty() {
-            let last_row_sum_m31s = last_row_sum.to_m31_array();
-            let interaction_trace_len = interaction_trace.len();
-            for i in 0..4 {
-                interaction_trace[interaction_trace_len - 4 + i].at_prev =
-                    Some(context.new_var(last_row_sum_m31s[i].into()));
-            }
-        }
-        let n_instances_bits = (0..31)
-            .map(|bit_pos| {
-                let bit = (n_instances >> bit_pos) & 1;
-                context.new_var(bit.into())
-            })
-            .collect_vec();
-        Self {
-            trace,
-            interaction_trace,
-            claimed_sum: context.new_var(claimed_sum),
-            n_instances_var: context.new_var(n_instances.into()),
-            n_instances_bits,
-        }
-    }
-}
-
-impl<Value: IValue> ComponentDataTrait<Value> for TestComponentData {
-    fn trace_columns(&self) -> &[Var] {
-        &self.trace
-    }
-
-    fn interaction_columns(&self) -> &[InteractionAtOods<Var>] {
-        &self.interaction_trace
-    }
-
-    fn n_instances(&self) -> Var {
-        self.n_instances_var
-    }
-
-    fn claimed_sum(&self) -> Var {
-        self.claimed_sum
-    }
-
-    fn get_n_instances_bit(&self, _context: &mut Context<Value>, bit: usize) -> Var {
-        self.n_instances_bits[bit]
-    }
-
-    fn max_component_size_bits(&self) -> usize {
-        self.n_instances_bits.len()
-    }
-}
 
 /// Circuit Verifies a [CairoProof].
 pub fn verify_cairo(proof: &CairoProof<Blake2sM31MerkleHasher>) -> Result<Context<QM31>, String> {
@@ -165,7 +92,7 @@ pub fn verify_cairo_with_component_set(
 
     let verifier_config = CairoVerifierConfig {
         preprocessed_root: get_preprocessed_root(
-            20 + cairo_proof.extended_stark_proof.proof.config.fri_config.log_blowup_factor,
+            proof_config.log_evaluation_domain_size().try_into().unwrap(),
         ),
         proof_config,
         program,

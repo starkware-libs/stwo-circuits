@@ -1,5 +1,3 @@
-// This file was created by the AIR team.
-
 #![allow(unused_parens)]
 use circuit_air::components::verify_bitwise_xor_7::{
     Claim, InteractionClaim, LOG_SIZE, N_TRACE_COLUMNS,

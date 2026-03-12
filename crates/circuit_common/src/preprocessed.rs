@@ -1,7 +1,7 @@
+use crate::CircuitParams;
+use crate::N_LANES;
+use crate::Qm31OpsTraceGenerator;
 use crate::finalize::finalize_context;
-use crate::prover::CircuitParams;
-use crate::witness::components::prelude::BLAKE_SIGMA;
-use crate::witness::components::qm31_ops;
 use circuits::circuit::Blake;
 use circuits::circuit::{Circuit, Permutation};
 use circuits::circuit::{Eq, Gate};
@@ -10,14 +10,22 @@ use circuits::ivalue::IValue;
 use itertools::{Itertools, zip_eq};
 use std::collections::HashMap;
 use std::sync::Arc;
+#[cfg(feature = "prover")]
 use stwo::core::fields::m31::BaseField;
-use stwo::prover::backend::simd::m31::{N_LANES, PackedM31};
+#[cfg(feature = "prover")]
+use stwo::core::poly::circle::CanonicCoset;
+#[cfg(feature = "prover")]
+use stwo::prover::backend::simd::m31::PackedM31;
+#[cfg(feature = "prover")]
 use stwo::prover::backend::{Backend, Col, Column};
+#[cfg(feature = "prover")]
 use stwo::prover::poly::BitReversedOrder;
+#[cfg(feature = "prover")]
 use stwo::prover::poly::circle::CircleEvaluation;
-use stwo_cairo_prover::witness::prelude::CanonicCoset;
+pub use stwo_cairo_common::preprocessed_columns::blake::BLAKE_SIGMA;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
+#[cfg(feature = "prover")]
 #[cfg(test)]
 #[path = "preprocessed_test.rs"]
 pub mod test;
@@ -122,7 +130,7 @@ fn add_qm31_ops_to_preprocessed_trace(
     circuit: &Circuit,
     multiplicities: &[usize],
     pp_trace: &mut PreProcessedTrace,
-) -> qm31_ops::TraceGenerator {
+) -> Qm31OpsTraceGenerator {
     let Circuit { n_vars, add, sub, mul, pointwise_mul, eq: _, blake: _, permutation, output: _ } =
         circuit;
     let mut qm31_ops_columns: [_; N_QM31_OPS_PP_COLUMNS] = std::array::from_fn(|_| vec![]);
@@ -136,7 +144,7 @@ fn add_qm31_ops_to_preprocessed_trace(
         &mut qm31_ops_columns,
     );
     let qm31_ops_trace_generator =
-        qm31_ops::TraceGenerator { first_permutation_row: qm31_ops_columns[0].len() };
+        Qm31OpsTraceGenerator { first_permutation_row: qm31_ops_columns[0].len() };
 
     fill_permutation_columns(permutation, multiplicities, &mut qm31_ops_columns, *n_vars);
 
@@ -247,8 +255,9 @@ fn fill_blake_columns(
 
     // TODO(Leo): remove after we remove the circuit gates padding.
     assert_eq!(
-        n_blake_compress, blake_compress_padding,
-        "Only padding through circuit gates for now."
+        n_blake_compress % N_LANES,
+        0,
+        "Only padding to multiple of N_LANES through circuit gates for now."
     );
 
     // Pad with the first element.
@@ -259,9 +268,10 @@ fn fill_blake_columns(
     let n_blake_output = columns[10].len();
     let blake_output_padding = std::cmp::max(n_blake_output.next_power_of_two(), N_LANES);
 
-    // TODO(Leo): remove after we remove the circuit gates padding.
-    assert_eq!(n_blake_output, blake_output_padding, "Only padding through circuit gates for now.");
-    (10..13).for_each(|i| columns[i].resize(blake_output_padding, *columns[i].first().unwrap()));
+    // Pad final_state_addr with zeros, so padding rows read the Blake initial state as the final
+    // state
+    columns[10].resize(blake_output_padding, 0);
+    (11..13).for_each(|i| columns[i].resize(blake_output_padding, *columns[i].first().unwrap()));
     (13..15).for_each(|i| columns[i].resize(blake_output_padding, 0)); // Multiplicity columns.
 }
 
@@ -410,6 +420,7 @@ impl PreProcessedTrace {
         self.column_ids.clone()
     }
 
+    #[cfg(feature = "prover")]
     pub fn get_trace<B: Backend>(&self) -> Vec<CircleEvaluation<B, BaseField, BitReversedOrder>> {
         let to_evaluation = |vec: &[usize]| {
             let col = Col::<B, BaseField>::from_iter(vec.iter().cloned().map(BaseField::from));
@@ -426,6 +437,7 @@ impl PreProcessedTrace {
             .unwrap_or_else(|| panic!("Missing preprocessed column {id:?}"))]
     }
 
+    #[cfg(feature = "prover")]
     pub fn get_packed_column(&self, id: &PreProcessedColumnId) -> Vec<PackedM31> {
         let column = self.get_column(id);
         column

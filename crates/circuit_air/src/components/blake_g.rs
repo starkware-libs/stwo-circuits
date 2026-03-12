@@ -1,5 +1,3 @@
-// This file was created by the AIR team.
-
 use crate::components::prelude::*;
 use crate::components::subroutines::triple_sum_32::TripleSum32;
 use crate::components::subroutines::xor_rot_32_r_7::XorRot32R7;
@@ -117,9 +115,7 @@ impl FrameworkEval for Eval {
         let xor_col49 = eval.next_trace_mask();
         let xor_col50 = eval.next_trace_mask();
         let xor_col51 = eval.next_trace_mask();
-        let enabler = eval.next_trace_mask();
-
-        eval.add_constraint(enabler.clone() * enabler.clone() - enabler.clone());
+        let enabler_col52 = eval.next_trace_mask();
 
         TripleSum32::evaluate(
             [
@@ -265,9 +261,13 @@ impl FrameworkEval for Eval {
                 &self.common_lookup_elements,
                 &mut eval,
             );
+        // Enabler is a bit.
+        eval.add_constraint(
+            ((enabler_col52.clone() * enabler_col52.clone()) - enabler_col52.clone()),
+        );
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            -E::EF::from(enabler.clone()),
+            -E::EF::from(enabler_col52.clone()),
             &[
                 M31_1139985212.clone(),
                 input_limb_0_col0.clone(),

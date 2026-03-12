@@ -1,4 +1,4 @@
-use crate::witness::preprocessed::PreprocessedCircuit;
+use crate::preprocessed::PreprocessedCircuit;
 use circuits::circuit::{Add, Blake, Circuit, Eq, Mul, PointwiseMul, Sub};
 use expect_test::expect;
 use itertools::Itertools;

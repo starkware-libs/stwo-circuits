@@ -1,5 +1,3 @@
-// This file was created by the AIR team.
-
 use crate::components::prelude::*;
 use crate::components::subroutines::bitwise_xor_num_bits_8::BitwiseXorNumBits8;
 use crate::components::subroutines::bitwise_xor_num_bits_8_b::BitwiseXorNumBits8B;
@@ -79,9 +77,7 @@ impl FrameworkEval for Eval {
         let xor_col17 = eval.next_trace_mask();
         let xor_col18 = eval.next_trace_mask();
         let xor_col19 = eval.next_trace_mask();
-        let enabler = eval.next_trace_mask();
-
-        eval.add_constraint(enabler.clone() * enabler.clone() - enabler.clone());
+        let enabler_col20 = eval.next_trace_mask();
 
         #[allow(clippy::unused_unit)]
         #[allow(unused_variables)]
@@ -138,24 +134,28 @@ impl FrameworkEval for Eval {
             ],
             xor_col12.clone(),
             &self.common_lookup_elements,
+            E::EF::one(),
             &mut eval,
         );
         BitwiseXorNumBits8::evaluate(
             [xor_col12.clone(), split_16_low_part_size_8_output_tmp_298db_9_limb_0.clone()],
             xor_col13.clone(),
             &self.common_lookup_elements,
+            E::EF::one(),
             &mut eval,
         );
         BitwiseXorNumBits8::evaluate(
             [ms_8_bits_col6.clone(), ms_8_bits_col8.clone()],
             xor_col14.clone(),
             &self.common_lookup_elements,
+            E::EF::one(),
             &mut eval,
         );
         BitwiseXorNumBits8::evaluate(
             [xor_col14.clone(), ms_8_bits_col10.clone()],
             xor_col15.clone(),
             &self.common_lookup_elements,
+            E::EF::one(),
             &mut eval,
         );
         BitwiseXorNumBits8B::evaluate(
@@ -189,9 +189,13 @@ impl FrameworkEval for Eval {
             eval.add_intermediate((xor_col13.clone() + (xor_col15.clone() * M31_256.clone())));
         let triple_xor32_output_tmp_298db_28_limb_1 =
             eval.add_intermediate((xor_col17.clone() + (xor_col19.clone() * M31_256.clone())));
+        // Enabler is a bit.
+        eval.add_constraint(
+            ((enabler_col20.clone() * enabler_col20.clone()) - enabler_col20.clone()),
+        );
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            -E::EF::from(enabler.clone()),
+            -E::EF::from(enabler_col20.clone()),
             &[
                 M31_990559919.clone(),
                 input_limb_0_col0.clone(),
