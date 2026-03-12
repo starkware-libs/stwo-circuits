@@ -3,12 +3,13 @@ use rstest::rstest;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::vcs::blake2_hash::Blake2sHash;
 
-use crate::simple_air::create_proof;
+use crate::simple_air::{create_proof, create_proof_with_fold_step};
 use crate::simple_statement::SimpleStatement;
+use circuit_serialize::serialize::CircuitSerialize;
 use circuits::context::{Context, TraceContext};
 use circuits::ivalue::NoValue;
 use circuits::ops::Guess;
-use circuits_stark_verifier::proof::{ProofConfig, empty_proof};
+use circuits_stark_verifier::proof::{ProofConfig, ProofInfo, empty_proof};
 use circuits_stark_verifier::proof_from_stark_proof::proof_from_stark_proof;
 use circuits_stark_verifier::verify::verify;
 
@@ -108,4 +109,24 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
 
     novalue_circuit.check_yields();
     println!("Stats: {:?}", context.stats);
+}
+
+#[rstest]
+#[case::fold_step_1(1)]
+#[case::fold_step_2(2)]
+#[case::fold_step_3(3)]
+#[case::fold_step_5(5)]
+fn test_proof_info(#[case] fold_step: u32) {
+    let (_components, claim, pcs_config, proof, interaction_pow_nonce, channel_salt) =
+        create_proof_with_fold_step(fold_step);
+
+    let statement = &SimpleStatement::<NoValue>::default();
+    let config = ProofConfig::from_statement(statement, &pcs_config, 8);
+    let info = ProofInfo::from_config(&config);
+    let circuit_proof =
+        proof_from_stark_proof(&proof, &config, claim, interaction_pow_nonce, channel_salt);
+    let mut serialized = vec![];
+    circuit_proof.serialize(&mut serialized);
+    assert_eq!(serialized.len(), info.total());
+    println!("fold_step={fold_step}:\n{info}");
 }
