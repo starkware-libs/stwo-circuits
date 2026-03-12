@@ -1,5 +1,5 @@
 use crate::constraint_eval::CircuitEval;
-use crate::fri_proof::{FriConfig, FriProof, empty_fri_proof};
+use crate::fri_proof::{FriConfig, FriProof, compute_all_fold_steps, empty_fri_proof};
 use crate::merkle::{AuthPath, AuthPaths};
 use crate::oods::{EvalDomainSamples, N_COMPOSITION_COLUMNS, empty_eval_domain_samples};
 use crate::statement::Statement;
@@ -13,6 +13,194 @@ use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
 use stwo::core::pcs::PcsConfig;
 
 pub const N_TRACES: usize = 4;
+
+/// Proof info: trace size and proof size breakdown in M31 elements.
+///
+/// Fields that scale with `n_queries` store the per-query cost; use `total()` for the full size.
+#[derive(Debug, Clone)]
+pub struct ProofInfo {
+    pub log_trace_size: usize,
+    pub log_blowup_factor: usize,
+    pub n_queries: usize,
+    pub n_columns_per_trace: [usize; N_TRACES],
+    // Fixed scalars (QM31): channel_salt + 4 roots (2 QM31 each) + proof_of_work_nonce +
+    // interaction_pow_nonce.
+    pub fixed: usize,
+    // Claim (serialized in packed format): enable bits + log sizes + claimed sums.
+    pub claim: usize,
+    // OODS evaluations (QM31 per column, plus cumulative sum prev-point samples).
+    pub oods: usize,
+    // FRI commitments: one HashValue (2 QM31) per layer.
+    pub fri_commitments: usize,
+    // FRI last layer coefs (QM31).
+    pub fri_last_layer: usize,
+    // Per-query fields (total = per_query * n_queries).
+    // Eval domain samples per query: M31 values, kept as-is.
+    pub eval_samples_per_query: usize,
+    // Eval domain auth paths per query: N_TRACES trees (all lifted/split to eval domain size),
+    // each path of depth log_eval_domain, each node is a HashValue (2 QM31).
+    pub eval_auth_per_query: usize,
+    // FRI auth paths per query.
+    pub fri_auth_per_query: usize,
+    // FRI witness per query: each fold layer has 2^step QM31 coset values.
+    pub fri_witness_per_query: usize,
+}
+
+impl ProofInfo {
+    /// Returns the proof size breakdown in u32s, computed from config alone.
+    pub fn from_config(config: &ProofConfig) -> Self {
+        let n_queries = config.fri.n_queries;
+        let log_eval_domain = config.fri.log_evaluation_domain_size();
+
+        let fixed = (1 + 4 * 2 + 1 + 1) * SECURE_EXTENSION_DEGREE;
+
+        let packed_enable_bits = config.n_components.div_ceil(32); // pack 32 enable bits per u32
+        let packed_log_sizes = config.n_components.div_ceil(4); // 4 log per u32.
+        let n_enabled = config.enabled_components().filter(|&b| b).count();
+        let claimed_sums = n_enabled * SECURE_EXTENSION_DEGREE;
+        let claim = packed_enable_bits + packed_log_sizes + claimed_sums;
+
+        let n_columns_per_trace = config.n_columns_per_trace();
+        let total_columns: usize = n_columns_per_trace.iter().sum();
+
+        // The number of cumulative sum columns that have two mask values per columns.
+        let n_cumsum = config.cumulative_sum_columns.iter().filter(|&&b| b).count();
+        let oods = (total_columns + n_cumsum) * SECURE_EXTENSION_DEGREE;
+
+        let eval_samples_per_query = total_columns;
+
+        let hash_size = 2 * SECURE_EXTENSION_DEGREE;
+
+        let eval_auth_per_query = N_TRACES * log_eval_domain * hash_size;
+
+        let degree_log_ratio = config.fri.log_trace_size - config.fri.log_n_last_layer_coefs;
+        let all_fold_steps = compute_all_fold_steps(degree_log_ratio, config.fri.fold_step);
+        let n_fri_layers = all_fold_steps.len();
+
+        let fri_commitments = n_fri_layers * hash_size;
+
+        let fri_last_layer = (1 << config.fri.log_n_last_layer_coefs) * SECURE_EXTENSION_DEGREE;
+
+        let mut log_layer_size = log_eval_domain;
+        let fri_auth_per_query: usize = all_fold_steps
+            .iter()
+            .map(|step| {
+                let depth = log_layer_size - step;
+                let count = depth * hash_size;
+                log_layer_size -= step;
+                count
+            })
+            .sum();
+
+        let fri_witness_per_query: usize =
+            all_fold_steps.iter().map(|step| (1 << step) * SECURE_EXTENSION_DEGREE).sum();
+
+        let log_trace_size = config.fri.log_trace_size;
+        let log_blowup_factor = config.fri.log_blowup_factor;
+
+        Self {
+            log_trace_size,
+            log_blowup_factor,
+            n_queries,
+            n_columns_per_trace,
+            fixed,
+            claim,
+            oods,
+            fri_commitments,
+            fri_last_layer,
+            eval_samples_per_query,
+            eval_auth_per_query,
+            fri_auth_per_query,
+            fri_witness_per_query,
+        }
+    }
+
+    pub fn total(&self) -> usize {
+        let Self {
+            log_trace_size: _,
+            log_blowup_factor: _,
+            n_queries,
+            n_columns_per_trace: _,
+            fixed,
+            claim,
+            oods,
+            fri_commitments,
+            fri_last_layer,
+            eval_samples_per_query,
+            eval_auth_per_query,
+            fri_auth_per_query,
+            fri_witness_per_query,
+        } = *self;
+        fixed
+            + claim
+            + oods
+            + fri_commitments
+            + fri_last_layer
+            + (eval_samples_per_query
+                + eval_auth_per_query
+                + fri_auth_per_query
+                + fri_witness_per_query)
+                * n_queries
+    }
+}
+
+impl std::fmt::Display for ProofInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            log_trace_size,
+            log_blowup_factor,
+            n_queries,
+            n_columns_per_trace,
+            fixed,
+            claim,
+            oods,
+            fri_commitments,
+            fri_last_layer,
+            eval_samples_per_query,
+            eval_auth_per_query,
+            fri_auth_per_query,
+            fri_witness_per_query,
+        } = *self;
+        let [p, t, i, c] = n_columns_per_trace;
+        writeln!(f, "Proof info:")?;
+        writeln!(f, "  log_trace_size:       {log_trace_size:>10}")?;
+        writeln!(f, "  log_blowup_factor:    {log_blowup_factor:>10}")?;
+        writeln!(f, "  n_queries:            {n_queries:>10}")?;
+        let total_columns = p + t + i + c;
+        writeln!(f, "  n_columns_per_trace:  {total_columns:>10} = [{p}, {t}, {i}, {c}]")?;
+        writeln!(f)?;
+        writeln!(f, "Proof size breakdown (u32 elements)")?;
+        writeln!(f, "  fixed:               {fixed:>10}")?;
+        writeln!(f, "  claim:               {claim:>10}")?;
+        writeln!(f, "  oods:                {oods:>10}")?;
+        writeln!(
+            f,
+            "  eval_samples:        {:>10} = {eval_samples_per_query} * {n_queries}",
+            eval_samples_per_query * n_queries,
+        )?;
+        writeln!(
+            f,
+            "  eval_auth_paths:     {:>10} = {eval_auth_per_query} * {n_queries}",
+            eval_auth_per_query * n_queries,
+        )?;
+        writeln!(f, "  fri_commitments:     {fri_commitments:>10}")?;
+        writeln!(f, "  fri_last_layer:      {fri_last_layer:>10}")?;
+        writeln!(
+            f,
+            "  fri_auth:            {:>10} = {fri_auth_per_query} * {n_queries}",
+            fri_auth_per_query * n_queries,
+        )?;
+        writeln!(
+            f,
+            "  fri_witness:         {:>10} = {fri_witness_per_query} * {n_queries}",
+            fri_witness_per_query * n_queries,
+        )?;
+        writeln!(f, "  ─────────────────────────────")?;
+        let total = self.total();
+        writeln!(f, "  total (u32 elements): {total:>10}")?;
+        writeln!(f, "  total (bytes):        {:>10}", total * 4)
+    }
+}
 
 /// Represents the structure of a proof.
 #[derive(Debug, PartialEq)]
