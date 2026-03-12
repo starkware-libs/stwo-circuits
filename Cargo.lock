@@ -1388,6 +1388,7 @@ dependencies = [
 name = "circuits-stark-verifier-examples"
 version = "0.1.0"
 dependencies = [
+ "circuit-serialize",
  "circuits",
  "circuits-stark-verifier",
  "itertools 0.12.1",

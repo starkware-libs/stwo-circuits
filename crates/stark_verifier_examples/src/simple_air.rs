@@ -195,8 +195,24 @@ pub fn create_proof() -> (
     u64,
     u32,
 ) {
+    create_proof_with_fold_step(1)
+}
+
+#[allow(clippy::type_complexity)]
+/// Creates a proof for the simple AIR with a configurable FRI fold step.
+pub fn create_proof_with_fold_step(
+    fold_step: u32,
+) -> (
+    Vec<Box<dyn Component>>,
+    Claim<QM31>,
+    PcsConfig,
+    ExtendedStarkProof<Blake2sM31MerkleHasher>,
+    u64,
+    u32,
+) {
     let mut config = PcsConfig::default();
     config.fri_config.log_blowup_factor = 2;
+    config.fri_config.fold_step = fold_step;
     let lifting_log_size = LOG_SIZE_LONG + config.fri_config.log_blowup_factor;
     config.lifting_log_size = Some(lifting_log_size);
     // Precompute twiddles.
