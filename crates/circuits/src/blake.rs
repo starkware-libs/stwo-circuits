@@ -1,5 +1,6 @@
 use blake2::{Blake2s256, Digest};
 use itertools::Itertools;
+use stwo::core::fields::m31::M31;
 use stwo::core::vcs::blake2_hash::Blake2sHash;
 use stwo::core::{fields::qm31::QM31, vcs::blake2_hash::reduce_to_m31};
 
@@ -130,8 +131,6 @@ pub fn blake<Value: IValue>(
     HashValue(out_var0, out_var1)
 }
 
-// --- Constants for Blake2s ---
-
 pub const BLAKE2S_IV: [u32; 8] = [
     0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19,
 ];
@@ -149,6 +148,8 @@ pub const BLAKE_SIGMA: [[u8; 16]; 10] = [
     [10, 2, 8, 4, 7, 6, 1, 5, 15, 11, 9, 14, 3, 12, 13, 0],
 ];
 
+const N_G_CALLS_PER_ROUND: usize = 8;
+
 /// The 8 (a,b,c,d) state index tuples per round: 4 columns then 4 diagonals.
 pub const G_STATE_INDICES: [[usize; 4]; 8] = [
     [0, 4, 8, 12],
@@ -161,26 +162,43 @@ pub const G_STATE_INDICES: [[usize; 4]; 8] = [
     [3, 4, 9, 14],
 ];
 
-// --- Helpers ---
-
 /// Packs a u32 as a QM31 with limbs in the first two coordinates: `(low_u16, high_u16, 0, 0)`.
 pub fn pack_u32(v: u32) -> QM31 {
     qm31_from_u32s(v & 0xFFFF, v >> 16, 0, 0)
 }
 
-/// Reconstructs a u32 from a packed-limbs QM31: `coord0 + coord1 * 65536`.
+/// Reconstructs a u32 from a packed-limbs QM31 `(limb_low, limb_high, 0, 0)`:
+/// returns `limb_low + limb_high * 2^16`.
 pub fn unpack_u32(v: QM31) -> u32 {
-    v.0.0.0 + v.0.1.0 * 65536
+    v.0.0.0 + v.0.1.0 * (1 << 16)
 }
 
-/// Wraps a single M31 value as a QM31: `(value, 0, 0, 0)`.
-pub fn u32_to_qm31(v: u32) -> QM31 {
-    qm31_from_u32s(v, 0, 0, 0)
+/// Computes one Blake2s G mixing step on u32 values: two half-rounds of add+xor+rotate.
+pub fn blake_g_mixing(
+    mut a: u32,
+    mut b: u32,
+    mut c: u32,
+    mut d: u32,
+    m0: u32,
+    m1: u32,
+) -> (u32, u32, u32, u32) {
+    a = a.wrapping_add(b).wrapping_add(m0);
+    d = (d ^ a).rotate_right(16);
+    c = c.wrapping_add(d);
+    b = (b ^ c).rotate_right(12);
+    a = a.wrapping_add(b).wrapping_add(m1);
+    d = (d ^ a).rotate_right(8);
+    c = c.wrapping_add(d);
+    b = (b ^ c).rotate_right(7);
+    (a, b, c, d)
 }
-
-// --- Builder functions ---
 
 type U32Var = U32Wrapper<Var>;
+
+/// Reads a [`U32Var`] from the context and unpacks it to a u32.
+fn read_u32(ctx: &TraceContext, v: U32Var) -> u32 {
+    unpack_u32(ctx.get(*v.get()))
+}
 
 /// Adds a BlakeG gate. All inputs and outputs are [`U32Wrapper`] packed-limbs wires.
 pub fn blake_g_gate(
@@ -192,21 +210,14 @@ pub fn blake_g_gate(
     m0: U32Var,
     m1: U32Var,
 ) -> (U32Var, U32Var, U32Var, U32Var) {
-    let mut a_val = unpack_u32(ctx.get(*a.get()));
-    let mut b_val = unpack_u32(ctx.get(*b.get()));
-    let mut c_val = unpack_u32(ctx.get(*c.get()));
-    let mut d_val = unpack_u32(ctx.get(*d.get()));
-    let m0_val = unpack_u32(ctx.get(*m0.get()));
-    let m1_val = unpack_u32(ctx.get(*m1.get()));
-
-    a_val = a_val.wrapping_add(b_val).wrapping_add(m0_val);
-    d_val = (d_val ^ a_val).rotate_right(16);
-    c_val = c_val.wrapping_add(d_val);
-    b_val = (b_val ^ c_val).rotate_right(12);
-    a_val = a_val.wrapping_add(b_val).wrapping_add(m1_val);
-    d_val = (d_val ^ a_val).rotate_right(8);
-    c_val = c_val.wrapping_add(d_val);
-    b_val = (b_val ^ c_val).rotate_right(7);
+    let (a_val, b_val, c_val, d_val) = blake_g_mixing(
+        read_u32(ctx, a),
+        read_u32(ctx, b),
+        read_u32(ctx, c),
+        read_u32(ctx, d),
+        read_u32(ctx, m0),
+        read_u32(ctx, m1),
+    );
 
     let out_a = ctx.new_var(pack_u32(a_val));
     let out_b = ctx.new_var(pack_u32(b_val));
@@ -237,9 +248,7 @@ pub fn blake_g_gate(
 
 /// Adds a TripleXor gate. All operands are [`U32Wrapper`] packed-limbs wires.
 pub fn triple_xor_gate(ctx: &mut TraceContext, a: U32Var, b: U32Var, c: U32Var) -> U32Var {
-    let result = unpack_u32(ctx.get(*a.get()))
-        ^ unpack_u32(ctx.get(*b.get()))
-        ^ unpack_u32(ctx.get(*c.get()));
+    let result = read_u32(ctx, a) ^ read_u32(ctx, b) ^ read_u32(ctx, c);
     let out = ctx.new_var(pack_u32(result));
 
     ctx.stats.triple_xor += 1;
@@ -265,13 +274,17 @@ pub fn m31_to_u32_gate(ctx: &mut TraceContext, input: Var) -> U32Var {
     U32Var::new_unsafe(out)
 }
 
-/// Computes Blake2s hash using decomposed gates (BlakeG, TripleXor, M31ToU32) instead of the
-/// monolithic Blake gate. Produces the same output as [`blake`].
+/// Adds a blake hash using decomposed gates to the circuit, and returns the two output variables
+/// as [HashValue].
+///
+/// NOTE: If the number of bytes is not a multiple of 16, the caller must make sure that the
+/// remaining bytes are zero.
+/// For example, if `n_bytes` is 4, only the first coordinate of the [QM31] may be non-zero.
+/// If `n_bytes` is 1, that coordinate must be < 256.
 pub fn blake_from_gates(ctx: &mut TraceContext, input: &[Var], n_bytes: usize) -> HashValue<Var> {
     assert_eq!(input.len(), n_bytes.div_ceil(16));
 
-    // 1. Extract individual M31 message words from input QM31 vars, then convert each to U32Wrapper
-    //    packed limbs for blake_g_gate.
+    // Unpack each QM31 containing the message into U32Vars.
     let mut message_u32s: Vec<U32Var> = Vec::new();
     for &var in input {
         let simd = Simd::from_packed(vec![var], 4);
@@ -281,38 +294,40 @@ pub fn blake_from_gates(ctx: &mut TraceContext, input: &[Var], n_bytes: usize) -
         }
     }
 
-    // 2. Pad message to complete 64-byte (16 u32-word) blocks.
-    let n_blocks = std::cmp::max(1, n_bytes.div_ceil(64));
-    let total_words = n_blocks * 16;
+    // Pad message to complete 64-byte (16 u32-word) blocks.
+    const BLOCK_BYTES: usize = 64;
+    const WORDS_PER_BLOCK: usize = 16;
+    let n_blocks = std::cmp::max(1, n_bytes.div_ceil(BLOCK_BYTES));
+    let total_words = n_blocks * WORDS_PER_BLOCK;
     let zero_u32 = U32Var::new_unsafe(ctx.zero());
     while message_u32s.len() < total_words {
         message_u32s.push(zero_u32);
     }
 
-    // 3. Initialize chaining value: IV with parameter block XOR, as packed-limbs constants. All
-    //    limb values are < 2^16 < P, so ctx.constant() is safe.
+    // Initialize h: IV with parameter block XOR (config: no key, 32 bytes output).
     let mut h: [U32Var; 8] = std::array::from_fn(|i| {
         let iv_val = if i == 0 { BLAKE2S_IV[0] ^ 0x01010020 } else { BLAKE2S_IV[i] };
         U32Var::new_unsafe(ctx.constant(pack_u32(iv_val)))
     });
 
-    // 4. Compress each block.
+    // Compress each block.
     for block_idx in 0..n_blocks {
-        let block: [U32Var; 16] = std::array::from_fn(|i| message_u32s[block_idx * 16 + i]);
-        let t = std::cmp::min(n_bytes, (block_idx + 1) * 64) as u64;
+        let block: [U32Var; WORDS_PER_BLOCK] =
+            std::array::from_fn(|i| message_u32s[block_idx * WORDS_PER_BLOCK + i]);
+        // Byte offset at end of this block (clamped to message length).
+        let t = std::cmp::min(n_bytes, (block_idx + 1) * BLOCK_BYTES) as u32;
         let last = block_idx == n_blocks - 1;
 
-        let old_h = h;
+        let prev_h = h;
 
         // Set up working vector: v[0..8] = h, v[8..16] = IV with counter/flag pre-XORed.
-        let t_low = (t & 0xFFFFFFFF) as u32;
         let mut v: [U32Var; 16] = std::array::from_fn(|i| {
             if i < 8 {
                 h[i]
             } else {
                 let mut iv = BLAKE2S_IV[i - 8];
                 if i == 12 {
-                    iv ^= t_low;
+                    iv ^= t;
                 }
                 if i == 14 && last {
                     iv ^= 0xFFFFFFFF;
@@ -322,42 +337,41 @@ pub fn blake_from_gates(ctx: &mut TraceContext, input: &[Var], n_bytes: usize) -
         });
 
         // 10 rounds of mixing.
-        for s in &BLAKE_SIGMA {
-            for g_idx in 0..8 {
+        for current_permutation in &BLAKE_SIGMA {
+            for g_idx in 0..N_G_CALLS_PER_ROUND {
                 let [ai, bi, ci, di] = G_STATE_INDICES[g_idx];
-                let (na, nb, nc, nd) = blake_g_gate(
+                let (new_a, new_b, new_c, new_d) = blake_g_gate(
                     ctx,
                     v[ai],
                     v[bi],
                     v[ci],
                     v[di],
-                    block[s[g_idx * 2] as usize],
-                    block[s[g_idx * 2 + 1] as usize],
+                    block[current_permutation[g_idx * 2] as usize],
+                    block[current_permutation[g_idx * 2 + 1] as usize],
                 );
-                v[ai] = na;
-                v[bi] = nb;
-                v[ci] = nc;
-                v[di] = nd;
+                v[ai] = new_a;
+                v[bi] = new_b;
+                v[ci] = new_c;
+                v[di] = new_d;
             }
         }
 
-        // Finalize current compress: h[i] = old_h[i] ^ v[i] ^ v[i+8].
+        // Finalize current compress: h[i] = prev_h[i] ^ v[i] ^ v[i+8].
         for i in 0..8 {
-            h[i] = triple_xor_gate(ctx, old_h[i], v[i], v[i + 8]);
+            h[i] = triple_xor_gate(ctx, prev_h[i], v[i], v[i + 8]);
         }
     }
 
-    // 5. Apply reduce_to_m31: extract low/high from packed limbs via Simd::unpack_idx, then low +
-    //    high * 65536 in M31 arithmetic naturally reduces mod P.
-    let c65536 = ctx.constant(u32_to_qm31(65536));
+    // Pack result in QM31.
+    let c_2_pow_16 = ctx.constant(M31::from(1u32 << 16).into());
     let reduced: [Var; 8] = std::array::from_fn(|i| {
         let h_simd = Simd::from_packed(vec![*h[i].get()], 2);
         let low = Simd::unpack_idx(ctx, &h_simd, 0);
         let high = Simd::unpack_idx(ctx, &h_simd, 1);
-        eval!(ctx, (low) + ((high) * (c65536)))
+        eval!(ctx, (low) + ((high) * (c_2_pow_16)))
     });
 
-    // 6. Pack into 2 QM31 outputs.
+    // Pack into 2 QM31 outputs.
     let out0 = from_partial_evals(ctx, [reduced[0], reduced[1], reduced[2], reduced[3]]);
     let out1 = from_partial_evals(ctx, [reduced[4], reduced[5], reduced[6], reduced[7]]);
 
