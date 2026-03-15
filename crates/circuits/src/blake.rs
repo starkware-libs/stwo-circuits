@@ -338,7 +338,7 @@ pub fn blake_from_gates(ctx: &mut TraceContext, input: &[Var], n_bytes: usize) -
         });
 
         // 10 rounds of mixing.
-        for current_permutation in &BLAKE_SIGMA {
+        for permutation in &BLAKE_SIGMA {
             for g_idx in 0..N_G_CALLS_PER_ROUND {
                 let [ai, bi, ci, di] = G_STATE_INDICES[g_idx];
                 let (new_a, new_b, new_c, new_d) = blake_g_gate(
@@ -347,8 +347,8 @@ pub fn blake_from_gates(ctx: &mut TraceContext, input: &[Var], n_bytes: usize) -
                     v[bi],
                     v[ci],
                     v[di],
-                    block[current_permutation[g_idx * 2] as usize],
-                    block[current_permutation[g_idx * 2 + 1] as usize],
+                    block[permutation[g_idx * 2] as usize],
+                    block[permutation[g_idx * 2 + 1] as usize],
                 );
                 v[ai] = new_a;
                 v[bi] = new_b;
