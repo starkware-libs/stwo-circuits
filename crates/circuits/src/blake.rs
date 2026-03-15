@@ -304,7 +304,8 @@ pub fn blake_from_gates(ctx: &mut TraceContext, input: &[Var], n_bytes: usize) -
         message_u32s.push(zero_u32);
     }
 
-    // Initialize h: IV with parameter block XOR (config: no key, 32 bytes output).
+    // Initialize h: IV XORed with the parameter block.
+    // 0x01010020: depth=1, fanout=1, key_length=0, digest_length=32.
     let mut h: [U32Var; 8] = std::array::from_fn(|i| {
         let iv_val = if i == 0 { BLAKE2S_IV[0] ^ 0x01010020 } else { BLAKE2S_IV[i] };
         U32Var::new_unsafe(ctx.constant(pack_u32(iv_val)))
