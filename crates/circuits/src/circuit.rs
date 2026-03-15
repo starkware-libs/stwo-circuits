@@ -207,6 +207,12 @@ impl std::fmt::Debug for Blake {
 /// Represents a Blake2s G mixing function gate.
 /// State words `a, b, c, d` and message words `m0, m1` are each a single QM31 wire with packed
 /// limbs: `(low_u16, high_u16, 0, 0)`.
+///
+/// **Prover constraint:** Each output wire (`out_a`, `out_b`, `out_c`, `out_d`) must be used at
+/// most once in the circuit. The AIR uses a single shared multiplicity column for all four outputs,
+/// which is only sound when their multiplicities are identical. This holds when the gate is used as
+/// part of a Blake2s computation, where all four outputs are consumed together by the next G call
+/// or by the finalization step.
 #[derive(PartialEq, Eq)]
 pub struct BlakeGGate {
     pub a: usize,
