@@ -15,6 +15,7 @@ use stwo::core::pcs::PcsConfig;
 pub const N_TRACES: usize = 4;
 
 /// Represents the structure of a proof.
+#[derive(Debug, PartialEq)]
 pub struct ProofConfig {
     // TODO(lior): Add a check on the total security bits of the protocol given parameters
     //   such as `n_proof_of_work_bits`, `fri.n_queries`, etc.
