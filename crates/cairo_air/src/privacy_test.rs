@@ -58,7 +58,7 @@ fn verify_circuit_proof(
         preprocessed_root: HashValue(QM31::zero(), QM31::zero()),
     };
     let (proof, public_data) =
-        preprare_circuit_proof_for_circuit_verifier(circuit_proof, proof_config);
+        preprare_circuit_proof_for_circuit_verifier(circuit_proof, &proof_config);
     circuit_config.preprocessed_root = preprocessed_root.unwrap_or(proof.preprocessed_root);
     verify_circuit(circuit_config, proof, public_data).unwrap()
 }

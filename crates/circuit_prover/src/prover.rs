@@ -232,7 +232,7 @@ pub fn prove_circuit_with_precompute<'a>(
 
 pub fn preprare_circuit_proof_for_circuit_verifier(
     circuit_proof: CircuitProof,
-    proof_config: ProofConfig,
+    proof_config: &ProofConfig,
 ) -> (Proof<QM31>, CircuitPublicData) {
     let CircuitProof {
         pcs_config: _,
@@ -258,7 +258,7 @@ pub fn preprare_circuit_proof_for_circuit_verifier(
 
     let proof = proof_from_stark_proof(
         &stark_proof,
-        &proof_config,
+        proof_config,
         claim,
         interaction_pow_nonce,
         channel_salt,

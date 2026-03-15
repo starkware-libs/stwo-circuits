@@ -309,7 +309,7 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
         preprocessed_root,
     };
     let (proof, public_data) =
-        preprare_circuit_proof_for_circuit_verifier(circuit_proof, proof_config);
+        preprare_circuit_proof_for_circuit_verifier(circuit_proof, &proof_config);
     verify_circuit(circuit_config, proof, public_data).unwrap();
 }
 
