@@ -205,8 +205,8 @@ impl std::fmt::Debug for Blake {
 }
 
 /// Represents a Blake2s G mixing function gate.
-/// State words `a, b, c, d` are each a single QM31 wire with packed limbs: `(low_u16, high_u16,
-/// 0, 0)`. Message words `m0, m1` are single M31 wires `(value, 0, 0, 0)`.
+/// State words `a, b, c, d` and message words `m0, m1` are each a single QM31 wire with packed
+/// limbs: `(low_u16, high_u16, 0, 0)`.
 #[derive(PartialEq, Eq)]
 pub struct BlakeGGate {
     pub a: usize,
@@ -220,40 +220,22 @@ pub struct BlakeGGate {
     pub out_c: usize,
     pub out_d: usize,
 }
-impl BlakeGGate {
-    /// Reconstructs a u32 from a packed-limbs QM31: `low + high * 65536`.
-    fn unpack_u32(v: QM31) -> u32 {
-        v.0.0.0 + v.0.1.0 * 65536
-    }
-
-    /// Creates a packed-limbs QM31 from a u32: `(low_u16, high_u16, 0, 0)`.
-    fn pack_u32(v: u32) -> QM31 {
-        use crate::ivalue::qm31_from_u32s;
-        qm31_from_u32s(v & 0xFFFF, v >> 16, 0, 0)
-    }
-}
 impl Gate for BlakeGGate {
     fn check(&self, values: &[QM31]) -> Result<(), String> {
-        let mut a = Self::unpack_u32(values[self.a]);
-        let mut b = Self::unpack_u32(values[self.b]);
-        let mut c = Self::unpack_u32(values[self.c]);
-        let mut d = Self::unpack_u32(values[self.d]);
-        let m0 = Self::unpack_u32(values[self.m0]);
-        let m1 = Self::unpack_u32(values[self.m1]);
+        use crate::blake::{blake_g_mixing, pack_u32, unpack_u32};
+        let (a, b, c, d) = blake_g_mixing(
+            unpack_u32(values[self.a]),
+            unpack_u32(values[self.b]),
+            unpack_u32(values[self.c]),
+            unpack_u32(values[self.d]),
+            unpack_u32(values[self.m0]),
+            unpack_u32(values[self.m1]),
+        );
 
-        a = a.wrapping_add(b).wrapping_add(m0);
-        d = (d ^ a).rotate_right(16);
-        c = c.wrapping_add(d);
-        b = (b ^ c).rotate_right(12);
-        a = a.wrapping_add(b).wrapping_add(m1);
-        d = (d ^ a).rotate_right(8);
-        c = c.wrapping_add(d);
-        b = (b ^ c).rotate_right(7);
-
-        check_eq(values[self.out_a], Self::pack_u32(a))?;
-        check_eq(values[self.out_b], Self::pack_u32(b))?;
-        check_eq(values[self.out_c], Self::pack_u32(c))?;
-        check_eq(values[self.out_d], Self::pack_u32(d))?;
+        check_eq(values[self.out_a], pack_u32(a))?;
+        check_eq(values[self.out_b], pack_u32(b))?;
+        check_eq(values[self.out_c], pack_u32(c))?;
+        check_eq(values[self.out_d], pack_u32(d))?;
         Ok(())
     }
 
@@ -296,10 +278,11 @@ pub struct TripleXorGate {
 }
 impl Gate for TripleXorGate {
     fn check(&self, values: &[QM31]) -> Result<(), String> {
-        let a = BlakeGGate::unpack_u32(values[self.a]);
-        let b = BlakeGGate::unpack_u32(values[self.b]);
-        let c = BlakeGGate::unpack_u32(values[self.c]);
-        check_eq(values[self.out], BlakeGGate::pack_u32(a ^ b ^ c))
+        use crate::blake::{pack_u32, unpack_u32};
+        let a = unpack_u32(values[self.a]);
+        let b = unpack_u32(values[self.b]);
+        let c = unpack_u32(values[self.c]);
+        check_eq(values[self.out], pack_u32(a ^ b ^ c))
     }
 
     fn uses(&self) -> Vec<usize> {
@@ -317,8 +300,8 @@ impl std::fmt::Debug for TripleXorGate {
     }
 }
 
-/// Converts an M31 value `(x, 0, 0, 0)` to a [`U32Wrapper`](crate::wrappers::U32Wrapper)
-/// packed-limbs representation `(low_u16, high_u15, 0, 0)`, proving the value fits in 31 bits.
+/// Converts an M31 value `(x, 0, 0, 0)` to packed-limbs representation `(low_u16, high_u15, 0, 0)`,
+/// proving the value fits in 31 bits.
 #[derive(PartialEq, Eq)]
 pub struct M31ToU32Gate {
     pub input: usize,
