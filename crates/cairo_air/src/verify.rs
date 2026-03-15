@@ -43,6 +43,7 @@ pub fn get_preprocessed_root(lifting_log_size: u32) -> HashValue<QM31> {
             2019947850, 1578675143, 1485624323, 207118193, 636087281, 1354843492, 2101876892,
             721181021,
         ],
+        23 => [403551725, 1198969136, 1544105195, 2074510234, 916191583, 1646435042, 649872328, 1026506463],
         _ => panic!("Unsupported lifting_log_size: {lifting_log_size}"),
     };
     root.into()
