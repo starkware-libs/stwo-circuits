@@ -153,7 +153,8 @@ fn test_verify_all_opcodes() {
             channel_hash: ChannelHash::Blake2sM31,
             pcs_config: PcsConfig {
                 pow_bits: 26,
-                fri_config: FriConfig::new(0, low_blowup_factor, 70, 1),
+                // Fold step = 3.
+                fri_config: FriConfig::new(0, low_blowup_factor, 70, 3),
                 lifting_log_size: Some(20 + low_blowup_factor),
             },
             preprocessed_trace: PreProcessedTraceVariant::CanonicalSmall,
