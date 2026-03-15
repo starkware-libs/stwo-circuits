@@ -147,23 +147,26 @@ impl<Value: IValue> Guess<Value> for FriProof<Value> {
 
 pub fn empty_fri_proof(config: &FriConfig) -> FriProof<NoValue> {
     let empty_hash = HashValue(NoValue, NoValue);
-    let auth_paths = AuthPaths {
-        data: (0..config.log_trace_size)
-            .map(|tree_idx| {
-                vec![
-                    // Reduce size by 1 because we take the sibling of the leaf from `fri_siblings`
-                    // rather than `auth_paths`.
-                    AuthPath(vec![empty_hash; config.log_evaluation_domain_size() - tree_idx - 1]);
-                    config.n_queries
-                ]
-            })
-            .collect(),
-    };
-
     let all_line_fold_steps = compute_all_line_fold_steps(
         config.log_trace_size - 1 - config.log_n_last_layer_coefs,
         config.line_fold_step,
     );
+    let mut all_fold_steps = vec![1];
+    all_fold_steps.extend_from_slice(&all_line_fold_steps);
+    let mut log_layer_size = config.log_evaluation_domain_size();
+    let mut auth_paths = vec![];
+
+    for step in &all_fold_steps {
+        auth_paths.push(vec![
+            // The verifier computes the Merkle node at height `log_layer_size - step`
+            // from the witness.
+            AuthPath(vec![empty_hash; log_layer_size - step]);
+            config.n_queries
+        ]);
+        log_layer_size -= step;
+    }
+    let auth_paths = AuthPaths { data: auth_paths };
+
     let line_coset_vals_per_query_per_tree = all_line_fold_steps
         .iter()
         .map(|step| vec![vec![NoValue; 1 << step]; config.n_queries])
