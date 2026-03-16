@@ -26,8 +26,8 @@ pub const PRIVACY_RECURSION_CIRCUIT_CONSTS_HASH: [u32; 8] =
 pub const PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
     [736666193, 671587538, 1100540541, 1401951855, 202000446, 1284259076, 1586213897, 825089717];
 
-/// Returns a fixed [CairoVerifierConfig] for the privacy proof setup.
-pub fn privacy_cairo_verifier_config() -> CairoVerifierConfig {
+/// Returns a [CairoVerifierConfig] for the privacy proof setup with the given log blowup factor.
+pub fn privacy_cairo_verifier_config(log_blowup_factor: u32) -> CairoVerifierConfig {
     let privacy_set = privacy_components();
     let components: Vec<Box<dyn CircuitEval<NoValue>>> = all_components::<NoValue>()
         .into_iter()
@@ -36,11 +36,21 @@ pub fn privacy_cairo_verifier_config() -> CairoVerifierConfig {
         })
         .collect_vec();
 
-    let log_blowup_factor = 2;
+    // Derive proof config parameters from the log blowup factor, targeting 96-bit security.
+    let (pow_bits, n_queries) = match log_blowup_factor {
+        1 => (26, 70),
+        2 => (26, 35),
+        3 => (27, 23),
+        _ => panic!("Unsupported log blowup factor: {log_blowup_factor}"),
+    };
+    assert!(
+        pow_bits + n_queries as u32 * log_blowup_factor >= 96_u32,
+        "The config is not secure enough."
+    );
     let lifting_log_size = 20 + log_blowup_factor;
     let pcs_config = PcsConfig {
-        pow_bits: 26,
-        fri_config: FriConfig::new(0, log_blowup_factor, 35, 1),
+        pow_bits,
+        fri_config: FriConfig::new(0, log_blowup_factor, n_queries, 1),
         lifting_log_size: Some(lifting_log_size),
     };
 
