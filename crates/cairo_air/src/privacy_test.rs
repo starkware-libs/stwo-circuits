@@ -14,6 +14,7 @@ use circuit_prover::prover::{
 use circuits::blake::HashValue;
 use circuits::context::Context;
 use circuits::ivalue::IValue;
+use circuits::stats::Stats;
 use circuits_stark_verifier::proof::{ProofConfig, empty_proof};
 use itertools::Itertools;
 use num_traits::Zero;
@@ -138,6 +139,11 @@ fn test_privacy_recursion_with_preprocessed_context() {
 
     // Prove via the assignment flow: finalize separately, then prove with pre-computed
     // preprocessed data.
+    // add_zk_blinding(
+    //     &mut assignment_context,
+    //     cairo_proof.extended_stark_proof.proof.commitments.0[1].0,
+    //     cairo_proof.extended_stark_proof.proof.config.fri_config.n_queries,
+    // );
     finalize_context(&mut assignment_context);
     let assignment_proof = prove_circuit_assignment(
         assignment_context.values(),
@@ -222,4 +228,24 @@ fn test_privacy_consts() {
     // Finalization should not add any new constants.
     finalize_context(&mut verifier_context);
     assert_eq!(verifier_context.constants().len(), constants.len());
+}
+
+#[test]
+fn test_zk_padding() {
+    // Build the verifier circuit via NoValue and preprocess it.
+    for log_blowup_factor in 1..=3 {
+        let const_config = privacy_cairo_verifier_config(log_blowup_factor);
+        let mut context = build_cairo_verifier_circuit(&const_config);
+
+        let Stats { equals: eq_before, add, sub, mul, div, pointwise_mul, .. } = context.stats;
+        let qm31_ops_before = add + sub + mul + div + pointwise_mul;
+
+        add_zk_blinding(&mut context, [0; 32], const_config.proof_config.fri.n_queries);
+
+        let Stats { equals: eq_after, add, sub, mul, div, pointwise_mul, .. } = context.stats;
+        let qm31_ops_after = add + sub + mul + div + pointwise_mul;
+
+        assert_eq!(eq_after.next_power_of_two(), eq_before.next_power_of_two());
+        assert_eq!(qm31_ops_after.next_power_of_two(), qm31_ops_before.next_power_of_two());
+    }
 }
