@@ -36,10 +36,12 @@ pub fn privacy_cairo_verifier_config() -> CairoVerifierConfig {
         })
         .collect_vec();
 
+    let log_blowup_factor = 2;
+    let lifting_log_size = 20 + log_blowup_factor;
     let pcs_config = PcsConfig {
         pow_bits: 26,
-        fri_config: FriConfig::new(0, 2, 35, 1),
-        lifting_log_size: Some(22),
+        fri_config: FriConfig::new(0, log_blowup_factor, 35, 1),
+        lifting_log_size: Some(lifting_log_size),
     };
 
     let proof_config = ProofConfig::from_components(
@@ -53,7 +55,7 @@ pub fn privacy_cairo_verifier_config() -> CairoVerifierConfig {
     let program = load_program(&program_path);
 
     CairoVerifierConfig {
-        preprocessed_root: get_preprocessed_root(22),
+        preprocessed_root: get_preprocessed_root(lifting_log_size),
         proof_config,
         program,
         n_outputs: 1,
