@@ -6,7 +6,8 @@ use stwo::core::vcs_lifted::verifier::{LOG_PACKED_LEAF_SIZE, PACKED_LEAF_SIZE};
 
 use crate::channel::Channel;
 use crate::circle::{
-    add_points_simd, compute_half_coset_points, double_x_simd, minus_generator_point_simd, repeated_double_point_simd,
+    add_points_simd, compute_half_coset_points, double_x_simd, minus_generator_point_simd,
+    repeated_double_point_simd,
 };
 use crate::fri_proof::{FriCommitProof, FriConfig, FriProof, FriWitness};
 use crate::merkle::{hash_leaf_qm31, hash_node, hash_packed_leaf_qm31s, verify_merkle_path};
@@ -61,10 +62,17 @@ pub fn fri_decommit<Value: IValue>(
     let mut step = config.fold_step;
     assert!(config.log_trace_size >= step);
 
+    // Translate base_point to the base of the current circle domain (if we're in the circle to
+    // line step) or coset (if we're in a line to line step).
+    let packed_lowest_bits = packed_bits.split_off(..step).unwrap();
+    base_point = translate_to_base_point(context, base_point, packed_lowest_bits, true);
+    // Compute twiddles.
+    let mut twiddles_per_fold = compute_twiddles_from_base_point(context, &base_point, step, true);
+    base_point = repeated_double_point_simd(context, &base_point, step - 1);
+
     for (tree_idx, (root, witness_per_query)) in
         zip_eq(layer_commitments, witness_per_query_per_tree).enumerate()
     {
-        let is_circle_to_line = tree_idx == 0;
         let log_layer_size = bits.len();
         let lowest_bits = bits.split_off(..step).unwrap();
         let packed_lowest_bits = packed_bits.split_off(..step).unwrap();
@@ -104,14 +112,6 @@ pub fn fri_decommit<Value: IValue>(
             verify_merkle_path(context, witness_root, &bits_for_query, *root, auth_path);
         }
 
-        // Translate base_point to the base of the current circle domain (if we're in the circle to
-        // line step) or coset (if we're in a line to line step).
-        base_point =
-            translate_to_base_point(context, base_point, packed_lowest_bits, is_circle_to_line);
-        // Compute twiddles.
-        let twiddles_per_fold =
-            compute_twiddles_from_base_point(context, &base_point, step, is_circle_to_line);
-
         // Compute alpha, alpha^2, ..., alpha^(2^(step - 1));
         let mut alpha_powers = Vec::with_capacity(step);
         let mut alpha_pow = alphas[tree_idx];
@@ -143,14 +143,19 @@ pub fn fri_decommit<Value: IValue>(
             })
             .collect();
 
-
         log_degree_bound = log_degree_bound.saturating_sub(step);
         if log_degree_bound == 0 {
             break;
         }
         step = std::cmp::min(step, log_degree_bound);
-        let n_doubles = if is_circle_to_line { step - 1 } else { step };
-        base_point = repeated_double_point_simd(context, &base_point, n_doubles);
+
+        // Translate base_point to the base of the current circle domain (if we're in the circle to
+        // line step) or coset (if we're in a line to line step).
+        base_point = translate_to_base_point(context, base_point, packed_lowest_bits, false);
+
+        // Compute twiddles for the next step.
+        twiddles_per_fold = compute_twiddles_from_base_point(context, &base_point, step, false);
+        base_point = repeated_double_point_simd(context, &base_point, step);
     }
     // The last base point's y-coords hasn't been used by `compute_twiddles_from_base_point` if the
     // last step was = 1.
