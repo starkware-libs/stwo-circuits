@@ -63,13 +63,11 @@ pub fn fri_decommit<Value: IValue>(
     assert!(config.log_trace_size >= step);
     assert_eq!(config.log_n_last_layer_coefs, 0);
 
-    // Translate base_point to the base of the current circle domain (if we're in the circle to
-    // line step) or coset (if we're in a line to line step).
+    // Translate base_point to the base of the current circle domain.
     let mut packed_lowest_bits = packed_bits.split_off(..step).unwrap();
-    base_point = translate_to_base_point(context, base_point, packed_lowest_bits, true);
+    base_point = circle_translate_to_base_point(context, base_point, packed_lowest_bits);
     // Compute twiddles.
-    let mut twiddles_per_fold = compute_twiddles_from_base_point(context, &base_point, step, true);
-
+    let mut twiddles_per_fold = circle_compute_twiddles_from_base_point(context, &base_point, step);
     // Number of times to double the base point.
     // Since the first fold is circle-to-line, we double the base point step - 1 times.
     let mut n_doubles = step - 1;
@@ -168,11 +166,10 @@ pub fn fri_decommit<Value: IValue>(
         packed_lowest_bits = packed_bits.split_off(..step).unwrap();
 
         // Translate query_domain_point to the base of the current coset.
-        base_point =
-            translate_to_base_point(context, query_domain_point, packed_lowest_bits, false);
+        base_point = translate_to_base_point(context, query_domain_point, packed_lowest_bits);
 
         // Compute twiddles for the next step.
-        twiddles_per_fold = compute_twiddles_from_base_point(context, &base_point, step, false);
+        twiddles_per_fold = compute_twiddles_from_base_point(context, &base_point, step);
     }
     // The last base point's y-coords hasn't been used by `compute_twiddles_from_base_point` if the
     // last step was = 1.
@@ -234,13 +231,51 @@ fn validate_query_position_in_coset<Value: IValue>(
     }
 }
 
-/// Computes the twiddles needed for a single FRI fold step.
+/// Computes the twiddles needed for a circle-to-line FRI fold step.
+///
+/// Wraps [compute_twiddles_from_base_point] by prepending y-coordinate twiddles for the first
+/// circle-to-line fold.
+fn circle_compute_twiddles_from_base_point<Value: IValue>(
+    context: &mut Context<Value>,
+    base_point: &CirclePoint<Simd>,
+    fold_step: usize,
+) -> Vec<Vec<Simd>> {
+    assert!(fold_step > 0);
+    let n_queries = base_point.x.len();
+
+    if fold_step == 1 {
+        return vec![vec![base_point.y.inv(context)]];
+    }
+
+    // For circle-to-line, the witness domain is a circle domain with half-coset of size
+    // `fold_step - 1`.
+    let coset_points = compute_half_coset_points(context, base_point, (fold_step - 1) as u32);
+    if let Some(last_pt) = coset_points.iter().skip(1).last() {
+        Simd::mark_partly_used(context, &last_pt.y);
+    }
+
+    // The first fold uses y-coordinate twiddles (one per pair of conjugate points).
+    let zero = Simd::zero(context, n_queries);
+    let y_coords: Vec<Simd> =
+        coset_points.iter().flat_map(|p| [p.y.clone(), Simd::sub(context, &zero, &p.y)]).collect();
+    let mut twiddles_per_fold: Vec<Vec<Simd>> =
+        vec![y_coords.iter().map(|y| y.inv(context)).collect()];
+
+    // The remaining folds use x-coordinate twiddles, reusing the same coset points.
+    let mut x_coords: Vec<Simd> = coset_points.into_iter().map(|p| p.x).collect();
+    for fold_idx in 0..fold_step - 1 {
+        twiddles_per_fold.push(x_coords.iter().map(|x| x.inv(context)).collect());
+        if fold_idx != fold_step - 2 {
+            x_coords = x_coords.iter().step_by(2).map(|x| double_x_simd(context, x)).collect();
+        }
+    }
+    twiddles_per_fold
+}
+
+/// Computes the twiddles needed for a single line-to-line FRI fold step.
 ///
 /// Returns a `Vec<Vec<Simd>>` indexed as `[fold_idx][twiddle_within_fold]`, where each twiddle is
-/// SIMD-packed across queries.
-///
-/// For a circle-to-line fold, the first fold's twiddles are inverse y-coordinates and the rest are
-/// inverse x-coordinates. For a line-to-line fold, all twiddles are inverse x-coordinates.
+/// SIMD-packed across queries. All twiddles are inverse x-coordinates.
 ///
 /// # Arguments
 ///
@@ -250,47 +285,24 @@ fn validate_query_position_in_coset<Value: IValue>(
 ///   a₁a₂a₃a₄...aₙ then its base point is the circle point with index 0...0a_{step + 1}...aₙ. So,
 ///   for example, for a query with index 101110 and step = 2, its base point has index 001110.
 /// - `fold_step`: the folding step for the current FRI fold.
-/// - `is_circle_to_line`: whether this is the first (circle-to-line) fold.
 fn compute_twiddles_from_base_point<Value: IValue>(
     context: &mut Context<Value>,
     base_point: &CirclePoint<Simd>,
     fold_step: usize,
-    is_circle_to_line: bool,
 ) -> Vec<Vec<Simd>> {
     assert!(fold_step > 0);
-    let n_queries = base_point.x.len();
     let mut twiddles_per_fold: Vec<Vec<Simd>> = vec![];
 
-    if is_circle_to_line && fold_step == 1 {
-        twiddles_per_fold.push(vec![base_point.y.inv(context)]);
-        return twiddles_per_fold;
-    }
-    // For circle-to-line, the witness domain is a circle domain with half-coset of size `fold_step
-    // - 1`.
-    let coset_log_size = if is_circle_to_line { fold_step - 1 } else { fold_step };
-    let coset_points = compute_half_coset_points(context, base_point, coset_log_size as u32);
+    let coset_points = compute_half_coset_points(context, base_point, fold_step as u32);
     // The y-coordinate of the last point of half_coset is not necessarily used. In the special case
     // where half_coset consists only of the base point, we don't enter this code path (this special
     // case happens if and only if fold step = 1).
     if let Some(last_pt) = coset_points.iter().skip(1).last() {
         Simd::mark_partly_used(context, &last_pt.y);
     }
-    // The first fold of the circle-to-line step uses y-coordinate twiddles (one per pair of
-    // conjugate points). For each point in the half coset, we produce both y and -y - recall that
-    // if i = 0 (mod 4), then the points in the circle domain, in bit-reversed order, at indices
-    // [i, i + 3] are of the form (x,y), (x,-y), (-x,-y), (-x,y).
-    if is_circle_to_line {
-        let zero = Simd::zero(context, n_queries);
-        let y_coords: Vec<Simd> = coset_points
-            .iter()
-            .flat_map(|p| [p.y.clone(), Simd::sub(context, &zero, &p.y)])
-            .collect();
-        twiddles_per_fold.push(y_coords.iter().map(|y| y.inv(context)).collect());
-    }
 
     let mut x_coords: Vec<Simd> = coset_points.into_iter().map(|p| p.x).collect();
-    let start_fold = usize::from(is_circle_to_line);
-    for fold_idx in start_fold..fold_step {
+    for fold_idx in 0..fold_step {
         twiddles_per_fold.push(x_coords.iter().map(|x| x.inv(context)).collect());
         // Don't add unused gates in the last iteration.
         if fold_idx != fold_step - 1 {
@@ -298,6 +310,27 @@ fn compute_twiddles_from_base_point<Value: IValue>(
         }
     }
     twiddles_per_fold
+}
+
+/// Translates each packed query point to the base point of its local circle domain for the
+/// circle-to-line fold.
+///
+/// Wraps [translate_to_base_point] by first handling the circle-specific bit (negating y).
+fn circle_translate_to_base_point<Value: IValue>(
+    context: &mut Context<Value>,
+    mut base_point: CirclePoint<Simd>,
+    packed_bits: &[Simd],
+) -> CirclePoint<Simd> {
+    let n_queries = base_point.x.len();
+    let zero = Simd::zero(context, n_queries);
+    let minus_y_coord = Simd::sub(context, &zero, &base_point.y);
+    let minus_y_point = CirclePoint { x: base_point.x.clone(), y: minus_y_coord };
+    // Select between `point` and `point - g_0` (implemented by negating `y`).
+    base_point = CirclePoint {
+        x: base_point.x.clone(),
+        y: Simd::select(context, &packed_bits[0], &base_point.y, &minus_y_point.y),
+    };
+    translate_to_base_point(context, base_point, &packed_bits[1..])
 }
 
 /// Translates each packed query point to the base point of its local FRI coset.
@@ -317,22 +350,8 @@ fn translate_to_base_point<Value: IValue>(
     context: &mut Context<Value>,
     mut base_point: CirclePoint<Simd>,
     packed_bits: &[Simd],
-    is_circle_to_line: bool,
 ) -> CirclePoint<Simd> {
     let n_queries = base_point.x.len();
-    let mut packed_bits = packed_bits;
-
-    if is_circle_to_line {
-        let zero = Simd::zero(context, n_queries);
-        let minus_y_coord = Simd::sub(context, &zero, &base_point.y);
-        let minus_y_point = CirclePoint { x: base_point.x.clone(), y: minus_y_coord };
-        // Select between `point` and `point - g_0` (implemented by negating `y`).
-        base_point = CirclePoint {
-            x: base_point.x.clone(),
-            y: Simd::select(context, &packed_bits[0], &base_point.y, &minus_y_point.y),
-        };
-        packed_bits = &packed_bits[1..];
-    }
 
     for (i, bit) in packed_bits.iter().enumerate() {
         // The group inverse of the generator of the subgroup of size 2^(i+1).
