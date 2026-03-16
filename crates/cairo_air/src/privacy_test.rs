@@ -5,11 +5,11 @@ use circuit_air::statement::all_circuit_components;
 use circuit_air::verify::{
     CircuitConfig, CircuitPublicData, build_verification_circuit, verify_circuit,
 };
-use circuit_common::finalize::finalize_context;
+use circuit_common::finalize::{add_zk_blinding, finalize_context};
 use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_prover::prover::{
-    BaseColumnPool, CircuitProof, SimdBackend, add_zk_blinding,
-    preprare_circuit_proof_for_circuit_verifier, prove_circuit, prove_circuit_assignment,
+    BaseColumnPool, CircuitProof, SimdBackend, preprare_circuit_proof_for_circuit_verifier,
+    prove_circuit, prove_circuit_assignment,
 };
 use circuits::blake::HashValue;
 use circuits::context::Context;
