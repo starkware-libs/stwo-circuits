@@ -189,11 +189,12 @@ fn add_eq_to_preprocessed_trace(circuit: &Circuit, pp_trace: &mut PreProcessedTr
 }
 
 // TODO(alonf): Parallelize.
+/// Fills blake preprocessed columns. Returns the number of blake compress rows (before padding).
 fn fill_blake_columns(
     blake: &[Blake],
     multiplicities: &[usize],
     columns: &mut [Vec<usize>; N_BLAKE_PP_COLUMNS],
-) {
+) -> usize {
     // IV should be in state_address 0.
     let mut state_address = 1;
     for gate in blake.iter() {
@@ -273,6 +274,7 @@ fn fill_blake_columns(
     columns[10].resize(blake_output_padding, 0);
     (11..13).for_each(|i| columns[i].resize(blake_output_padding, *columns[i].first().unwrap()));
     (13..15).for_each(|i| columns[i].resize(blake_output_padding, 0)); // Multiplicity columns.
+    n_blake_compress
 }
 
 /// Builds the fixed preprocessed table for BLAKE sigma lookups.
@@ -300,11 +302,12 @@ fn gen_blake_sigma_columns() -> [Vec<usize>; 16] {
 // 10 columns for blake_gate and 5 columns for blake_output
 const N_BLAKE_PP_COLUMNS: usize = 10 + 5;
 
+/// Returns the log_size of the blake sigma columns.
 fn add_blake_to_preprocessed_trace(
     circuit: &Circuit,
     multiplicities: &[usize],
     pp_trace: &mut PreProcessedTrace,
-) {
+) -> u32 {
     let Circuit {
         n_vars: _,
         add: _,
@@ -342,9 +345,11 @@ fn add_blake_to_preprocessed_trace(
 
     // Add blake sigma columns (16 columns of 16 rows each).
     let blake_sigma = gen_blake_sigma_columns();
+    let blake_sigma_log_size = blake_sigma[0].len().ilog2();
     for (i, column) in blake_sigma.into_iter().enumerate() {
         pp_trace.push_column(PreProcessedColumnId { id: format!("blake_sigma_{i}") }, column);
     }
+    blake_sigma_log_size
 }
 
 /// A collection of preprocessed columns, whose values are publicly acknowledged, and independent of
@@ -381,15 +386,19 @@ impl PreProcessedTrace {
         self.column_indices =
             self.column_ids.iter().cloned().enumerate().map(|(idx, id)| (id, idx)).collect();
     }
-    fn add_non_circuit_preprocessed_columns(pp_trace: &mut PreProcessedTrace) {
-        let seq: [Vec<usize>; 17] = std::array::from_fn(|i| (0..1_usize << (i + 4)).collect());
+    fn add_non_circuit_preprocessed_columns(
+        pp_trace: &mut PreProcessedTrace,
+        log_seq_sizes: &[u32],
+    ) {
+        for &log_size in log_seq_sizes {
+            let seq_column: Vec<usize> = (0..1_usize << log_size).collect();
+            pp_trace
+                .push_column(PreProcessedColumnId { id: format!("seq_{log_size}") }, seq_column);
+        }
         let bitwise_xor: Vec<Vec<usize>> = [4, 7, 8, 9, 10]
             .into_iter()
             .flat_map(|n_bits| gen_xor_columns(n_bits).into_iter())
             .collect();
-        for (i, column) in seq.into_iter().enumerate() {
-            pp_trace.push_column(PreProcessedColumnId { id: format!("seq_{}", i + 4) }, column);
-        }
         let xor_col_ids = [
             "bitwise_xor_4_0",
             "bitwise_xor_4_1",
@@ -481,9 +490,19 @@ impl PreprocessedCircuit {
         let qm31_ops_trace_generator =
             add_qm31_ops_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
         // Add Blake columns.
-        add_blake_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
+        let blake_sigma_log_size =
+            add_blake_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
 
-        PreProcessedTrace::add_non_circuit_preprocessed_columns(&mut pp_trace);
+        // Generate seq columns for sizes needed by circuit components:
+        // - blake_sigma_log_size: needed by blake_round_sigma.
+        // - 15, 16: needed by range_check_15 and range_check_16.
+        // - log_sizes of existing preprocessed columns: needed by components using
+        //   seq_of_component_size (e.g. blake_gate).
+        let mut log_seq_sizes: Vec<u32> = pp_trace.log_sizes();
+        log_seq_sizes.extend([blake_sigma_log_size, 15, 16]);
+        log_seq_sizes.sort();
+        log_seq_sizes.dedup();
+        PreProcessedTrace::add_non_circuit_preprocessed_columns(&mut pp_trace, &log_seq_sizes);
         pp_trace.sort_by_size();
 
         // The trace size is the max between:
