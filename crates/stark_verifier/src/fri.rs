@@ -52,7 +52,7 @@ pub fn fri_decommit<Value: IValue>(
         auth_paths,
         witness: FriWitness(witness_per_query_per_tree),
     } = proof;
-  
+
     let mut fri_data = fri_input.to_vec();
     let mut base_point = queries.points.clone();
     let mut packed_bits = queries.bits.as_slice();
@@ -61,10 +61,16 @@ pub fn fri_decommit<Value: IValue>(
     let mut step = config.fold_step;
     assert!(step >= config.log_trace_size);
 
+    // Translate base_point to the base of the current circle domain (if we're in the circle to
+    // line step) or coset (if we're in a line to line step).
+    let packed_lowest_bits = packed_bits.split_off(..step).unwrap();
+    base_point = translate_to_base_point(context, base_point, packed_lowest_bits, true);
+    // Compute twiddles.
+    let mut twiddles_per_fold = compute_twiddles_from_base_point(context, &base_point, step, true);
+
     for (tree_idx, (root, witness_per_query)) in
         zip_eq(layer_commitments, witness_per_query_per_tree).enumerate()
     {
-        let is_circle_to_line = tree_idx == 0;
         let log_layer_size = bits.len();
         let lowest_bits = bits.split_off(..step).unwrap();
         let packed_lowest_bits = packed_bits.split_off(..step).unwrap();
@@ -104,14 +110,6 @@ pub fn fri_decommit<Value: IValue>(
             verify_merkle_path(context, witness_root, &bits_for_query, *root, auth_path);
         }
 
-        // Translate base_point to the base of the current circle domain (if we're in the circle to
-        // line step) or coset (if we're in a line to line step).
-        base_point =
-            translate_to_base_point(context, base_point, packed_lowest_bits, is_circle_to_line);
-        // Compute twiddles.
-        let twiddles_per_fold =
-            compute_twiddles_from_base_point(context, &base_point, step, is_circle_to_line);
-
         // Compute alpha, alpha^2, ..., alpha^(2^(step - 1));
         let mut alpha_powers = Vec::with_capacity(step);
         let mut alpha_pow = alphas[tree_idx];
@@ -143,14 +141,19 @@ pub fn fri_decommit<Value: IValue>(
             })
             .collect();
 
-
         log_degree_bound -= step;
         step = std::cmp::min(step, log_degree_bound);
 
         // Don't add unused gates in the last iteration.
         if log_degree_bound == 0 {
-           break;
+            break;
         }
+
+        // Translate base_point to the base of the current circle domain (if we're in the circle to
+        // line step) or coset (if we're in a line to line step).
+        base_point = translate_to_base_point(context, base_point, packed_lowest_bits, false);
+        // Compute twiddles.
+        twiddles_per_fold = compute_twiddles_from_base_point(context, &base_point, step, false);
     }
     // The last base point's y-coords hasn't been used by `compute_twiddles_from_base_point` if the
     // last step was = 1.
