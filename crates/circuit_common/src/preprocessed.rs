@@ -189,11 +189,12 @@ fn add_eq_to_preprocessed_trace(circuit: &Circuit, pp_trace: &mut PreProcessedTr
 }
 
 // TODO(alonf): Parallelize.
+/// Fills blake preprocessed columns. Returns the number of blake compress rows (before padding).
 fn fill_blake_columns(
     blake: &[Blake],
     multiplicities: &[usize],
     columns: &mut [Vec<usize>; N_BLAKE_PP_COLUMNS],
-) {
+) -> usize {
     // IV should be in state_address 0.
     let mut state_address = 1;
     for gate in blake.iter() {
@@ -273,6 +274,7 @@ fn fill_blake_columns(
     columns[10].resize(blake_output_padding, 0);
     (11..13).for_each(|i| columns[i].resize(blake_output_padding, *columns[i].first().unwrap()));
     (13..15).for_each(|i| columns[i].resize(blake_output_padding, 0)); // Multiplicity columns.
+    n_blake_compress
 }
 
 /// Builds the fixed preprocessed table for BLAKE sigma lookups.
@@ -300,6 +302,7 @@ fn gen_blake_sigma_columns() -> [Vec<usize>; 16] {
 // 10 columns for blake_gate and 5 columns for blake_output
 const N_BLAKE_PP_COLUMNS: usize = 10 + 5;
 
+/// Returns the log_size of the blake sigma columns.
 fn add_blake_to_preprocessed_trace(
     circuit: &Circuit,
     multiplicities: &[usize],
@@ -381,15 +384,19 @@ impl PreProcessedTrace {
         self.column_indices =
             self.column_ids.iter().cloned().enumerate().map(|(idx, id)| (id, idx)).collect();
     }
-    fn add_non_circuit_preprocessed_columns(pp_trace: &mut PreProcessedTrace) {
-        let seq: [Vec<usize>; 17] = std::array::from_fn(|i| (0..1_usize << (i + 4)).collect());
+    fn add_non_circuit_preprocessed_columns(
+        pp_trace: &mut PreProcessedTrace,
+        log_seq_sizes: &[u32],
+    ) {
+        for &log_size in log_seq_sizes {
+            let seq_column: Vec<usize> = (0..1_usize << log_size).collect();
+            pp_trace
+                .push_column(PreProcessedColumnId { id: format!("seq_{log_size}") }, seq_column);
+        }
         let bitwise_xor: Vec<Vec<usize>> = [4, 7, 8, 9, 10]
             .into_iter()
             .flat_map(|n_bits| gen_xor_columns(n_bits).into_iter())
             .collect();
-        for (i, column) in seq.into_iter().enumerate() {
-            pp_trace.push_column(PreProcessedColumnId { id: format!("seq_{}", i + 4) }, column);
-        }
         let xor_col_ids = [
             "bitwise_xor_4_0",
             "bitwise_xor_4_1",
@@ -482,17 +489,28 @@ impl PreprocessedCircuit {
             add_qm31_ops_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
         // Add Blake columns.
         add_blake_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
+        let log_n_blake_updates = pp_trace
+            .get_column(&PreProcessedColumnId { id: "finalize_flag".to_owned() })
+            .len()
+            .ilog2();
 
-        PreProcessedTrace::add_non_circuit_preprocessed_columns(&mut pp_trace);
+        // Generate seq columns for sizes needed by circuit components:
+        // - 15, 16: needed by range_check_15 and range_check_16.
+        // - 4: needed by blake_round_sigma.
+        // - log_sizes of existing preprocessed columns: needed by components using
+        //   seq_of_component_size (e.g. blake_gate).
+        let mut log_seq_sizes: Vec<u32> = pp_trace.log_sizes();
+        log_seq_sizes.extend([log_n_blake_updates, 4, 15, 16]);
+        log_seq_sizes.sort();
+        log_seq_sizes.dedup();
+        PreProcessedTrace::add_non_circuit_preprocessed_columns(&mut pp_trace, &log_seq_sizes);
         pp_trace.sort_by_size();
 
         // The trace size is the max between:
         // 1. The largest preprocessed column size.
         // 2. BlakeG trace size (= number of blake updates * 2^7).
         let max_pp_trace_log_size = pp_trace.log_sizes().into_iter().max().unwrap();
-        let blake_updates =
-            pp_trace.get_column(&PreProcessedColumnId { id: "finalize_flag".to_owned() }).len();
-        let blake_g_log_size = blake_updates.ilog2() + 7;
+        let blake_g_log_size = log_n_blake_updates + 7;
         let trace_log_size = std::cmp::max(max_pp_trace_log_size, blake_g_log_size);
 
         let params = CircuitParams {

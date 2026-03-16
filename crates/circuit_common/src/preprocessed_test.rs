@@ -36,12 +36,13 @@ fn test_preprocess_circuit() {
         .preprocessed_trace
         .get_trace::<SimdBackend>();
 
-    assert_eq!(preprocessed_trace.len(), 73);
+    assert_eq!(preprocessed_trace.len(), 61);
     let lengths = preprocessed_trace.iter().map(|column| column.values.len()).collect_vec();
     expect![[r#"
         [
             2,
             2,
+            2,
             8,
             8,
             8,
@@ -50,6 +51,7 @@ fn test_preprocess_circuit() {
             8,
             8,
             8,
+            8,
             16,
             16,
             16,
@@ -82,19 +84,9 @@ fn test_preprocess_circuit() {
             16,
             16,
             16,
-            32,
-            64,
-            128,
             256,
             256,
             256,
-            256,
-            512,
-            1024,
-            2048,
-            4096,
-            8192,
-            16384,
             16384,
             16384,
             16384,
@@ -103,13 +95,9 @@ fn test_preprocess_circuit() {
             65536,
             65536,
             65536,
-            131072,
             262144,
             262144,
             262144,
-            262144,
-            524288,
-            1048576,
             1048576,
             1048576,
             1048576,
