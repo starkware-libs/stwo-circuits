@@ -2,8 +2,9 @@ use crate::N_LANES;
 use circuits::blake::{HashValue, blake};
 use circuits::context::{Context, Var};
 use circuits::eval;
-use circuits::ivalue::IValue;
-use circuits::ops::output;
+use circuits::ivalue::{IValue, qm31_from_u32s};
+use circuits::ops::{eq, output};
+use rand_chacha::rand_core::{RngCore, SeedableRng};
 
 fn pad_qm31_ops(context: &mut Context<impl IValue>) {
     let qm31_ops_n_rows = context.circuit.add.len()
@@ -75,4 +76,37 @@ pub fn finalize_context(context: &mut Context<impl IValue>) {
     pad_eq(context);
     pad_qm31_ops(context);
     pad_blake(context);
+}
+
+/// Adds ZK blinding to the circuit by adding random values to the qm31_ops and eq components.
+pub fn add_zk_blinding(context: &mut Context<impl IValue>, seed_bytes: [u8; 32], n_padding: usize) {
+    let mut rng = rand_chacha::ChaCha20Rng::from_seed(seed_bytes);
+    for _ in 0..n_padding {
+        // Note that we don't use the guess function here because we want to be able to run this
+        // function after finalize_guessed_vars.
+        let value1 = qm31_from_u32s(rng.next_u32(), rng.next_u32(), rng.next_u32(), rng.next_u32());
+        let var1 = context.new_var(IValue::from_qm31(value1));
+        context.circuit.add.push(circuits::circuit::Add {
+            in0: var1.idx,
+            in1: context.zero().idx,
+            out: var1.idx,
+        });
+        let value2 = qm31_from_u32s(rng.next_u32(), rng.next_u32(), rng.next_u32(), rng.next_u32());
+        let var2 = context.new_var(IValue::from_qm31(value2));
+        context.circuit.add.push(circuits::circuit::Add {
+            in0: context.zero().idx,
+            in1: var2.idx,
+            out: var2.idx,
+        });
+        eval!(context, (var1) + (var2));
+
+        let value3 = qm31_from_u32s(rng.next_u32(), rng.next_u32(), rng.next_u32(), rng.next_u32());
+        let var3 = context.new_var(IValue::from_qm31(value3));
+        context.circuit.add.push(circuits::circuit::Add {
+            in0: var3.idx,
+            in1: context.zero().idx,
+            out: var3.idx,
+        });
+        eq(context, var3, var3);
+    }
 }
