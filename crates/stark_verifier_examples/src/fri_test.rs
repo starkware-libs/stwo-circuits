@@ -66,9 +66,11 @@ fn test_fri_decommit_with_jumps() {
 
     // Compute the circuit FriProof.
     let all_line_fold_steps = compute_all_line_fold_steps(5, 2);
-    let witness = test_construct_fri_witness(&fri_proof, &all_line_fold_steps, &query_indices);
+    // TODO(Leo): remove hardcoded 1 in next PR.
+    let all_fold_steps = [&[1], all_line_fold_steps.as_slice()].concat();
+    let witness = test_construct_fri_witness(&fri_proof, &all_fold_steps, &query_indices);
     let auth_paths =
-        test_construct_fri_auth_paths(&fri_proof, &config, &query_indices, &all_line_fold_steps);
+        test_construct_fri_auth_paths(&fri_proof, &config, &query_indices, &all_fold_steps);
     let last_layer_coefficients = fri_proof.proof.last_layer_poly.into_ordered_coefficients();
     let circuit_fri_proof = FriProof {
         commit: FriCommitProof {
@@ -143,43 +145,43 @@ fn create_fri_proof() -> ExtendedFriProof<Blake2sM31Hasher> {
     prover.decommit_on_queries(&queries)
 }
 
+/// Constructs the witnesses for the FRI decommitment phase with the values from the given proof
+/// ([ExtendedFriProof]).
 fn test_construct_fri_witness(
     proof: &ExtendedFriProof<Blake2sM31MerkleHasher>,
-    all_line_fold_steps: &[usize],
+    all_fold_steps: &[usize],
     query_locations: &[usize],
 ) -> FriWitness<QM31> {
-    let mut line_coset_vals_per_query_per_tree = vec![vec![]; proof.proof.inner_layers.len()];
-    let mut circle_siblings = vec![];
-
+    let all_layers = [
+        &[&proof.aux.first_layer][..],
+        proof.aux.inner_layers.iter().collect::<Vec<_>>().as_slice(),
+    ]
+    .concat();
+    let mut witness_per_query_per_tree = vec![vec![]; all_fold_steps.len()];
     for query in query_locations {
-        circle_siblings.push(proof.aux.first_layer.all_values[0][&(query ^ 1)]);
-        let mut pos = query >> 1;
-        for (tree_idx, (layer, step)) in
-            zip_eq(&proof.aux.inner_layers, all_line_fold_steps).enumerate()
-        {
+        let mut pos = *query;
+        for (tree_idx, (layer, step)) in zip_eq(&all_layers, all_fold_steps).enumerate() {
             let start = (pos >> step) << step;
-            let line_coset_vals: Vec<_> =
+            let witness: Vec<_> =
                 (start..start + (1 << step)).map(|i| layer.all_values[0][&i]).collect();
-            line_coset_vals_per_query_per_tree[tree_idx].push(line_coset_vals);
+            witness_per_query_per_tree[tree_idx].push(witness);
             pos >>= step;
         }
     }
-    FriWitness { circle_siblings, line_coset_vals_per_query_per_tree }
+    FriWitness(witness_per_query_per_tree)
 }
 
 /// Constructs [AuthPaths] for the FRI trees with the values from the given proof
-/// ([ExtendedStarkProof]).
-pub fn test_construct_fri_auth_paths(
+/// ([ExtendedFriProof]).
+fn test_construct_fri_auth_paths(
     proof: &ExtendedFriProof<Blake2sM31MerkleHasher>,
     config: &ProofConfig,
     query_locations: &[usize],
-    all_line_fold_steps: &[usize],
+    all_fold_steps: &[usize],
 ) -> AuthPaths<QM31> {
     let unsorted_query_locations = &query_locations;
     let layers = chain!([&proof.aux.first_layer], &proof.aux.inner_layers);
     let mut log_layer_size = config.log_evaluation_domain_size();
-    // The circle-to-line fold is hardcoded to 1 currently.
-    let all_fold_steps = [&[1], all_line_fold_steps].concat();
     let mut fold_sum = 0;
     let mut res = vec![];
 
@@ -189,11 +191,11 @@ pub fn test_construct_fri_auth_paths(
                 .iter()
                 .map(|query| {
                     let mut pos = *query;
-                    let pack_leaves = log_layer_size >= 2 && step > 1;
+                    let pack_leaves = log_layer_size >= LOG_PACKED_LEAF_SIZE as usize && *step > 1;
                     let pack_shift = if pack_leaves { LOG_PACKED_LEAF_SIZE as usize } else { 0 };
                     pos >>= fold_sum + step;
                     let mut auth_path: AuthPath<QM31> = AuthPath(vec![]);
-                    for j in step..log_layer_size {
+                    for j in *step..log_layer_size {
                         let hash =
                             layer_proof.decommitment.all_node_values[j - pack_shift][&(pos ^ 1)];
                         auth_path.0.push(hash.into());
