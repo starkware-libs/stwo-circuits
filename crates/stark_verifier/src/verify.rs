@@ -60,7 +60,7 @@ pub fn verify<Value: IValue>(
         config.fri.log_blowup_factor as u32,
         config.fri.n_queries as u32,
         config.fri.log_n_last_layer_coefs as u32,
-        config.fri.line_fold_step as u32,
+        config.fri.fold_step as u32,
         lifting_log_size as u32,
     ];
 

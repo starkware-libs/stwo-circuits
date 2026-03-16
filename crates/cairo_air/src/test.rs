@@ -105,6 +105,7 @@ pub fn verify_cairo_with_component_set(
 #[test]
 fn test_verify() {
     let mut pcs_config = PcsConfig::default();
+    pcs_config.fri_config.fold_step = 4;
     pcs_config.lifting_log_size =
         Some(MAX_SEQUENCE_LOG_SIZE as u32 + pcs_config.fri_config.log_blowup_factor);
 

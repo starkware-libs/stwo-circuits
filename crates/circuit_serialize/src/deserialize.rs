@@ -7,7 +7,7 @@ use stwo::core::fields::qm31::QM31;
 use circuits::blake::HashValue;
 use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::fri_proof::{
-    FriCommitProof, FriConfig, FriProof, FriWitness, compute_all_line_fold_steps,
+    FriCommitProof, FriConfig, FriProof, FriWitness, compute_all_fold_steps,
 };
 use circuits_stark_verifier::merkle::{AuthPath, AuthPaths};
 use circuits_stark_verifier::oods::{EvalDomainSamples, N_COMPOSITION_COLUMNS};
@@ -108,11 +108,11 @@ pub fn deserialize_proof_with_config(
     let proof_of_work_nonce = QM31::deserialize(data)?;
     let interaction_pow_nonce = QM31::deserialize(data)?;
     // Deserialize FRI proof.
-    let all_line_fold_steps = compute_all_line_fold_steps(
-        config.fri.log_trace_size - 1 - config.fri.log_n_last_layer_coefs,
-        config.fri.line_fold_step,
+    let all_fold_steps = compute_all_fold_steps(
+        config.fri.log_trace_size - config.fri.log_n_last_layer_coefs,
+        config.fri.fold_step,
     );
-    let fri = deserialize_fri_proof(data, &config.fri, &all_line_fold_steps)?;
+    let fri = deserialize_fri_proof(data, &config.fri, &all_fold_steps)?;
 
     Ok(Proof {
         channel_salt,
@@ -232,9 +232,9 @@ fn deserialize_eval_domain_auth_paths(
 fn deserialize_fri_commit_proof(
     data: &mut &[u32],
     config: &FriConfig,
-    all_line_fold_steps: &[usize],
+    all_fold_steps: &[usize],
 ) -> DeserializeResult<FriCommitProof<QM31>> {
-    let n_layers = 1 + all_line_fold_steps.len();
+    let n_layers = all_fold_steps.len();
     let n_last_layer_coefs = 1 << config.log_n_last_layer_coefs;
     Ok(FriCommitProof {
         layer_commitments: deserialize_vec(data, n_layers)?,
@@ -245,12 +245,11 @@ fn deserialize_fri_commit_proof(
 fn deserialize_fri_proof(
     data: &mut &[u32],
     config: &FriConfig,
-    all_line_fold_steps: &[usize],
+    all_fold_steps: &[usize],
 ) -> DeserializeResult<FriProof<QM31>> {
-    let commit = deserialize_fri_commit_proof(data, config, all_line_fold_steps)?;
+    let commit = deserialize_fri_commit_proof(data, config, all_fold_steps)?;
 
     // The circle-to-line fold is hardcoded to 1 currently.
-    let all_fold_steps = [&[1], all_line_fold_steps].concat();
     let mut path_len = config.log_evaluation_domain_size();
     let mut auth_path_trees = Vec::with_capacity(all_fold_steps.len());
     for step in all_fold_steps.iter() {
