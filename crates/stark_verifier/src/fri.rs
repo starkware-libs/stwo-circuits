@@ -63,15 +63,25 @@ pub fn fri_decommit<Value: IValue>(
     assert!(config.log_trace_size >= step);
     assert_eq!(config.log_n_last_layer_coefs, 0);
 
+    // Translate base_point to the base of the current circle domain (if we're in the circle to
+    // line step) or coset (if we're in a line to line step).
+    let mut packed_lowest_bits = packed_bits.split_off(..step).unwrap();
+    base_point = translate_to_base_point(context, base_point, packed_lowest_bits, true);
+    // Compute twiddles.
+    let mut twiddles_per_fold = compute_twiddles_from_base_point(context, &base_point, step, true);
+
+    // Number of times to double the base point.
+    // Since the first fold is circle-to-line, we double the base point step - 1 times.
+    let mut n_doubles = step - 1;
+
     for (tree_idx, (root, witness_per_query)) in
         zip_eq(layer_commitments, witness_per_query_per_tree).enumerate()
     {
-        let is_circle_to_line = tree_idx == 0;
         let log_layer_size = bits.len();
-        let lowest_bits = bits.split_off(..step).unwrap();
-        let packed_lowest_bits = packed_bits.split_off(..step).unwrap();
+
         // Validate that the fri query is in the correct position inside the guessed
         // `witness_per_query`.
+        let lowest_bits = bits.split_off(..step).unwrap();
         validate_query_position_in_coset(context, witness_per_query, &fri_data, lowest_bits);
 
         // Check merkle decommitment.
@@ -105,14 +115,6 @@ pub fn fri_decommit<Value: IValue>(
             let bits_for_query = bits.iter().map(|b| b[query_idx]).collect_vec();
             verify_merkle_path(context, witness_root, &bits_for_query, *root, auth_path);
         }
-
-        // Translate base_point to the base of the current circle domain (if we're in the circle to
-        // line step) or coset (if we're in a line to line step).
-        base_point =
-            translate_to_base_point(context, base_point, packed_lowest_bits, is_circle_to_line);
-        // Compute twiddles.
-        let twiddles_per_fold =
-            compute_twiddles_from_base_point(context, &base_point, step, is_circle_to_line);
 
         // Compute alpha, alpha^2, ..., alpha^(2^(step - 1));
         let mut alpha_powers = Vec::with_capacity(step);
@@ -149,9 +151,22 @@ pub fn fri_decommit<Value: IValue>(
         if log_degree_bound == 0 {
             break;
         }
-        let n_doubles = if is_circle_to_line { step - 1 } else { step };
-        base_point = repeated_double_point_simd(context, &base_point, n_doubles);
+
+        // Double the base point to get the query domain point for the next step.
+        let query_domain_point = repeated_double_point_simd(context, &base_point, n_doubles);
+
+        // Update the number of times to double the base point for the next step.
+        n_doubles = step;
         step = std::cmp::min(step, log_degree_bound);
+
+        packed_lowest_bits = packed_bits.split_off(..step).unwrap();
+
+        // Translate query_domain_point to the base of the current coset.
+        base_point =
+            translate_to_base_point(context, query_domain_point, packed_lowest_bits, false);
+
+        // Compute twiddles for the next step.
+        twiddles_per_fold = compute_twiddles_from_base_point(context, &base_point, step, false);
     }
     // The last base point's y-coords hasn't been used by `compute_twiddles_from_base_point` if the
     // last step was = 1.
