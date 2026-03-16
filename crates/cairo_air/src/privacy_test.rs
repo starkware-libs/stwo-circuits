@@ -88,7 +88,8 @@ fn test_verify_privacy() {
     let context = verify_cairo_with_component_set(&cairo_proof, privacy_components()).unwrap();
 
     // Build the verifier circuit via NoValue.
-    let const_config = privacy_cairo_verifier_config();
+    let log_blowup_factor = 2;
+    let const_config = privacy_cairo_verifier_config(log_blowup_factor);
     let novalue_context = build_cairo_verifier_circuit(&const_config);
 
     // Check that building the verifier circuit via NoValue produces the same topology.
@@ -116,7 +117,8 @@ fn test_verify_privacy_with_recursion() {
 #[test]
 fn test_privacy_recursion_with_preprocessed_context() {
     // Build the verifier circuit via NoValue and preprocess it.
-    let const_config = privacy_cairo_verifier_config();
+    let cairo_proof_log_blowup_factor = 2;
+    let const_config = privacy_cairo_verifier_config(cairo_proof_log_blowup_factor);
     let mut novalue_context = build_cairo_verifier_circuit(&const_config);
     let preprocessed = PreprocessedCircuit::preprocess_circuit(&mut novalue_context);
 
@@ -160,7 +162,8 @@ fn test_privacy_recursion_with_preprocessed_context() {
 
 #[test]
 fn test_privacy_consts() {
-    let const_config = privacy_cairo_verifier_config();
+    let cairo_proof_log_blowup_factor = 2;
+    let const_config = privacy_cairo_verifier_config(cairo_proof_log_blowup_factor);
     let mut novalue_context = build_cairo_verifier_circuit(&const_config);
     let constants = novalue_context.constants().keys().cloned().collect_vec();
     let blake_value = QM31::blake(constants.as_slice(), constants.len() * 16);
