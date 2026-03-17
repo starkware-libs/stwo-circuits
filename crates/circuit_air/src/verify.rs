@@ -8,10 +8,15 @@ use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 use crate::statement::{CircuitStatement, INTERACTION_POW_BITS};
 
+// Make more similar to the serialized public claim?
 pub struct CircuitPublicData {
     pub output_values: Vec<QM31>,
 }
 
+/// This deviates from CairoVerifierConfig, it assumes that all components are always used
+/// and thus the proof config is omitted.
+// TODO change this struct such that the verifier circuit will be derived by the data here,
+// similar to CairoVerifierConfig
 #[derive(Debug, PartialEq)]
 pub struct CircuitConfig {
     pub config: PcsConfig,
@@ -48,12 +53,15 @@ pub fn build_verification_circuit<Value: IValue>(
     Ok(context)
 }
 
+// Consider only build will return context and will be used in recursion, this should use build and
+// check it.
 pub fn verify_circuit(
     circuit_config: CircuitConfig,
     proof: Proof<QM31>,
     public_data: CircuitPublicData,
 ) -> Result<Context<QM31>, String> {
     let context = build_verification_circuit(circuit_config, proof, public_data)?;
+    // Consider using the same structure as in the cairo verifier
     #[cfg(test)]
     context.check_vars_used();
 

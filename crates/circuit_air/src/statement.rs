@@ -3,12 +3,13 @@ use crate::circuit_eval_components::{
     range_check_16, triple_xor_32, verify_bitwise_xor_4, verify_bitwise_xor_7,
     verify_bitwise_xor_8, verify_bitwise_xor_9, verify_bitwise_xor_12,
 };
+// Consider removing eq from here and only import eq::{whatever is used}.
 use crate::components::{eq, qm31_ops};
 use circuits::blake::HashValue;
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::ivalue::IValue;
-use circuits::ops::{Guess, div, eq as eq_op};
+use circuits::ops::{self, Guess, div};
 use circuits::simd::Simd;
 use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
@@ -19,7 +20,6 @@ use itertools::{Itertools, zip_eq};
 use stwo::core::fields::qm31::QM31;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
-// TODO(ilya): Update this to to correct values.
 pub const INTERACTION_POW_BITS: u32 = 20;
 
 pub struct CircuitStatement<Value: IValue> {
@@ -38,6 +38,7 @@ pub struct CircuitStatement<Value: IValue> {
 impl<Value: IValue> CircuitStatement<Value> {
     pub fn new(
         context: &mut Context<Value>,
+        // Maybe addresses should be M31?
         output_addresses: &[usize],
         output_values: &[QM31],
         n_blake_gates: usize,
@@ -69,6 +70,7 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
         &self.components
     }
 
+    // TODO think  about QM31 relations
     fn public_logup_sum(
         &self,
         context: &mut Context<Value>,
@@ -78,6 +80,7 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
         let mut sum = context.zero();
 
         // Output gates public logup sum contribution.
+        // How is it derived?
         let gate_relation_id = eval!(context, 378353459);
         for (output_address, output_value) in zip_eq(&self.output_addresses, &self.output_values) {
             let [output_value_0, output_value_1, output_value_2, output_value_3] =
@@ -102,16 +105,20 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
         // Blake IV public logup sum contribution.
         if self.n_blake_gates > 0 {
             let initial_state = crate::blake2s_initial_state();
-            let iv_state_id = context.constant(1061955672.into());
+            // Same as above
+            let state_relation_id = context.constant(1061955672.into());
             let iv_state_address = context.zero();
-            let mut blake_iv_elements = vec![iv_state_id, iv_state_address];
+            let mut blake_relation_elements = vec![state_relation_id, iv_state_address];
             for &word in &initial_state {
                 let low = context.constant((word & 0xffff).into());
-                let high = context.constant(((word >> 16) & 0xffff).into());
-                blake_iv_elements.push(low);
-                blake_iv_elements.push(high);
+                let high = context.constant((word >> 16).into());
+                blake_relation_elements.push(low);
+                blake_relation_elements.push(high);
             }
-            let blake_iv_denom = combine_term(context, &blake_iv_elements, interaction_elements);
+            let blake_iv_denom =
+                combine_term(context, &blake_relation_elements, interaction_elements);
+            // consider commenting: The IV is used either by a blake gate, or by a blake output
+            // component padding row.
             let n_iv_uses = self.n_blake_gates.next_power_of_two();
             let n_blakes = context.constant((n_iv_uses as u32).into());
             let blake_iv_yield = div(context, n_blakes, blake_iv_denom);
@@ -134,11 +141,12 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
             context.constant(self.preprocessed_root.0),
             context.constant(self.preprocessed_root.1),
         );
-        eq_op(context, preprocessed_root.0, expected_preprocessed_root.0);
-        eq_op(context, preprocessed_root.1, expected_preprocessed_root.1);
+        ops::eq(context, preprocessed_root.0, expected_preprocessed_root.0);
+        ops::eq(context, preprocessed_root.1, expected_preprocessed_root.1);
     }
 }
 
+// TODO define it here sorted and remove the sort somewhere else
 pub fn all_circuit_components<Value: IValue>() -> Vec<Box<dyn CircuitEval<Value>>> {
     vec![
         Box::new(eq::CircuitEqComponent {}),

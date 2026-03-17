@@ -56,6 +56,7 @@ impl Simd {
     /// Constructs a new [Simd] from packed data.
     pub fn from_packed(data: Vec<Var>, len: usize) -> Self {
         // Sanity check: the length of data must be `ceil(len / EXTENSION_DEGREE)`.
+        // Consider debug_assert
         assert_eq!(data.len(), len.div_ceil(EXTENSION_DEGREE));
         Self { data, len }
     }
@@ -204,6 +205,7 @@ impl Simd {
     }
 
     /// Unpacks a [Simd] into a vector of [Var]s, where each [Var] represents a single [M31] value.
+    // TODO consider using M31_wrapper
     pub fn unpack(context: &mut Context<impl IValue>, input: &Simd) -> Vec<Var> {
         (0..input.len).map(|i| Self::unpack_idx(context, input, i)).collect_vec()
     }
@@ -291,6 +293,7 @@ impl Simd {
 
     /// Marks the variables in the Simd as "maybe unused". This is intended for cases
     /// where we create a Simd but we will only use some of its elements.
+    // TODO partialy
     pub fn mark_partly_used(context: &mut Context<impl IValue>, simd: &Simd) {
         for chunk in &simd.data {
             context.mark_as_maybe_unused(chunk);

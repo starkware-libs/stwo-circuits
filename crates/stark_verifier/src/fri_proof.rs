@@ -16,7 +16,7 @@ pub struct FriConfig {
     pub n_queries: usize,
     /// Log2 of the number of coefficients in the last layer of FRI.
     pub log_n_last_layer_coefs: usize,
-    /// The step of the line folds in FRI's inner layers.
+    /// The step of the folds in FRI's layers.
     pub fold_step: usize,
 }
 
@@ -175,6 +175,9 @@ pub fn compute_all_fold_steps(degree_log_ratio: usize, fold_step: usize) -> Vec<
     let n_folds = degree_log_ratio.div_ceil(fold_step);
     let rem = degree_log_ratio % fold_step;
     let mut all_fold_steps = vec![fold_step; n_folds];
-    all_fold_steps[n_folds - 1] = if rem == 0 { fold_step } else { rem };
+    if rem != 0 {
+        // try using last_mut
+        all_fold_steps[n_folds - 1] = rem;
+    }
     all_fold_steps
 }

@@ -17,6 +17,7 @@ pub const N_TRACES: usize = 4;
 /// Represents the structure of a proof.
 #[derive(Debug, PartialEq)]
 pub struct ProofConfig {
+    // Check if need to remove
     // TODO(lior): Add a check on the total security bits of the protocol given parameters
     //   such as `n_proof_of_work_bits`, `fri.n_queries`, etc.
     pub n_proof_of_work_bits: u32,
@@ -37,6 +38,7 @@ pub struct ProofConfig {
     pub n_components: usize,
 
     pub fri: FriConfig,
+    // Rename to be consistent with n_proof_of_work_bits
     pub interaction_pow_bits: u32,
 }
 impl ProofConfig {
@@ -239,6 +241,7 @@ pub struct Proof<T> {
     pub eval_domain_auth_paths: AuthPaths<T>,
 
     pub proof_of_work_nonce: T,
+    // Rename consistant pow
     pub interaction_pow_nonce: T,
     pub fri: FriProof<T>,
 }
@@ -325,7 +328,7 @@ pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
 
 impl<Value: IValue> Guess<Value> for Proof<Value> {
     type Target = Proof<Var>;
-
+    // Consider using macro
     fn guess(&self, context: &mut Context<Value>) -> Self::Target {
         Proof {
             preprocessed_root: self.preprocessed_root.guess(context),

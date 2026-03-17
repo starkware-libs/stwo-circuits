@@ -1,5 +1,6 @@
 pub const MAX_SEQUENCE_LOG_SIZE: usize = 20;
 
+// TODO generate in stwo cairo
 pub const PREPROCESSED_COLUMNS_ORDER: [&str; 156] = [
     "seq_4",
     "blake_sigma_0",

@@ -31,6 +31,9 @@ pub struct EvaluateArgs<'a> {
 
 /// Represents an AIR and its public inputs.
 pub trait Statement<Value: IValue> {
+    /// TODO doc that only statement specific members should be returned here, i.e. not components,
+    /// they are accessed through get_components. We'll discuss this structure, maybe components
+    /// should not be here.
     fn claims_to_mix(&self, context: &mut Context<Value>) -> Vec<Vec<Var>>;
 
     /// Returns the components of the statement.

@@ -39,7 +39,7 @@ impl CircuitDeserialize for M31 {
         let Some(&[value]) = data.split_off(..1) else {
             return Err(DeserializeError);
         };
-
+        // Consider using partial reduce twice
         Ok(M31::from(value))
     }
 }
@@ -89,6 +89,7 @@ fn deserialize_vec<T: CircuitDeserialize>(
 
 /// Deserializes a proof from a byte stream, using the [`ProofConfig`] for all length
 /// information.
+// TODO change the order to be the same as in Proof.
 pub fn deserialize_proof_with_config(
     data: &mut &[u32],
     config: &ProofConfig,
@@ -107,6 +108,7 @@ pub fn deserialize_proof_with_config(
     let eval_domain_auth_paths = deserialize_eval_domain_auth_paths(data, config)?;
     let proof_of_work_nonce = QM31::deserialize(data)?;
     let interaction_pow_nonce = QM31::deserialize(data)?;
+    // Consider moving the computation of all_fold_steps into deserialize_fri_proof
     // Deserialize FRI proof.
     let all_fold_steps = compute_all_fold_steps(
         config.fri.log_trace_size - config.fri.log_n_last_layer_coefs,
@@ -133,13 +135,16 @@ pub fn deserialize_proof_with_config(
     })
 }
 
+// TODO try using the trait
 fn deserialize_claim(data: &mut &[u32], config: &ProofConfig) -> DeserializeResult<Claim<QM31>> {
     let n_components = config.n_components;
-
+    // Consider removing enable bits from Claim.
     // Unpack enable bits (32 enable bits per u32).
     let n_enable_u32s = n_components.div_ceil(32);
     let mut enable_bits = Vec::with_capacity(n_components);
+    // Can we split_off(..n_enable_u32s)
     for i in 0..n_enable_u32s {
+        // The let else can be a function everywhere.
         let Some(&[packed]) = data.split_off(..1) else {
             return Err(DeserializeError);
         };
@@ -202,8 +207,7 @@ fn deserialize_eval_domain_samples(
     for &n_columns in &n_columns_per_trace {
         let mut trace_data = Vec::with_capacity(n_columns);
         for _ in 0..n_columns {
-            let column: Vec<M31> =
-                (0..n_queries).map(|_| M31::deserialize(data)).collect::<DeserializeResult<_>>()?;
+            let column: Vec<M31> = deserialize_vec(data, n_queries)?;
             trace_data.push(column);
         }
         data_vec.push(trace_data);
@@ -218,6 +222,7 @@ fn deserialize_eval_domain_auth_paths(
     let n_queries = config.n_queries();
     let path_len = config.log_evaluation_domain_size();
     let mut trees = Vec::with_capacity(N_COMPOSITION_COLUMNS);
+    // TODO what is 4?
     for _ in 0..4 {
         let mut paths = Vec::with_capacity(n_queries);
         for _ in 0..n_queries {
@@ -242,6 +247,7 @@ fn deserialize_fri_commit_proof(
     })
 }
 
+// TODO add test with log_n_last_layer_coefs != 0
 fn deserialize_fri_proof(
     data: &mut &[u32],
     config: &FriConfig,
@@ -249,7 +255,6 @@ fn deserialize_fri_proof(
 ) -> DeserializeResult<FriProof<QM31>> {
     let commit = deserialize_fri_commit_proof(data, config, all_fold_steps)?;
 
-    // The circle-to-line fold is hardcoded to 1 currently.
     let mut path_len = config.log_evaluation_domain_size();
     let mut auth_path_trees = Vec::with_capacity(all_fold_steps.len());
     for step in all_fold_steps.iter() {

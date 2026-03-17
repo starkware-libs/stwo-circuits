@@ -42,6 +42,7 @@ pub fn validate_logup_sum(
     eq(context, log_up_sum, context.zero());
 }
 
+// We are checking only statement related code (checking only cairo verifier for now)
 pub fn verify<Value: IValue>(
     context: &mut Context<Value>,
     proof: &Proof<Var>,
@@ -70,8 +71,9 @@ pub fn verify<Value: IValue>(
         .collect_vec();
     channel.mix_qm31s(context, pcs_config_vars);
 
-    // Mix the trace commitments into the channel.
+    // TODO We can remove the preprocessed_root from the proof.
     statement.verify_preprocessed_root(context, proof.preprocessed_root);
+    // Mix the trace commitments into the channel.
     channel.mix_commitment(context, proof.preprocessed_root);
 
     let component_log_sizes =
@@ -265,7 +267,7 @@ pub fn verify<Value: IValue>(
 ///
 /// To avoid overflows when computing the sum, we check
 /// sum(uses_per_row * (floor(num_rows / DIV) + 1)) < floor(P / DIV)
-/// where DIV = 2 ** NUM_ROWS_SHIFT
+/// where DIV = 2 ** RELATION_USES_NUM_ROWS_SHIFT
 fn check_relation_uses<Value: IValue>(
     context: &mut Context<impl IValue>,
     statement: &impl Statement<Value>,
@@ -275,8 +277,8 @@ fn check_relation_uses<Value: IValue>(
 
     // Check that sum(uses_per_row * (floor(num_rows / DIV) + 1)) cannot overflow even for the
     // maximal num_rows (num_rows = P).
-    // This is a sanity check that `NUM_ROWS_SHIFT` is large enough for the given statement, it
-    // does not depend on the specific assigment.
+    // This is a sanity check that `RELATION_USES_NUM_ROWS_SHIFT` is large enough for the given
+    // statement, it does not depend on the specific assigment.
     let mut max_shifted_uses_per_relation = HashMap::<&str, u64>::new();
     for component in components.iter() {
         for relation_use in component.relation_uses_per_row() {
@@ -303,7 +305,7 @@ fn check_relation_uses<Value: IValue>(
             continue;
         }
         let shifted_size = Simd::unpack_idx(context, &shifted_component_sizes, i);
-        for relation_use in component.relation_uses_per_row() {
+        for relation_use in relation_uses {
             let entry =
                 shifted_relation_uses.entry(relation_use.relation_id).or_insert(context.zero());
             let uses_per_row =
@@ -320,6 +322,7 @@ fn check_relation_uses<Value: IValue>(
         .map(|(_k, v)| M31Wrapper::new_unsafe(*v))
         .collect_vec();
     let shifted_use_counts = Simd::pack(context, &shifted_use_counts);
+    // Check that the floor here is complete
     extract_bits(context, &shifted_use_counts, (P >> RELATION_USES_NUM_ROWS_SHIFT).ilog2());
     shifted_relation_uses
 }

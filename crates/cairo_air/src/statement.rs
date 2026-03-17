@@ -101,6 +101,7 @@ pub struct SegmentRange<T> {
 }
 
 pub struct PublicMemory<T> {
+    // TODO change to segment
     pub segement_ranges: [SegmentRange<T>; N_SEGMENTS],
     pub safe_call_ids: [T; 2],
     pub output_ids: Vec<T>,
@@ -148,12 +149,12 @@ impl PublicData<Var> {
 }
 
 pub struct CairoStatement<Value: IValue> {
-    pub components: Vec<Box<dyn CircuitEval<Value>>>,
-    pub packed_public_data: Simd,
-    pub public_data: PublicData<Var>,
-    pub program: Vec<[M31; MEMORY_VALUES_LIMBS]>,
-    pub outputs: Vec<[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]>,
-    pub preprocessed_root: HashValue<QM31>,
+    pub components: Vec<Box<dyn CircuitEval<Value>>>, //
+    pub packed_public_data: Simd,                     // V
+    pub public_data: PublicData<Var>,                 // Same as above by construction
+    pub program: Vec<[M31; MEMORY_VALUES_LIMBS]>,     // V
+    pub outputs: Vec<[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]>, // V
+    pub preprocessed_root: HashValue<QM31>,           // Checked against the known preprocessed
 }
 
 impl<Value: IValue> CairoStatement<Value> {
@@ -194,6 +195,7 @@ impl<Value: IValue> CairoStatement<Value> {
             bitwise_segment_range,
             poseidon_segment_range,
         ];
+        // TODO Consider adding Simd::pack(impl Iterator).
         let start_addresses = Simd::pack(
             context,
             &supported_builtins
@@ -209,13 +211,14 @@ impl<Value: IValue> CairoStatement<Value> {
                 .collect_vec(),
         );
         let diff = Simd::sub(context, &end_addresses, &start_addresses);
-
+        // TODO decide memory_cells or instance_size.
         let builtin_memory_cells = [
             ("pedersen_builtin_narrow_windows", PEDERSEN_BUILTIN_MEMORY_CELLS),
             ("range_check_builtin", RANGE_CHECK_BUILTIN_MEMORY_CELLS),
             ("bitwise_builtin", BITWISE_BUILTIN_MEMORY_CELLS),
             ("poseidon_builtin", POSEIDON_BUILTIN_MEMORY_CELLS),
         ];
+        // TODO how into_iter not consumes.
         let instance_size_inverses = pack_into_qm31s(
             builtin_memory_cells.into_iter().map(|(_name, size)| M31::from(size).inverse()),
         )
@@ -231,23 +234,26 @@ impl<Value: IValue> CairoStatement<Value> {
         // n_uses = (end - start) / instance_size, which implies end = start + n_uses *
         // instance_size (mod M31_P). Since all values are less than 2^27, this equality
         // also holds over the integers.
+        // TODO revisit for large proofs
         extract_bits(context, &n_uses_simd, SMALL_VALUE_BITS);
         let max_builtin_memory_cell =
             builtin_memory_cells.iter().map(|(_name, size)| size).max().unwrap();
         assert!(
             max_builtin_memory_cell.ilog2() < (31 - SMALL_VALUE_BITS),
-            "max_builtin_memory_cell * segment_range.start might exceed M31_P"
+            "max_builtin_memory_cell * n_uses might exceed M31_P"
         );
 
         let mut actual_uses_iter = Simd::unpack(context, &n_uses_simd).into_iter();
         let mut range_checks = vec![];
 
         let all_components = all_components::<Value>();
+        // TODO try inline the closure
         let mut validate_builtin = |context: &mut Context<Value>, name: &str| {
             let index = all_components.get_index_of(name).unwrap();
             let component_size = component_sizes[index];
 
-            // Check that either actual_uses == 0 or is_disabled == 0.
+            // Check that is_disabled == 1 => actual_uses == 0.
+            // TODO If inlining the function use zip_eq with actual_uses
             let actual_uses = actual_uses_iter.next().unwrap();
             let is_disabled = eval!(context, (1) - (enable_bits[index]));
             let constraint_val = eval!(context, (actual_uses) * (is_disabled));
@@ -265,7 +271,9 @@ impl<Value: IValue> CairoStatement<Value> {
         let rc_simd = Simd::pack(context, &range_checks);
         extract_bits(context, &rc_simd, SMALL_VALUE_BITS);
 
-        // Handle the builting not supported by the circuit.
+        // Handle the builtins not supported by the circuit.
+        // Consider adding sanity checks that all builtins are either validated above or not
+        // supported
         let zero = context.zero();
         for segment_range in [
             ec_op_segment_range,
@@ -282,6 +290,7 @@ impl<Value: IValue> CairoStatement<Value> {
 }
 
 impl<Value: IValue> CairoStatement<Value> {
+    // TODO consider removing this function, maybe after (if?) moving enable bit into component
     pub fn new(
         context: &mut Context<Value>,
         public_data: Vec<M31>,
@@ -306,13 +315,14 @@ impl<Value: IValue> CairoStatement<Value> {
             .map(|qm31| Value::from_qm31(qm31).guess(context))
             .collect_vec();
 
-        let packed_public_data = Simd::from_packed(packed_public_data.clone(), public_data.len());
+        let packed_public_data = Simd::from_packed(packed_public_data, public_data.len());
         // Note that we don't enforce anything on the padding M31 in packed_public_data.
         let unpacked_simd = Simd::unpack(context, &packed_public_data);
 
         let public_data =
             PublicData::<Var>::parse_from_vars(&unpacked_simd[..], outputs.len(), program.len());
 
+        // Consider guessing as packed and then build this using unpack (maybe inside logup sum).
         let outputs = outputs
             .iter()
             .map(|value_limbs| {
@@ -331,7 +341,9 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         &self.components
     }
 
+    // Maybe returned flattenned vec
     fn claims_to_mix(&self, context: &mut Context<Value>) -> Vec<Vec<Var>> {
+        // TODO destructure the statement here
         let program_len = context.constant(qm31_from_u32s(self.program.len() as u32, 0, 0, 0));
         let packed_outputs =
             Simd::pack(context, &self.outputs.iter().flatten().cloned().collect_vec());
@@ -360,6 +372,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         &self,
         context: &mut Context<Value>,
         interaction_elements: [Var; 2],
+        // TODO check if this can be removed
         _claim: &Claim<Var>,
     ) -> Var {
         let program_as_constants = self
@@ -388,9 +401,10 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
 
     fn public_params(&self, _context: &mut Context<Value>) -> HashMap<String, Var> {
         let segement_ranges = &self.public_data.public_memory.segement_ranges;
+        // TODO consider uniting this with the stuff in verify_claim
         let public_params: HashMap<String, Var> = HashMap::from_iter(
             [
-                ("output_start_ptr", &segement_ranges[0]),
+                ("output_segment_start", &segement_ranges[0]),
                 ("pedersen_builtin_segment_start", &segement_ranges[1]),
                 ("range_check_builtin_segment_start", &segement_ranges[2]),
                 ("ecdsa_builtin_segment_start", &segement_ranges[3]),
@@ -429,6 +443,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         eq(context, *initial_pc, context.one());
         // Check that initial_pc (== 1) + 2 < initial_ap.
         // i.e. 3 < initial_ap < 2**29 + 4.
+        // inital_ap < 2**27 is checked in ...
         range_checks.push(eval!(context, (*initial_ap) - (context.constant(4.into()))));
 
         eq(context, *initial_fp, *final_fp);
@@ -436,7 +451,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         let expected_final_pc = context.constant(5.into());
         eq(context, *final_pc, expected_final_pc);
         // Check that the initial_ap <= final_ap.
-        // i.e. 0 <= final_ap - initial_ap. < 2**29.
+        // i.e. 0 <= final_ap - initial_ap < 2**29.
         range_checks.push(eval!(context, (*final_ap) - (*initial_ap)));
 
         let rc_simd = Simd::pack(
@@ -448,6 +463,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         // Sanity check: ensure that the maximum address in the address_to_id component fits within
         // a 29-bit address space (i.e., is less than 2**29).
         // Higher addresses are not supported by components that assume 29-bit addresses.
+        // Assumes that there is only one ADDRESS_TO_ID component and it uses Seq.
         const { assert!(MEMORY_ADDRESS_TO_ID_SPLIT * MAX_SEQUENCE_LOG_SIZE < 1 << 29) };
 
         let shifted_opcode_relation_uses =
@@ -498,6 +514,8 @@ pub fn id_to_big_logup_term(
     logup_use_term(context, &elements, interaction_elements)
 }
 
+// TODO rename to segment_ranges
+// Maybe refactor
 pub fn segment_range_logup_sum(
     context: &mut Context<impl IValue>,
     interaction_elements: [Var; 2],
@@ -552,23 +570,24 @@ fn safe_call_id_logup_term(
     eval!(context, (address_to_id_logup_term) + (id_to_value_logup_term))
 }
 
+// TODO rename to segment
 pub fn memory_segments_logup_sum(
     context: &mut Context<impl IValue>,
     interaction_elements: [Var; 2],
-    mut start_address: Var,
+    start_address: Var,
     ids: &[Var],
     memory_values: &[[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]],
 ) -> Var {
     let one = context.one();
     let mut sum = context.zero();
-
+    let mut address = start_address;
     for (i, (&id, value_limbs)) in zip_eq(ids, memory_values).enumerate() {
         if i != 0 {
-            start_address = eval!(context, (start_address) + (one));
+            address = eval!(context, (address) + (one));
         }
 
         let address_to_id_logup_term =
-            address_to_id_logup_term(context, start_address, id, interaction_elements);
+            address_to_id_logup_term(context, address, id, interaction_elements);
         sum = eval!(context, (sum) + (address_to_id_logup_term));
 
         let id_to_value_logup_term = id_to_big_logup_term(
@@ -608,7 +627,9 @@ pub fn public_logup_sum(
         eval!(context, (initial_ap) - (one)),
     ];
 
+    // This limits initial_ap to to 27 bit, fine for privacy, but we need to be aware.
     let split_initial_ap = split_27bit_to_9bit_limbs(context, initial_ap);
+    // doc the empty array
     let safe_call_values = [split_initial_ap.as_slice(), &[]];
     // Handle the safe call memory section::
     // memory[initial_ap - 2] = (safe_call_id0, initial_ap)

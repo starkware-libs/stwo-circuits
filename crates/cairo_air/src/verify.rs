@@ -55,14 +55,17 @@ pub fn get_preprocessed_root(lifting_log_size: u32) -> HashValue<QM31> {
 pub struct CairoVerifierConfig {
     pub proof_config: ProofConfig,
     pub program: Vec<[M31; MEMORY_VALUES_LIMBS]>,
+    // Number of outputs from the Cairo program.
     pub n_outputs: usize,
     pub preprocessed_root: HashValue<QM31>,
 }
 
-/// Verifies a [CairoProof] for a fixed [CairoVerifierConfig].
+// Audit
+/// Verifies a [Proof] for a fixed [CairoVerifierConfig].
 pub fn verify_fixed_cairo_circuit(
     verifier_config: &CairoVerifierConfig,
     proof: Proof<QM31>,
+    // Serialized public_data, specifically segment_ranges, initial_state, ... [TODO]
     public_claim: Vec<u32>,
     outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
 ) -> Result<Context<QM31>, String> {
@@ -70,7 +73,7 @@ pub fn verify_fixed_cairo_circuit(
         return Err("The proof claim does not match the expected number of outputs.".to_string());
     }
     let context = build_fixed_cairo_circuit(verifier_config, proof, public_claim, outputs);
-
+    // TODO check if finalize_guessed is needed
     // Check the verifier circuit gates topology only in test mode.
     #[cfg(test)]
     context.check_vars_used();
@@ -101,12 +104,14 @@ pub fn build_fixed_cairo_circuit(
         )
         .collect_vec();
 
+    // TODO check that the u32 values are never used.
     let public_claim = public_claim.iter().map(|u32| M31::from(*u32)).collect_vec();
     let mut context = TraceContext::default();
     let statement = CairoStatement::<QM31>::new_ex(
         &mut context,
         public_claim,
         outputs,
+        // TODO consider refactor to avoid cloning here
         verifier_config.program.clone(),
         components,
         verifier_config.preprocessed_root,
