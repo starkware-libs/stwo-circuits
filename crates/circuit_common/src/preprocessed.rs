@@ -371,7 +371,7 @@ fn add_blake_to_preprocessed_trace(
 const N_M31_TO_U32_PP_COLUMNS: usize = 3;
 
 /// Adds M31ToU32 gates to preprocessed trace columns.
-/// | input_address | output_address | mult |
+/// | input_address | output_address | multiplicity |
 fn fill_m31_to_u32_columns(
     gates: &[M31ToU32Gate],
     multiplicities: &[usize],
@@ -397,7 +397,11 @@ fn add_m31_to_u32_to_preprocessed_trace(
     let mut columns: [_; N_M31_TO_U32_PP_COLUMNS] = std::array::from_fn(|_| vec![]);
     fill_m31_to_u32_columns(&circuit.m31_to_u32, multiplicities, &mut columns);
 
-    let ids = ["m31_to_u32_input_address", "m31_to_u32_output_address", "m31_to_u32_mult"];
+    let ids = [
+        "m31_to_u32_input_addr",
+        "m31_to_u32_output_addr",
+        "m31_to_u32_multiplicity",
+    ];
     for (id, column) in zip_eq(ids, columns) {
         pp_trace.push_column(PreProcessedColumnId { id: id.to_owned() }, column);
     }
@@ -596,6 +600,10 @@ impl PreProcessedTrace {
         };
 
         self.columns.iter().map(|c| to_evaluation(c)).collect()
+    }
+
+    pub fn has_column(&self, id: &PreProcessedColumnId) -> bool {
+        self.column_indices.contains_key(id)
     }
 
     pub fn get_column(&self, id: &PreProcessedColumnId) -> &Vec<usize> {

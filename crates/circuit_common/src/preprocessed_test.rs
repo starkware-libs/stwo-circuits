@@ -198,10 +198,11 @@ fn test_preprocess_decomposed_gates() {
 
     // Verify M31ToU32 columns exist and have correct values.
     let m31_input_addr =
-        pp_trace.get_column(&PreProcessedColumnId { id: "m31_to_u32_input_address".to_owned() });
+        pp_trace.get_column(&PreProcessedColumnId { id: "m31_to_u32_input_addr".to_owned() });
     let m31_output_addr =
-        pp_trace.get_column(&PreProcessedColumnId { id: "m31_to_u32_output_address".to_owned() });
-    let m31_mult = pp_trace.get_column(&PreProcessedColumnId { id: "m31_to_u32_mult".to_owned() });
+        pp_trace.get_column(&PreProcessedColumnId { id: "m31_to_u32_output_addr".to_owned() });
+    let m31_mult =
+        pp_trace.get_column(&PreProcessedColumnId { id: "m31_to_u32_multiplicity".to_owned() });
     assert_eq!(m31_input_addr.len(), 16);
     assert_eq!(m31_input_addr[0], 0);
     assert_eq!(m31_output_addr[0], 16);

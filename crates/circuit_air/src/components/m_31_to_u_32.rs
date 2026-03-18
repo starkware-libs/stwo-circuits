@@ -79,19 +79,19 @@ impl FrameworkEval for Eval {
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::one(),
             &[M31_1008385708.clone(), input_u32_limb_0_col1.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::one(),
             &[M31_1008385708.clone(), input_u32_limb_1_col2.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::one(),
             &[
                 M31_1008385708.clone(),
                 (M31_32767.clone() - input_u32_limb_1_col2.clone()),
@@ -111,7 +111,7 @@ impl FrameworkEval for Eval {
         );
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::one(),
             &[
                 M31_378353459.clone(),
                 m31_to_u32_input_addr.clone(),

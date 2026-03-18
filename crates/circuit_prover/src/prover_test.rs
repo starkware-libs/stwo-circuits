@@ -6,7 +6,7 @@ use circuit_air::statement::{INTERACTION_POW_BITS, all_circuit_components};
 use circuit_air::verify::{CircuitConfig, verify_circuit};
 use circuit_common::finalize::finalize_context;
 use circuit_common::preprocessed::PreprocessedCircuit;
-use circuits::blake::blake;
+use circuits::blake::{blake, m31_to_u32_gate};
 use circuits::context::Var;
 use circuits::eval;
 use circuits::ivalue::{IValue, qm31_from_u32s};
@@ -278,7 +278,7 @@ fn test_prove_and_stark_verify_fibonacci_context() {
 }
 
 const FIBONACCI_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
-    [1429988989, 2140496245, 47089641, 1898267882, 541611837, 1794799805, 1226727096, 204174332];
+    [808937660, 1231727285, 1199517696, 1651982848, 657578741, 129363861, 1767145309, 162209931];
 
 #[test]
 fn test_prove_and_circuit_verify_fibonacci_context() {
@@ -311,6 +311,85 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     let (proof, public_data) =
         preprare_circuit_proof_for_circuit_verifier(circuit_proof, &proof_config);
     verify_circuit(circuit_config, proof, public_data).unwrap();
+}
+
+pub fn build_m31_to_u32_context() -> Context<QM31> {
+    let mut context = Context::<QM31>::default();
+
+    // Create 32 m31_to_u32 gates (> N_LANES=16 so the trace is non-trivial).
+    for i in 0..32u32 {
+        let input = guess(&mut context, QM31::from(i * 1000 + 42));
+        let _u32_var = m31_to_u32_gate(&mut context, input);
+    }
+    // Need at least one output gate.
+    let last = guess(&mut context, QM31::zero());
+    output(&mut context, last);
+
+    context
+}
+
+#[test]
+fn test_prove_and_stark_verify_m31_to_u32_context() {
+    let mut context = build_m31_to_u32_context();
+    context.finalize_guessed_vars();
+    context.validate_circuit();
+
+    let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut context);
+    let CircuitProof {
+        pcs_config,
+        claim,
+        interaction_pow_nonce,
+        interaction_claim,
+        components,
+        stark_proof,
+        channel_salt,
+    } = prove_circuit_assignment(
+        context.values(),
+        &preprocessed_circuit,
+        &BaseColumnPool::<SimdBackend>::new(),
+    );
+    assert!(stark_proof.is_ok(), "Got error: {}", stark_proof.err().unwrap());
+    let proof = stark_proof.unwrap();
+
+    let verifier_channel = &mut Blake2sM31Channel::default();
+    verifier_channel.mix_felts(&[channel_salt.into()]);
+    pcs_config.mix_into(verifier_channel);
+    let commitment_scheme =
+        &mut CommitmentSchemeVerifier::<Blake2sM31MerkleChannel>::new(pcs_config);
+
+    let sizes = TreeVec::concat_cols(components.iter().map(|c| c.trace_log_degree_bounds()));
+
+    commitment_scheme.commit(
+        proof.proof.commitments[0],
+        &preprocessed_circuit.preprocessed_trace.log_sizes(),
+        verifier_channel,
+    );
+    claim.mix_into(verifier_channel);
+    commitment_scheme.commit(proof.proof.commitments[1], &sizes[1], verifier_channel);
+    verifier_channel.verify_pow_nonce(INTERACTION_POW_BITS, interaction_pow_nonce);
+    verifier_channel.mix_u64(interaction_pow_nonce);
+    let interaction_elements = CircuitInteractionElements::draw(verifier_channel);
+    interaction_claim.mix_into(verifier_channel);
+    commitment_scheme.commit(proof.proof.commitments[2], &sizes[2], verifier_channel);
+    stwo::core::verifier::verify_ex(
+        &components.iter().map(|c| c.as_ref()).collect::<Vec<&dyn Component>>(),
+        verifier_channel,
+        commitment_scheme,
+        proof.proof,
+        true,
+    )
+    .unwrap();
+
+    assert_eq!(
+        lookup_sum(
+            &claim,
+            &interaction_claim,
+            &interaction_elements,
+            &preprocessed_circuit.params.output_addresses,
+            preprocessed_circuit.params.n_blake_gates
+        ),
+        QM31::zero()
+    );
 }
 
 #[test]

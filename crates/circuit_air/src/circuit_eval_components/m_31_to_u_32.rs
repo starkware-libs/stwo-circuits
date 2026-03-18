@@ -32,7 +32,6 @@ pub fn accumulate_constraints<Value: IValue>(
     let m31_to_u32_output_addr = acc.get_preprocessed_column(&PreProcessedColumnId {
         id: "m31_to_u32_output_addr".to_owned(),
     });
-
     // Use RangeCheck_16.
     let tuple_0 = &[
         eval!(context, 1008385708),
