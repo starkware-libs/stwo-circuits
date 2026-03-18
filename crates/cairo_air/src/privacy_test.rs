@@ -89,7 +89,7 @@ fn test_verify_privacy() {
     let context = verify_cairo_with_component_set(&cairo_proof, privacy_components()).unwrap();
 
     // Build the verifier circuit via NoValue.
-    let log_blowup_factor = 2;
+    let log_blowup_factor = 3;
     let const_config = privacy_cairo_verifier_config(log_blowup_factor);
     let novalue_context = build_cairo_verifier_circuit(&const_config);
 
@@ -125,7 +125,7 @@ fn test_verify_privacy_with_recursion() {
 #[test]
 fn test_privacy_recursion_with_preprocessed_context() {
     // Build the verifier circuit via NoValue and preprocess it.
-    let cairo_proof_log_blowup_factor = 2;
+    let cairo_proof_log_blowup_factor = 3;
     let const_config = privacy_cairo_verifier_config(cairo_proof_log_blowup_factor);
     let mut novalue_context = build_cairo_verifier_circuit(&const_config);
     let preprocessed = PreprocessedCircuit::preprocess_circuit(&mut novalue_context);
@@ -184,15 +184,15 @@ fn test_privacy_consts() {
     let preprocessed_circuit =
         PreprocessedCircuit::from_finalized_circuit(&novalue_context.circuit);
 
-    let log_blowup_factor = 1;
+    let log_blowup_factor = 2;
     let lifting_log_size = preprocessed_circuit.params.trace_log_size + log_blowup_factor;
     let pcs_config = PcsConfig {
         pow_bits: 26,
         fri_config: FriConfig {
             log_blowup_factor,
             log_last_layer_degree_bound: 0,
-            n_queries: 70,
-            fold_step: 1,
+            n_queries: 35,
+            fold_step: 4,
         },
         lifting_log_size: Some(lifting_log_size),
     };
