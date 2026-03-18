@@ -107,12 +107,7 @@ pub fn deserialize_proof_with_config(
     let eval_domain_auth_paths = deserialize_eval_domain_auth_paths(data, config)?;
     let proof_of_work_nonce = QM31::deserialize(data)?;
     let interaction_pow_nonce = QM31::deserialize(data)?;
-    // Deserialize FRI proof.
-    let all_fold_steps = compute_all_fold_steps(
-        config.fri.log_trace_size - config.fri.log_n_last_layer_coefs,
-        config.fri.fold_step,
-    );
-    let fri = deserialize_fri_proof(data, &config.fri, &all_fold_steps)?;
+    let fri = deserialize_fri_proof(data, &config.fri)?;
 
     Ok(Proof {
         channel_salt,
@@ -244,18 +239,20 @@ fn deserialize_fri_commit_proof(
 
 fn deserialize_fri_proof(
     data: &mut &[u32],
-    config: &FriConfig,
-    all_fold_steps: &[usize],
+    fri_config: &FriConfig,
 ) -> DeserializeResult<FriProof<QM31>> {
-    let commit = deserialize_fri_commit_proof(data, config, all_fold_steps)?;
+    let all_fold_steps = compute_all_fold_steps(
+        fri_config.log_trace_size - fri_config.log_n_last_layer_coefs,
+        fri_config.fold_step,
+    );
+    let commit = deserialize_fri_commit_proof(data, fri_config, &all_fold_steps)?;
 
-    // The circle-to-line fold is hardcoded to 1 currently.
-    let mut path_len = config.log_evaluation_domain_size();
+    let mut path_len = fri_config.log_evaluation_domain_size();
     let mut auth_path_trees = Vec::with_capacity(all_fold_steps.len());
     for step in all_fold_steps.iter() {
         path_len -= step;
-        let mut paths = Vec::with_capacity(config.n_queries);
-        for _ in 0..config.n_queries {
+        let mut paths = Vec::with_capacity(fri_config.n_queries);
+        for _ in 0..fri_config.n_queries {
             let hashes: Vec<HashValue<QM31>> = deserialize_vec(data, path_len)?;
             paths.push(AuthPath(hashes));
         }
@@ -266,7 +263,7 @@ fn deserialize_fri_proof(
 
     for step in all_fold_steps.iter() {
         let mut witness_per_query = vec![];
-        for _ in 0..config.n_queries {
+        for _ in 0..fri_config.n_queries {
             let witness: Vec<QM31> = deserialize_vec(data, 1 << step)?;
             witness_per_query.push(witness);
         }

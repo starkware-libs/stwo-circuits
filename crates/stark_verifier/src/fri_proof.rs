@@ -175,6 +175,8 @@ pub fn compute_all_fold_steps(degree_log_ratio: usize, fold_step: usize) -> Vec<
     let n_folds = degree_log_ratio.div_ceil(fold_step);
     let rem = degree_log_ratio % fold_step;
     let mut all_fold_steps = vec![fold_step; n_folds];
-    all_fold_steps[n_folds - 1] = if rem == 0 { fold_step } else { rem };
+    if rem != 0 {
+        *all_fold_steps.last_mut().unwrap() = rem;
+    }
     all_fold_steps
 }
