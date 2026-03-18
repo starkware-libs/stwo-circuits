@@ -1,5 +1,6 @@
 use crate::N_LANES;
 use circuits::blake::{HashValue, blake};
+use circuits::circuit::M31ToU32Gate;
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::ivalue::IValue;
@@ -52,6 +53,17 @@ fn pad_blake(context: &mut Context<impl IValue>) {
     }
 }
 
+fn pad_m31_to_u32(context: &mut Context<impl IValue>) {
+    let n_rows = context.circuit.m31_to_u32.len();
+    let padded = std::cmp::max(n_rows.next_power_of_two(), N_LANES);
+    let zero = context.zero();
+    for _ in n_rows..padded {
+        // Pad with gates that split the zero constant (address 0) into (0, 0).
+        let out = context.new_var(IValue::from_qm31(0.into()));
+        context.circuit.m31_to_u32.push(M31ToU32Gate { input: zero.idx, out: out.idx });
+    }
+}
+
 fn hash_constants(context: &mut Context<impl IValue>) -> HashValue<Var> {
     let constants: Vec<_> = context.constants().values().copied().collect();
     let n_bytes = constants.len() * 16;
@@ -75,4 +87,5 @@ pub fn finalize_context(context: &mut Context<impl IValue>) {
     pad_eq(context);
     pad_qm31_ops(context);
     pad_blake(context);
+    pad_m31_to_u32(context);
 }

@@ -3,6 +3,7 @@ use crate::N_LANES;
 use crate::Qm31OpsTraceGenerator;
 use crate::finalize::finalize_context;
 use circuits::circuit::Blake;
+use circuits::circuit::M31ToU32Gate;
 use circuits::circuit::{Circuit, Permutation};
 use circuits::circuit::{Eq, Gate};
 use circuits::context::Context;
@@ -365,6 +366,45 @@ fn add_blake_to_preprocessed_trace(
     }
 }
 
+const N_M31_TO_U32_PP_COLUMNS: usize = 3;
+
+/// Adds M31ToU32 gates to preprocessed trace columns.
+/// | input_address | output_address | multiplicity |
+fn fill_m31_to_u32_columns(
+    gates: &[M31ToU32Gate],
+    multiplicities: &[usize],
+    columns: &mut [Vec<usize>; N_M31_TO_U32_PP_COLUMNS],
+) {
+    for gate in gates.iter() {
+        let [input] = gate.uses()[..] else { panic!("Expected 1 use for M31ToU32Gate") };
+        let [out] = gate.yields()[..] else { panic!("Expected 1 yield for M31ToU32Gate") };
+        columns[0].push(input);
+        columns[1].push(out);
+        columns[2].push(multiplicities[out]);
+    }
+}
+
+fn add_m31_to_u32_to_preprocessed_trace(
+    circuit: &Circuit,
+    multiplicities: &[usize],
+    pp_trace: &mut PreProcessedTrace,
+) {
+    if circuit.m31_to_u32.is_empty() {
+        return;
+    }
+    let mut columns: [_; N_M31_TO_U32_PP_COLUMNS] = std::array::from_fn(|_| vec![]);
+    fill_m31_to_u32_columns(&circuit.m31_to_u32, multiplicities, &mut columns);
+
+    let ids = [
+        "m31_to_u32_input_addr",
+        "m31_to_u32_output_addr",
+        "m31_to_u32_multiplicity",
+    ];
+    for (id, column) in zip_eq(ids, columns) {
+        pp_trace.push_column(PreProcessedColumnId { id: id.to_owned() }, column);
+    }
+}
+
 /// A collection of preprocessed columns, whose values are publicly acknowledged, and independent of
 /// the proof.
 #[derive(Clone, Debug, PartialEq)]
@@ -500,6 +540,8 @@ impl PreprocessedCircuit {
             add_qm31_ops_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
         // Add Blake columns.
         add_blake_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
+        // Add M31ToU32 columns.
+        add_m31_to_u32_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
 
         PreProcessedTrace::add_non_circuit_preprocessed_columns(&mut pp_trace);
         pp_trace.sort_by_size();
