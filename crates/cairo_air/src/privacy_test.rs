@@ -71,12 +71,12 @@ fn compare_contexts_topology<Value: IValue, OtherValue: IValue>(
     context_b: &Context<OtherValue>,
 ) {
     // TODO(Gali): Consider comparing unused and maybe unused vars.
-    assert_eq!(context_a.circuit, context_b.circuit);
-    assert_eq!(context_a.stats, context_b.stats);
-    assert_eq!(context_a.guessed_vars, context_b.guessed_vars);
+    assert!(context_a.circuit == context_b.circuit);
+    assert!(context_a.stats == context_b.stats);
+    assert!(context_a.guessed_vars == context_b.guessed_vars);
     let constants_a = context_a.constants().iter().map(|(k, v)| (*k, v.idx)).collect_vec();
     let constants_b = context_b.constants().iter().map(|(k, v)| (*k, v.idx)).collect_vec();
-    assert_eq!(constants_a, constants_b);
+    assert!(constants_a == constants_b);
 }
 
 #[test]
