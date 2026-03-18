@@ -1,6 +1,6 @@
 #![allow(unused_parens)]
-use crate::witness::components::prelude::*;
 use crate::witness::components::range_check_16;
+use crate::witness::components::prelude::*;
 use circuit_air::components::m_31_to_u_32::{Claim, InteractionClaim, N_TRACE_COLUMNS};
 use stwo::core::fields::FieldExpOps;
 use stwo::core::fields::qm31::QM31;
@@ -30,7 +30,10 @@ pub fn extract_component_inputs(
         .for_each(|(input, &input_addr, &output_addr)| {
             let qm31_input = context_values[input_addr].to_m31_array();
             let qm31_output = context_values[output_addr].to_m31_array();
-            *input = (qm31_input[0], UInt32::from(qm31_output[0].0 | (qm31_output[1].0 << 16)));
+            *input = (
+                qm31_input[0],
+                UInt32::from(qm31_output[0].0 | (qm31_output[1].0 << 16)),
+            );
         });
 
     inputs
@@ -99,8 +102,8 @@ fn write_trace_simd(
     let M31_1008385708 = PackedM31::broadcast(M31::from(1008385708));
     let M31_32767 = PackedM31::broadcast(M31::from(32767));
     let M31_378353459 = PackedM31::broadcast(M31::from(378353459));
-    let [m31_to_u32_input_addr, m31_to_u32_output_addr, m31_to_u32_multiplicity]: [Vec<PackedM31>;
-        3] = preprocessed_columns.try_into().unwrap();
+    let [m31_to_u32_input_addr, m31_to_u32_output_addr, m31_to_u32_multiplicity]: [Vec<PackedM31>; 3] =
+        preprocessed_columns.try_into().unwrap();
 
     (
         trace.par_iter_mut(),
@@ -183,7 +186,11 @@ impl InteractionClaimGenerator {
         col_gen.finalize_col();
 
         let mut col_gen = logup_gen.new_col();
-        (col_gen.par_iter_mut(), &self.lookup_data.range_check_16_2, &self.lookup_data.gate_0)
+        (
+            col_gen.par_iter_mut(),
+            &self.lookup_data.range_check_16_2,
+            &self.lookup_data.gate_0,
+        )
             .into_par_iter()
             .for_each(|(writer, values0, values1)| {
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);

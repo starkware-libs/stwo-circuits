@@ -1,13 +1,17 @@
-// This file was created by the AIR team.
-
 use super::prelude::*;
 
 pub const N_TRACE_COLUMNS: usize = 4;
 pub const N_INTERACTION_COLUMNS: usize = 12;
 
 pub const RELATION_USES_PER_ROW: [RelationUse; 2] = [
-    RelationUse { relation_id: "Gate", uses: 1 },
-    RelationUse { relation_id: "RangeCheck_16", uses: 3 },
+    RelationUse {
+        relation_id: "Gate",
+        uses: 1,
+    },
+    RelationUse {
+        relation_id: "RangeCheck_16",
+        uses: 3,
+    },
 ];
 
 #[allow(unused_variables)]
@@ -19,32 +23,45 @@ pub fn accumulate_constraints<Value: IValue>(
 ) {
     let [input_m31_col0, input_u32_limb_0_col1, input_u32_limb_1_col2, inv_or_one_col3] =
         input.try_into().unwrap();
-    let m31_to_u32_input_addr = acc
-        .get_preprocessed_column(&PreProcessedColumnId { id: "m31_to_u32_input_addr".to_owned() });
+    let m31_to_u32_input_addr = acc.get_preprocessed_column(&PreProcessedColumnId {
+        id: "m31_to_u32_input_addr".to_owned(),
+    });
     let m31_to_u32_multiplicity = acc.get_preprocessed_column(&PreProcessedColumnId {
         id: "m31_to_u32_multiplicity".to_owned(),
     });
-    let m31_to_u32_output_addr = acc
-        .get_preprocessed_column(&PreProcessedColumnId { id: "m31_to_u32_output_addr".to_owned() });
+    let m31_to_u32_output_addr = acc.get_preprocessed_column(&PreProcessedColumnId {
+        id: "m31_to_u32_output_addr".to_owned(),
+    });
 
     // Use RangeCheck_16.
-    let tuple_0 = &[eval!(context, 1008385708), eval!(context, input_u32_limb_0_col1)];
+    let tuple_0 = &[
+        eval!(context, 1008385708),
+        eval!(context, input_u32_limb_0_col1),
+    ];
     let numerator_0 = eval!(context, 1);
     acc.add_to_relation(context, numerator_0, tuple_0);
 
     // Use RangeCheck_16.
-    let tuple_1 = &[eval!(context, 1008385708), eval!(context, input_u32_limb_1_col2)];
+    let tuple_1 = &[
+        eval!(context, 1008385708),
+        eval!(context, input_u32_limb_1_col2),
+    ];
     let numerator_1 = eval!(context, 1);
     acc.add_to_relation(context, numerator_1, tuple_1);
 
     // Use RangeCheck_16.
-    let tuple_2 = &[eval!(context, 1008385708), eval!(context, (32767) - (input_u32_limb_1_col2))];
+    let tuple_2 = &[
+        eval!(context, 1008385708),
+        eval!(context, (32767) - (input_u32_limb_1_col2)),
+    ];
     let numerator_2 = eval!(context, 1);
     acc.add_to_relation(context, numerator_2, tuple_2);
 
     //input is zero then limb_low is zero.
-    let constraint_3_value =
-        eval!(context, (((input_m31_col0) * (inv_or_one_col3)) - (1)) * (input_u32_limb_0_col1));
+    let constraint_3_value = eval!(
+        context,
+        (((input_m31_col0) * (inv_or_one_col3)) - (1)) * (input_u32_limb_0_col1)
+    );
     acc.add_constraint(context, constraint_3_value);
 
     //input reconstruction.
@@ -148,16 +165,24 @@ mod tests {
         ];
         let preprocessed_columns = HashMap::from([
             (
-                PreProcessedColumnId { id: "m31_to_u32_input_addr".to_owned() },
+                PreProcessedColumnId {
+                    id: "m31_to_u32_input_addr".to_owned(),
+                },
                 context.constant(qm31_from_u32s(15668215, 1851966168, 874056991, 2075313468)),
             ),
             (
-                PreProcessedColumnId { id: "m31_to_u32_output_addr".to_owned() },
+                PreProcessedColumnId {
+                    id: "m31_to_u32_output_addr".to_owned(),
+                },
                 context.constant(qm31_from_u32s(701904311, 1125291129, 1904795215, 38357025)),
             ),
             (
-                PreProcessedColumnId { id: "m31_to_u32_multiplicity".to_owned() },
-                context.constant(qm31_from_u32s(1979029033, 1524573277, 1930122227, 1490762084)),
+                PreProcessedColumnId {
+                    id: "m31_to_u32_multiplicity".to_owned(),
+                },
+                context.constant(qm31_from_u32s(
+                    1979029033, 1524573277, 1930122227, 1490762084,
+                )),
             ),
         ]);
         let public_params = HashMap::from([]);
