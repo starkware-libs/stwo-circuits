@@ -10,5 +10,8 @@ pub struct Stats {
     pub pointwise_mul: usize,
     pub guess: usize,
     pub blake_updates: usize,
+    /// The number of inputs to permutation gates.
+    /// Currently, each permutation input generates 2 qm31_ops rows.
+    pub permutation_inputs: usize,
     pub outputs: usize,
 }
