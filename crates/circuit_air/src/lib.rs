@@ -35,7 +35,8 @@ impl CircuitClaim {
         channel.mix_felts(&[qm31_from_u32s(n_components as u32, 0, 0, 0)]);
 
         // mix the enable bits into the channel.
-        channel.mix_felts(&pack_enable_bits(&[true; N_COMPONENTS]));
+        let enable_bits: Vec<bool> = log_sizes.iter().map(|&s| s > 0).collect();
+        channel.mix_felts(&pack_enable_bits(&enable_bits));
         channel.mix_felts(&pack_component_log_sizes(log_sizes));
         // mix the output values into the channel.
         channel.mix_felts(output_values);
