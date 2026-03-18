@@ -12,4 +12,5 @@ stwo = { workspace = true, features = ["prover"] }
 stwo-constraint-framework = { workspace = true, features = ["prover"] }
 
 [dev-dependencies]
+circuit-serialize = { path = "../circuit_serialize" }
 rstest.workspace = true
