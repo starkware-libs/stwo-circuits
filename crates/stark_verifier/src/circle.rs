@@ -15,13 +15,13 @@ use circuits::{
 pub mod test;
 
 /// Computes `pi(x) = 2 * x^2 - 1`, which is the x-coordinate of the point `(x, y) + (x, y)`.
-pub fn double_x(context: &mut Context<impl IValue>, value: Var) -> Var {
+pub fn double_x(context: &mut Context<impl IValue + 'static>, value: Var) -> Var {
     let value_sqr = eval!(context, (value) * (value));
     eval!(context, ((value_sqr) + (value_sqr)) - (1))
 }
 
 /// Same as [double_x], but for [Simd].
-pub fn double_x_simd(context: &mut Context<impl IValue>, value: &Simd) -> Simd {
+pub fn double_x_simd(context: &mut Context<impl IValue + 'static>, value: &Simd) -> Simd {
     let value_sqr = Simd::mul(context, value, value);
     let value_sqr_times2 = Simd::add(context, &value_sqr, &value_sqr);
     let one = Simd::one(context, value.len());
@@ -30,7 +30,7 @@ pub fn double_x_simd(context: &mut Context<impl IValue>, value: &Simd) -> Simd {
 
 /// Computes `p + p`.
 pub fn double_point(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     p: &CirclePoint<M31Wrapper<Var>>,
 ) -> CirclePoint<M31Wrapper<Var>> {
     let xy = eval!(context, (*p.x.get()) * (*p.y.get()));
@@ -43,7 +43,7 @@ pub fn double_point(
 
 /// Same as [double_point], but for [Simd].
 pub fn double_point_simd(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     p: &CirclePoint<Simd>,
 ) -> CirclePoint<Simd> {
     let xy = Simd::mul(context, &p.x, &p.y);
@@ -53,7 +53,7 @@ pub fn double_point_simd(
 
 /// Computes `2^n_doubles * p`.
 pub fn repeated_double_point_simd(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     p: &CirclePoint<Simd>,
     n_doubles: usize,
 ) -> CirclePoint<Simd> {
@@ -66,7 +66,7 @@ pub fn repeated_double_point_simd(
 
 /// Computes `point0 + point1` on the circle.
 pub fn add_points(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     point0: &CirclePoint<Var>,
     point1: &CirclePoint<Var>,
 ) -> CirclePoint<Var> {
@@ -77,7 +77,7 @@ pub fn add_points(
 
 /// A version of [add_points] for [Simd].
 pub fn add_points_simd(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     point0: &CirclePoint<Simd>,
     point1: &CirclePoint<Simd>,
 ) -> CirclePoint<Simd> {
@@ -97,7 +97,7 @@ pub fn generator_point(log_domain_size: usize) -> CirclePoint<M31> {
 
 /// Computes the generator point of the subgroup of size `2^log_domain_size`, repeated `size` times.
 pub fn generator_point_simd(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     log_domain_size: usize,
     size: usize,
 ) -> CirclePoint<Simd> {
@@ -108,7 +108,7 @@ pub fn generator_point_simd(
 /// Computes the group inverse of the generator point of the subgroup of size `2^log_domain_size`,
 /// repeated `size` times.
 pub fn minus_generator_point_simd(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     log_domain_size: usize,
     size: usize,
 ) -> CirclePoint<Simd> {
@@ -120,7 +120,7 @@ pub fn minus_generator_point_simd(
 ///
 /// The polynomial is `pi^{log_trace_size - 1}(x) = pi(...(pi(x))...)`.
 pub fn coset_vanishing_poly(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     mut x: Var,
     log_trace_size: usize,
 ) -> Var {
@@ -133,7 +133,7 @@ pub fn coset_vanishing_poly(
 }
 
 /// Computes the inverse of the domain polynomial at `x`. See [coset_vanishing_poly].
-pub fn denom_inverse(context: &mut Context<impl IValue>, x: Var, log_trace_size: usize) -> Var {
+pub fn denom_inverse(context: &mut Context<impl IValue + 'static>, x: Var, log_trace_size: usize) -> Var {
     let one = context.one();
     let denom = coset_vanishing_poly(context, x, log_trace_size);
     div(context, one, denom)
@@ -141,7 +141,7 @@ pub fn denom_inverse(context: &mut Context<impl IValue>, x: Var, log_trace_size:
 
 /// For each base point (i.e. for each SIMD lane in `base_points`), computes the points of the first
 /// half of a coset of given log size starting from base point, in bit reversed order.
-pub fn compute_half_coset_points<Value: IValue>(
+pub fn compute_half_coset_points<Value: IValue + 'static>(
     context: &mut Context<Value>,
     base_points: &CirclePoint<Simd>,
     log_size: u32,

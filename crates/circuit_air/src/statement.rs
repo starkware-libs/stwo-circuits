@@ -22,7 +22,7 @@ use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 // TODO(ilya): Update this to to correct values.
 pub const INTERACTION_POW_BITS: u32 = 20;
 
-pub struct CircuitStatement<Value: IValue> {
+pub struct CircuitStatement<Value: IValue + 'static> {
     pub components: Vec<Box<dyn CircuitEval<Value>>>,
     /// The variable indices (addresses) of the output gates.
     pub output_addresses: Vec<M31Wrapper<Var>>,
@@ -35,7 +35,7 @@ pub struct CircuitStatement<Value: IValue> {
     /// The preprocessed trace root.
     pub preprocessed_root: HashValue<QM31>,
 }
-impl<Value: IValue> CircuitStatement<Value> {
+impl<Value: IValue + 'static> CircuitStatement<Value> {
     pub fn new(
         context: &mut Context<Value>,
         output_addresses: &[usize],
@@ -60,7 +60,7 @@ impl<Value: IValue> CircuitStatement<Value> {
         }
     }
 }
-impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
+impl<Value: IValue + 'static> Statement<Value> for CircuitStatement<Value> {
     fn claims_to_mix(&self, _context: &mut Context<Value>) -> Vec<Vec<Var>> {
         vec![self.output_values.clone()]
     }
@@ -139,7 +139,7 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
     }
 }
 
-pub fn all_circuit_components<Value: IValue>() -> Vec<Box<dyn CircuitEval<Value>>> {
+pub fn all_circuit_components<Value: IValue + 'static>() -> Vec<Box<dyn CircuitEval<Value>>> {
     vec![
         Box::new(eq::CircuitEqComponent {}),
         Box::new(qm31_ops::CircuitQm31OpsComponent {}),

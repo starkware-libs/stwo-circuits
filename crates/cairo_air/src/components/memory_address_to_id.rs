@@ -5,7 +5,7 @@ pub const N_TRACE_COLUMNS: usize = MEMORY_ADDRESS_TO_ID_SPLIT * 2;
 pub const N_INTERACTION_COLUMNS: usize = MEMORY_ADDRESS_TO_ID_SPLIT.div_ceil(2) * 4;
 pub const MEMORY_ADDRESS_TO_ID_RELATION_ID: u32 = 1444891767;
 
-pub fn accumulate_constraints<Value: IValue>(
+pub fn accumulate_constraints<Value: IValue + 'static>(
     input: &[Var],
     context: &mut Context<Value>,
     component_data: &dyn ComponentDataTrait<Value>,
@@ -33,7 +33,7 @@ pub fn accumulate_constraints<Value: IValue>(
 }
 
 pub struct Component {}
-impl<Value: IValue> CircuitEval<Value> for Component {
+impl<Value: IValue + 'static> CircuitEval<Value> for Component {
     fn name(&self) -> String {
         "memory_address_to_id".to_string()
     }

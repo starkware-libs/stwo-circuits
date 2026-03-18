@@ -9,7 +9,7 @@ pub const RELATION_USES_PER_ROW: [RelationUse; 3] = [
 ];
 
 #[allow(unused_variables)]
-pub fn accumulate_constraints<Value: IValue>(
+pub fn accumulate_constraints<Value: IValue + 'static>(
     input: &[Var],
     context: &mut Context<Value>,
     component_data: &dyn ComponentDataTrait<Value>,

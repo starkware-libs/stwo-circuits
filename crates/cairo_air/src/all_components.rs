@@ -6,7 +6,7 @@ use crate::components;
 use circuits::ivalue::IValue;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
 
-pub fn all_components<Value: IValue>() -> IndexMap<&'static str, Box<dyn CircuitEval<Value>>> {
+pub fn all_components<Value: IValue + 'static>() -> IndexMap<&'static str, Box<dyn CircuitEval<Value>>> {
     IndexMap::from([
         (
             "add_opcode",

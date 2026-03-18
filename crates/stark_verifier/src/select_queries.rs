@@ -15,7 +15,7 @@ pub mod test;
 /// Fetches the input for query selection from the channel, by drawing `ceil(n_queries / 8)`
 /// pairs of `QM31` values. Each pair consists of 8 `M31` values. One `M31` for each query.
 pub fn get_query_selection_input_from_channel(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     channel: &mut Channel,
     n_queries: usize,
 ) -> Simd {
@@ -43,7 +43,7 @@ pub struct Queries {
 
 /// Takes the data obtained from [get_query_selection_input_from_channel], and returns [Queries].
 pub fn select_queries(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     input: &Simd,
     log_domain_size: usize,
 ) -> Queries {

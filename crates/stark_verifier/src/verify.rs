@@ -30,7 +30,7 @@ pub const LOG_SIZE_BITS: u32 = 5;
 pub const RELATION_USES_NUM_ROWS_SHIFT: usize = 16;
 
 pub fn validate_logup_sum(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     public_logup_sum: Var,
     claimed_sums: &[Var],
     enable_bits: &[Var],
@@ -42,7 +42,7 @@ pub fn validate_logup_sum(
     eq(context, log_up_sum, context.zero());
 }
 
-pub fn verify<Value: IValue>(
+pub fn verify<Value: IValue + 'static>(
     context: &mut Context<Value>,
     proof: &Proof<Var>,
     config: &ProofConfig,
@@ -266,8 +266,8 @@ pub fn verify<Value: IValue>(
 /// To avoid overflows when computing the sum, we check
 /// sum(uses_per_row * (floor(num_rows / DIV) + 1)) < floor(P / DIV)
 /// where DIV = 2 ** NUM_ROWS_SHIFT
-fn check_relation_uses<Value: IValue>(
-    context: &mut Context<impl IValue>,
+fn check_relation_uses<Value: IValue + 'static>(
+    context: &mut Context<impl IValue + 'static>,
     statement: &impl Statement<Value>,
     component_sizes_bits: &[Simd],
 ) -> HashMap<&'static str, Var> {
@@ -327,7 +327,7 @@ fn check_relation_uses<Value: IValue>(
 // Returns the column_log_sizes_by_trace, which includes the column log sizes for the trace and
 // interaction columns.
 fn column_log_sizes_by_trace(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     config: &ProofConfig,
     component_log_sizes: Simd,
 ) -> [Vec<Var>; 2] {
@@ -355,7 +355,7 @@ fn column_log_sizes_by_trace(
 /// for each column in the interaction trace.
 /// The periodicity sample points are the sample points used for the periodicity check.
 fn column_periodicity_sample_points(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     config: &ProofConfig,
     sample_points_per_component: &[CirclePoint<Var>],
 ) -> Vec<CirclePoint<Var>> {

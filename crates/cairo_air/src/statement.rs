@@ -5,7 +5,7 @@ use cairo_air::components::memory_address_to_id::MEMORY_ADDRESS_TO_ID_SPLIT;
 use cairo_air::relations::{
     MEMORY_ADDRESS_TO_ID_RELATION_ID, MEMORY_ID_TO_BIG_RELATION_ID, OPCODES_RELATION_ID,
 };
-use circuits::blake::{HashValue, blake};
+use circuits::blake::{HashValue, blake_auto as blake};
 use circuits::eval;
 use circuits::extract_bits::extract_bits;
 use circuits::ops::{Guess, eq, output};
@@ -57,7 +57,7 @@ pub struct CasmState<T> {
 impl CasmState<Var> {
     pub fn logup_term(
         &self,
-        context: &mut Context<impl IValue>,
+        context: &mut Context<impl IValue + 'static>,
         interaction_elements: [Var; 2],
     ) -> Var {
         let Self { pc, ap, fp } = self;
@@ -72,7 +72,7 @@ pub struct PubMemoryM31Value<T> {
     pub value: T,
 }
 
-pub fn split_27bit_to_9bit_limbs(context: &mut Context<impl IValue>, value: Var) -> [Var; 3] {
+pub fn split_27bit_to_9bit_limbs(context: &mut Context<impl IValue + 'static>, value: Var) -> [Var; 3] {
     let simd = Simd::from_packed(vec![value], 1);
     let extracted_bits = extract_bits(context, &simd, SMALL_VALUE_BITS);
 
@@ -87,7 +87,7 @@ impl PubMemoryM31Value<Var> {
     /// Computes the address to id logup term for the public memory value.
     pub fn logup_term(
         &self,
-        context: &mut Context<impl IValue>,
+        context: &mut Context<impl IValue + 'static>,
         interaction_elements: [Var; 2],
     ) -> Var {
         let limbs = split_27bit_to_9bit_limbs(context, self.value);
@@ -147,7 +147,7 @@ impl PublicData<Var> {
     }
 }
 
-pub struct CairoStatement<Value: IValue> {
+pub struct CairoStatement<Value: IValue + 'static> {
     pub components: Vec<Box<dyn CircuitEval<Value>>>,
     pub packed_public_data: Simd,
     pub public_data: PublicData<Var>,
@@ -156,7 +156,7 @@ pub struct CairoStatement<Value: IValue> {
     pub preprocessed_root: HashValue<QM31>,
 }
 
-impl<Value: IValue> CairoStatement<Value> {
+impl<Value: IValue + 'static> CairoStatement<Value> {
     /// Verifies the builtins.
     ///
     /// Assumes that the start and end addresses of the segment ranges are less than 2^27 (this is
@@ -281,7 +281,7 @@ impl<Value: IValue> CairoStatement<Value> {
     }
 }
 
-impl<Value: IValue> CairoStatement<Value> {
+impl<Value: IValue + 'static> CairoStatement<Value> {
     pub fn new(
         context: &mut Context<Value>,
         public_data: Vec<M31>,
@@ -326,7 +326,7 @@ impl<Value: IValue> CairoStatement<Value> {
     }
 }
 
-impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
+impl<Value: IValue + 'static> Statement<Value> for CairoStatement<Value> {
     fn get_components(&self) -> &[Box<dyn CircuitEval<Value>>] {
         &self.components
     }
@@ -474,7 +474,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
 }
 
 pub fn address_to_id_logup_term(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     address: Var,
     id: Var,
     interaction_elements: [Var; 2],
@@ -488,7 +488,7 @@ pub fn address_to_id_logup_term(
 /// Calculates the logup term for a provided id and its associated value limbs.
 /// Each value limb is 9 bits wide, with the least significant limb appearing first.
 pub fn id_to_big_logup_term(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     id: Var,
     value_limbs: impl Iterator<Item = Var>,
     interaction_elements: [Var; 2],
@@ -499,7 +499,7 @@ pub fn id_to_big_logup_term(
 }
 
 pub fn segment_range_logup_sum(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     interaction_elements: [Var; 2],
     segement_ranges: &[SegmentRange<Var>; N_SEGMENTS],
     mut argument_address: Var,
@@ -538,7 +538,7 @@ pub fn segment_range_logup_sum(
 }
 
 fn safe_call_id_logup_term(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     interaction_elements: [Var; 2],
     address: Var,
     id: Var,
@@ -553,7 +553,7 @@ fn safe_call_id_logup_term(
 }
 
 pub fn memory_segments_logup_sum(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     interaction_elements: [Var; 2],
     mut start_address: Var,
     ids: &[Var],
@@ -584,7 +584,7 @@ pub fn memory_segments_logup_sum(
 }
 
 pub fn public_logup_sum(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     public_data: &PublicData<Var>,
     program: &[[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]],
     outputs: &[[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]],

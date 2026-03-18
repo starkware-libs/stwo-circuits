@@ -28,7 +28,7 @@ pub mod test;
 
 /// Commits to the FRI layers and returns the random alphas.
 pub fn fri_commit(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     channel: &mut Channel,
     proof: &FriCommitProof<Var>,
 ) -> Vec<Var> {
@@ -43,7 +43,7 @@ pub fn fri_commit(
 }
 
 /// Validates that the values in `fri_input` are consistent with the FRI commitment.
-pub fn fri_decommit<Value: IValue>(
+pub fn fri_decommit<Value: IValue + 'static>(
     context: &mut Context<Value>,
     proof: &FriProof<Var>,
     config: &FriConfig,
@@ -175,7 +175,7 @@ struct FirstLayerProof<'a> {
 }
 
 /// Computes the first layer of FRI (circle-to-line fold).
-fn decommit_circle_to_line<Value: IValue>(
+fn decommit_circle_to_line<Value: IValue + 'static>(
     context: &mut Context<Value>,
     first_layer_proof: FirstLayerProof<'_>,
     fri_input: &[Var],
@@ -211,7 +211,7 @@ fn decommit_circle_to_line<Value: IValue>(
 
 /// Folds a coset of log size n to a point using the folding coefficients `alphas`.
 /// `twiddles_per_fold[i]` contains the twiddles needed at fold i, and has length 2^(n - 1 - i).
-fn fold_coset<Value: IValue>(
+fn fold_coset<Value: IValue + 'static>(
     context: &mut Context<Value>,
     coset_values: &[Var],
     twiddles_per_fold: &[Vec<Var>],
@@ -241,7 +241,7 @@ fn fold_coset<Value: IValue>(
 ///   coset" containing the query point. The coset log size is equal to this layer's fri fold step.
 /// - `fri_data`: the query values.
 /// - `bits`: for each query, the coset log size-many lowest significant bits of the query position.
-fn validate_query_position_in_coset<Value: IValue>(
+fn validate_query_position_in_coset<Value: IValue + 'static>(
     context: &mut Context<Value>,
     fri_coset_per_query: &[Vec<Var>],
     fri_data: &[Var],
@@ -265,7 +265,7 @@ fn validate_query_position_in_coset<Value: IValue>(
 ///   a₁a₂a₃a₄...aₙ then its base point is the circle point with index 0...0a_{step + 1}...aₙ. So,
 ///   for example, for a query with index 101110 and step = 2, its base point has index 001110.
 /// - `fold_step`: the folding step for the current line-to-line FRI fold.
-fn compute_twiddles_from_base_point<Value: IValue>(
+fn compute_twiddles_from_base_point<Value: IValue + 'static>(
     context: &mut Context<Value>,
     base_point: &CirclePoint<Simd>,
     fold_step: usize,
@@ -311,7 +311,7 @@ fn compute_twiddles_from_base_point<Value: IValue>(
 /// - `base_point`: packed query points to translate.
 /// - `packed_bits`: the least significant `step`-many bits of the current queries (where `step` is
 ///   the fold_step of the current FRI fold).
-fn translate_to_base_point<Value: IValue>(
+fn translate_to_base_point<Value: IValue + 'static>(
     context: &mut Context<Value>,
     mut base_point: CirclePoint<Simd>,
     packed_bits: &[Simd],
@@ -338,7 +338,7 @@ fn translate_to_base_point<Value: IValue>(
 /// - `context`: the circuit context.
 /// - `point`: packed input points.
 /// - `bit`: SIMD selector (0 or 1) per lane.
-fn translate_by_lsb<Value: IValue>(
+fn translate_by_lsb<Value: IValue + 'static>(
     context: &mut Context<Value>,
     point: &CirclePoint<Simd>,
     bit: &Simd,

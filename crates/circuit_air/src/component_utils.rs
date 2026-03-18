@@ -8,7 +8,7 @@ use circuits_stark_verifier::constraint_eval::*;
 
 // Create a variable with the evaluation of seq_k where k is the log-height of
 // the component. The height is taken from component_data.get_n_instances_bits.
-pub fn seq_of_component_size<Value: IValue>(
+pub fn seq_of_component_size<Value: IValue + 'static>(
     context: &mut Context<Value>,
     component_data: &dyn ComponentDataTrait<Value>,
     acc: &mut CompositionConstraintAccumulator,

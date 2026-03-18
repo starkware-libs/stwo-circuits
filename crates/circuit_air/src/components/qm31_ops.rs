@@ -182,7 +182,7 @@ impl FrameworkEval for Eval {
 
 pub struct CircuitQm31OpsComponent {}
 
-impl<Value: IValue> CircuitEval<Value> for CircuitQm31OpsComponent {
+impl<Value: IValue + 'static> CircuitEval<Value> for CircuitQm31OpsComponent {
     fn name(&self) -> String {
         "qm31_ops".to_string()
     }

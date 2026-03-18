@@ -1,7 +1,7 @@
 use stwo::core::circle::CirclePoint;
 use stwo::core::fields::m31::MODULUS_BITS;
 
-use circuits::blake::{HashValue, blake};
+use circuits::blake::{HashValue, blake_auto as blake};
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::extract_bits::extract_bits;
@@ -24,7 +24,7 @@ impl Channel {
     const POW_PREFIX: u32 = 0x12345678;
 
     /// Constructs a new channel, with a zero digest.
-    pub fn new(context: &mut Context<impl IValue>) -> Self {
+    pub fn new(context: &mut Context<impl IValue + 'static>) -> Self {
         let zero = context.zero();
         Self { digest: HashValue(zero, zero), n_draws: 0 }
     }
@@ -52,14 +52,14 @@ impl Channel {
     }
 
     /// Mixes the given root into the channel's digest.
-    pub fn mix_commitment(&mut self, context: &mut Context<impl IValue>, root: HashValue<Var>) {
+    pub fn mix_commitment(&mut self, context: &mut Context<impl IValue + 'static>, root: HashValue<Var>) {
         self.update_digest(blake(context, &[self.digest.0, self.digest.1, root.0, root.1], 16 * 4));
     }
 
     /// Mixes the given list of `QM31` values into the channel.
     pub fn mix_qm31s(
         &mut self,
-        context: &mut Context<impl IValue>,
+        context: &mut Context<impl IValue + 'static>,
         values: impl IntoIterator<Item = Var>,
     ) {
         let mut blake_input = vec![self.digest.0, self.digest.1];
@@ -68,14 +68,14 @@ impl Channel {
     }
 
     /// Draws one `QM31` random value from the channel.
-    pub fn draw_qm31(&mut self, context: &mut Context<impl IValue>) -> Var {
+    pub fn draw_qm31(&mut self, context: &mut Context<impl IValue + 'static>) -> Var {
         let [first, second] = self.draw_two_qm31s(context);
         context.mark_as_unused(second);
         first
     }
 
     /// Draws two `QM31` random values from the channel.
-    pub fn draw_two_qm31s(&mut self, context: &mut Context<impl IValue>) -> [Var; 2] {
+    pub fn draw_two_qm31s(&mut self, context: &mut Context<impl IValue + 'static>) -> [Var; 2] {
         let n_draws_var =
             context.constant(qm31_from_u32s(self.n_draws.try_into().unwrap(), 0, 0, 0));
         // Note that we add a zero byte for domain separation between generating randomness and
@@ -86,7 +86,7 @@ impl Channel {
     }
 
     /// Draws a random point on the (`QM31`) circle from the channel.
-    pub fn draw_point(&mut self, context: &mut Context<impl IValue>) -> CirclePoint<Var> {
+    pub fn draw_point(&mut self, context: &mut Context<impl IValue + 'static>) -> CirclePoint<Var> {
         let t = self.draw_qm31(context);
         let t2 = eval!(context, (t) * (t));
 
@@ -97,7 +97,7 @@ impl Channel {
         CirclePoint { x, y }
     }
 
-    pub fn proof_of_work(&mut self, context: &mut Context<impl IValue>, n_bits: u32, nonce: Var) {
+    pub fn proof_of_work(&mut self, context: &mut Context<impl IValue + 'static>, n_bits: u32, nonce: Var) {
         assert!(n_bits <= 30);
 
         // Compute `H(POW_PREFIX, [0_u8; 12], digest, n_bits)`.

@@ -1,6 +1,6 @@
 use indexmap::IndexMap;
 use itertools::{Itertools, chain, zip_eq};
-use num_traits::zero;
+use num_traits::{Zero, zero};
 use stwo::core::circle::CirclePoint;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
@@ -70,7 +70,7 @@ impl EvalDomainSamples<QM31> {
     }
 }
 
-impl<Value: IValue> Guess<Value> for EvalDomainSamples<Value> {
+impl<Value: IValue + 'static> Guess<Value> for EvalDomainSamples<Value> {
     type Target = EvalDomainSamples<Var>;
 
     fn guess(&self, context: &mut Context<Value>) -> Self::Target {
@@ -82,10 +82,18 @@ pub fn empty_eval_domain_samples(
     n_columns_per_trace: &[usize],
     n_queries: usize,
 ) -> EvalDomainSamples<NoValue> {
+    empty_eval_domain_samples_generic(n_columns_per_trace, n_queries)
+}
+
+pub fn empty_eval_domain_samples_generic<V: IValue>(
+    n_columns_per_trace: &[usize],
+    n_queries: usize,
+) -> EvalDomainSamples<V> {
+    let zero = V::from_qm31(QM31::zero());
     EvalDomainSamples {
         data: n_columns_per_trace
             .iter()
-            .map(|n_columns| vec![vec![M31Wrapper::from(NoValue); n_queries]; *n_columns])
+            .map(|n_columns| vec![vec![M31Wrapper::new_unsafe(zero); n_queries]; *n_columns])
             .collect(),
     }
 }
@@ -97,7 +105,7 @@ pub fn empty_eval_domain_samples(
 /// Assumptions:
 /// - All component sizes are powers of two.
 pub fn period_generators(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     trace_gen: CirclePoint<M31>,
     component_sizes_bits: &[Simd],
 ) -> Vec<CirclePoint<Var>> {
@@ -141,7 +149,7 @@ pub fn period_generators(
 /// Computes the expected value of the composition polynomial at the OODS point, based on the
 /// broken composition polynomial commitment.
 pub fn extract_expected_composition_eval(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     composition_eval_at_oods: &[Var; N_COMPOSITION_COLUMNS],
     oods_point: CirclePoint<Var>,
     max_log_degree_bound: usize,
@@ -181,7 +189,7 @@ pub struct OodsResponse {
 ///
 /// The order is consistent with the order dictated by the stwo prover.
 pub fn collect_oods_responses(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     config: &ProofConfig,
     trace_gen: CirclePoint<M31>,
     oods_point: CirclePoint<Var>,
@@ -282,7 +290,7 @@ pub fn collect_oods_responses(
 /// The function computes the inputs to FRI, which are the evaluations of the above rational
 /// function at the given (evaluation domain) queries.
 pub fn compute_fri_input(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     oods_responses: &[OodsResponse],
     queries: &Queries,
     trace_queries: &EvalDomainSamples<Var>,

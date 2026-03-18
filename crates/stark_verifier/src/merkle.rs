@@ -4,7 +4,7 @@ use stwo::core::vcs_lifted::verifier::PACKED_LEAF_SIZE;
 use crate::oods::EvalDomainSamples;
 use crate::proof::N_TRACES;
 use crate::sort_queries::{QuerySorter, generate_column_indices};
-use circuits::blake::{HashValue, blake};
+use circuits::blake::{HashValue, blake_auto as blake};
 use circuits::context::{Context, Var};
 use circuits::ivalue::IValue;
 use circuits::ops::{Guess, cond_flip, eq};
@@ -19,7 +19,7 @@ pub mod test;
 #[derive(Clone, Debug, PartialEq)]
 pub struct AuthPath<T>(pub Vec<HashValue<T>>);
 
-impl<Value: IValue> Guess<Value> for AuthPath<Value> {
+impl<Value: IValue + 'static> Guess<Value> for AuthPath<Value> {
     type Target = AuthPath<Var>;
 
     fn guess(&self, context: &mut Context<Value>) -> Self::Target {
@@ -45,7 +45,7 @@ impl<T> AuthPaths<T> {
     }
 }
 
-impl<Value: IValue> Guess<Value> for AuthPaths<Value> {
+impl<Value: IValue + 'static> Guess<Value> for AuthPaths<Value> {
     type Target = AuthPaths<Var>;
 
     fn guess(&self, context: &mut Context<Value>) -> Self::Target {
@@ -55,7 +55,7 @@ impl<Value: IValue> Guess<Value> for AuthPaths<Value> {
 
 /// Computes the hash of a Merkle leaf. The input is a vector of `M31` values.
 fn hash_leaf_m31s(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     values: &[M31Wrapper<Var>],
 ) -> HashValue<Var> {
     let leaf_packed = Simd::pack(context, values);
@@ -63,13 +63,13 @@ fn hash_leaf_m31s(
 }
 
 /// Computes the hash of a Merkle leaf with a single `QM31` value.
-pub fn hash_leaf_qm31(context: &mut Context<impl IValue>, value: Var) -> HashValue<Var> {
+pub fn hash_leaf_qm31(context: &mut Context<impl IValue + 'static>, value: Var) -> HashValue<Var> {
     blake(context, &[value], 16)
 }
 
 /// Computes the hash of a Merkle leaf with 4 `QM31` values.
 pub fn hash_packed_leaf_qm31s(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     values: [Var; PACKED_LEAF_SIZE],
 ) -> HashValue<Var> {
     blake(context, &values, 64)
@@ -77,7 +77,7 @@ pub fn hash_packed_leaf_qm31s(
 
 /// Computes the hash of an internal node in the Merkle tree.
 pub fn hash_node(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     left: HashValue<Var>,
     right: HashValue<Var>,
 ) -> HashValue<Var> {
@@ -93,7 +93,7 @@ pub fn hash_node(
 ///
 /// This is done by computing the root from `leaf` and `auth_path` and comparing it to the given
 /// `root`.
-pub fn verify_merkle_path<Value: IValue>(
+pub fn verify_merkle_path<Value: IValue + 'static>(
     context: &mut Context<Value>,
     mut leaf: HashValue<Var>,
     bits: &[Var],
@@ -109,7 +109,7 @@ pub fn verify_merkle_path<Value: IValue>(
 
 /// Computes a node of a Merkle tree, given one child `node`, its sibling and the
 /// bit indicating which child is `node`.
-pub fn merkle_node<Value: IValue>(
+pub fn merkle_node<Value: IValue + 'static>(
     context: &mut Context<Value>,
     node: &HashValue<Var>,
     sibling: &HashValue<Var>,
@@ -128,7 +128,7 @@ pub fn merkle_node<Value: IValue>(
 /// `bits[i][query_idx]` is the `i`-th bit of the bit representation of the query at index
 /// `query_idx`.
 /// column_log_sizes_by_trace includes the column log sizes for the trace and interaction columns.
-pub fn decommit_eval_domain_samples<Value: IValue>(
+pub fn decommit_eval_domain_samples<Value: IValue + 'static>(
     context: &mut Context<Value>,
     n_queries: usize,
     column_log_sizes_by_trace: &[Vec<Var>; 2],

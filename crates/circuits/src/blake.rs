@@ -274,6 +274,24 @@ pub fn m31_to_u32_gate(ctx: &mut TraceContext, input: Var) -> U32Var {
     U32Var::new_unsafe(out)
 }
 
+/// Like [blake], but dispatches to [blake_from_gates] when `Value` is [QM31]
+/// and the `USE_BLAKE_GATES` env var is set.
+pub fn blake_auto<Value: IValue + 'static>(
+    context: &mut Context<Value>,
+    input: &[Var],
+    n_bytes: usize,
+) -> HashValue<Var> {
+    if std::env::var("USE_BLAKE_GATES").is_ok()
+        && std::any::TypeId::of::<Value>() == std::any::TypeId::of::<QM31>()
+    {
+        // SAFETY: We verified Value == QM31, so Context<Value> == Context<QM31>.
+        let ctx = unsafe { &mut *(context as *mut Context<Value> as *mut Context<QM31>) };
+        blake_from_gates(ctx, input, n_bytes)
+    } else {
+        blake(context, input, n_bytes)
+    }
+}
+
 /// Adds a blake hash using decomposed gates to the circuit, and returns the two output variables
 /// as [HashValue].
 ///

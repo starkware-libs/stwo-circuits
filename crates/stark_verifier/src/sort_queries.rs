@@ -20,7 +20,7 @@ use circuits::extract_bits::extract_bits;
 
 /// Generates the column indices for the columns.
 /// The column indices are the values 1..n_columns.
-pub fn generate_column_indices<Value: IValue>(
+pub fn generate_column_indices<Value: IValue + 'static>(
     context: &mut Context<Value>,
     n_columns: usize,
 ) -> Vec<Var> {
@@ -39,7 +39,7 @@ pub fn generate_column_indices<Value: IValue>(
 ///
 /// column_indices hold the values 1..N, where N >= column_log_sizes.len().
 /// column_log_sizes hold the log sizes of the columns.
-fn generate_sort_keys<Value: IValue>(
+fn generate_sort_keys<Value: IValue + 'static>(
     context: &mut Context<Value>,
     column_indices: &[Var],
     column_log_sizes: &[Var],
@@ -59,7 +59,7 @@ fn generate_sort_keys<Value: IValue>(
 }
 
 /// Verifies that the sorted keys are indeed sorted.
-fn verify_sorted_keys<Value: IValue>(context: &mut Context<Value>, sorted_keys: &[Var]) {
+fn verify_sorted_keys<Value: IValue + 'static>(context: &mut Context<Value>, sorted_keys: &[Var]) {
     let u_inverse = context.constant(qm31_from_u32s(0, 0, 1, 0).inverse());
 
     let Some(mut prev) = sorted_keys.first() else {
@@ -108,7 +108,7 @@ pub struct QuerySorter {
 }
 impl QuerySorter {
     pub fn new(
-        context: &mut Context<impl IValue>,
+        context: &mut Context<impl IValue + 'static>,
         column_indices: &[Var],
         column_log_sizes: &[Var],
     ) -> Self {
@@ -125,7 +125,7 @@ impl QuerySorter {
     /// Assumes that the sorting of the keys is validated by the caller.
     ///
     /// The sort keys are constructed u*key, where key is an m31 element.
-    pub fn sort<Value: IValue>(
+    pub fn sort<Value: IValue + 'static>(
         &mut self,
         context: &mut Context<Value>,
         query_values: Vec<M31Wrapper<Var>>,

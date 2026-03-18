@@ -37,7 +37,7 @@ pub struct ComponentData<'a> {
     n_instances_bits: &'a [Simd],
 }
 
-pub trait ComponentDataTrait<Value: IValue> {
+pub trait ComponentDataTrait<Value: IValue + 'static> {
     fn trace_columns(&self) -> &[Var];
 
     fn interaction_columns(&self) -> &[InteractionAtOods<Var>];
@@ -57,7 +57,7 @@ pub trait ComponentDataTrait<Value: IValue> {
     fn max_component_size_bits(&self) -> usize;
 }
 
-impl<'a, Value: IValue> ComponentDataTrait<Value> for ComponentData<'a> {
+impl<'a, Value: IValue + 'static> ComponentDataTrait<Value> for ComponentData<'a> {
     fn trace_columns(&self) -> &[Var] {
         self.trace_columns
     }
@@ -108,7 +108,7 @@ pub struct CompositionConstraintAccumulator {
 
 impl CompositionConstraintAccumulator {
     pub fn new(
-        context: &mut Context<impl IValue>,
+        context: &mut Context<impl IValue + 'static>,
         preprocessed_columns: HashMap<PreProcessedColumnId, Var>,
         public_params: HashMap<String, Var>,
         composition_polynomial_coeff: Var,
@@ -131,7 +131,7 @@ impl CompositionConstraintAccumulator {
     }
 
     /// Incorporate the next constraint evaluation at the OODS point.
-    pub fn accumulate(&mut self, context: &mut Context<impl IValue>, constraint_eval_at_oods: Var) {
+    pub fn accumulate(&mut self, context: &mut Context<impl IValue + 'static>, constraint_eval_at_oods: Var) {
         let shifted_accumulation =
             eval!(context, (self.accumulation) * (self.composition_polynomial_coeff));
         let zero_or_constraint_eval_at_oods =
@@ -153,7 +153,7 @@ impl CompositionConstraintAccumulator {
 
     pub fn add_constraint(
         &mut self,
-        context: &mut Context<impl IValue>,
+        context: &mut Context<impl IValue + 'static>,
         constraint_eval_at_oods: Var,
     ) {
         self.accumulate(context, constraint_eval_at_oods);
@@ -161,14 +161,14 @@ impl CompositionConstraintAccumulator {
 
     pub fn add_to_relation(
         &mut self,
-        context: &mut Context<impl IValue>,
+        context: &mut Context<impl IValue + 'static>,
         numerator: Var,
         element: &[Var],
     ) {
         self.terms.push(logup_term(context, self.interaction_elements, numerator, element));
     }
 
-    pub fn finalize_logup_in_pairs<Value: IValue>(
+    pub fn finalize_logup_in_pairs<Value: IValue + 'static>(
         &mut self,
         context: &mut Context<Value>,
         interaction_columns: &[InteractionAtOods<Var>],
@@ -225,7 +225,7 @@ impl CompositionConstraintAccumulator {
 }
 
 /// A trait for evaluating at some point or row.
-pub trait CircuitEval<Value: IValue> {
+pub trait CircuitEval<Value: IValue + 'static> {
     fn name(&self) -> String;
 
     /// Evaluates the composition polynomial at the OODS point (after dividing by the domain
@@ -250,7 +250,7 @@ pub fn get_n_columns<'a, T>(columns: &mut &'a [T], n: usize) -> &'a [T] {
     if let Some(vec) = columns.split_off(..n) { vec } else { panic!("Expected {n} columns") }
 }
 
-pub fn compute_composition_polynomial<Value: IValue>(
+pub fn compute_composition_polynomial<Value: IValue + 'static>(
     context: &mut Context<Value>,
     config: &ProofConfig,
     statement: &impl Statement<Value>,

@@ -9,7 +9,7 @@ pub type LogupTerm = Fraction<Var, Var>;
 
 /// Computes the logup term for a single element.
 pub fn logup_term(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     interaction_elements: [Var; 2],
     numerator: Var,
     element: &[Var],
@@ -20,7 +20,7 @@ pub fn logup_term(
 
 /// Computes the denominator of a logup term.
 pub fn combine_term(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     element: &[Var],
     interaction_elements: [Var; 2],
 ) -> Var {
@@ -37,7 +37,7 @@ pub fn combine_term(
 ///
 /// The use term is 1 / combine_term(context, element, interaction_elements).
 pub fn logup_use_term(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     element: &[Var],
     interaction_elements: [Var; 2],
 ) -> Var {
@@ -47,7 +47,7 @@ pub fn logup_use_term(
 
 /// Computes the constraint polynomial for a single logup term.
 pub fn single_logup_constraint(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     term: LogupTerm,
     shifted_diff: Var,
 ) -> Var {
@@ -56,7 +56,7 @@ pub fn single_logup_constraint(
 
 /// Computes the constraint polynomial for a pair logup term.
 pub fn pair_logup_constraint(
-    context: &mut Context<impl IValue>,
+    context: &mut Context<impl IValue + 'static>,
     term0: LogupTerm,
     term1: LogupTerm,
     shifted_diff: Var,

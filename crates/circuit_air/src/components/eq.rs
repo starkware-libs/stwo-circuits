@@ -65,7 +65,7 @@ impl FrameworkEval for Eval {
 
 pub struct CircuitEqComponent {}
 
-impl<Value: IValue> CircuitEval<Value> for CircuitEqComponent {
+impl<Value: IValue + 'static> CircuitEval<Value> for CircuitEqComponent {
     fn name(&self) -> String {
         "eq".to_string()
     }

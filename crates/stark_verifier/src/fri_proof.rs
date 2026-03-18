@@ -4,6 +4,8 @@ use circuits::context::{Context, Var};
 use circuits::ivalue::{IValue, NoValue};
 use circuits::ops::Guess;
 use itertools::zip_eq;
+use num_traits::Zero;
+use stwo::core::fields::qm31::QM31;
 
 /// Represents the structure of a FRI proof.
 #[derive(Debug, PartialEq)]
@@ -44,7 +46,7 @@ impl<T> FriCommitProof<T> {
     }
 }
 
-impl<Value: IValue> Guess<Value> for FriCommitProof<Value> {
+impl<Value: IValue + 'static> Guess<Value> for FriCommitProof<Value> {
     type Target = FriCommitProof<Var>;
 
     fn guess(&self, context: &mut Context<Value>) -> Self::Target {
@@ -66,7 +68,7 @@ pub struct FriWitness<T> {
     pub line_coset_vals_per_query_per_tree: Vec<Vec<Vec<T>>>,
 }
 
-impl<Value: IValue> Guess<Value> for FriWitness<Value> {
+impl<Value: IValue + 'static> Guess<Value> for FriWitness<Value> {
     type Target = FriWitness<Var>;
 
     fn guess(&self, context: &mut Context<Value>) -> Self::Target {
@@ -133,7 +135,7 @@ impl<T> FriProof<T> {
     }
 }
 
-impl<Value: IValue> Guess<Value> for FriProof<Value> {
+impl<Value: IValue + 'static> Guess<Value> for FriProof<Value> {
     type Target = FriProof<Var>;
 
     fn guess(&self, context: &mut Context<Value>) -> Self::Target {
@@ -146,7 +148,12 @@ impl<Value: IValue> Guess<Value> for FriProof<Value> {
 }
 
 pub fn empty_fri_proof(config: &FriConfig) -> FriProof<NoValue> {
-    let empty_hash = HashValue(NoValue, NoValue);
+    empty_fri_proof_generic(config)
+}
+
+pub fn empty_fri_proof_generic<V: IValue>(config: &FriConfig) -> FriProof<V> {
+    let zero = V::from_qm31(QM31::zero());
+    let hash_zero = HashValue(zero, zero);
     let all_line_fold_steps = compute_all_line_fold_steps(
         config.log_trace_size - 1 - config.log_n_last_layer_coefs,
         config.line_fold_step,
@@ -158,9 +165,7 @@ pub fn empty_fri_proof(config: &FriConfig) -> FriProof<NoValue> {
 
     for step in &all_fold_steps {
         auth_paths.push(vec![
-            // The verifier computes the Merkle node at height `log_layer_size - step`
-            // from the witness.
-            AuthPath(vec![empty_hash; log_layer_size - step]);
+            AuthPath(vec![hash_zero; log_layer_size - step]);
             config.n_queries
         ]);
         log_layer_size -= step;
@@ -169,16 +174,16 @@ pub fn empty_fri_proof(config: &FriConfig) -> FriProof<NoValue> {
 
     let line_coset_vals_per_query_per_tree = all_line_fold_steps
         .iter()
-        .map(|step| vec![vec![NoValue; 1 << step]; config.n_queries])
+        .map(|step| vec![vec![zero; 1 << step]; config.n_queries])
         .collect();
     FriProof {
         commit: FriCommitProof {
-            layer_commitments: vec![empty_hash; config.log_trace_size],
-            last_layer_coefs: vec![NoValue; 1 << config.log_n_last_layer_coefs],
+            layer_commitments: vec![hash_zero; 1 + all_line_fold_steps.len()],
+            last_layer_coefs: vec![zero; 1 << config.log_n_last_layer_coefs],
         },
         auth_paths,
         witness: FriWitness {
-            circle_siblings: vec![NoValue; config.n_queries],
+            circle_siblings: vec![zero; config.n_queries],
             line_coset_vals_per_query_per_tree,
         },
     }

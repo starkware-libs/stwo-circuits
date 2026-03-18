@@ -54,7 +54,7 @@ impl TestComponentData {
     }
 }
 
-impl<Value: IValue> ComponentDataTrait<Value> for TestComponentData {
+impl<Value: IValue + 'static> ComponentDataTrait<Value> for TestComponentData {
     fn trace_columns(&self) -> &[Var] {
         &self.trace
     }

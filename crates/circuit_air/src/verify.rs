@@ -21,7 +21,7 @@ pub struct CircuitConfig {
     pub preprocessed_root: HashValue<QM31>,
 }
 
-pub fn build_verification_circuit<Value: IValue>(
+pub fn build_verification_circuit<Value: IValue + 'static>(
     circuit_config: CircuitConfig,
     proof: Proof<Value>,
     public_data: CircuitPublicData,

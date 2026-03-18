@@ -7,7 +7,7 @@ const ID_TO_BIG_MAX_ROWS: u32 = 1 << MAX_SEQUENCE_LOG_SIZE;
 pub const N_TRACE_COLUMNS: usize = 29;
 pub const N_INTERACTION_COLUMNS: usize = 32;
 
-pub fn accumulate_constraints<Value: IValue>(
+pub fn accumulate_constraints<Value: IValue + 'static>(
     input: &[Var],
     context: &mut Context<Value>,
     component_data: &dyn ComponentDataTrait<Value>,
@@ -128,7 +128,7 @@ pub struct Component {
     // for each.
     pub index: u32,
 }
-impl<Value: IValue> CircuitEval<Value> for Component {
+impl<Value: IValue + 'static> CircuitEval<Value> for Component {
     fn name(&self) -> String {
         if self.index == 0 {
             "memory_id_to_big".to_string()

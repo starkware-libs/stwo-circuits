@@ -11,7 +11,7 @@ pub const N_INTERACTION_COLUMNS: usize = SECURE_EXTENSION_DEGREE * N_MULT_COLUMN
 pub const RELATION_USES_PER_ROW: [RelationUse; 0] = [];
 
 pub struct Component {}
-impl<Value: IValue> CircuitEval<Value> for Component {
+impl<Value: IValue + 'static> CircuitEval<Value> for Component {
     fn name(&self) -> String {
         "verify_bitwise_xor_12".to_string()
     }

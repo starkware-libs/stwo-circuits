@@ -1,15 +1,18 @@
 use crate::constraint_eval::CircuitEval;
-use crate::fri_proof::{FriConfig, FriProof, empty_fri_proof};
+use crate::fri_proof::{FriConfig, FriProof, empty_fri_proof, empty_fri_proof_generic};
 use crate::merkle::{AuthPath, AuthPaths};
-use crate::oods::{EvalDomainSamples, N_COMPOSITION_COLUMNS, empty_eval_domain_samples};
+use crate::oods::{
+    EvalDomainSamples, N_COMPOSITION_COLUMNS, empty_eval_domain_samples,
+    empty_eval_domain_samples_generic,
+};
 use crate::statement::Statement;
 use circuits::blake::HashValue;
 use circuits::context::{Context, Var};
 use circuits::ivalue::{IValue, NoValue};
 use circuits::ops::Guess;
 use itertools::{Itertools, zip_eq};
-
-use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
+use num_traits::Zero;
+use stwo::core::fields::qm31::{QM31, SECURE_EXTENSION_DEGREE};
 use stwo::core::pcs::PcsConfig;
 
 pub const N_TRACES: usize = 4;
@@ -40,7 +43,7 @@ pub struct ProofConfig {
     pub interaction_pow_bits: u32,
 }
 impl ProofConfig {
-    pub fn from_statement<Value: IValue>(
+    pub fn from_statement<Value: IValue + 'static>(
         statement: &impl Statement<Value>,
         pcs_config: &PcsConfig,
         interaction_pow_bits: u32,
@@ -50,7 +53,7 @@ impl ProofConfig {
         Self::from_components(components, n_preprocessed_columns, pcs_config, interaction_pow_bits)
     }
 
-    pub fn from_components<Value: IValue>(
+    pub fn from_components<Value: IValue + 'static>(
         components: &[Box<dyn CircuitEval<Value>>],
         n_preprocessed_columns: usize,
         pcs_config: &PcsConfig,
@@ -179,7 +182,7 @@ pub struct InteractionAtOods<T> {
     pub at_prev: Option<T>,
 }
 
-impl<Value: IValue> Guess<Value> for InteractionAtOods<Value> {
+impl<Value: IValue + 'static> Guess<Value> for InteractionAtOods<Value> {
     type Target = InteractionAtOods<Var>;
 
     fn guess(&self, context: &mut Context<Value>) -> Self::Target {
@@ -203,7 +206,7 @@ pub struct Claim<T> {
     // Claimed sum for each component in the AIR.
     pub claimed_sums: Vec<T>,
 }
-impl<Value: IValue> Guess<Value> for Claim<Value> {
+impl<Value: IValue + 'static> Guess<Value> for Claim<Value> {
     type Target = Claim<Var>;
 
     fn guess(&self, context: &mut Context<Value>) -> Self::Target {
@@ -282,48 +285,53 @@ impl<T> Proof<T> {
 }
 
 pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
-    let auth_path =
-        AuthPath(vec![HashValue(NoValue, NoValue); config.log_evaluation_domain_size()]);
+    empty_proof_generic(config)
+}
+
+pub fn empty_proof_generic<V: IValue>(config: &ProofConfig) -> Proof<V> {
+    let zero = V::from_qm31(QM31::zero());
+    let hash_zero = HashValue(zero, zero);
+    let auth_path = AuthPath(vec![hash_zero; config.log_evaluation_domain_size()]);
 
     Proof {
-        preprocessed_root: HashValue(NoValue, NoValue),
-        trace_root: HashValue(NoValue, NoValue),
-        interaction_root: HashValue(NoValue, NoValue),
-        composition_polynomial_root: HashValue(NoValue, NoValue),
-        preprocessed_columns_at_oods: vec![NoValue; config.n_preprocessed_columns],
-        trace_at_oods: vec![NoValue; config.n_trace_columns],
+        preprocessed_root: hash_zero,
+        trace_root: hash_zero,
+        interaction_root: hash_zero,
+        composition_polynomial_root: hash_zero,
+        preprocessed_columns_at_oods: vec![zero; config.n_preprocessed_columns],
+        trace_at_oods: vec![zero; config.n_trace_columns],
         interaction_at_oods: config
             .cumulative_sum_columns
             .iter()
             .map(|is_cumulative_sum| {
                 if *is_cumulative_sum {
-                    InteractionAtOods { at_oods: NoValue, at_prev: Some(NoValue) }
+                    InteractionAtOods { at_oods: zero, at_prev: Some(zero) }
                 } else {
-                    InteractionAtOods { at_oods: NoValue, at_prev: None }
+                    InteractionAtOods { at_oods: zero, at_prev: None }
                 }
             })
             .collect(),
         claim: Claim {
-            packed_enable_bits: vec![NoValue; config.n_components.div_ceil(4)],
-            packed_component_log_sizes: vec![NoValue; config.n_components.div_ceil(4)],
-            claimed_sums: vec![NoValue; config.n_components],
+            packed_enable_bits: vec![zero; config.n_components.div_ceil(4)],
+            packed_component_log_sizes: vec![zero; config.n_components.div_ceil(4)],
+            claimed_sums: vec![zero; config.n_components],
         },
-        composition_eval_at_oods: [NoValue; N_COMPOSITION_COLUMNS],
-        eval_domain_samples: empty_eval_domain_samples(
+        composition_eval_at_oods: [zero; N_COMPOSITION_COLUMNS],
+        eval_domain_samples: empty_eval_domain_samples_generic(
             &config.n_columns_per_trace(),
             config.n_queries(),
         ),
         eval_domain_auth_paths: AuthPaths {
             data: vec![vec![auth_path; config.n_queries()]; N_TRACES],
         },
-        proof_of_work_nonce: NoValue,
-        interaction_pow_nonce: NoValue,
-        fri: empty_fri_proof(&config.fri),
-        channel_salt: NoValue,
+        proof_of_work_nonce: zero,
+        interaction_pow_nonce: zero,
+        fri: empty_fri_proof_generic(&config.fri),
+        channel_salt: zero,
     }
 }
 
-impl<Value: IValue> Guess<Value> for Proof<Value> {
+impl<Value: IValue + 'static> Guess<Value> for Proof<Value> {
     type Target = Proof<Var>;
 
     fn guess(&self, context: &mut Context<Value>) -> Self::Target {

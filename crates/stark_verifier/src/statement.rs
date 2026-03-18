@@ -30,7 +30,7 @@ pub struct EvaluateArgs<'a> {
 }
 
 /// Represents an AIR and its public inputs.
-pub trait Statement<Value: IValue> {
+pub trait Statement<Value: IValue + 'static> {
     fn claims_to_mix(&self, context: &mut Context<Value>) -> Vec<Vec<Var>>;
 
     /// Returns the components of the statement.

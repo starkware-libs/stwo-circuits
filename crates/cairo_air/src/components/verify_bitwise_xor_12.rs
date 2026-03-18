@@ -9,7 +9,7 @@ pub const VERIFY_BITWISE_XOR_12_RELATION_ID: u32 = 648362599;
 pub const RELATION_USES_PER_ROW: [RelationUse; 0] = [];
 
 #[allow(unused_variables)]
-pub fn accumulate_constraints<Value: IValue>(
+pub fn accumulate_constraints<Value: IValue + 'static>(
     input: &[Var],
     context: &mut Context<Value>,
     component_data: &dyn ComponentDataTrait<Value>,
@@ -39,7 +39,7 @@ pub fn accumulate_constraints<Value: IValue>(
 }
 
 pub struct Component {}
-impl<Value: IValue> CircuitEval<Value> for Component {
+impl<Value: IValue + 'static> CircuitEval<Value> for Component {
     fn name(&self) -> String {
         "verify_bitwise_xor_12".to_string()
     }
