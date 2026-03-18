@@ -18,10 +18,10 @@ use crate::verify::{CairoVerifierConfig, get_preprocessed_root};
 pub mod test;
 
 pub const PRIVACY_CAIRO_VERIFIER_CONSTS_HASH: [u32; 8] =
-    [1283865202, 2009681603, 1266623912, 534797207, 1489758000, 741307218, 1414461714, 1643656987];
+    [174814783, 1652834350, 1032610181, 1532257584, 1512231543, 1520881840, 696471934, 1525676174];
 
 pub const PRIVACY_RECURSION_CIRCUIT_CONSTS_HASH: [u32; 8] =
-    [2029882415, 1954121307, 1558761271, 479433446, 1354380864, 1709356520, 1349274200, 1461452232];
+    [1114489888, 1327954531, 1372850385, 1645607660, 1819401037, 329139490, 2130094171, 1340622591];
 
 pub const PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
     [736666193, 671587538, 1100540541, 1401951855, 202000446, 1284259076, 1586213897, 825089717];
@@ -50,7 +50,7 @@ pub fn privacy_cairo_verifier_config(log_blowup_factor: u32) -> CairoVerifierCon
     let lifting_log_size = 20 + log_blowup_factor;
     let pcs_config = PcsConfig {
         pow_bits,
-        fri_config: FriConfig::new(0, log_blowup_factor, n_queries, 1),
+        fri_config: FriConfig::new(0, log_blowup_factor, n_queries, 4),
         lifting_log_size: Some(lifting_log_size),
     };
 

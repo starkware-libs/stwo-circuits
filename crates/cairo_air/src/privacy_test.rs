@@ -184,15 +184,15 @@ fn test_privacy_consts() {
     let preprocessed_circuit =
         PreprocessedCircuit::from_finalized_circuit(&novalue_context.circuit);
 
-    let log_blowup_factor = 1;
+    let log_blowup_factor = 2;
     let lifting_log_size = preprocessed_circuit.params.trace_log_size + log_blowup_factor;
     let pcs_config = PcsConfig {
         pow_bits: 26,
         fri_config: FriConfig {
             log_blowup_factor,
             log_last_layer_degree_bound: 0,
-            n_queries: 70,
-            fold_step: 1,
+            n_queries: 35,
+            fold_step: 4,
         },
         lifting_log_size: Some(lifting_log_size),
     };
