@@ -1,7 +1,7 @@
 use std::fs::File;
 
 use cairo_air::utils::binary_deserialize_from_file;
-use circuit_air::statement::all_circuit_components;
+use circuit_air::statement::{CircuitStatement, all_circuit_components};
 use circuit_air::verify::{
     CircuitConfig, CircuitPublicData, build_verification_circuit, verify_circuit,
 };
@@ -13,9 +13,9 @@ use circuit_prover::prover::{
 };
 use circuits::blake::HashValue;
 use circuits::context::Context;
-use circuits::ivalue::IValue;
+use circuits::ivalue::{IValue, NoValue};
 use circuits::stats::Stats;
-use circuits_stark_verifier::proof::{ProofConfig, empty_proof};
+use circuits_stark_verifier::proof::{ProofConfig, ProofInfo, empty_proof};
 use itertools::Itertools;
 use num_traits::Zero;
 use stwo::core::fields::qm31::QM31;
@@ -263,4 +263,55 @@ fn test_zk_padding() {
         assert_eq!(eq_after.next_power_of_two(), eq_before.next_power_of_two());
         assert_eq!(qm31_ops_after.next_power_of_two(), qm31_ops_before.next_power_of_two());
     }
+}
+
+#[test]
+fn test_privacy_proof_info() {
+    let cairo_proof_log_blowup_factor = 3;
+    let const_config = privacy_cairo_verifier_config(cairo_proof_log_blowup_factor);
+
+    let mut novalue_context = build_cairo_verifier_circuit(&const_config);
+    let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut novalue_context);
+
+    let log_blowup_factor = 2;
+    let lifting_log_size = preprocessed_circuit.params.trace_log_size + log_blowup_factor;
+    let pcs_config = PcsConfig {
+        pow_bits: 26,
+        fri_config: FriConfig {
+            log_blowup_factor,
+            log_last_layer_degree_bound: 0,
+            n_queries: 35,
+            fold_step: 4,
+        },
+        lifting_log_size: Some(lifting_log_size),
+    };
+    let preprocessed_column_ids = preprocessed_circuit.preprocessed_trace.ids();
+    let circuit_config = CircuitConfig {
+        config: pcs_config,
+        output_addresses: preprocessed_circuit.params.output_addresses.clone(),
+        n_blake_gates: preprocessed_circuit.params.n_blake_gates,
+        preprocessed_column_ids,
+        preprocessed_root: PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT.into(),
+    };
+    let public_data = CircuitPublicData {
+        output_values: vec![QM31::zero(); preprocessed_circuit.params.output_addresses.len()],
+    };
+    let mut context = Context::<NoValue>::default();
+    let statement = CircuitStatement::new(
+        &mut context,
+        &circuit_config.output_addresses,
+        &public_data.output_values,
+        circuit_config.n_blake_gates,
+        circuit_config.preprocessed_column_ids.clone(),
+        circuit_config.preprocessed_root,
+    );
+
+    let proof_config = ProofConfig::from_statement(
+        &statement,
+        &circuit_config.config,
+        circuit_air::statement::INTERACTION_POW_BITS,
+    );
+    let proof_info = ProofInfo::from_config(&proof_config);
+    println!("{proof_info}");
+    assert_eq!(proof_info.total(), 86205);
 }
