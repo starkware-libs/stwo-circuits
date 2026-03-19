@@ -239,16 +239,15 @@ impl<Value: IValue> CairoStatement<Value> {
             "max_builtin_memory_cell * segment_range.start might exceed M31_P"
         );
 
-        let mut actual_uses_iter = Simd::unpack(context, &n_uses_simd).into_iter();
+        let actual_uses_iter = Simd::unpack(context, &n_uses_simd).into_iter();
         let mut range_checks = vec![];
         let all_components = all_components::<Value>();
 
-        for (name, _size) in builtin_memory_cells {
+        for ((name, _size), actual_uses) in zip_eq(builtin_memory_cells, actual_uses_iter) {
             let index = all_components.get_index_of(name).unwrap();
             let component_size = component_sizes[index];
 
             // Check that either actual_uses == 0 or is_disabled == 0.
-            let actual_uses = actual_uses_iter.next().unwrap();
             let is_disabled = eval!(context, (1) - (enable_bits[index]));
             let constraint_val = eval!(context, (actual_uses) * (is_disabled));
             eq(context, constraint_val, context.zero());
