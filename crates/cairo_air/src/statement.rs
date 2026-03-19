@@ -159,7 +159,7 @@ impl<Value: IValue> CairoStatement<Value> {
     /// Verifies the builtins.
     ///
     /// Assumes that the start and end addresses of the segment ranges are less than 2^27 (this is
-    /// guaranteed by `segment_range_logup_sum`).
+    /// guaranteed by `segment_ranges_logup_sum`).
     pub fn verify_builtins(
         &self,
         context: &mut Context<Value>,
@@ -507,7 +507,7 @@ pub fn id_to_big_logup_term(
     logup_use_term(context, &elements, interaction_elements)
 }
 
-pub fn segment_range_logup_sum(
+pub fn segment_ranges_logup_sum(
     context: &mut Context<impl IValue>,
     interaction_elements: [Var; 2],
     segment_ranges: &[SegmentRange<Var>; N_SEGMENTS],
@@ -631,7 +631,7 @@ pub fn public_logup_sum(
     let argument_address = initial_ap;
     let return_value_address =
         eval!(context, (final_ap) - (context.constant(QM31::from(N_SEGMENTS as u32))));
-    let segment_ranges_logup_sum = segment_range_logup_sum(
+    let segment_ranges_logup_sum = segment_ranges_logup_sum(
         context,
         interaction_elements,
         segment_ranges,
