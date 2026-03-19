@@ -313,5 +313,6 @@ fn test_privacy_proof_info() {
     );
     let proof_info = ProofInfo::from_config(&proof_config);
     println!("{proof_info}");
-    assert_eq!(proof_info.total(), 86205);
+    // Assert the total size in bytes.
+    assert_eq!(proof_info.total(), 344820); 
 }

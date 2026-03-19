@@ -11,11 +11,11 @@ use circuits_stark_verifier::proof::{Claim, InteractionAtOods, Proof};
 use circuits_stark_verifier::verify::LOG_SIZE_BITS;
 
 pub trait CircuitSerialize {
-    fn serialize(&self, output: &mut Vec<u32>);
+    fn serialize(&self, output: &mut Vec<u8>);
 }
 
 impl CircuitSerialize for Proof<QM31> {
-    fn serialize(&self, output: &mut Vec<u32>) {
+    fn serialize(&self, output: &mut Vec<u8>) {
         let Self {
             channel_salt,
             preprocessed_root,
@@ -53,13 +53,13 @@ impl CircuitSerialize for Proof<QM31> {
 }
 
 impl CircuitSerialize for M31 {
-    fn serialize(&self, output: &mut Vec<u32>) {
-        output.push(self.0);
+    fn serialize(&self, output: &mut Vec<u8>) {
+        output.extend_from_slice(&self.0.to_le_bytes());
     }
 }
 
 impl CircuitSerialize for QM31 {
-    fn serialize(&self, output: &mut Vec<u32>) {
+    fn serialize(&self, output: &mut Vec<u8>) {
         for c in self.to_m31_array() {
             c.serialize(output);
         }
@@ -67,25 +67,25 @@ impl CircuitSerialize for QM31 {
 }
 
 impl<T: CircuitSerialize> CircuitSerialize for [T] {
-    fn serialize(&self, output: &mut Vec<u32>) {
+    fn serialize(&self, output: &mut Vec<u8>) {
         self.iter().for_each(|v| v.serialize(output));
     }
 }
 
 impl<T: CircuitSerialize, const N: usize> CircuitSerialize for [T; N] {
-    fn serialize(&self, output: &mut Vec<u32>) {
+    fn serialize(&self, output: &mut Vec<u8>) {
         self.as_slice().serialize(output);
     }
 }
 
 impl<T: CircuitSerialize> CircuitSerialize for Vec<T> {
-    fn serialize(&self, output: &mut Vec<u32>) {
+    fn serialize(&self, output: &mut Vec<u8>) {
         self.as_slice().serialize(output);
     }
 }
 
 impl CircuitSerialize for HashValue<QM31> {
-    fn serialize(&self, output: &mut Vec<u32>) {
+    fn serialize(&self, output: &mut Vec<u8>) {
         let Self(a, b) = self;
         a.serialize(output);
         b.serialize(output);
@@ -93,13 +93,13 @@ impl CircuitSerialize for HashValue<QM31> {
 }
 
 impl CircuitSerialize for Claim<QM31> {
-    fn serialize(&self, output: &mut Vec<u32>) {
+    fn serialize(&self, output: &mut Vec<u8>) {
         let Self { packed_enable_bits, packed_component_log_sizes, claimed_sums } = self;
 
-        // Pack enable bits: 32 enable bits per u32. Each QM31 holds 4 enable bits, so chunks of 8
-        // QM31s fill one u32.
-        for chunk in packed_enable_bits.chunks(8) {
-            let mut packed = 0u32;
+        // Pack enable bits: 8 enable bits per u8. Each QM31 holds 4 enable bits, so chunks of 2
+        // QM31s fill one u8.
+        for chunk in packed_enable_bits.chunks(2) {
+            let mut packed = 0u8;
             for (qm31_idx, qm31) in chunk.iter().enumerate() {
                 for (m31_idx, m31) in qm31.to_m31_array().into_iter().enumerate() {
                     if m31.is_one() {
@@ -110,14 +110,12 @@ impl CircuitSerialize for Claim<QM31> {
             output.push(packed);
         }
 
-        // Pack log sizes: 4 per u32 (requires `LOG_SIZE_BITS` <= 32 / 4 = 8).
-        assert!(LOG_SIZE_BITS as usize <= 32 / 4);
+        // Pack log sizes: 1 per u8 (requires `LOG_SIZE_BITS` <= 8).
+        assert!(LOG_SIZE_BITS as usize <= 8);
         for qm31 in packed_component_log_sizes {
-            let mut packed = 0u32;
-            for (i, m31) in qm31.to_m31_array().into_iter().enumerate() {
-                packed |= (m31.0 & 0xFF) << (i * 8);
+            for m31 in qm31.to_m31_array().into_iter() {
+                output.push((m31.0 & 0xFF) as u8);
             }
-            output.push(packed);
         }
 
         // Only serialize claimed sums for enabled components (disabled have zero claimed sum).
@@ -134,7 +132,7 @@ impl CircuitSerialize for Claim<QM31> {
 }
 
 impl CircuitSerialize for InteractionAtOods<QM31> {
-    fn serialize(&self, output: &mut Vec<u32>) {
+    fn serialize(&self, output: &mut Vec<u8>) {
         let Self { at_oods, at_prev } = self;
         at_oods.serialize(output);
         if let Some(at_prev) = at_prev {
@@ -144,21 +142,21 @@ impl CircuitSerialize for InteractionAtOods<QM31> {
 }
 
 impl CircuitSerialize for AuthPath<QM31> {
-    fn serialize(&self, output: &mut Vec<u32>) {
+    fn serialize(&self, output: &mut Vec<u8>) {
         let Self(path) = self;
         path.serialize(output);
     }
 }
 
 impl CircuitSerialize for AuthPaths<QM31> {
-    fn serialize(&self, output: &mut Vec<u32>) {
+    fn serialize(&self, output: &mut Vec<u8>) {
         let Self { data } = self;
         data.serialize(output);
     }
 }
 
 impl CircuitSerialize for M31Wrapper<QM31> {
-    fn serialize(&self, output: &mut Vec<u32>) {
+    fn serialize(&self, output: &mut Vec<u8>) {
         // M31Wrapper wraps a value known to be in the base field M31.
         let m31: M31 = self.get().0.0;
         m31.serialize(output);
@@ -166,7 +164,7 @@ impl CircuitSerialize for M31Wrapper<QM31> {
 }
 
 impl CircuitSerialize for EvalDomainSamples<QM31> {
-    fn serialize(&self, output: &mut Vec<u32>) {
+    fn serialize(&self, output: &mut Vec<u8>) {
         let n_traces = self.n_traces();
         for trace_idx in 0..n_traces {
             let trace_data = self.data_for_trace(trace_idx);
@@ -180,7 +178,7 @@ impl CircuitSerialize for EvalDomainSamples<QM31> {
 }
 
 impl CircuitSerialize for FriCommitProof<QM31> {
-    fn serialize(&self, output: &mut Vec<u32>) {
+    fn serialize(&self, output: &mut Vec<u8>) {
         let Self { layer_commitments, last_layer_coefs } = self;
         layer_commitments.serialize(output);
         last_layer_coefs.serialize(output);
@@ -188,14 +186,14 @@ impl CircuitSerialize for FriCommitProof<QM31> {
 }
 
 impl CircuitSerialize for FriWitness<QM31> {
-    fn serialize(&self, output: &mut Vec<u32>) {
+    fn serialize(&self, output: &mut Vec<u8>) {
         let Self(witness_per_query_per_tree) = self;
         witness_per_query_per_tree.serialize(output);
     }
 }
 
 impl CircuitSerialize for FriProof<QM31> {
-    fn serialize(&self, output: &mut Vec<u32>) {
+    fn serialize(&self, output: &mut Vec<u8>) {
         let Self { commit, auth_paths, witness } = self;
         commit.serialize(output);
         auth_paths.serialize(output);

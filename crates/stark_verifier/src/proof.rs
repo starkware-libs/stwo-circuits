@@ -13,6 +13,7 @@ use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
 use stwo::core::pcs::PcsConfig;
 
 pub const N_TRACES: usize = 4;
+const N_U8S_PER_U32: usize = 4;
 
 /// Proof size breakdown, measured in `u32` elements.
 ///
@@ -117,6 +118,7 @@ impl ProofInfo {
         }
     }
 
+    /// Returns the total size in bytes.
     pub fn total(&self) -> usize {
         let Self {
             log_trace_size: _,
@@ -133,7 +135,7 @@ impl ProofInfo {
             fri_auth_per_query,
             fri_witness_per_query,
         } = *self;
-        fixed
+        (fixed
             + claim
             + oods
             + fri_commitments
@@ -142,7 +144,7 @@ impl ProofInfo {
                 + eval_auth_per_query
                 + fri_auth_per_query
                 + fri_witness_per_query)
-                * n_queries
+                * n_queries) * N_U8S_PER_U32
     }
 }
 
@@ -199,8 +201,8 @@ impl std::fmt::Display for ProofInfo {
         )?;
         writeln!(f, "  ─────────────────────────────")?;
         let total = self.total();
-        writeln!(f, "  total (u32 elements): {total:>10}")?;
-        writeln!(f, "  total (bytes):        {:>10}", total * 4)
+        writeln!(f, "  total (u32 elements): {:>10}", total / 4)?;
+        writeln!(f, "  total (bytes):        {:>10}", total)
     }
 }
 
