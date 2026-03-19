@@ -334,107 +334,199 @@ pub fn write_interaction_trace(
     circuit_interaction_claim_generator: CircuitInteractionClaimGenerator,
     tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, Blake2sM31MerkleChannel>,
     interaction_elements: &CircuitInteractionElements,
+    twiddles: &TwiddleTree<SimdBackend>,
 ) -> CircuitInteractionClaim {
     let CircuitClaim { log_sizes, output_values: _ } = circuit_claim;
     let mut component_log_size_iter = log_sizes.iter();
 
-    let (eq_trace, eq_claimed_sum) = eq::write_interaction_trace(
-        *component_log_size_iter.next().unwrap(),
-        circuit_interaction_claim_generator.eq_lookup_data,
-        &interaction_elements.common_lookup_elements,
-    );
-    tree_builder.extend_evals(eq_trace);
-    let (qm31_ops_trace, qm31_ops_claimed_sum) = qm31_ops::write_interaction_trace(
-        *component_log_size_iter.next().unwrap(),
-        circuit_interaction_claim_generator.qm31_ops_lookup_data,
-        &interaction_elements.common_lookup_elements,
-    );
-    tree_builder.extend_evals(qm31_ops_trace);
+    // Extract log sizes before parallel section.
+    let eq_log_size = *component_log_size_iter.next().unwrap();
+    let qm31_ops_log_size = *component_log_size_iter.next().unwrap();
 
-    // Write blake gate interaction trace.
-    let (blake_gate_trace, blake_gate_interaction_claim) = circuit_interaction_claim_generator
-        .blake_gate
-        .write_interaction_trace(&interaction_elements.common_lookup_elements);
-    tree_builder.extend_evals(blake_gate_trace);
+    // Write all interaction traces in parallel, including interpolation.
+    let (
+        mut eq_result,
+        mut qm31_ops_result,
+        mut blake_gate_result,
+        mut blake_round_result,
+        mut blake_round_sigma_result,
+        mut blake_g_result,
+        mut blake_output_result,
+        mut triple_xor_32_result,
+        mut verify_bitwise_xor_8_result,
+        mut verify_bitwise_xor_12_result,
+        mut verify_bitwise_xor_4_result,
+        mut verify_bitwise_xor_7_result,
+        mut verify_bitwise_xor_9_result,
+        mut range_check_15_result,
+        mut range_check_16_result,
+    ) = (None, None, None, None, None, None, None, None, None, None, None, None, None, None, None);
+    {
+        let eq_lookup_data = circuit_interaction_claim_generator.eq_lookup_data;
+        let qm31_ops_lookup_data = circuit_interaction_claim_generator.qm31_ops_lookup_data;
+        let blake_gate = circuit_interaction_claim_generator.blake_gate;
+        let blake_round = circuit_interaction_claim_generator.blake_round;
+        let blake_round_sigma = circuit_interaction_claim_generator.blake_round_sigma;
+        let blake_g = circuit_interaction_claim_generator.blake_g;
+        let blake_output = circuit_interaction_claim_generator.blake_output;
+        let triple_xor_32 = circuit_interaction_claim_generator.triple_xor_32;
+        let verify_bitwise_xor_8 = circuit_interaction_claim_generator.verify_bitwise_xor_8;
+        let verify_bitwise_xor_12 = circuit_interaction_claim_generator.verify_bitwise_xor_12;
+        let verify_bitwise_xor_4 = circuit_interaction_claim_generator.verify_bitwise_xor_4;
+        let verify_bitwise_xor_7 = circuit_interaction_claim_generator.verify_bitwise_xor_7;
+        let verify_bitwise_xor_9 = circuit_interaction_claim_generator.verify_bitwise_xor_9;
+        let range_check_15 = circuit_interaction_claim_generator.range_check_15;
+        let range_check_16 = circuit_interaction_claim_generator.range_check_16;
+        scope(|s| {
+            s.spawn(|_| {
+                let (trace, claimed_sum) = eq::write_interaction_trace(
+                    eq_log_size,
+                    eq_lookup_data,
+                    &interaction_elements.common_lookup_elements,
+                );
+                let polys = SimdBackend::interpolate_columns(trace, twiddles);
+                eq_result = Some((polys, claimed_sum));
+            });
+            s.spawn(|_| {
+                let (trace, claimed_sum) = qm31_ops::write_interaction_trace(
+                    qm31_ops_log_size,
+                    qm31_ops_lookup_data,
+                    &interaction_elements.common_lookup_elements,
+                );
+                let polys = SimdBackend::interpolate_columns(trace, twiddles);
+                qm31_ops_result = Some((polys, claimed_sum));
+            });
+            s.spawn(|_| {
+                let (trace, claim) = blake_gate
+                    .write_interaction_trace(&interaction_elements.common_lookup_elements);
+                let polys = SimdBackend::interpolate_columns(trace, twiddles);
+                blake_gate_result = Some((polys, claim));
+            });
+            s.spawn(|_| {
+                let (trace, claim) = blake_round
+                    .write_interaction_trace(&interaction_elements.common_lookup_elements);
+                let polys = SimdBackend::interpolate_columns(trace, twiddles);
+                blake_round_result = Some((polys, claim));
+            });
+            s.spawn(|_| {
+                let (trace, claim) = blake_round_sigma
+                    .write_interaction_trace(&interaction_elements.common_lookup_elements);
+                let polys = SimdBackend::interpolate_columns(trace, twiddles);
+                blake_round_sigma_result = Some((polys, claim));
+            });
+            s.spawn(|_| {
+                let (trace, claim) =
+                    blake_g.write_interaction_trace(&interaction_elements.common_lookup_elements);
+                let polys = SimdBackend::interpolate_columns(trace, twiddles);
+                blake_g_result = Some((polys, claim));
+            });
+            s.spawn(|_| {
+                let (trace, claim) = blake_output
+                    .write_interaction_trace(&interaction_elements.common_lookup_elements);
+                let polys = SimdBackend::interpolate_columns(trace, twiddles);
+                blake_output_result = Some((polys, claim));
+            });
+            s.spawn(|_| {
+                let (trace, claim) = triple_xor_32
+                    .write_interaction_trace(&interaction_elements.common_lookup_elements);
+                let polys = SimdBackend::interpolate_columns(trace, twiddles);
+                triple_xor_32_result = Some((polys, claim));
+            });
+            s.spawn(|_| {
+                let (trace, claim) = verify_bitwise_xor_8
+                    .write_interaction_trace(&interaction_elements.common_lookup_elements);
+                let polys = SimdBackend::interpolate_columns(trace, twiddles);
+                verify_bitwise_xor_8_result = Some((polys, claim));
+            });
+            s.spawn(|_| {
+                let (trace, claim) = verify_bitwise_xor_12
+                    .write_interaction_trace(&interaction_elements.common_lookup_elements);
+                let polys = SimdBackend::interpolate_columns(trace, twiddles);
+                verify_bitwise_xor_12_result = Some((polys, claim));
+            });
+            s.spawn(|_| {
+                let (trace, claim) = verify_bitwise_xor_4
+                    .write_interaction_trace(&interaction_elements.common_lookup_elements);
+                let polys = SimdBackend::interpolate_columns(trace, twiddles);
+                verify_bitwise_xor_4_result = Some((polys, claim));
+            });
+            s.spawn(|_| {
+                let (trace, claim) = verify_bitwise_xor_7
+                    .write_interaction_trace(&interaction_elements.common_lookup_elements);
+                let polys = SimdBackend::interpolate_columns(trace, twiddles);
+                verify_bitwise_xor_7_result = Some((polys, claim));
+            });
+            s.spawn(|_| {
+                let (trace, claim) = verify_bitwise_xor_9
+                    .write_interaction_trace(&interaction_elements.common_lookup_elements);
+                let polys = SimdBackend::interpolate_columns(trace, twiddles);
+                verify_bitwise_xor_9_result = Some((polys, claim));
+            });
+            s.spawn(|_| {
+                let (trace, claim) = range_check_15
+                    .write_interaction_trace(&interaction_elements.common_lookup_elements);
+                let polys = SimdBackend::interpolate_columns(trace, twiddles);
+                range_check_15_result = Some((polys, claim));
+            });
+            s.spawn(|_| {
+                let (trace, claim) = range_check_16
+                    .write_interaction_trace(&interaction_elements.common_lookup_elements);
+                let polys = SimdBackend::interpolate_columns(trace, twiddles);
+                range_check_16_result = Some((polys, claim));
+            });
+        });
+    }
 
-    // Write blake round interaction trace.
-    let (blake_round_trace, blake_round_interaction_claim) = circuit_interaction_claim_generator
-        .blake_round
-        .write_interaction_trace(&interaction_elements.common_lookup_elements);
-    tree_builder.extend_evals(blake_round_trace);
+    let (eq_polys, eq_claimed_sum) = eq_result.unwrap();
+    tree_builder.extend_polys(eq_polys);
 
-    // Write blake round sigma interaction trace.
-    let (blake_round_sigma_trace, blake_round_sigma_interaction_claim) =
-        circuit_interaction_claim_generator
-            .blake_round_sigma
-            .write_interaction_trace(&interaction_elements.common_lookup_elements);
-    tree_builder.extend_evals(blake_round_sigma_trace);
+    let (qm31_ops_polys, qm31_ops_claimed_sum) = qm31_ops_result.unwrap();
+    tree_builder.extend_polys(qm31_ops_polys);
 
-    // Write blake g interaction trace.
-    let (blake_g_trace, blake_g_interaction_claim) = circuit_interaction_claim_generator
-        .blake_g
-        .write_interaction_trace(&interaction_elements.common_lookup_elements);
-    tree_builder.extend_evals(blake_g_trace);
+    let (blake_gate_polys, blake_gate_interaction_claim) = blake_gate_result.unwrap();
+    tree_builder.extend_polys(blake_gate_polys);
 
-    // Write blake output interaction trace.
-    let (blake_output_trace, blake_output_interaction_claim) = circuit_interaction_claim_generator
-        .blake_output
-        .write_interaction_trace(&interaction_elements.common_lookup_elements);
-    tree_builder.extend_evals(blake_output_trace);
+    let (blake_round_polys, blake_round_interaction_claim) = blake_round_result.unwrap();
+    tree_builder.extend_polys(blake_round_polys);
 
-    // Write triple xor 32 interaction trace.
-    let (triple_xor_32_trace, triple_xor_32_interaction_claim) =
-        circuit_interaction_claim_generator
-            .triple_xor_32
-            .write_interaction_trace(&interaction_elements.common_lookup_elements);
-    tree_builder.extend_evals(triple_xor_32_trace);
+    let (blake_round_sigma_polys, blake_round_sigma_interaction_claim) =
+        blake_round_sigma_result.unwrap();
+    tree_builder.extend_polys(blake_round_sigma_polys);
 
-    // Write verify bitwise xor 8 interaction trace.
-    let (verify_bitwise_xor_8_trace, verify_bitwise_xor_8_interaction_claim) =
-        circuit_interaction_claim_generator
-            .verify_bitwise_xor_8
-            .write_interaction_trace(&interaction_elements.common_lookup_elements);
-    tree_builder.extend_evals(verify_bitwise_xor_8_trace);
-    let (verify_bitwise_xor_12_trace, verify_bitwise_xor_12_interaction_claim) =
-        circuit_interaction_claim_generator
-            .verify_bitwise_xor_12
-            .write_interaction_trace(&interaction_elements.common_lookup_elements);
-    tree_builder.extend_evals(verify_bitwise_xor_12_trace);
+    let (blake_g_polys, blake_g_interaction_claim) = blake_g_result.unwrap();
+    tree_builder.extend_polys(blake_g_polys);
 
-    // Write verify bitwise xor 4 interaction trace.
-    let (verify_bitwise_xor_4_trace, verify_bitwise_xor_4_interaction_claim) =
-        circuit_interaction_claim_generator
-            .verify_bitwise_xor_4
-            .write_interaction_trace(&interaction_elements.common_lookup_elements);
-    tree_builder.extend_evals(verify_bitwise_xor_4_trace);
+    let (blake_output_polys, blake_output_interaction_claim) = blake_output_result.unwrap();
+    tree_builder.extend_polys(blake_output_polys);
 
-    // Write verify bitwise xor 7 interaction trace.
-    let (verify_bitwise_xor_7_trace, verify_bitwise_xor_7_interaction_claim) =
-        circuit_interaction_claim_generator
-            .verify_bitwise_xor_7
-            .write_interaction_trace(&interaction_elements.common_lookup_elements);
-    tree_builder.extend_evals(verify_bitwise_xor_7_trace);
+    let (triple_xor_32_polys, triple_xor_32_interaction_claim) = triple_xor_32_result.unwrap();
+    tree_builder.extend_polys(triple_xor_32_polys);
 
-    // Write verify bitwise xor 9 interaction trace.
-    let (verify_bitwise_xor_9_trace, verify_bitwise_xor_9_interaction_claim) =
-        circuit_interaction_claim_generator
-            .verify_bitwise_xor_9
-            .write_interaction_trace(&interaction_elements.common_lookup_elements);
-    tree_builder.extend_evals(verify_bitwise_xor_9_trace);
+    let (verify_bitwise_xor_8_polys, verify_bitwise_xor_8_interaction_claim) =
+        verify_bitwise_xor_8_result.unwrap();
+    tree_builder.extend_polys(verify_bitwise_xor_8_polys);
 
-    // Write range check 15 interaction trace.
-    let (range_check_15_trace, range_check_15_interaction_claim) =
-        circuit_interaction_claim_generator
-            .range_check_15
-            .write_interaction_trace(&interaction_elements.common_lookup_elements);
-    tree_builder.extend_evals(range_check_15_trace);
+    let (verify_bitwise_xor_12_polys, verify_bitwise_xor_12_interaction_claim) =
+        verify_bitwise_xor_12_result.unwrap();
+    tree_builder.extend_polys(verify_bitwise_xor_12_polys);
 
-    // Write range check 16 interaction trace.
-    let (range_check_16_trace, range_check_16_interaction_claim) =
-        circuit_interaction_claim_generator
-            .range_check_16
-            .write_interaction_trace(&interaction_elements.common_lookup_elements);
-    tree_builder.extend_evals(range_check_16_trace);
+    let (verify_bitwise_xor_4_polys, verify_bitwise_xor_4_interaction_claim) =
+        verify_bitwise_xor_4_result.unwrap();
+    tree_builder.extend_polys(verify_bitwise_xor_4_polys);
+
+    let (verify_bitwise_xor_7_polys, verify_bitwise_xor_7_interaction_claim) =
+        verify_bitwise_xor_7_result.unwrap();
+    tree_builder.extend_polys(verify_bitwise_xor_7_polys);
+
+    let (verify_bitwise_xor_9_polys, verify_bitwise_xor_9_interaction_claim) =
+        verify_bitwise_xor_9_result.unwrap();
+    tree_builder.extend_polys(verify_bitwise_xor_9_polys);
+
+    let (range_check_15_polys, range_check_15_interaction_claim) = range_check_15_result.unwrap();
+    tree_builder.extend_polys(range_check_15_polys);
+
+    let (range_check_16_polys, range_check_16_interaction_claim) = range_check_16_result.unwrap();
+    tree_builder.extend_polys(range_check_16_polys);
 
     CircuitInteractionClaim {
         claimed_sums: [
