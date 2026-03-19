@@ -13,7 +13,6 @@ use circuits::simd::Simd;
 use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
 use circuits_stark_verifier::logup::{combine_term, logup_use_term};
-use circuits_stark_verifier::proof::Claim;
 use circuits_stark_verifier::statement::Statement;
 use itertools::{Itertools, zip_eq};
 use stwo::core::fields::qm31::QM31;
@@ -73,7 +72,6 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
         &self,
         context: &mut Context<Value>,
         interaction_elements: [Var; 2],
-        _claim: &Claim<Var>,
     ) -> Var {
         let mut sum = context.zero();
 

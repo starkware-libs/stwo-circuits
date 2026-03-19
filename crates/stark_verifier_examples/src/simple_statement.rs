@@ -10,14 +10,12 @@ use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::ivalue::{IValue, qm31_from_u32s};
 use circuits::ops::{div, eq};
-use circuits::simd::Simd;
 use circuits_stark_verifier::constraint_eval::RelationUse;
 use circuits_stark_verifier::constraint_eval::{
     CircuitEval, ComponentDataTrait, CompositionConstraintAccumulator,
 };
 use circuits_stark_verifier::empty_component::EmptyComponent;
 use circuits_stark_verifier::logup::combine_term;
-use circuits_stark_verifier::proof::Claim;
 use circuits_stark_verifier::statement::Statement;
 
 /// This is currently hardcoded in the simple air.
@@ -136,19 +134,16 @@ impl<Value: IValue> Statement<Value> for SimpleStatement<Value> {
         &self,
         context: &mut Context<Value>,
         interaction_elements: [Var; 2],
-        claim: &Claim<Var>,
     ) -> Var {
         let mut sum = context.zero();
 
-        let [packed_enable_bits] = &claim.packed_enable_bits[..] else {
-            panic!("Expected 1 QM31 with 3 bits")
-        };
-        let enable_bits = Simd::unpack(context, &Simd::from_packed(vec![*packed_enable_bits], 3));
-
-        for (log_n_instances, enable_bit) in zip_eq(&COMPONENT_LOG_SIZES, enable_bits) {
+        for (component, log_n_instances) in zip_eq(&self.components, &COMPONENT_LOG_SIZES) {
+            if component.trace_columns() == 0 {
+                continue;
+            }
             let fib_logup_sum =
                 squared_fibonacci_public_logup_sum(context, interaction_elements, *log_n_instances);
-            sum = eval!(context, (sum) + ((fib_logup_sum) * (enable_bit)));
+            sum = eval!(context, (sum) + (fib_logup_sum));
         }
         sum
     }
