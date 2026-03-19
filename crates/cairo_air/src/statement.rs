@@ -101,7 +101,7 @@ pub struct SegmentRange<T> {
 }
 
 pub struct PublicMemory<T> {
-    pub segement_ranges: [SegmentRange<T>; N_SEGMENTS],
+    pub segment_ranges: [SegmentRange<T>; N_SEGMENTS],
     pub safe_call_ids: [T; 2],
     pub output_ids: Vec<T>,
     pub program_ids: Vec<T>,
@@ -129,7 +129,7 @@ impl PublicData<Var> {
             fp: *iter.next().unwrap(),
         };
 
-        let segement_ranges = array::from_fn(|_| SegmentRange {
+        let segment_ranges = array::from_fn(|_| SegmentRange {
             start: PubMemoryM31Value { id: *iter.next().unwrap(), value: *iter.next().unwrap() },
             end: PubMemoryM31Value { id: *iter.next().unwrap(), value: *iter.next().unwrap() },
         });
@@ -142,7 +142,7 @@ impl PublicData<Var> {
         Self {
             initial_state,
             final_state,
-            public_memory: PublicMemory { segement_ranges, safe_call_ids, output_ids, program_ids },
+            public_memory: PublicMemory { segment_ranges, safe_call_ids, output_ids, program_ids },
         }
     }
 }
@@ -168,25 +168,25 @@ impl<Value: IValue> CairoStatement<Value> {
         component_sizes: &[Var],
     ) {
         // Validate the output segment range.
-        let segement_ranges = &self.public_data.public_memory.segement_ranges;
+        let segment_ranges = &self.public_data.public_memory.segment_ranges;
         let SegmentRange::<Var> {
             start: PubMemoryM31Value { id: _, value: output_start },
             end: PubMemoryM31Value { id: _, value: output_end },
-        } = &segement_ranges[0];
+        } = &segment_ranges[0];
         let diff = eval!(context, (*output_end) - (*output_start));
         let n_outputs = context.constant(self.outputs.len().into());
         eq(context, diff, n_outputs);
 
-        let pedersen_segment_range = &segement_ranges[1];
-        let range_check_128_segment_range = &segement_ranges[2];
-        let ecdsa_segment_range = &segement_ranges[3];
-        let bitwise_segment_range = &segement_ranges[4];
-        let ec_op_segment_range = &segement_ranges[5];
-        let keccak_segment_range = &segement_ranges[6];
-        let poseidon_segment_range = &segement_ranges[7];
-        let range_check96_segment_range = &segement_ranges[8];
-        let add_mod_segment_range = &segement_ranges[9];
-        let mul_mod_segment_range = &segement_ranges[10];
+        let pedersen_segment_range = &segment_ranges[1];
+        let range_check_128_segment_range = &segment_ranges[2];
+        let ecdsa_segment_range = &segment_ranges[3];
+        let bitwise_segment_range = &segment_ranges[4];
+        let ec_op_segment_range = &segment_ranges[5];
+        let keccak_segment_range = &segment_ranges[6];
+        let poseidon_segment_range = &segment_ranges[7];
+        let range_check96_segment_range = &segment_ranges[8];
+        let add_mod_segment_range = &segment_ranges[9];
+        let mul_mod_segment_range = &segment_ranges[10];
 
         let supported_builtins = [
             pedersen_segment_range,
@@ -387,20 +387,20 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
     }
 
     fn public_params(&self, _context: &mut Context<Value>) -> HashMap<String, Var> {
-        let segement_ranges = &self.public_data.public_memory.segement_ranges;
+        let segment_ranges = &self.public_data.public_memory.segment_ranges;
         let public_params: HashMap<String, Var> = HashMap::from_iter(
             [
-                ("output_start_ptr", &segement_ranges[0]),
-                ("pedersen_builtin_segment_start", &segement_ranges[1]),
-                ("range_check_builtin_segment_start", &segement_ranges[2]),
-                ("ecdsa_builtin_segment_start", &segement_ranges[3]),
-                ("bitwise_builtin_segment_start", &segement_ranges[4]),
-                ("ec_op_builtin_segment_start", &segement_ranges[5]),
-                ("keccak_builtin_segment_start", &segement_ranges[6]),
-                ("poseidon_builtin_segment_start", &segement_ranges[7]),
-                ("range_check96_builtin_segment_start", &segement_ranges[8]),
-                ("add_mod_builtin_segment_start", &segement_ranges[9]),
-                ("mul_mod_builtin_segment_start", &segement_ranges[10]),
+                ("output_start_ptr", &segment_ranges[0]),
+                ("pedersen_builtin_segment_start", &segment_ranges[1]),
+                ("range_check_builtin_segment_start", &segment_ranges[2]),
+                ("ecdsa_builtin_segment_start", &segment_ranges[3]),
+                ("bitwise_builtin_segment_start", &segment_ranges[4]),
+                ("ec_op_builtin_segment_start", &segment_ranges[5]),
+                ("keccak_builtin_segment_start", &segment_ranges[6]),
+                ("poseidon_builtin_segment_start", &segment_ranges[7]),
+                ("range_check96_builtin_segment_start", &segment_ranges[8]),
+                ("add_mod_builtin_segment_start", &segment_ranges[9]),
+                ("mul_mod_builtin_segment_start", &segment_ranges[10]),
             ]
             .into_iter()
             .map(|(k, v)| (k.to_string(), v.start.value)),
@@ -501,13 +501,13 @@ pub fn id_to_big_logup_term(
 pub fn segment_range_logup_sum(
     context: &mut Context<impl IValue>,
     interaction_elements: [Var; 2],
-    segement_ranges: &[SegmentRange<Var>; N_SEGMENTS],
+    segment_ranges: &[SegmentRange<Var>; N_SEGMENTS],
     mut argument_address: Var,
     mut return_value_address: Var,
 ) -> Var {
     let one = context.one();
     let mut sum = context.zero();
-    for (i, segment_range) in segement_ranges.iter().enumerate() {
+    for (i, segment_range) in segment_ranges.iter().enumerate() {
         if i != 0 {
             argument_address = eval!(context, (argument_address) + (one));
             return_value_address = eval!(context, (return_value_address) + (one));
@@ -593,7 +593,7 @@ pub fn public_logup_sum(
     let PublicData {
         initial_state,
         final_state,
-        public_memory: PublicMemory { segement_ranges, safe_call_ids, output_ids, program_ids },
+        public_memory: PublicMemory { segment_ranges, safe_call_ids, output_ids, program_ids },
     } = public_data;
     let initial_ap = initial_state.ap;
     let final_ap = final_state.ap;
@@ -625,7 +625,7 @@ pub fn public_logup_sum(
     let segment_ranges_logup_sum = segment_range_logup_sum(
         context,
         interaction_elements,
-        segement_ranges,
+        segment_ranges,
         argument_address,
         return_value_address,
     );
@@ -634,7 +634,7 @@ pub fn public_logup_sum(
     let output_logup_sum = memory_segments_logup_sum(
         context,
         interaction_elements,
-        segement_ranges[0].start.value,
+        segment_ranges[0].start.value,
         output_ids,
         outputs,
     );

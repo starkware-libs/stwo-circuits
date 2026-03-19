@@ -240,7 +240,7 @@ fn test_public_logup_sum() {
         .collect::<Vec<_>>();
 
     let public_memory =
-        PublicMemory { segement_ranges: segment_ranges, safe_call_ids, output_ids, program_ids };
+        PublicMemory { segment_ranges: segment_ranges, safe_call_ids, output_ids, program_ids };
 
     let public_data = PublicData { initial_state, final_state, public_memory };
 
