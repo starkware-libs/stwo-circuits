@@ -327,25 +327,29 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
     }
 
     fn claims_to_mix(&self, context: &mut Context<Value>) -> Vec<Vec<Var>> {
-        let program_len = context.constant(qm31_from_u32s(self.program.len() as u32, 0, 0, 0));
-        let packed_outputs =
-            Simd::pack(context, &self.outputs.iter().flatten().cloned().collect_vec());
+        let Self {
+            components: _components,
+            packed_public_data,
+            public_data: _public_data,
+            program,
+            outputs,
+            preprocessed_root: _preprocessed_root,
+        } = self;
+        let program_len = context.constant(qm31_from_u32s(program.len() as u32, 0, 0, 0));
+        let packed_outputs = Simd::pack(context, &outputs.iter().flatten().cloned().collect_vec());
 
-        let output_hash = blake(
-            context,
-            packed_outputs.get_packed(),
-            4 * self.outputs.len() * MEMORY_VALUES_LIMBS,
-        );
+        let output_hash =
+            blake(context, packed_outputs.get_packed(), 4 * outputs.len() * MEMORY_VALUES_LIMBS);
 
         // output the output hash.
         output(context, output_hash.0);
         output(context, output_hash.1);
 
-        let flat_program = pack_into_qm31s(self.program.iter().flatten().cloned());
+        let flat_program = pack_into_qm31s(program.iter().flatten().cloned());
         let program_hash = IValue::blake(&flat_program, flat_program.len() * 16);
         vec![
             vec![program_len],
-            self.packed_public_data.get_packed().to_vec(),
+            packed_public_data.get_packed().to_vec(),
             vec![output_hash.0, output_hash.1],
             vec![context.constant(program_hash.0), context.constant(program_hash.1)],
         ]
