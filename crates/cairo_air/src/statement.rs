@@ -560,7 +560,7 @@ fn safe_call_id_logup_term(
     eval!(context, (address_to_id_logup_term) + (id_to_value_logup_term))
 }
 
-pub fn memory_segments_logup_sum(
+pub fn memory_segment_logup_sum(
     context: &mut Context<impl IValue>,
     interaction_elements: [Var; 2],
     mut start_address: Var,
@@ -639,7 +639,7 @@ pub fn public_logup_sum(
     );
     sum = eval!(context, (sum) + (segment_ranges_logup_sum));
 
-    let output_logup_sum = memory_segments_logup_sum(
+    let output_logup_sum = memory_segment_logup_sum(
         context,
         interaction_elements,
         segment_ranges[0].start.value,
@@ -648,7 +648,7 @@ pub fn public_logup_sum(
     );
     sum = eval!(context, (sum) + (output_logup_sum));
 
-    let program_logup_sum = memory_segments_logup_sum(
+    let program_logup_sum = memory_segment_logup_sum(
         context,
         interaction_elements,
         initial_state.pc,
