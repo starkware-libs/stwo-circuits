@@ -176,6 +176,7 @@ pub fn prove_circuit_with_precompute<'a>(
         output_addresses,
         &mut tree_builder,
         &trace_generator,
+        twiddles,
     );
     claim.mix_into(channel);
     tree_builder.commit(channel);
