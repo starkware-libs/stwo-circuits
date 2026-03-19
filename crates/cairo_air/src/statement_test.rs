@@ -239,8 +239,7 @@ fn test_public_logup_sum() {
         .map(|id| context.constant(qm31_from_u32s(id as u32, 0, 0, 0)))
         .collect::<Vec<_>>();
 
-    let public_memory =
-        PublicMemory { segement_ranges: segment_ranges, safe_call_ids, output_ids, program_ids };
+    let public_memory = PublicMemory { segment_ranges, safe_call_ids, output_ids, program_ids };
 
     let public_data = PublicData { initial_state, final_state, public_memory };
 
