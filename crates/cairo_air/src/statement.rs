@@ -27,7 +27,6 @@ use circuits::context::{Context, Var};
 use circuits::ivalue::{IValue, qm31_from_u32s};
 use circuits::simd::Simd;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
-use circuits_stark_verifier::proof::Claim;
 use circuits_stark_verifier::statement::Statement;
 use stwo::core::fields::m31::M31;
 
@@ -362,7 +361,6 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         &self,
         context: &mut Context<Value>,
         interaction_elements: [Var; 2],
-        _claim: &Claim<Var>,
     ) -> Var {
         let program_as_constants = self
             .program

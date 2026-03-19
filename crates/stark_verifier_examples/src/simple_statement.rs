@@ -17,7 +17,6 @@ use circuits_stark_verifier::constraint_eval::{
 };
 use circuits_stark_verifier::empty_component::EmptyComponent;
 use circuits_stark_verifier::logup::combine_term;
-use circuits_stark_verifier::proof::Claim;
 use circuits_stark_verifier::statement::Statement;
 
 /// This is currently hardcoded in the simple air.
@@ -27,10 +26,11 @@ pub const COMPONENT_LOG_SIZES: [u32; 3] = [LOG_SIZE_LONG, LOG_SIZE_SHORT, 0];
 
 pub struct SimpleStatement<Value: IValue> {
     components: Vec<Box<dyn CircuitEval<Value>>>,
+    packed_enable_bits: Vec<Var>,
 }
 
-impl<Value: IValue> Default for SimpleStatement<Value> {
-    fn default() -> Self {
+impl<Value: IValue> SimpleStatement<Value> {
+    pub fn new(packed_enable_bits: Vec<Var>) -> Self {
         Self {
             components: vec![
                 Box::new(SquaredFibonacciComponent {
@@ -45,6 +45,7 @@ impl<Value: IValue> Default for SimpleStatement<Value> {
                 }),
                 Box::new(EmptyComponent {}),
             ],
+            packed_enable_bits,
         }
     }
 }
@@ -136,14 +137,11 @@ impl<Value: IValue> Statement<Value> for SimpleStatement<Value> {
         &self,
         context: &mut Context<Value>,
         interaction_elements: [Var; 2],
-        claim: &Claim<Var>,
     ) -> Var {
         let mut sum = context.zero();
 
-        let [packed_enable_bits] = &claim.packed_enable_bits[..] else {
-            panic!("Expected 1 QM31 with 3 bits")
-        };
-        let enable_bits = Simd::unpack(context, &Simd::from_packed(vec![*packed_enable_bits], 3));
+        let enable_bits =
+            Simd::unpack(context, &Simd::from_packed(self.packed_enable_bits.clone(), 3));
 
         for (log_n_instances, enable_bit) in zip_eq(&COMPONENT_LOG_SIZES, enable_bits) {
             let fib_logup_sum =
