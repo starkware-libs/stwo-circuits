@@ -79,6 +79,7 @@ jobs:
       - clippy
       - doc
       - run-tests
+      - typos
     steps:
       - name: Decide whether all the needed jobs succeeded or failed
         uses: re-actors/alls-green@v1.2.2
@@ -110,3 +111,8 @@ jobs:
         run: cargo install --locked cargo-machete
       - name: Run Machete (detect unused dependencies)
         run: cargo machete
+  typos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: crate-ci/typos@v1.43.0
