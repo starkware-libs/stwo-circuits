@@ -21,7 +21,7 @@ use circuit_air::CircuitInteractionElements;
 use circuit_common::Qm31OpsTraceGenerator;
 use circuit_common::preprocessed::PreProcessedTrace;
 use itertools::Itertools;
-use rayon::join;
+use rayon::{join, scope};
 use stwo::core::fields::qm31::QM31;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::prover::TreeBuilder;
@@ -197,33 +197,32 @@ pub fn write_trace(
 
     // Write xor and range-check components in parallel.
     let (
-        verify_bitwise_xor_8_result,
-        verify_bitwise_xor_12_result,
-        verify_bitwise_xor_4_result,
-        verify_bitwise_xor_7_result,
-        verify_bitwise_xor_9_result,
-        range_check_15_result,
-        range_check_16_result,
-    ) = std::thread::scope(|s| {
-        let verify_bitwise_xor_8_handle = s.spawn(move || verify_bitwise_xor_8_state.write_trace());
-        let verify_bitwise_xor_12_handle =
-            s.spawn(move || verify_bitwise_xor_12_state.write_trace());
-        let verify_bitwise_xor_4_handle = s.spawn(move || verify_bitwise_xor_4_state.write_trace());
-        let verify_bitwise_xor_7_handle = s.spawn(move || verify_bitwise_xor_7_state.write_trace());
-        let verify_bitwise_xor_9_handle = s.spawn(move || verify_bitwise_xor_9_state.write_trace());
-        let range_check_15_handle = s.spawn(move || range_check_15_state.write_trace());
-        let range_check_16_handle = s.spawn(move || range_check_16_state.write_trace());
-
-        (
-            verify_bitwise_xor_8_handle.join().expect("verify_bitwise_xor_8 trace task failed"),
-            verify_bitwise_xor_12_handle.join().expect("verify_bitwise_xor_12 trace task failed"),
-            verify_bitwise_xor_4_handle.join().expect("verify_bitwise_xor_4 trace task failed"),
-            verify_bitwise_xor_7_handle.join().expect("verify_bitwise_xor_7 trace task failed"),
-            verify_bitwise_xor_9_handle.join().expect("verify_bitwise_xor_9 trace task failed"),
-            range_check_15_handle.join().expect("range_check_15 trace task failed"),
-            range_check_16_handle.join().expect("range_check_16 trace task failed"),
-        )
+        mut verify_bitwise_xor_8_result,
+        mut verify_bitwise_xor_12_result,
+        mut verify_bitwise_xor_4_result,
+        mut verify_bitwise_xor_7_result,
+        mut verify_bitwise_xor_9_result,
+        mut range_check_15_result,
+        mut range_check_16_result,
+    ) = (None, None, None, None, None, None, None);
+    scope(|s| {
+        s.spawn(|_| verify_bitwise_xor_8_result = Some(verify_bitwise_xor_8_state.write_trace()));
+        s.spawn(|_| {
+            verify_bitwise_xor_12_result = Some(verify_bitwise_xor_12_state.write_trace())
+        });
+        s.spawn(|_| verify_bitwise_xor_4_result = Some(verify_bitwise_xor_4_state.write_trace()));
+        s.spawn(|_| verify_bitwise_xor_7_result = Some(verify_bitwise_xor_7_state.write_trace()));
+        s.spawn(|_| verify_bitwise_xor_9_result = Some(verify_bitwise_xor_9_state.write_trace()));
+        s.spawn(|_| range_check_15_result = Some(range_check_15_state.write_trace()));
+        s.spawn(|_| range_check_16_result = Some(range_check_16_state.write_trace()));
     });
+    let verify_bitwise_xor_8_result = verify_bitwise_xor_8_result.unwrap();
+    let verify_bitwise_xor_12_result = verify_bitwise_xor_12_result.unwrap();
+    let verify_bitwise_xor_4_result = verify_bitwise_xor_4_result.unwrap();
+    let verify_bitwise_xor_7_result = verify_bitwise_xor_7_result.unwrap();
+    let verify_bitwise_xor_9_result = verify_bitwise_xor_9_result.unwrap();
+    let range_check_15_result = range_check_15_result.unwrap();
+    let range_check_16_result = range_check_16_result.unwrap();
 
     let (
         verify_bitwise_xor_8_trace,
