@@ -19,7 +19,7 @@ pub struct RelationUse {
     pub uses: u64,
 }
 
-// Data accosiated with a specific compoonent.
+// Data associated with a specific component.
 pub struct ComponentData<'a> {
     /// The trace columns of the component.
     pub trace_columns: &'a [Var],
@@ -83,7 +83,7 @@ impl<'a, Value: IValue> ComponentDataTrait<Value> for ComponentData<'a> {
     }
 }
 
-/// Accumulates a psuedo-random linear combination of constraint evaluations at the OODS point and
+/// Accumulates a pseudo-random linear combination of constraint evaluations at the OODS point and
 /// the previous point.
 ///
 /// Maintains the running value:

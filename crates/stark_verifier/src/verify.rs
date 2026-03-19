@@ -275,7 +275,7 @@ fn check_relation_uses<Value: IValue>(
     // Check that sum(uses_per_row * (floor(num_rows / DIV) + 1)) cannot overflow even for the
     // maximal num_rows (num_rows = P).
     // This is a sanity check that `NUM_ROWS_SHIFT` is large enough for the given statement, it
-    // does not depend on the specific assigment.
+    // does not depend on the specific assignment.
     let mut max_shifted_uses_per_relation = HashMap::<&str, u64>::new();
     for component in components.iter() {
         for relation_use in component.relation_uses_per_row() {
