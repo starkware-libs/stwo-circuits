@@ -98,11 +98,11 @@ pub fn deserialize_proof_with_config(
     let trace_root = HashValue::<QM31>::deserialize(data)?;
     let interaction_root = HashValue::<QM31>::deserialize(data)?;
     let composition_polynomial_root = HashValue::<QM31>::deserialize(data)?;
+    let claim = deserialize_claim(data, config)?;
     let preprocessed_columns_at_oods = deserialize_vec(data, config.n_preprocessed_columns)?;
     let trace_at_oods = deserialize_vec(data, config.n_trace_columns)?;
-    let composition_eval_at_oods = <[QM31; N_COMPOSITION_COLUMNS]>::deserialize(data)?;
-    let claim = deserialize_claim(data, config)?;
     let interaction_at_oods = deserialize_interaction_at_oods(data, config)?;
+    let composition_eval_at_oods = <[QM31; N_COMPOSITION_COLUMNS]>::deserialize(data)?;
     let eval_domain_samples = deserialize_eval_domain_samples(data, config)?;
     let eval_domain_auth_paths = deserialize_eval_domain_auth_paths(data, config)?;
     let proof_of_work_nonce = QM31::deserialize(data)?;

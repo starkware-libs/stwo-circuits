@@ -39,11 +39,11 @@ impl CircuitSerialize for Proof<QM31> {
         CircuitSerialize::serialize(trace_root, output);
         CircuitSerialize::serialize(interaction_root, output);
         CircuitSerialize::serialize(composition_polynomial_root, output);
+        CircuitSerialize::serialize(claim, output);
         CircuitSerialize::serialize(preprocessed_columns_at_oods.as_slice(), output);
         CircuitSerialize::serialize(trace_at_oods.as_slice(), output);
-        CircuitSerialize::serialize(composition_eval_at_oods, output);
-        CircuitSerialize::serialize(claim, output);
         CircuitSerialize::serialize(interaction_at_oods.as_slice(), output);
+        CircuitSerialize::serialize(composition_eval_at_oods, output);
         CircuitSerialize::serialize(eval_domain_samples, output);
         CircuitSerialize::serialize(eval_domain_auth_paths, output);
         CircuitSerialize::serialize(proof_of_work_nonce, output);
