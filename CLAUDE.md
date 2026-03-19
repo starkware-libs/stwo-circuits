@@ -278,7 +278,7 @@ needing an actual proof:
 ```rust
 let info = ProofInfo::from_config(&config);
 println!("{info}");          // human-readable breakdown
-let total_bytes = info.total() * 4;
+let total_bytes = info.total_bytes();
 ```
 
 The proof size decomposes into:

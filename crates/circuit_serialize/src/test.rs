@@ -18,7 +18,7 @@ fn test_serialize_deserialize() {
 
     let mut serialized = Vec::new();
     proof.serialize(&mut serialized);
-    assert_eq!(serialized.len(), ProofInfo::from_config(&config).total());
+    assert_eq!(serialized.len(), ProofInfo::from_config(&config).total_bytes());
     let deserialized = deserialize_proof_with_config(&mut serialized.as_slice(), &config).unwrap();
     assert_eq!(proof, deserialized);
 }

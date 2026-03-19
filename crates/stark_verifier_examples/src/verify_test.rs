@@ -129,6 +129,6 @@ fn test_proof_info(#[case] fold_step: u32) {
         proof_from_stark_proof(&proof, &config, claim, interaction_pow_nonce, channel_salt);
     let mut serialized = vec![];
     circuit_proof.serialize(&mut serialized);
-    assert_eq!(serialized.len(), info.total());
+    assert_eq!(serialized.len(), info.total_bytes());
     println!("fold_step={fold_step}:\n{info}");
 }
