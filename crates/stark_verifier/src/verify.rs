@@ -119,8 +119,7 @@ pub fn verify<Value: IValue>(
         eq(context, *enabled_bit, expect_const);
     }
 
-    let public_logup_sum =
-        statement.public_logup_sum(context, [interaction_z, interaction_alpha], &proof.claim);
+    let public_logup_sum = statement.public_logup_sum(context, [interaction_z, interaction_alpha]);
     validate_logup_sum(context, public_logup_sum, &proof.claim.claimed_sums, &enable_bits);
 
     channel.mix_qm31s(context, proof.claim.claimed_sums.iter().cloned());

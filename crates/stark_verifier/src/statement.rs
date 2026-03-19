@@ -5,7 +5,7 @@ use stwo::core::circle::CirclePoint;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 use crate::constraint_eval::CircuitEval;
-use crate::proof::{Claim, InteractionAtOods};
+use crate::proof::InteractionAtOods;
 use circuits::context::{Context, Var};
 use circuits::ivalue::IValue;
 use circuits::simd::Simd;
@@ -46,12 +46,8 @@ pub trait Statement<Value: IValue> {
 
     /// Computes the part of the logup sum that is determined by the (public) statement rather than
     /// by the witness.
-    fn public_logup_sum(
-        &self,
-        context: &mut Context<Value>,
-        interaction_elements: [Var; 2],
-        claim: &Claim<Var>,
-    ) -> Var;
+    fn public_logup_sum(&self, context: &mut Context<Value>, interaction_elements: [Var; 2])
+    -> Var;
 
     fn public_params(&self, _context: &mut Context<Value>) -> HashMap<String, Var> {
         HashMap::new()
