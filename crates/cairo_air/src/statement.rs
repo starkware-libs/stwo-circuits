@@ -435,6 +435,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         eq(context, *initial_pc, context.one());
         // Check that initial_pc (== 1) + 2 < initial_ap.
         // i.e. 3 < initial_ap < 2**29 + 4.
+        // initial_ap < 2**27 is enforced when extracting 27 bits from the `PublicData` struct.
         range_checks.push(eval!(context, (*initial_ap) - (context.constant(4.into()))));
 
         eq(context, *initial_fp, *final_fp);
@@ -442,7 +443,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         let expected_final_pc = context.constant(5.into());
         eq(context, *final_pc, expected_final_pc);
         // Check that the initial_ap <= final_ap.
-        // i.e. 0 <= final_ap - initial_ap. < 2**29.
+        // i.e. 0 <= final_ap - initial_ap < 2**29.
         range_checks.push(eval!(context, (*final_ap) - (*initial_ap)));
 
         let rc_simd = Simd::pack(
@@ -454,6 +455,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         // Sanity check: ensure that the maximum address in the address_to_id component fits within
         // a 29-bit address space (i.e., is less than 2**29).
         // Higher addresses are not supported by components that assume 29-bit addresses.
+        // Assumes that there is only one ADDRESS_TO_ID component and it uses Seq.
         const { assert!(MEMORY_ADDRESS_TO_ID_SPLIT * MAX_SEQUENCE_LOG_SIZE < 1 << 29) };
 
         let shifted_opcode_relation_uses =
