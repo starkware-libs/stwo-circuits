@@ -301,7 +301,7 @@ impl<Value: IValue> CairoStatement<Value> {
             .map(|qm31| Value::from_qm31(qm31).guess(context))
             .collect_vec();
 
-        let packed_public_data = Simd::from_packed(packed_public_data.clone(), public_data.len());
+        let packed_public_data = Simd::from_packed(packed_public_data, public_data.len());
         // Note that we don't enforce anything on the padding M31 in packed_public_data.
         let unpacked_simd = Simd::unpack(context, &packed_public_data);
 
