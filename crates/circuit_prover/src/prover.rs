@@ -192,6 +192,7 @@ pub fn prove_circuit_with_precompute<'a>(
         interaction_generator,
         &mut tree_builder,
         &interaction_elements,
+        twiddles,
     );
 
     // Validate lookup argument.
