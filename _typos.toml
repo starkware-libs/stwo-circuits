@@ -1,0 +1,2 @@
+[files]
+extend-exclude = ["crates/cairo_air/src/components/*", "test_data/privacy/privacy_simple_bootloader_compiled.json"]
