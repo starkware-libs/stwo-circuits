@@ -26,6 +26,8 @@ use stwo::core::fields::qm31::QM31;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::prover::TreeBuilder;
 use stwo::prover::backend::simd::SimdBackend;
+use stwo::prover::poly::circle::PolyOps;
+use stwo::prover::poly::twiddles::TwiddleTree;
 
 pub struct TraceGenerator {
     pub qm31_ops_trace_generator: Qm31OpsTraceGenerator,
@@ -37,6 +39,7 @@ pub fn write_trace(
     output_addresses: &[usize],
     tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, Blake2sM31MerkleChannel>,
     trace_generator: &TraceGenerator,
+    twiddles: &TwiddleTree<SimdBackend>,
 ) -> (CircuitClaim, CircuitInteractionClaimGenerator) {
     let preprocessed_trace_ref = preprocessed_trace.as_ref();
 
@@ -187,7 +190,9 @@ pub fn write_trace(
     trace_evals.extend(blake_output_trace.to_evals());
     trace_evals.extend(triple_xor_32_trace.to_evals());
 
-    // Write xor and range-check components in parallel.
+    tree_builder.extend_evals(trace_evals);
+
+    // Write xor and range-check components in parallel, including interpolation.
     let (
         mut verify_bitwise_xor_8_result,
         mut verify_bitwise_xor_12_result,
@@ -198,66 +203,70 @@ pub fn write_trace(
         mut range_check_16_result,
     ) = (None, None, None, None, None, None, None);
     scope(|s| {
-        s.spawn(|_| verify_bitwise_xor_8_result = Some(verify_bitwise_xor_8_state.write_trace()));
-        s.spawn(|_| verify_bitwise_xor_12_result = Some(verify_bitwise_xor_12_state.write_trace()));
-        s.spawn(|_| verify_bitwise_xor_4_result = Some(verify_bitwise_xor_4_state.write_trace()));
-        s.spawn(|_| verify_bitwise_xor_7_result = Some(verify_bitwise_xor_7_state.write_trace()));
-        s.spawn(|_| verify_bitwise_xor_9_result = Some(verify_bitwise_xor_9_state.write_trace()));
-        s.spawn(|_| range_check_15_result = Some(range_check_15_state.write_trace()));
-        s.spawn(|_| range_check_16_result = Some(range_check_16_state.write_trace()));
+        s.spawn(|_| {
+            let (trace, _claim, interaction_claim_gen) = verify_bitwise_xor_8_state.write_trace();
+            let polys = SimdBackend::interpolate_columns(trace.to_evals(), twiddles);
+            verify_bitwise_xor_8_result = Some((polys, interaction_claim_gen));
+        });
+        s.spawn(|_| {
+            let (trace, _claim, interaction_claim_gen) = verify_bitwise_xor_12_state.write_trace();
+            let polys = SimdBackend::interpolate_columns(trace, twiddles);
+            verify_bitwise_xor_12_result = Some((polys, interaction_claim_gen));
+        });
+        s.spawn(|_| {
+            let (trace, _claim, interaction_claim_gen) = verify_bitwise_xor_4_state.write_trace();
+            let polys = SimdBackend::interpolate_columns(trace.to_evals(), twiddles);
+            verify_bitwise_xor_4_result = Some((polys, interaction_claim_gen));
+        });
+        s.spawn(|_| {
+            let (trace, _claim, interaction_claim_gen) = verify_bitwise_xor_7_state.write_trace();
+            let polys = SimdBackend::interpolate_columns(trace.to_evals(), twiddles);
+            verify_bitwise_xor_7_result = Some((polys, interaction_claim_gen));
+        });
+        s.spawn(|_| {
+            let (trace, _claim, interaction_claim_gen) = verify_bitwise_xor_9_state.write_trace();
+            let polys = SimdBackend::interpolate_columns(trace.to_evals(), twiddles);
+            verify_bitwise_xor_9_result = Some((polys, interaction_claim_gen));
+        });
+        s.spawn(|_| {
+            let (trace, _claim, interaction_claim_gen) = range_check_15_state.write_trace();
+            let polys = SimdBackend::interpolate_columns(trace.to_evals(), twiddles);
+            range_check_15_result = Some((polys, interaction_claim_gen));
+        });
+        s.spawn(|_| {
+            let (trace, _claim, interaction_claim_gen) = range_check_16_state.write_trace();
+            let polys = SimdBackend::interpolate_columns(trace.to_evals(), twiddles);
+            range_check_16_result = Some((polys, interaction_claim_gen));
+        });
     });
-    let verify_bitwise_xor_8_result = verify_bitwise_xor_8_result.unwrap();
-    let verify_bitwise_xor_12_result = verify_bitwise_xor_12_result.unwrap();
-    let verify_bitwise_xor_4_result = verify_bitwise_xor_4_result.unwrap();
-    let verify_bitwise_xor_7_result = verify_bitwise_xor_7_result.unwrap();
-    let verify_bitwise_xor_9_result = verify_bitwise_xor_9_result.unwrap();
-    let range_check_15_result = range_check_15_result.unwrap();
-    let range_check_16_result = range_check_16_result.unwrap();
 
-    let (
-        verify_bitwise_xor_8_trace,
-        _verify_bitwise_xor_8_claim,
-        verify_bitwise_xor_8_interaction_claim_gen,
-    ) = verify_bitwise_xor_8_result;
-    trace_evals.extend(verify_bitwise_xor_8_trace.to_evals());
+    let (verify_bitwise_xor_8_polys, verify_bitwise_xor_8_interaction_claim_gen) =
+        verify_bitwise_xor_8_result.unwrap();
+    tree_builder.extend_polys(verify_bitwise_xor_8_polys);
 
-    let (
-        verify_bitwise_xor_12_trace,
-        _verify_bitwise_xor_12_claim,
-        verify_bitwise_xor_12_interaction_claim_gen,
-    ) = verify_bitwise_xor_12_result;
-    trace_evals.extend(verify_bitwise_xor_12_trace);
+    let (verify_bitwise_xor_12_polys, verify_bitwise_xor_12_interaction_claim_gen) =
+        verify_bitwise_xor_12_result.unwrap();
+    tree_builder.extend_polys(verify_bitwise_xor_12_polys);
 
-    let (
-        verify_bitwise_xor_4_trace,
-        _verify_bitwise_xor_4_claim,
-        verify_bitwise_xor_4_interaction_claim_gen,
-    ) = verify_bitwise_xor_4_result;
-    trace_evals.extend(verify_bitwise_xor_4_trace.to_evals());
+    let (verify_bitwise_xor_4_polys, verify_bitwise_xor_4_interaction_claim_gen) =
+        verify_bitwise_xor_4_result.unwrap();
+    tree_builder.extend_polys(verify_bitwise_xor_4_polys);
 
-    let (
-        verify_bitwise_xor_7_trace,
-        _verify_bitwise_xor_7_claim,
-        verify_bitwise_xor_7_interaction_claim_gen,
-    ) = verify_bitwise_xor_7_result;
-    trace_evals.extend(verify_bitwise_xor_7_trace.to_evals());
+    let (verify_bitwise_xor_7_polys, verify_bitwise_xor_7_interaction_claim_gen) =
+        verify_bitwise_xor_7_result.unwrap();
+    tree_builder.extend_polys(verify_bitwise_xor_7_polys);
 
-    let (
-        verify_bitwise_xor_9_trace,
-        _verify_bitwise_xor_9_claim,
-        verify_bitwise_xor_9_interaction_claim_gen,
-    ) = verify_bitwise_xor_9_result;
-    trace_evals.extend(verify_bitwise_xor_9_trace.to_evals());
+    let (verify_bitwise_xor_9_polys, verify_bitwise_xor_9_interaction_claim_gen) =
+        verify_bitwise_xor_9_result.unwrap();
+    tree_builder.extend_polys(verify_bitwise_xor_9_polys);
 
-    let (range_check_15_trace, _range_check_15_claim, range_check_15_interaction_claim_gen) =
-        range_check_15_result;
-    trace_evals.extend(range_check_15_trace.to_evals());
+    let (range_check_15_polys, range_check_15_interaction_claim_gen) =
+        range_check_15_result.unwrap();
+    tree_builder.extend_polys(range_check_15_polys);
 
-    let (range_check_16_trace, _range_check_16_claim, range_check_16_interaction_claim_gen) =
-        range_check_16_result;
-    trace_evals.extend(range_check_16_trace.to_evals());
-
-    tree_builder.extend_evals(trace_evals);
+    let (range_check_16_polys, range_check_16_interaction_claim_gen) =
+        range_check_16_result.unwrap();
+    tree_builder.extend_polys(range_check_16_polys);
 
     let output_values = output_addresses.iter().map(|addr| context_values[*addr]).collect_vec();
 
