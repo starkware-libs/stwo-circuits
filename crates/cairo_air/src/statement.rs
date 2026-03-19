@@ -259,7 +259,7 @@ impl<Value: IValue> CairoStatement<Value> {
         let rc_simd = Simd::pack(context, &range_checks);
         extract_bits(context, &rc_simd, SMALL_VALUE_BITS);
 
-        // Handle the builting not supported by the circuit.
+        // Handle the builtins not supported by the circuit.
         let zero = context.zero();
         for segment_range in [
             ec_op_segment_range,
