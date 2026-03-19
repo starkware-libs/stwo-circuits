@@ -13,10 +13,11 @@ use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
 use stwo::core::pcs::PcsConfig;
 
 pub const N_TRACES: usize = 4;
+const N_U8S_PER_U32: usize = 4;
 
-/// Proof size breakdown, measured in `u32` elements.
+/// Proof size breakdown, measured in `u8` elements.
 ///
-/// Most of the proof consists of M31 values, but the serialized claim includes raw `u32` values.
+/// Most of the proof consists of M31 values, but the serialized claim includes raw `u8` values.
 ///
 /// Fields that scale with `n_queries` store the per-query cost; use `total()` for the full size.
 #[derive(Debug, Clone)]
@@ -49,17 +50,17 @@ pub struct ProofInfo {
 }
 
 impl ProofInfo {
-    /// Returns the proof size breakdown in u32s, computed from config alone.
+    /// Returns the proof size breakdown in u8s, computed from config alone.
     pub fn from_config(config: &ProofConfig) -> Self {
         let n_queries = config.fri.n_queries;
         let log_eval_domain = config.fri.log_evaluation_domain_size();
 
-        let fixed = (1 + 4 * 2 + 1 + 1) * SECURE_EXTENSION_DEGREE;
+        let fixed = (1 + 4 * 2 + 1 + 1) * SECURE_EXTENSION_DEGREE * N_U8S_PER_U32;
 
-        let packed_enable_bits = config.n_components.div_ceil(32); // pack 32 enable bits per u32
-        let packed_log_sizes = config.n_components.div_ceil(4); // 4 log per u32.
+        let packed_enable_bits = config.n_components.div_ceil(8); // pack 8 enable bits per u8
+        let packed_log_sizes = config.n_components.next_multiple_of(4); // 1 log per u8.
         let n_enabled = config.enabled_components().filter(|&b| b).count();
-        let claimed_sums = n_enabled * SECURE_EXTENSION_DEGREE;
+        let claimed_sums = n_enabled * SECURE_EXTENSION_DEGREE * N_U8S_PER_U32;
         let claim = packed_enable_bits + packed_log_sizes + claimed_sums;
 
         let n_columns_per_trace = config.n_columns_per_trace();
@@ -67,11 +68,11 @@ impl ProofInfo {
 
         // The number of cumulative sum columns that have two mask values per columns.
         let n_cumsum = config.cumulative_sum_columns.iter().filter(|&&b| b).count();
-        let oods = (total_columns + n_cumsum) * SECURE_EXTENSION_DEGREE;
+        let oods = (total_columns + n_cumsum) * SECURE_EXTENSION_DEGREE * N_U8S_PER_U32;
 
-        let eval_samples_per_query = total_columns;
+        let eval_samples_per_query = total_columns * N_U8S_PER_U32;
 
-        let hash_size = 2 * SECURE_EXTENSION_DEGREE;
+        let hash_size = 2 * SECURE_EXTENSION_DEGREE * N_U8S_PER_U32;
 
         let eval_auth_per_query = N_TRACES * log_eval_domain * hash_size;
 
@@ -81,7 +82,7 @@ impl ProofInfo {
 
         let fri_commitments = n_fri_layers * hash_size;
 
-        let fri_last_layer = (1 << config.fri.log_n_last_layer_coefs) * SECURE_EXTENSION_DEGREE;
+        let fri_last_layer = (1 << config.fri.log_n_last_layer_coefs) * SECURE_EXTENSION_DEGREE * N_U8S_PER_U32;
 
         let mut log_layer_size = log_eval_domain;
         let fri_auth_per_query: usize = all_fold_steps
@@ -95,7 +96,7 @@ impl ProofInfo {
             .sum();
 
         let fri_witness_per_query: usize =
-            all_fold_steps.iter().map(|step| (1 << step) * SECURE_EXTENSION_DEGREE).sum();
+            all_fold_steps.iter().map(|step| (1 << step) * SECURE_EXTENSION_DEGREE * N_U8S_PER_U32).sum();
 
         let log_trace_size = config.fri.log_trace_size;
         let log_blowup_factor = config.fri.log_blowup_factor;

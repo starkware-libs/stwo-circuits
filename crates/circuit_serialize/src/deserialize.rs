@@ -31,21 +31,21 @@ pub type DeserializeResult<T> = Result<T, DeserializeError>;
 /// implementations. Fixed-size types implement the trait directly; composite types that require
 /// length information from the [`ProofConfig`] use dedicated `deserialize_with_config` methods.
 pub trait CircuitDeserialize: Sized {
-    fn deserialize(data: &mut &[u32]) -> DeserializeResult<Self>;
+    fn deserialize(data: &mut &[u8]) -> DeserializeResult<Self>;
 }
 
 impl CircuitDeserialize for M31 {
-    fn deserialize(data: &mut &[u32]) -> DeserializeResult<Self> {
-        let Some(&[value]) = data.split_off(..1) else {
+    fn deserialize(data: &mut &[u8]) -> DeserializeResult<Self> {
+        let Some(&[a, b, c, d]) = data.split_off(..4) else {
             return Err(DeserializeError);
         };
 
-        Ok(M31::from(value))
+        Ok(M31::from(u32::from_le_bytes([a, b, c, d])))
     }
 }
 
 impl CircuitDeserialize for QM31 {
-    fn deserialize(data: &mut &[u32]) -> DeserializeResult<Self> {
+    fn deserialize(data: &mut &[u8]) -> DeserializeResult<Self> {
         let m31_values: [M31; 4] = [
             M31::deserialize(data)?,
             M31::deserialize(data)?,
@@ -57,7 +57,7 @@ impl CircuitDeserialize for QM31 {
 }
 
 impl<T: CircuitDeserialize, const N: usize> CircuitDeserialize for [T; N] {
-    fn deserialize(data: &mut &[u32]) -> DeserializeResult<Self> {
+    fn deserialize(data: &mut &[u8]) -> DeserializeResult<Self> {
         (0..N)
             .map(|_| T::deserialize(data))
             .collect::<DeserializeResult<Vec<_>>>()?
@@ -67,13 +67,13 @@ impl<T: CircuitDeserialize, const N: usize> CircuitDeserialize for [T; N] {
 }
 
 impl CircuitDeserialize for HashValue<QM31> {
-    fn deserialize(data: &mut &[u32]) -> DeserializeResult<Self> {
+    fn deserialize(data: &mut &[u8]) -> DeserializeResult<Self> {
         Ok(HashValue(QM31::deserialize(data)?, QM31::deserialize(data)?))
     }
 }
 
 impl CircuitDeserialize for M31Wrapper<QM31> {
-    fn deserialize(data: &mut &[u32]) -> DeserializeResult<Self> {
+    fn deserialize(data: &mut &[u8]) -> DeserializeResult<Self> {
         let m31 = M31::deserialize(data)?;
         Ok(M31Wrapper::from(m31))
     }
@@ -81,7 +81,7 @@ impl CircuitDeserialize for M31Wrapper<QM31> {
 
 /// Deserializes a `Vec<T>` of the given length from the byte stream.
 fn deserialize_vec<T: CircuitDeserialize>(
-    data: &mut &[u32],
+    data: &mut &[u8],
     len: usize,
 ) -> DeserializeResult<Vec<T>> {
     (0..len).map(|_| T::deserialize(data)).collect()
@@ -90,7 +90,7 @@ fn deserialize_vec<T: CircuitDeserialize>(
 /// Deserializes a proof from a byte stream, using the [`ProofConfig`] for all length
 /// information.
 pub fn deserialize_proof_with_config(
-    data: &mut &[u32],
+    data: &mut &[u8],
     config: &ProofConfig,
 ) -> DeserializeResult<Proof<QM31>> {
     let channel_salt = QM31::deserialize(data)?;
@@ -128,34 +128,30 @@ pub fn deserialize_proof_with_config(
     })
 }
 
-fn deserialize_claim(data: &mut &[u32], config: &ProofConfig) -> DeserializeResult<Claim<QM31>> {
+fn deserialize_claim(data: &mut &[u8], config: &ProofConfig) -> DeserializeResult<Claim<QM31>> {
     let n_components = config.n_components;
 
-    // Unpack enable bits (32 enable bits per u32).
-    let n_enable_u32s = n_components.div_ceil(32);
+    // Unpack enable bits (8 enable bits per u8).
+    let n_enable_u8s = n_components.div_ceil(8);
     let mut enable_bits = Vec::with_capacity(n_components);
-    for i in 0..n_enable_u32s {
+    for i in 0..n_enable_u8s {
         let Some(&[packed]) = data.split_off(..1) else {
             return Err(DeserializeError);
         };
-        let bits_in_word = std::cmp::min(32, n_components - i * 32);
+        let bits_in_word = std::cmp::min(8, n_components - i * 8);
         for bit_idx in 0..bits_in_word {
             enable_bits.push((packed >> bit_idx) & 1 != 0);
         }
     }
     let packed_enable_bits = pack_enable_bits(&enable_bits);
 
-    // Unpack log sizes from packed u32s (4 per u32, 8 bits each).
-    let n_log_size_u32s = n_components.div_ceil(4);
+    // Unpack log sizes from packed u8s (1 per u8, 8 bits each).
     let mut log_sizes = Vec::with_capacity(n_components);
-    for i in 0..n_log_size_u32s {
+    for _ in 0..n_components.next_multiple_of(4) {
         let Some(&[packed]) = data.split_off(..1) else {
             return Err(DeserializeError);
         };
-        let sizes_in_word = std::cmp::min(4, n_components - i * 4);
-        for byte_idx in 0..sizes_in_word {
-            log_sizes.push((packed >> (byte_idx * 8)) & 0xFF);
-        }
+        log_sizes.push(packed as u32);
     }
     let packed_component_log_sizes = pack_component_log_sizes(&log_sizes);
 
@@ -173,7 +169,7 @@ fn deserialize_claim(data: &mut &[u32], config: &ProofConfig) -> DeserializeResu
 }
 
 fn deserialize_interaction_at_oods(
-    data: &mut &[u32],
+    data: &mut &[u8],
     config: &ProofConfig,
 ) -> DeserializeResult<Vec<InteractionAtOods<QM31>>> {
     config
@@ -188,7 +184,7 @@ fn deserialize_interaction_at_oods(
 }
 
 fn deserialize_eval_domain_samples(
-    data: &mut &[u32],
+    data: &mut &[u8],
     config: &ProofConfig,
 ) -> DeserializeResult<EvalDomainSamples<QM31>> {
     let n_columns_per_trace = config.n_columns_per_trace();
@@ -207,7 +203,7 @@ fn deserialize_eval_domain_samples(
 }
 
 fn deserialize_eval_domain_auth_paths(
-    data: &mut &[u32],
+    data: &mut &[u8],
     config: &ProofConfig,
 ) -> DeserializeResult<AuthPaths<QM31>> {
     let n_queries = config.n_queries();
@@ -225,7 +221,7 @@ fn deserialize_eval_domain_auth_paths(
 }
 
 fn deserialize_fri_commit_proof(
-    data: &mut &[u32],
+    data: &mut &[u8],
     config: &FriConfig,
     all_fold_steps: &[usize],
 ) -> DeserializeResult<FriCommitProof<QM31>> {
@@ -238,7 +234,7 @@ fn deserialize_fri_commit_proof(
 }
 
 fn deserialize_fri_proof(
-    data: &mut &[u32],
+    data: &mut &[u8],
     fri_config: &FriConfig,
 ) -> DeserializeResult<FriProof<QM31>> {
     let all_fold_steps = compute_all_fold_steps(
