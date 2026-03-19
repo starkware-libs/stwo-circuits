@@ -84,7 +84,7 @@ fn verify_sorted_keys<Value: IValue>(context: &mut Context<Value>, sorted_keys: 
     // call extract_bits to range check the values.
     const RANGE_CHECK_BITS: u32 = LOG_SIZE_BITS + COLUMN_IDX_BITS;
 
-    // The verificaion needs to fail if one of the diffs is negative.
+    // The verification needs to fail if one of the diffs is negative.
     //
     // 0 - (2**RANGE_CHECK_BITS - 1) < 0
     // => 2**31 - 1 - (2**RANGE_CHECK_BITS - 1) > 2**RANGE_CHECK_BITS

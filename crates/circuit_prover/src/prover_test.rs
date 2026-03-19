@@ -1,4 +1,4 @@
-use crate::prover::preprare_circuit_proof_for_circuit_verifier;
+use crate::prover::prepare_circuit_proof_for_circuit_verifier;
 use crate::prover::{BaseColumnPool, CircuitProof, SimdBackend, prove_circuit_assignment};
 use circuit_air::CircuitInteractionElements;
 use circuit_air::lookup_sum;
@@ -309,7 +309,7 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
         preprocessed_root,
     };
     let (proof, public_data) =
-        preprare_circuit_proof_for_circuit_verifier(circuit_proof, &proof_config);
+        prepare_circuit_proof_for_circuit_verifier(circuit_proof, &proof_config);
     verify_circuit(circuit_config, proof, public_data).unwrap();
 }
 

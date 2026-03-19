@@ -8,7 +8,7 @@ use circuit_air::verify::{
 use circuit_common::finalize::{add_zk_blinding, finalize_context};
 use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_prover::prover::{
-    BaseColumnPool, CircuitProof, SimdBackend, preprare_circuit_proof_for_circuit_verifier,
+    BaseColumnPool, CircuitProof, SimdBackend, prepare_circuit_proof_for_circuit_verifier,
     prove_circuit, prove_circuit_assignment,
 };
 use circuits::blake::HashValue;
@@ -59,7 +59,7 @@ fn verify_circuit_proof(
         preprocessed_root: HashValue(QM31::zero(), QM31::zero()),
     };
     let (proof, public_data) =
-        preprare_circuit_proof_for_circuit_verifier(circuit_proof, &proof_config);
+        prepare_circuit_proof_for_circuit_verifier(circuit_proof, &proof_config);
     circuit_config.preprocessed_root = preprocessed_root.unwrap_or(proof.preprocessed_root);
     verify_circuit(circuit_config, proof, public_data).unwrap()
 }

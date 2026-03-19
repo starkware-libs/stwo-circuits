@@ -230,7 +230,7 @@ pub fn prove_circuit_with_precompute<'a>(
     }
 }
 
-pub fn preprare_circuit_proof_for_circuit_verifier(
+pub fn prepare_circuit_proof_for_circuit_verifier(
     circuit_proof: CircuitProof,
     proof_config: &ProofConfig,
 ) -> (Proof<QM31>, CircuitPublicData) {
