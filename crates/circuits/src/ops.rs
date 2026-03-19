@@ -112,6 +112,7 @@ pub fn permute<Value: IValue>(
     inputs: &[Var],
     permute_fn: impl FnOnce(&[Value]) -> Vec<Value>,
 ) -> Vec<Var> {
+    context.stats.permutation_inputs += inputs.len();
     let outputs: Vec<Var> = permute_fn(&inputs.iter().map(|var| context.get(*var)).collect_vec())
         .iter()
         .map(|value| context.new_var(*value))
