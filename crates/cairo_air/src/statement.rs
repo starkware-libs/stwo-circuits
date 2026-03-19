@@ -241,9 +241,9 @@ impl<Value: IValue> CairoStatement<Value> {
 
         let mut actual_uses_iter = Simd::unpack(context, &n_uses_simd).into_iter();
         let mut range_checks = vec![];
-
         let all_components = all_components::<Value>();
-        let mut validate_builtin = |context: &mut Context<Value>, name: &str| {
+
+        for (name, _size) in builtin_memory_cells {
             let index = all_components.get_index_of(name).unwrap();
             let component_size = component_sizes[index];
 
@@ -256,10 +256,6 @@ impl<Value: IValue> CairoStatement<Value> {
             // Check that 0 <= component_size - actual_uses < 2^27 => actual_uses <= component_size.
             let diff = eval!(context, (component_size) - (actual_uses));
             range_checks.push(M31Wrapper::new_unsafe(diff));
-        };
-
-        for (name, _size) in builtin_memory_cells {
-            validate_builtin(context, name);
         }
 
         let rc_simd = Simd::pack(context, &range_checks);
