@@ -152,7 +152,7 @@ pub struct CairoStatement<Value: IValue> {
     pub packed_public_data: Simd,
     pub public_data: PublicData<Var>,
     pub program: Vec<[M31; MEMORY_VALUES_LIMBS]>,
-    pub outputs: Vec<[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]>,
+    pub packed_outputs: Simd,
     pub preprocessed_root: HashValue<QM31>,
 }
 
@@ -174,7 +174,7 @@ impl<Value: IValue> CairoStatement<Value> {
             end: PubMemoryM31Value { id: _, value: output_end },
         } = &segment_ranges[0];
         let diff = eval!(context, (*output_end) - (*output_start));
-        let n_outputs = context.constant(self.outputs.len().into());
+        let n_outputs = context.constant((self.packed_outputs.len() / MEMORY_VALUES_LIMBS).into());
         eq(context, diff, n_outputs);
 
         let pedersen_segment_range = &segment_ranges[1];
@@ -308,16 +308,21 @@ impl<Value: IValue> CairoStatement<Value> {
         let public_data =
             PublicData::<Var>::parse_from_vars(&unpacked_simd[..], outputs.len(), program.len());
 
-        let outputs = outputs
-            .iter()
-            .map(|value_limbs| {
-                value_limbs.map(|limb| {
-                    M31Wrapper::<Value>::new_unsafe(IValue::from_qm31(limb.into())).guess(context)
-                })
-            })
+        let n_outputs = outputs.len();
+        let packed_outputs = pack_into_qm31s(outputs.into_iter().flatten())
+            .into_iter()
+            .map(|qm31| Value::from_qm31(qm31).guess(context))
             .collect_vec();
+        let packed_outputs = Simd::from_packed(packed_outputs, n_outputs * MEMORY_VALUES_LIMBS);
 
-        Self { packed_public_data, public_data, program, outputs, components, preprocessed_root }
+        Self {
+            packed_public_data,
+            public_data,
+            program,
+            packed_outputs,
+            components,
+            preprocessed_root,
+        }
     }
 }
 
@@ -332,14 +337,12 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
             packed_public_data,
             public_data: _public_data,
             program,
-            outputs,
+            packed_outputs,
             preprocessed_root: _preprocessed_root,
         } = self;
         let program_len = context.constant(qm31_from_u32s(program.len() as u32, 0, 0, 0));
-        let packed_outputs = Simd::pack(context, &outputs.iter().flatten().cloned().collect_vec());
 
-        let output_hash =
-            blake(context, packed_outputs.get_packed(), 4 * outputs.len() * MEMORY_VALUES_LIMBS);
+        let output_hash = blake(context, packed_outputs.get_packed(), 4 * packed_outputs.len());
 
         // output the output hash.
         output(context, output_hash.0);
@@ -369,11 +372,17 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
             })
             .collect_vec();
 
+        let unpacked = Simd::unpack(context, &self.packed_outputs);
+        let outputs: Vec<[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]> = unpacked
+            .chunks(MEMORY_VALUES_LIMBS)
+            .map(|chunk| array::from_fn(|i| M31Wrapper::new_unsafe(chunk[i])))
+            .collect_vec();
+
         public_logup_sum(
             context,
             &self.public_data,
             &program_as_constants,
-            &self.outputs,
+            &outputs,
             interaction_elements,
         )
     }
