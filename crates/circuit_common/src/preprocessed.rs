@@ -479,11 +479,7 @@ impl PreprocessedCircuit {
             circuit.permutation.iter().map(|gate| gate.inputs.len() + gate.outputs.len()).sum();
         multiplicities[0] += additional_zero_multiplicity;
 
-        // Add Eq columns.
-        add_eq_to_preprocessed_trace(circuit, &mut pp_trace);
-        // Add QM31 operations columns.
-        let qm31_ops_trace_generator =
-            add_qm31_ops_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
+        // First, add preprocessed columns of components that need seq columns.
         // Add Blake columns.
         add_blake_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
         let log_n_blake_updates = pp_trace
@@ -491,15 +487,21 @@ impl PreprocessedCircuit {
             .len()
             .ilog2();
 
+        // Then, add preprocessed columns of components that don't need seq columns.
+        // Add Eq columns.
+        add_eq_to_preprocessed_trace(circuit, &mut pp_trace);
+        // Add QM31 operations columns.
+        let qm31_ops_trace_generator =
+            add_qm31_ops_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
+
         // Generate seq columns for sizes needed by circuit components:
         // - 15, 16: needed by range_check_15 and range_check_16.
         // - 4: needed by blake_sigma.
-        // - log_sizes of existing preprocessed columns: needed by components using
-        //   seq_of_component_size (e.g. blake_gate).
-        let mut log_seq_sizes: Vec<u32> = pp_trace.log_sizes();
-        log_seq_sizes.extend([log_n_blake_updates, 4, 15, 16]);
+        // log_n_blake_updates: needed by blake_gate component which uses seq_of_component_size.
+        let mut log_seq_sizes = vec![log_n_blake_updates, 4, 15, 16];
         log_seq_sizes.sort();
         log_seq_sizes.dedup();
+
         PreProcessedTrace::add_non_circuit_preprocessed_columns(&mut pp_trace, &log_seq_sizes);
         pp_trace.sort_by_size();
 
