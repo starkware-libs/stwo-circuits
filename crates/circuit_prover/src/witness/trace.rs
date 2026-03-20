@@ -21,7 +21,7 @@ use circuit_air::CircuitInteractionElements;
 use circuit_common::Qm31OpsTraceGenerator;
 use circuit_common::preprocessed::PreProcessedTrace;
 use itertools::Itertools;
-use rayon::join;
+use rayon::{join, scope};
 use stwo::core::fields::qm31::QM31;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::prover::TreeBuilder;
@@ -41,93 +41,85 @@ pub fn write_trace(
     let preprocessed_trace_ref = preprocessed_trace.as_ref();
 
     let (
-        (
-            (eq_trace, eq_log_size, eq_lookup_data),
-            (qm31_ops_trace, qm31_ops_log_size, qm31_ops_lookup_data),
-        ),
-        (
-            verify_bitwise_xor_8_state,
-            verify_bitwise_xor_12_state,
-            verify_bitwise_xor_4_state,
-            verify_bitwise_xor_7_state,
-            verify_bitwise_xor_9_state,
-            range_check_16_state,
-            range_check_15_state,
-            mut triple_xor_32_state,
-            blake_gate_claim_generator,
-            mut blake_round_generator,
-            blake_round_sigma_generator,
-            mut blake_g_generator,
-        ),
-    ) = join(
-        || {
-            join(
-                || eq::write_trace(context_values, preprocessed_trace_ref),
-                || {
-                    qm31_ops::write_trace(
-                        context_values,
-                        preprocessed_trace_ref,
-                        &trace_generator.qm31_ops_trace_generator,
-                    )
-                },
-            )
-        },
-        || {
-            std::thread::scope(|s| {
-                let verify_bitwise_xor_8_handle = s.spawn(|| {
-                    verify_bitwise_xor_8::ClaimGenerator::new(preprocessed_trace.clone())
-                });
-                let verify_bitwise_xor_12_handle = s.spawn(|| {
-                    verify_bitwise_xor_12::ClaimGenerator::new(preprocessed_trace.clone())
-                });
-                let verify_bitwise_xor_4_handle = s.spawn(|| {
-                    verify_bitwise_xor_4::ClaimGenerator::new(preprocessed_trace.clone())
-                });
-                let verify_bitwise_xor_7_handle = s.spawn(|| {
-                    verify_bitwise_xor_7::ClaimGenerator::new(preprocessed_trace.clone())
-                });
-                let verify_bitwise_xor_9_handle = s.spawn(|| {
-                    verify_bitwise_xor_9::ClaimGenerator::new(preprocessed_trace.clone())
-                });
-                let range_check_16_handle =
-                    s.spawn(|| range_check_16::ClaimGenerator::new(preprocessed_trace.clone()));
-                let range_check_15_handle =
-                    s.spawn(|| range_check_15::ClaimGenerator::new(preprocessed_trace.clone()));
-                let triple_xor_32_handle = s.spawn(triple_xor_32::ClaimGenerator::new);
-                let blake_gate_handle =
-                    s.spawn(|| blake_gate::ClaimGenerator::new(preprocessed_trace.clone()));
-                let blake_round_handle = s.spawn(blake_round::ClaimGenerator::default);
-                let blake_round_sigma_handle =
-                    s.spawn(|| blake_round_sigma::ClaimGenerator::new(preprocessed_trace.clone()));
-                let blake_g_handle = s.spawn(blake_g::ClaimGenerator::new);
-
-                (
-                    verify_bitwise_xor_8_handle
-                        .join()
-                        .expect("verify_bitwise_xor_8 init task failed"),
-                    verify_bitwise_xor_12_handle
-                        .join()
-                        .expect("verify_bitwise_xor_12 init task failed"),
-                    verify_bitwise_xor_4_handle
-                        .join()
-                        .expect("verify_bitwise_xor_4 init task failed"),
-                    verify_bitwise_xor_7_handle
-                        .join()
-                        .expect("verify_bitwise_xor_7 init task failed"),
-                    verify_bitwise_xor_9_handle
-                        .join()
-                        .expect("verify_bitwise_xor_9 init task failed"),
-                    range_check_16_handle.join().expect("range_check_16 init task failed"),
-                    range_check_15_handle.join().expect("range_check_15 init task failed"),
-                    triple_xor_32_handle.join().expect("triple_xor_32 init task failed"),
-                    blake_gate_handle.join().expect("blake_gate init task failed"),
-                    blake_round_handle.join().expect("blake_round init task failed"),
-                    blake_round_sigma_handle.join().expect("blake_round_sigma init task failed"),
-                    blake_g_handle.join().expect("blake_g init task failed"),
+        mut verify_bitwise_xor_8_state,
+        mut verify_bitwise_xor_12_state,
+        mut verify_bitwise_xor_4_state,
+        mut verify_bitwise_xor_7_state,
+        mut verify_bitwise_xor_9_state,
+        mut range_check_16_state,
+        mut range_check_15_state,
+        mut triple_xor_32_state,
+        mut blake_gate_claim_generator,
+        mut blake_round_generator,
+        mut blake_round_sigma_generator,
+        mut blake_g_generator,
+    ) = (None, None, None, None, None, None, None, None, None, None, None, None);
+    let (
+        (eq_trace, eq_log_size, eq_lookup_data),
+        (qm31_ops_trace, qm31_ops_log_size, qm31_ops_lookup_data),
+    ) = scope(|s| {
+        s.spawn(|_| {
+            verify_bitwise_xor_8_state =
+                Some(verify_bitwise_xor_8::ClaimGenerator::new(preprocessed_trace.clone()))
+        });
+        s.spawn(|_| {
+            verify_bitwise_xor_12_state =
+                Some(verify_bitwise_xor_12::ClaimGenerator::new(preprocessed_trace.clone()))
+        });
+        s.spawn(|_| {
+            verify_bitwise_xor_4_state =
+                Some(verify_bitwise_xor_4::ClaimGenerator::new(preprocessed_trace.clone()))
+        });
+        s.spawn(|_| {
+            verify_bitwise_xor_7_state =
+                Some(verify_bitwise_xor_7::ClaimGenerator::new(preprocessed_trace.clone()))
+        });
+        s.spawn(|_| {
+            verify_bitwise_xor_9_state =
+                Some(verify_bitwise_xor_9::ClaimGenerator::new(preprocessed_trace.clone()))
+        });
+        s.spawn(|_| {
+            range_check_16_state =
+                Some(range_check_16::ClaimGenerator::new(preprocessed_trace.clone()))
+        });
+        s.spawn(|_| {
+            range_check_15_state =
+                Some(range_check_15::ClaimGenerator::new(preprocessed_trace.clone()))
+        });
+        s.spawn(|_| triple_xor_32_state = Some(triple_xor_32::ClaimGenerator::new()));
+        s.spawn(|_| {
+            blake_gate_claim_generator =
+                Some(blake_gate::ClaimGenerator::new(preprocessed_trace.clone()))
+        });
+        s.spawn(|_| blake_round_generator = Some(blake_round::ClaimGenerator::default()));
+        s.spawn(|_| {
+            blake_round_sigma_generator =
+                Some(blake_round_sigma::ClaimGenerator::new(preprocessed_trace.clone()))
+        });
+        s.spawn(|_| blake_g_generator = Some(blake_g::ClaimGenerator::new()));
+        join(
+            || eq::write_trace(context_values, preprocessed_trace_ref),
+            || {
+                qm31_ops::write_trace(
+                    context_values,
+                    preprocessed_trace_ref,
+                    &trace_generator.qm31_ops_trace_generator,
                 )
-            })
-        },
-    );
+            },
+        )
+    });
+    let verify_bitwise_xor_8_state = verify_bitwise_xor_8_state.unwrap();
+    let verify_bitwise_xor_12_state = verify_bitwise_xor_12_state.unwrap();
+    let verify_bitwise_xor_4_state = verify_bitwise_xor_4_state.unwrap();
+    let verify_bitwise_xor_7_state = verify_bitwise_xor_7_state.unwrap();
+    let verify_bitwise_xor_9_state = verify_bitwise_xor_9_state.unwrap();
+    let range_check_16_state = range_check_16_state.unwrap();
+    let range_check_15_state = range_check_15_state.unwrap();
+    let mut triple_xor_32_state = triple_xor_32_state.unwrap();
+    let blake_gate_claim_generator = blake_gate_claim_generator.unwrap();
+    let mut blake_round_generator = blake_round_generator.unwrap();
+    let blake_round_sigma_generator = blake_round_sigma_generator.unwrap();
+    let mut blake_g_generator = blake_g_generator.unwrap();
     let mut trace_evals = eq_trace.to_evals();
     trace_evals.extend(qm31_ops_trace.to_evals());
 
@@ -197,33 +189,30 @@ pub fn write_trace(
 
     // Write xor and range-check components in parallel.
     let (
-        verify_bitwise_xor_8_result,
-        verify_bitwise_xor_12_result,
-        verify_bitwise_xor_4_result,
-        verify_bitwise_xor_7_result,
-        verify_bitwise_xor_9_result,
-        range_check_15_result,
-        range_check_16_result,
-    ) = std::thread::scope(|s| {
-        let verify_bitwise_xor_8_handle = s.spawn(move || verify_bitwise_xor_8_state.write_trace());
-        let verify_bitwise_xor_12_handle =
-            s.spawn(move || verify_bitwise_xor_12_state.write_trace());
-        let verify_bitwise_xor_4_handle = s.spawn(move || verify_bitwise_xor_4_state.write_trace());
-        let verify_bitwise_xor_7_handle = s.spawn(move || verify_bitwise_xor_7_state.write_trace());
-        let verify_bitwise_xor_9_handle = s.spawn(move || verify_bitwise_xor_9_state.write_trace());
-        let range_check_15_handle = s.spawn(move || range_check_15_state.write_trace());
-        let range_check_16_handle = s.spawn(move || range_check_16_state.write_trace());
-
-        (
-            verify_bitwise_xor_8_handle.join().expect("verify_bitwise_xor_8 trace task failed"),
-            verify_bitwise_xor_12_handle.join().expect("verify_bitwise_xor_12 trace task failed"),
-            verify_bitwise_xor_4_handle.join().expect("verify_bitwise_xor_4 trace task failed"),
-            verify_bitwise_xor_7_handle.join().expect("verify_bitwise_xor_7 trace task failed"),
-            verify_bitwise_xor_9_handle.join().expect("verify_bitwise_xor_9 trace task failed"),
-            range_check_15_handle.join().expect("range_check_15 trace task failed"),
-            range_check_16_handle.join().expect("range_check_16 trace task failed"),
-        )
+        mut verify_bitwise_xor_8_result,
+        mut verify_bitwise_xor_12_result,
+        mut verify_bitwise_xor_4_result,
+        mut verify_bitwise_xor_7_result,
+        mut verify_bitwise_xor_9_result,
+        mut range_check_15_result,
+        mut range_check_16_result,
+    ) = (None, None, None, None, None, None, None);
+    scope(|s| {
+        s.spawn(|_| verify_bitwise_xor_8_result = Some(verify_bitwise_xor_8_state.write_trace()));
+        s.spawn(|_| verify_bitwise_xor_12_result = Some(verify_bitwise_xor_12_state.write_trace()));
+        s.spawn(|_| verify_bitwise_xor_4_result = Some(verify_bitwise_xor_4_state.write_trace()));
+        s.spawn(|_| verify_bitwise_xor_7_result = Some(verify_bitwise_xor_7_state.write_trace()));
+        s.spawn(|_| verify_bitwise_xor_9_result = Some(verify_bitwise_xor_9_state.write_trace()));
+        s.spawn(|_| range_check_15_result = Some(range_check_15_state.write_trace()));
+        s.spawn(|_| range_check_16_result = Some(range_check_16_state.write_trace()));
     });
+    let verify_bitwise_xor_8_result = verify_bitwise_xor_8_result.unwrap();
+    let verify_bitwise_xor_12_result = verify_bitwise_xor_12_result.unwrap();
+    let verify_bitwise_xor_4_result = verify_bitwise_xor_4_result.unwrap();
+    let verify_bitwise_xor_7_result = verify_bitwise_xor_7_result.unwrap();
+    let verify_bitwise_xor_9_result = verify_bitwise_xor_9_result.unwrap();
+    let range_check_15_result = range_check_15_result.unwrap();
+    let range_check_16_result = range_check_16_result.unwrap();
 
     let (
         verify_bitwise_xor_8_trace,
