@@ -36,14 +36,12 @@ fn test_preprocess_circuit() {
         .preprocessed_trace
         .get_trace::<SimdBackend>();
 
-    assert_eq!(preprocessed_trace.len(), 61);
+    assert_eq!(preprocessed_trace.len(), 59);
     let lengths = preprocessed_trace.iter().map(|column| column.values.len()).collect_vec();
     expect![[r#"
         [
             2,
             2,
-            2,
-            8,
             8,
             8,
             8,
