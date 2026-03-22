@@ -3,12 +3,12 @@ use crate::circuit_eval_components::{
     range_check_16, triple_xor_32, verify_bitwise_xor_4, verify_bitwise_xor_7,
     verify_bitwise_xor_8, verify_bitwise_xor_9, verify_bitwise_xor_12,
 };
-use crate::components::{eq, qm31_ops};
+use crate::components::{eq::CircuitEqComponent, qm31_ops::CircuitQm31OpsComponent};
 use circuits::blake::HashValue;
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::ivalue::IValue;
-use circuits::ops::{Guess, div, eq as eq_op};
+use circuits::ops::{Guess, div, eq};
 use circuits::simd::Simd;
 use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
@@ -132,15 +132,15 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
             context.constant(self.preprocessed_root.0),
             context.constant(self.preprocessed_root.1),
         );
-        eq_op(context, preprocessed_root.0, expected_preprocessed_root.0);
-        eq_op(context, preprocessed_root.1, expected_preprocessed_root.1);
+        eq(context, preprocessed_root.0, expected_preprocessed_root.0);
+        eq(context, preprocessed_root.1, expected_preprocessed_root.1);
     }
 }
 
 pub fn all_circuit_components<Value: IValue>() -> Vec<Box<dyn CircuitEval<Value>>> {
     vec![
-        Box::new(eq::CircuitEqComponent {}),
-        Box::new(qm31_ops::CircuitQm31OpsComponent {}),
+        Box::new(CircuitEqComponent {}),
+        Box::new(CircuitQm31OpsComponent {}),
         Box::new(blake_gate::Component {}),
         Box::new(blake_round::Component {}),
         Box::new(blake_round_sigma::Component {}),
