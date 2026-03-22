@@ -1,7 +1,7 @@
 use crate::circuit_eval_components::{
     blake_g, blake_gate, blake_output, blake_round, blake_round_sigma, m_31_to_u_32,
-    range_check_15, range_check_16, triple_xor_32, verify_bitwise_xor_4, verify_bitwise_xor_7,
-    verify_bitwise_xor_8, verify_bitwise_xor_9, verify_bitwise_xor_12,
+    range_check_15, range_check_16, triple_xor, triple_xor_32, verify_bitwise_xor_4,
+    verify_bitwise_xor_7, verify_bitwise_xor_8, verify_bitwise_xor_9, verify_bitwise_xor_12,
 };
 use crate::components::{eq, qm31_ops};
 use circuits::blake::HashValue;
@@ -150,6 +150,7 @@ pub fn all_circuit_components<Value: IValue>() -> Vec<Box<dyn CircuitEval<Value>
         Box::new(blake_output::Component {}),
         Box::new(triple_xor_32::Component {}),
         Box::new(m_31_to_u_32::Component {}),
+        Box::new(triple_xor::Component {}),
         Box::new(verify_bitwise_xor_8::Component {}),
         Box::new(verify_bitwise_xor_12::Component {}),
         Box::new(verify_bitwise_xor_4::Component {}),
