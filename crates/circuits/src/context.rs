@@ -41,7 +41,7 @@ pub struct Context<Value: IValue> {
     values: Vec<Value>,
     pub stats: Stats,
     /// Set of variables that were marked by the code as "unused".
-    /// [Self::check_vars_used] checks that thesea are indeed unused.
+    /// [Self::check_vars_used] checks that these are indeed unused.
     unused_vars: HashSet<usize>,
     /// Set of variables that were marked by the code as "maybe unused". These skip
     /// the checks in [Self::check_vars_used] entirely.
