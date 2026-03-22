@@ -41,7 +41,7 @@ pub struct Context<Value: IValue> {
     values: Vec<Value>,
     pub stats: Stats,
     /// Set of variables that were marked by the code as "unused".
-    /// [Self::check_vars_used] checks that thesea are indeed unused.
+    /// [Self::check_vars_used] checks that these are indeed unused.
     unused_vars: HashSet<usize>,
     /// Set of variables that were marked by the code as "maybe unused". These skip
     /// the checks in [Self::check_vars_used] entirely.
@@ -139,8 +139,10 @@ impl<Value: IValue> Context<Value> {
     /// For guessed value, add a trivial constraint so that the new variable appears once as
     /// a yield.
     pub fn finalize_guessed_vars(&mut self) {
-        for idx in self.guessed_vars.take().unwrap().iter() {
-            self.circuit.add.push(Add { in0: *idx, in1: self.zero().idx, out: *idx });
+        if let Some(guessed_vars) = self.guessed_vars.take() {
+            for idx in guessed_vars.iter() {
+                self.circuit.add.push(Add { in0: *idx, in1: self.zero().idx, out: *idx });
+            }
         }
     }
 }
