@@ -100,17 +100,22 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
         // Blake IV public logup sum contribution.
         if self.n_blake_gates > 0 {
             let initial_state = crate::blake2s_initial_state();
-            let iv_state_id = context.constant(1061955672.into());
+            let blake_output_relation_id = context.constant(1061955672.into());
             let iv_state_address = context.zero();
-            let mut blake_iv_elements = vec![iv_state_id, iv_state_address];
+            let mut blake_iv_elements = vec![blake_output_relation_id, iv_state_address];
             for &word in &initial_state {
                 let low = context.constant((word & 0xffff).into());
-                let high = context.constant(((word >> 16) & 0xffff).into());
+                let high = context.constant((word >> 16).into());
                 blake_iv_elements.push(low);
                 blake_iv_elements.push(high);
             }
             let blake_iv_denom = combine_term(context, &blake_iv_elements, interaction_elements);
+
+            // There are `self.n_blake_gates.next_power_of_two()` BlakeOutput rows, each one uses
+            // the same IV state, either indirectly through a blakeGate or directly in padding rows
+            // of the BlakeOutput component.
             let n_iv_uses = self.n_blake_gates.next_power_of_two();
+
             let n_blakes = context.constant((n_iv_uses as u32).into());
             let blake_iv_yield = div(context, n_blakes, blake_iv_denom);
             sum = eval!(context, (sum) - (blake_iv_yield));
