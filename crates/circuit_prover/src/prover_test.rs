@@ -79,6 +79,7 @@ pub fn build_blake_gate_context() -> Context<QM31> {
 #[test]
 fn test_prove_and_stark_verify_blake_gate_context() {
     let mut blake_gate_context = build_blake_gate_context();
+    circuits::finalize_constants::finalize_constants(&mut blake_gate_context);
     blake_gate_context.finalize_guessed_vars();
     blake_gate_context.validate_circuit();
 
@@ -148,6 +149,7 @@ fn test_prove_and_stark_verify_blake_gate_context() {
 #[test]
 fn test_prove_and_stark_verify_permutation_context() {
     let mut permutation_context = build_permutation_context();
+    circuits::finalize_constants::finalize_constants(&mut permutation_context);
     permutation_context.finalize_guessed_vars();
     permutation_context.validate_circuit();
 
@@ -214,6 +216,7 @@ fn test_prove_and_stark_verify_permutation_context() {
 #[test]
 fn test_prove_and_stark_verify_fibonacci_context() {
     let mut fibonacci_context = build_fibonacci_context();
+    circuits::finalize_constants::finalize_constants(&mut fibonacci_context);
     fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
 
@@ -277,12 +280,10 @@ fn test_prove_and_stark_verify_fibonacci_context() {
     );
 }
 
-const FIBONACCI_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
-    [941288497, 2016512921, 1400906859, 921304346, 725229321, 1512211411, 216784080, 578042533];
-
 #[test]
 fn test_prove_and_circuit_verify_fibonacci_context() {
     let mut fibonacci_context = build_fibonacci_context();
+    circuits::finalize_constants::finalize_constants(&mut fibonacci_context);
     fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
 
@@ -300,16 +301,17 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
         &circuit_proof.pcs_config,
         INTERACTION_POW_BITS,
     );
-    let preprocessed_root = FIBONACCI_CIRCUIT_PREPROCESSED_ROOT.into();
+    let pcs_config = circuit_proof.pcs_config;
+    let (proof, public_data) =
+        prepare_circuit_proof_for_circuit_verifier(circuit_proof, &proof_config);
+    // Use the preprocessed root from the proof rather than hardcoding.
     let circuit_config = CircuitConfig {
-        config: circuit_proof.pcs_config,
+        config: pcs_config,
         output_addresses: preprocessed_circuit.params.output_addresses.clone(),
         n_blake_gates: preprocessed_circuit.params.n_blake_gates,
         preprocessed_column_ids,
-        preprocessed_root,
+        preprocessed_root: proof.preprocessed_root,
     };
-    let (proof, public_data) =
-        prepare_circuit_proof_for_circuit_verifier(circuit_proof, &proof_config);
     verify_circuit(circuit_config, proof, public_data).unwrap();
 }
 
