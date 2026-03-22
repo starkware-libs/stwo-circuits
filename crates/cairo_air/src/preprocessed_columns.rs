@@ -1,5 +1,9 @@
 pub const MAX_SEQUENCE_LOG_SIZE: usize = 20;
 
+#[cfg(test)]
+#[path = "preprocessed_columns_test.rs"]
+mod test;
+
 pub const CANONICAL_SMALL_PREPROCESSED_COLUMNS: [&str; 156] = [
     "seq_4",
     "blake_sigma_0",
