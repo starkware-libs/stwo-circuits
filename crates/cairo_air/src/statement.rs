@@ -216,7 +216,7 @@ impl<Value: IValue> CairoStatement<Value> {
             ("poseidon_builtin", POSEIDON_BUILTIN_MEMORY_CELLS),
         ];
         let instance_size_inverses = pack_into_qm31s(
-            builtin_memory_cells.into_iter().map(|(_name, size)| M31::from(size).inverse()),
+            builtin_memory_cells.iter().map(|(_name, size)| M31::from(*size).inverse()),
         )
         .into_iter()
         .map(|qm31| context.constant(qm31))
