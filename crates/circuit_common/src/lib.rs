@@ -1,4 +1,5 @@
 pub mod finalize;
+pub mod finalize_constants;
 pub mod preprocessed;
 
 // TODO(Anat): Take from somewhere stable.

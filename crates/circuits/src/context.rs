@@ -4,7 +4,7 @@ use num_traits::{One, Zero};
 use stwo::core::fields::qm31::QM31;
 
 use crate::circuit::{Add, Circuit};
-use crate::ivalue::IValue;
+use crate::ivalue::{IValue, qm31_from_u32s};
 use crate::ops::guess;
 use crate::stats::Stats;
 
@@ -71,6 +71,10 @@ impl<Value: IValue> Context<Value> {
 
     pub fn one(&self) -> Var {
         Var { idx: 1 }
+    }
+
+    pub fn u(&self) -> Var {
+        Var { idx: 2 }
     }
 
     /// Creates a new variable.
@@ -157,9 +161,10 @@ impl<Value: IValue> Default for Context<Value> {
             guessed_vars: Some(vec![]),
             assert_eq_on_eval: false,
         };
-        // Register zero and one as the first constants.
+        // Register zero, one, and u as the first constants.
         res.constant(QM31::zero());
         res.constant(QM31::one());
+        res.constant(qm31_from_u32s(0, 0, 1, 0)); // u at idx 2
         res
     }
 }

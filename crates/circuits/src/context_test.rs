@@ -11,12 +11,13 @@ fn test_constants() {
     let c = context.constant(x);
     assert_eq!(a.idx, c.idx);
 
-    assert_eq!(context.values(), &vec![0.into(), 1.into(), x, x + x]);
+    let u = qm31_from_u32s(0, 0, 1, 0);
+    assert_eq!(context.values(), &vec![0.into(), 1.into(), u, x, x + x]);
 
     context.finalize_guessed_vars();
     assert_eq!(
         format!("{:?}", context.circuit),
-        "[0] = [0] + [0]\n[1] = [1] + [0]\n[2] = [2] + [0]\n[3] = [3] + [0]\n"
+        "[0] = [0] + [0]\n[1] = [1] + [0]\n[2] = [2] + [0]\n[3] = [3] + [0]\n[4] = [4] + [0]\n"
     );
 
     context.validate_circuit();
@@ -31,4 +32,13 @@ fn test_zero_and_one() {
 
     assert_eq!(context.zero().idx, zero.idx);
     assert_eq!(context.one().idx, one.idx);
+}
+
+#[test]
+fn test_default_constants_layout() {
+    let context = TraceContext::default();
+    assert_eq!(context.zero().idx, 0);
+    assert_eq!(context.one().idx, 1);
+    assert_eq!(context.u().idx, 2);
+    assert_eq!(context.constants().len(), 3);
 }
