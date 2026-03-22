@@ -1,6 +1,6 @@
 use crate::N_LANES;
 use circuits::blake::{HashValue, blake};
-use circuits::circuit::M31ToU32Gate;
+use circuits::circuit::{M31ToU32Gate, TripleXorGate};
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::ivalue::{IValue, qm31_from_u32s};
@@ -65,6 +65,20 @@ fn pad_m31_to_u32(context: &mut Context<impl IValue>) {
     }
 }
 
+fn pad_triple_xor(context: &mut Context<impl IValue>) {
+    let n_rows = context.circuit.triple_xor.len();
+    let padded = std::cmp::max(n_rows.next_power_of_two(), N_LANES);
+    let zero = context.zero();
+    for _ in n_rows..padded {
+        // Pad with gates that XOR zeros: 0 ^ 0 ^ 0 = 0.
+        let out = context.new_var(IValue::from_qm31(0.into()));
+        context
+            .circuit
+            .triple_xor
+            .push(TripleXorGate { a: zero.idx, b: zero.idx, c: zero.idx, out: out.idx });
+    }
+}
+
 fn hash_constants(context: &mut Context<impl IValue>) -> HashValue<Var> {
     let constants: Vec<_> = context.constants().values().copied().collect();
     let n_bytes = constants.len() * 16;
@@ -89,6 +103,7 @@ pub fn finalize_context(context: &mut Context<impl IValue>) {
     pad_qm31_ops(context);
     pad_blake(context);
     pad_m31_to_u32(context);
+    pad_triple_xor(context);
 }
 
 /// Adds ZK blinding to the circuit by adding random values to the qm31_ops and eq components.

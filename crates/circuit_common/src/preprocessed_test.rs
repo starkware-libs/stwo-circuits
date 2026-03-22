@@ -206,10 +206,12 @@ fn test_preprocess_decomposed_gates() {
     assert!(bg_mult.iter().all(|&m| m <= 1));
 
     // Verify TripleXor columns exist and have correct addresses.
-    let tx_a = pp_trace.get_column(&PreProcessedColumnId { id: "triple_xor_a_address".to_owned() });
+    let tx_a =
+        pp_trace.get_column(&PreProcessedColumnId { id: "triple_xor_input_addr_0".to_owned() });
     let tx_out =
-        pp_trace.get_column(&PreProcessedColumnId { id: "triple_xor_output_address".to_owned() });
-    let tx_mult = pp_trace.get_column(&PreProcessedColumnId { id: "triple_xor_mult".to_owned() });
+        pp_trace.get_column(&PreProcessedColumnId { id: "triple_xor_output_addr".to_owned() });
+    let tx_mult =
+        pp_trace.get_column(&PreProcessedColumnId { id: "triple_xor_multiplicity".to_owned() });
     assert_eq!(tx_a.len(), 16);
     assert_eq!(tx_a[0], 96); // First triple_xor gate's a = wire 96.
     assert_eq!(tx_out[0], 144); // First triple_xor gate's out = wire 144.

@@ -14,7 +14,7 @@ use circuits_stark_verifier::proof::{Claim, ProofConfig};
 use circuits_stark_verifier::proof_from_stark_proof::{
     pack_component_log_sizes, proof_from_stark_proof,
 };
-use itertools::{Itertools, chain};
+use itertools::chain;
 use num_traits::Zero;
 use stwo::core::air::Component;
 use stwo::core::channel::Blake2sM31Channel;
@@ -65,6 +65,7 @@ pub fn to_component_provers(
         &components.blake_output as &dyn ComponentProver<SimdBackend>,
         &components.triple_xor_32 as &dyn ComponentProver<SimdBackend>,
         &components.m_31_to_u_32 as &dyn ComponentProver<SimdBackend>,
+        &components.triple_xor as &dyn ComponentProver<SimdBackend>,
         &components.verify_bitwise_xor_8 as &dyn ComponentProver<SimdBackend>,
         &components.verify_bitwise_xor_12 as &dyn ComponentProver<SimdBackend>,
         &components.verify_bitwise_xor_4 as &dyn ComponentProver<SimdBackend>,
@@ -176,7 +177,6 @@ pub fn prove_circuit_with_precompute<'a>(
         output_addresses,
         &mut tree_builder,
         &trace_generator,
-        twiddles,
     );
     claim.mix_into(channel);
     tree_builder.commit(channel);
@@ -193,7 +193,6 @@ pub fn prove_circuit_with_precompute<'a>(
         interaction_generator,
         &mut tree_builder,
         &interaction_elements,
-        twiddles,
     );
 
     // Validate lookup argument.
