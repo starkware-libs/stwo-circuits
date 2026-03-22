@@ -564,16 +564,17 @@ fn safe_call_id_logup_term(
 pub fn memory_segment_logup_sum(
     context: &mut Context<impl IValue>,
     interaction_elements: [Var; 2],
-    mut start_address: Var,
+    start_address: Var,
     ids: &[Var],
     memory_values: &[[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]],
 ) -> Var {
     let one = context.one();
     let mut sum = context.zero();
 
+    let mut address = start_address;
     for (i, (&id, value_limbs)) in zip_eq(ids, memory_values).enumerate() {
         if i != 0 {
-            start_address = eval!(context, (start_address) + (one));
+            address = eval!(context, (address) + (one));
         }
 
         let address_to_id_logup_term =
