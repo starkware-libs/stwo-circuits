@@ -1,9 +1,8 @@
 use crate::N_LANES;
-use circuits::blake::{HashValue, blake};
-use circuits::context::{Context, Var};
+use circuits::context::Context;
 use circuits::eval;
 use circuits::ivalue::{IValue, qm31_from_u32s};
-use circuits::ops::{eq, output};
+use circuits::ops::eq;
 use rand_chacha::rand_core::{RngCore, SeedableRng};
 
 fn pad_qm31_ops(context: &mut Context<impl IValue>) {
@@ -53,25 +52,12 @@ fn pad_blake(context: &mut Context<impl IValue>) {
     }
 }
 
-fn hash_constants(context: &mut Context<impl IValue>) -> HashValue<Var> {
-    let constants: Vec<_> = context.constants().values().copied().collect();
-    let n_bytes = constants.len() * 16;
-    blake(context, &constants, n_bytes)
-}
-
-/// Finalizes the context by appending gates to the context for:
-/// - Hashing the constants.
-/// - Hashing the outputs.
-/// - Padding the components to a power of two.
+/// Finalizes the context by padding the components to a power of two.
+///
+/// Constants are now gate-constructed by `finalize_constants` — no Blake hashing needed.
 // TODO(Gali): Have it under a trait.
 // TODO(Ilya): Make it pub(crate).
 pub fn finalize_context(context: &mut Context<impl IValue>) {
-    let HashValue(hash0, hash1) = hash_constants(context);
-    // Add the hash of the constants to the outputs.
-    // TODO(Leo): consider storing these values at a fixed address.
-    output(context, hash0);
-    output(context, hash1);
-
     // Padding the components to a power of two.
     pad_eq(context);
     pad_qm31_ops(context);

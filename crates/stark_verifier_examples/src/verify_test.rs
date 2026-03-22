@@ -42,6 +42,7 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
         let proof_vars = empty_proof.guess(&mut novalue_context);
         let statement = SimpleStatement::default();
         verify(&mut novalue_context, &proof_vars, &config, &statement);
+        circuits::finalize_constants::finalize_constants(&mut novalue_context);
         novalue_context.finalize_guessed_vars();
         novalue_context.circuit
     };
@@ -77,39 +78,37 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
     let statement = SimpleStatement::default();
     verify(&mut context, &proof_vars, &config, &statement);
 
-    let result = novalue_circuit.check(context.values());
-    match proof_modifier {
-        ProofModifier::None => {
-            result.unwrap();
-        }
-        ProofModifier::WrongTraceAuthPath => {
-            let err = result.unwrap_err();
-            // The error should be when comparing the main trace root.
-            let expected_value = context.get(proof_vars.trace_root.0);
-            assert!(err.contains(&expected_value.to_string()));
-        }
-        ProofModifier::WrongFriAuthPath => {
-            let err = result.unwrap_err();
-            // The error should be when comparing the first layer Merkle root.
-            let expected_value = context.get(proof_vars.fri.commit.layer_commitments[0].0);
-            assert!(err.contains(&expected_value.to_string()));
-        }
-        ProofModifier::WrongFriSibling => {
-            let err = result.unwrap_err();
-            // The error should be when validating the query position inside its witness coset.
-            let expected_value = context.get(proof_vars.fri.witness.0.last().unwrap()[0][1]);
-            assert!(err.contains(&expected_value.to_string()));
-        }
-    }
-
     context.check_vars_used();
 
+    circuits::finalize_constants::finalize_constants(&mut context);
     context.finalize_guessed_vars();
 
     // Make sure we got the same circuit.
     assert_eq!(context.circuit, novalue_circuit);
 
     novalue_circuit.check_yields();
+
+    let result = context.circuit.check(context.values());
+    match proof_modifier {
+        ProofModifier::None => {
+            result.unwrap();
+        }
+        ProofModifier::WrongTraceAuthPath => {
+            let err = result.unwrap_err();
+            let expected_value = context.get(proof_vars.trace_root.0);
+            assert!(err.contains(&expected_value.to_string()));
+        }
+        ProofModifier::WrongFriAuthPath => {
+            let err = result.unwrap_err();
+            let expected_value = context.get(proof_vars.fri.commit.layer_commitments[0].0);
+            assert!(err.contains(&expected_value.to_string()));
+        }
+        ProofModifier::WrongFriSibling => {
+            let err = result.unwrap_err();
+            let expected_value = context.get(proof_vars.fri.witness.0.last().unwrap()[0][1]);
+            assert!(err.contains(&expected_value.to_string()));
+        }
+    }
     println!("Stats: {:?}", context.stats);
 }
 

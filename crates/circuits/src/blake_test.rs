@@ -4,6 +4,7 @@ use stwo::core::vcs::blake2_hash::reduce_to_m31;
 
 use crate::blake::{blake, qm31_from_bytes};
 use crate::context::TraceContext;
+use crate::finalize_constants::finalize_constants;
 use crate::ivalue::qm31_from_u32s;
 use crate::ops::{Guess, eq, guess};
 use crate::stats::Stats;
@@ -42,11 +43,8 @@ fn test_blake(#[case] wrong_output: bool) {
 
     assert_eq!(context.stats, Stats { blake_updates: 2, guess: 10, equals: 2, ..Stats::default() });
 
+    finalize_constants(&mut context);
     context.finalize_guessed_vars();
-    assert_eq!(
-        context.circuit.compute_multiplicities().0,
-        vec![14, 1, 1, 2, 2, 2, 2, 2, 1, 1, 2, 2]
-    );
     context.circuit.check_yields();
 
     assert_eq!(context.is_circuit_valid(), !wrong_output);

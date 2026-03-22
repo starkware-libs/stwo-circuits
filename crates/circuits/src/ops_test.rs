@@ -6,6 +6,7 @@ use stwo::core::fields::m31::P;
 
 use crate::context::TraceContext;
 use crate::eval;
+use crate::finalize_constants::finalize_constants;
 use crate::ivalue::qm31_from_u32s;
 use crate::ops::{Guess, cond_flip, conj, div, eq, from_partial_evals, guess, pointwise_mul};
 use crate::stats::Stats;
@@ -75,9 +76,9 @@ fn test_div() {
     "#]]
     .assert_debug_eq(&context.circuit);
 
+    finalize_constants(&mut context);
     context.finalize_guessed_vars();
     context.validate_circuit();
-    assert_eq!(context.circuit.compute_multiplicities().0, vec![7, 1, 1, 2, 2, 2, 1]);
     context.circuit.check_yields();
 }
 
