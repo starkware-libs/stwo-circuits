@@ -302,7 +302,7 @@ fn check_relation_uses<Value: IValue>(
             continue;
         }
         let shifted_size = Simd::unpack_idx(context, &shifted_component_sizes, i);
-        for relation_use in component.relation_uses_per_row() {
+        for relation_use in relation_uses {
             let entry =
                 shifted_relation_uses.entry(relation_use.relation_id).or_insert(context.zero());
             let uses_per_row =
