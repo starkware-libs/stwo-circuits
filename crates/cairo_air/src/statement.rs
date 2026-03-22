@@ -209,14 +209,14 @@ impl<Value: IValue> CairoStatement<Value> {
         );
         let diff = Simd::sub(context, &end_addresses, &start_addresses);
 
-        let builtin_memory_cells = [
+        let builtin_instance_sizes = [
             ("pedersen_builtin_narrow_windows", PEDERSEN_BUILTIN_MEMORY_CELLS),
             ("range_check_builtin", RANGE_CHECK_BUILTIN_MEMORY_CELLS),
             ("bitwise_builtin", BITWISE_BUILTIN_MEMORY_CELLS),
             ("poseidon_builtin", POSEIDON_BUILTIN_MEMORY_CELLS),
         ];
-        let instance_size_inverses = pack_into_qm31s(
-            builtin_memory_cells.iter().map(|(_name, size)| M31::from(*size).inverse()),
+        let builtin_instance_size_inverses = pack_into_qm31s(
+            builtin_instance_sizes.iter().map(|(_name, size)| M31::from(*size).inverse()),
         )
         .into_iter()
         .map(|qm31| context.constant(qm31))
@@ -231,10 +231,10 @@ impl<Value: IValue> CairoStatement<Value> {
         // instance_size (mod M31_P). Since all values are less than 2^27, this equality
         // also holds over the integers.
         extract_bits(context, &n_uses_simd, SMALL_VALUE_BITS);
-        let max_builtin_memory_cell =
-            builtin_memory_cells.iter().map(|(_name, size)| size).max().unwrap();
+        let max_builtin_instance_size =
+            builtin_instance_sizes.iter().map(|(_name, size)| size).max().unwrap();
         assert!(
-            max_builtin_memory_cell.ilog2() < (31 - SMALL_VALUE_BITS),
+            max_builtin_instance_size.ilog2() < (31 - SMALL_VALUE_BITS),
             "max_builtin_memory_cell * n_uses might exceed M31_P"
         );
 
@@ -242,7 +242,7 @@ impl<Value: IValue> CairoStatement<Value> {
         let mut range_checks = vec![];
         let all_components = all_components::<Value>();
 
-        for ((name, _size), actual_uses) in zip_eq(builtin_memory_cells, actual_uses_iter) {
+        for ((name, _size), actual_uses) in zip_eq(builtin_instance_sizes, actual_uses_iter) {
             let index = all_components.get_index_of(name).unwrap();
             let component_size = component_sizes[index];
 
