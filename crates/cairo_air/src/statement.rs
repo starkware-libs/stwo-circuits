@@ -22,7 +22,7 @@ use stwo_cairo_common::builtins::{
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 use crate::all_components::all_components;
-use crate::preprocessed_columns::{MAX_SEQUENCE_LOG_SIZE, PREPROCESSED_COLUMNS_ORDER};
+use crate::preprocessed_columns::{CANONICAL_SMALL_PREPROCESSED_COLUMNS, MAX_SEQUENCE_LOG_SIZE};
 use circuits::context::{Context, Var};
 use circuits::ivalue::{IValue, qm31_from_u32s};
 use circuits::simd::Simd;
@@ -386,7 +386,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
     }
 
     fn get_preprocessed_column_ids(&self) -> Vec<PreProcessedColumnId> {
-        PREPROCESSED_COLUMNS_ORDER
+        CANONICAL_SMALL_PREPROCESSED_COLUMNS
             .iter()
             .map(|id| PreProcessedColumnId { id: id.to_string() })
             .collect()

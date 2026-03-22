@@ -9,7 +9,7 @@ use stwo::core::fri::FriConfig;
 use stwo::core::pcs::PcsConfig;
 
 use crate::all_components::all_components;
-use crate::preprocessed_columns::PREPROCESSED_COLUMNS_ORDER;
+use crate::preprocessed_columns::CANONICAL_SMALL_PREPROCESSED_COLUMNS;
 use crate::utils::{get_test_data_dir, load_program};
 use crate::verify::{CairoVerifierConfig, get_preprocessed_root};
 
@@ -56,7 +56,7 @@ pub fn privacy_cairo_verifier_config(log_blowup_factor: u32) -> CairoVerifierCon
 
     let proof_config = ProofConfig::from_components(
         &components,
-        PREPROCESSED_COLUMNS_ORDER.len(),
+        CANONICAL_SMALL_PREPROCESSED_COLUMNS.len(),
         &pcs_config,
         INTERACTION_POW_BITS,
     );
