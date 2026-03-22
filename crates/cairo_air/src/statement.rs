@@ -235,7 +235,7 @@ impl<Value: IValue> CairoStatement<Value> {
             builtin_memory_cells.iter().map(|(_name, size)| size).max().unwrap();
         assert!(
             max_builtin_memory_cell.ilog2() < (31 - SMALL_VALUE_BITS),
-            "max_builtin_memory_cell * segment_range.start might exceed M31_P"
+            "max_builtin_memory_cell * n_uses might exceed M31_P"
         );
 
         let actual_uses_iter = Simd::unpack(context, &n_uses_simd).into_iter();
