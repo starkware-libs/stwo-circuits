@@ -56,7 +56,7 @@ pub fn verify<Value: IValue>(
 
     let lifting_log_size = config.log_trace_size() + config.fri.log_blowup_factor;
     let pcs_config_values = vec![
-        config.n_proof_of_work_bits,
+        config.n_pow_bits,
         config.fri.log_blowup_factor as u32,
         config.fri.n_queries as u32,
         config.fri.log_n_last_layer_coefs as u32,
@@ -100,7 +100,7 @@ pub fn verify<Value: IValue>(
     // Mix the trace commitments into the channel.
     channel.mix_commitment(context, proof.trace_root);
 
-    channel.proof_of_work(context, config.interaction_pow_bits, proof.interaction_pow_nonce);
+    channel.pow(context, config.n_interaction_pow_bits, proof.interaction_pow_nonce);
     // Pick the interaction elements.
     let [interaction_z, interaction_alpha] = channel.draw_two_qm31s(context);
 
@@ -213,7 +213,7 @@ pub fn verify<Value: IValue>(
     let fri_alphas = fri_commit(context, &mut channel, &proof.fri.commit);
 
     // Proof of work before query selection.
-    channel.proof_of_work(context, config.n_proof_of_work_bits, proof.proof_of_work_nonce);
+    channel.pow(context, config.n_pow_bits, proof.pow_nonce);
 
     // Select queries.
     let query_selection_input =

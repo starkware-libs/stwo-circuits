@@ -97,7 +97,7 @@ impl Channel {
         CirclePoint { x, y }
     }
 
-    pub fn proof_of_work(&mut self, context: &mut Context<impl IValue>, n_bits: u32, nonce: Var) {
+    pub fn pow(&mut self, context: &mut Context<impl IValue>, n_bits: u32, nonce: Var) {
         assert!(n_bits <= 30);
 
         // Compute `H(POW_PREFIX, [0_u8; 12], digest, n_bits)`.
