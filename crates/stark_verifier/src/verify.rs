@@ -264,7 +264,7 @@ pub fn verify<Value: IValue>(
 ///
 /// To avoid overflows when computing the sum, we check
 /// sum(uses_per_row * (floor(num_rows / DIV) + 1)) < floor(P / DIV)
-/// where DIV = 2 ** NUM_ROWS_SHIFT
+/// where DIV = 2 ** RELATION_USES_NUM_ROWS_SHIFT
 fn check_relation_uses<Value: IValue>(
     context: &mut Context<impl IValue>,
     statement: &impl Statement<Value>,
@@ -274,8 +274,8 @@ fn check_relation_uses<Value: IValue>(
 
     // Check that sum(uses_per_row * (floor(num_rows / DIV) + 1)) cannot overflow even for the
     // maximal num_rows (num_rows = P).
-    // This is a sanity check that `NUM_ROWS_SHIFT` is large enough for the given statement, it
-    // does not depend on the specific assignment.
+    // This is a sanity check that `RELATION_USES_NUM_ROWS_SHIFT` is large enough for the given
+    // statement, it does not depend on the specific assignment.
     let mut max_shifted_uses_per_relation = HashMap::<&str, u64>::new();
     for component in components.iter() {
         for relation_use in component.relation_uses_per_row() {
