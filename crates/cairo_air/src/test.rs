@@ -27,7 +27,7 @@ use stwo_cairo_dev_utils::vm_utils::{ProgramType, run_and_adapt};
 use stwo_cairo_prover::prover::{ChannelHash, ProverParameters, prove_cairo};
 
 use crate::all_components::all_components;
-use crate::preprocessed_columns::{MAX_SEQUENCE_LOG_SIZE, PREPROCESSED_COLUMNS_ORDER};
+use crate::preprocessed_columns::{CANONICAL_SMALL_PREPROCESSED_COLUMNS, MAX_SEQUENCE_LOG_SIZE};
 use crate::statement::{CairoStatement, MEMORY_VALUES_LIMBS, PUBLIC_DATA_LEN};
 use crate::utils::get_proof_file_path;
 use crate::verify::{
@@ -74,7 +74,7 @@ pub fn verify_cairo_with_component_set(
 
     let proof_config = ProofConfig::from_components(
         &components,
-        PREPROCESSED_COLUMNS_ORDER.len(),
+        CANONICAL_SMALL_PREPROCESSED_COLUMNS.len(),
         &cairo_proof.extended_stark_proof.proof.config,
         INTERACTION_POW_BITS,
     );
