@@ -27,7 +27,7 @@ pub struct ProofInfo {
     pub log_blowup_factor: usize,
     pub n_queries: usize,
     pub n_columns_per_trace: [usize; N_TRACES],
-    // Fixed scalars (QM31): channel_salt + 4 roots (2 QM31 each) + proof_of_work_nonce +
+    // Fixed scalars (QM31): channel_salt + 4 roots (2 QM31 each) + pow_nonce +
     // interaction_pow_nonce.
     pub fixed: usize,
     // Claim (serialized in packed format): enable bits + log sizes + claimed sums.
@@ -214,8 +214,9 @@ impl std::fmt::Display for ProofInfo {
 #[derive(Debug, PartialEq)]
 pub struct ProofConfig {
     // TODO(lior): Add a check on the total security bits of the protocol given parameters
-    //   such as `n_proof_of_work_bits`, `fri.n_queries`, etc.
-    pub n_proof_of_work_bits: u32,
+    //   such as `n_pow_bits`, `fri.n_queries`, etc.
+    pub n_pow_bits: u32,
+    pub n_interaction_pow_bits: u32,
 
     // AIR structure.
     pub n_preprocessed_columns: usize,
@@ -233,24 +234,28 @@ pub struct ProofConfig {
     pub n_components: usize,
 
     pub fri: FriConfig,
-    pub interaction_pow_bits: u32,
 }
 impl ProofConfig {
     pub fn from_statement<Value: IValue>(
         statement: &impl Statement<Value>,
         pcs_config: &PcsConfig,
-        interaction_pow_bits: u32,
+        n_interaction_pow_bits: u32,
     ) -> Self {
         let components = statement.get_components();
         let n_preprocessed_columns = statement.get_preprocessed_column_ids().len();
-        Self::from_components(components, n_preprocessed_columns, pcs_config, interaction_pow_bits)
+        Self::from_components(
+            components,
+            n_preprocessed_columns,
+            pcs_config,
+            n_interaction_pow_bits,
+        )
     }
 
     pub fn from_components<Value: IValue>(
         components: &[Box<dyn CircuitEval<Value>>],
         n_preprocessed_columns: usize,
         pcs_config: &PcsConfig,
-        interaction_pow_bits: u32,
+        n_interaction_pow_bits: u32,
     ) -> Self {
         let trace_columns_per_component =
             components.iter().map(|c| c.trace_columns()).collect_vec();
@@ -262,7 +267,7 @@ impl ProofConfig {
             interaction_columns_per_component,
             n_preprocessed_columns,
             pcs_config,
-            interaction_pow_bits,
+            n_interaction_pow_bits,
         )
     }
 
@@ -272,7 +277,7 @@ impl ProofConfig {
         interaction_columns_per_component: Vec<usize>,
         n_preprocessed_columns: usize,
         pcs_config: &PcsConfig,
-        interaction_pow_bits: u32,
+        n_interaction_pow_bits: u32,
     ) -> Self {
         let n_interaction_columns = interaction_columns_per_component.iter().sum();
         let mut cumulative_sum_columns = Vec::with_capacity(n_interaction_columns);
@@ -312,7 +317,8 @@ impl ProofConfig {
         let log_trace_size = (*lifting_log_size - log_blowup_factor) as usize;
 
         Self {
-            n_proof_of_work_bits: *pow_bits,
+            n_pow_bits: *pow_bits,
+            n_interaction_pow_bits,
             n_preprocessed_columns,
             n_trace_columns: trace_columns_per_component.iter().sum(),
             n_interaction_columns,
@@ -327,7 +333,6 @@ impl ProofConfig {
                 log_n_last_layer_coefs: *log_last_layer_degree_bound as usize,
                 fold_step: *fold_step as usize,
             },
-            interaction_pow_bits,
         }
     }
 
@@ -434,7 +439,7 @@ pub struct Proof<T> {
     pub eval_domain_samples: EvalDomainSamples<T>,
     pub eval_domain_auth_paths: AuthPaths<T>,
 
-    pub proof_of_work_nonce: T,
+    pub pow_nonce: T,
     pub interaction_pow_nonce: T,
     pub fri: FriProof<T>,
 }
@@ -512,7 +517,7 @@ pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
         eval_domain_auth_paths: AuthPaths {
             data: vec![vec![auth_path; config.n_queries()]; N_TRACES],
         },
-        proof_of_work_nonce: NoValue,
+        pow_nonce: NoValue,
         interaction_pow_nonce: NoValue,
         fri: empty_fri_proof(&config.fri),
         channel_salt: NoValue,
@@ -535,7 +540,7 @@ impl<Value: IValue> Guess<Value> for Proof<Value> {
             composition_eval_at_oods: self.composition_eval_at_oods.guess(context),
             eval_domain_samples: self.eval_domain_samples.guess(context),
             eval_domain_auth_paths: self.eval_domain_auth_paths.guess(context),
-            proof_of_work_nonce: self.proof_of_work_nonce.guess(context),
+            pow_nonce: self.pow_nonce.guess(context),
             interaction_pow_nonce: self.interaction_pow_nonce.guess(context),
             fri: self.fri.guess(context),
             channel_salt: self.channel_salt.guess(context),

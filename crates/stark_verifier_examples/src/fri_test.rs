@@ -48,7 +48,8 @@ fn test_fri_decommit_with_jumps(
     let mut context = TraceContext::default();
     // Make a dummy config.
     let config = ProofConfig {
-        n_proof_of_work_bits: 0,
+        n_pow_bits: 0,
+        n_interaction_pow_bits: 0,
         n_preprocessed_columns: 0,
         n_trace_columns: 0,
         n_interaction_columns: 0,
@@ -63,7 +64,6 @@ fn test_fri_decommit_with_jumps(
             log_n_last_layer_coefs: 0,
             fold_step,
         },
-        interaction_pow_bits: 0,
     };
 
     // Compute FRI input.

@@ -29,7 +29,7 @@ impl CircuitSerialize for Proof<QM31> {
             interaction_at_oods,
             eval_domain_samples,
             eval_domain_auth_paths,
-            proof_of_work_nonce,
+            pow_nonce,
             interaction_pow_nonce,
             fri,
         } = self;
@@ -46,7 +46,7 @@ impl CircuitSerialize for Proof<QM31> {
         CircuitSerialize::serialize(composition_eval_at_oods, output);
         CircuitSerialize::serialize(eval_domain_samples, output);
         CircuitSerialize::serialize(eval_domain_auth_paths, output);
-        CircuitSerialize::serialize(proof_of_work_nonce, output);
+        CircuitSerialize::serialize(pow_nonce, output);
         CircuitSerialize::serialize(interaction_pow_nonce, output);
         CircuitSerialize::serialize(fri, output);
     }

@@ -105,7 +105,7 @@ pub fn deserialize_proof_with_config(
     let composition_eval_at_oods = <[QM31; N_COMPOSITION_COLUMNS]>::deserialize(data)?;
     let eval_domain_samples = deserialize_eval_domain_samples(data, config)?;
     let eval_domain_auth_paths = deserialize_eval_domain_auth_paths(data, config)?;
-    let proof_of_work_nonce = QM31::deserialize(data)?;
+    let pow_nonce = QM31::deserialize(data)?;
     let interaction_pow_nonce = QM31::deserialize(data)?;
     let fri = deserialize_fri_proof(data, &config.fri)?;
 
@@ -122,7 +122,7 @@ pub fn deserialize_proof_with_config(
         interaction_at_oods,
         eval_domain_samples,
         eval_domain_auth_paths,
-        proof_of_work_nonce,
+        pow_nonce,
         interaction_pow_nonce,
         fri,
     })
