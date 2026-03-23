@@ -146,6 +146,13 @@ pub fn conj(c: &mut Context<impl IValue>, a: Var) -> Var {
     pointwise_mul(c, a, coefs)
 }
 
+/// Computes the twisted imaginary part (with respect to `CM31`) of a `QM31` value:
+///   `z = a + b * i + c * u + d * iu ->  (c + d * i)*u = (z - conj(z))/2`.
+pub fn im(c: &mut Context<impl IValue>, a: Var) -> Var {
+    let coefs = c.constant(qm31_from_u32s(0, 0, 1, 1));
+    pointwise_mul(c, a, coefs)
+}
+
 /// Returns a new unconstrained variable with the given value.
 pub fn guess<Value: IValue>(context: &mut Context<Value>, value: Value) -> Var {
     context.stats.guess += 1;

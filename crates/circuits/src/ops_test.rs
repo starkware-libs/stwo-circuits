@@ -7,7 +7,7 @@ use stwo::core::fields::m31::P;
 use crate::context::TraceContext;
 use crate::eval;
 use crate::ivalue::qm31_from_u32s;
-use crate::ops::{Guess, cond_flip, conj, div, eq, from_partial_evals, guess, pointwise_mul};
+use crate::ops::{Guess, cond_flip, conj, div, eq, from_partial_evals, guess, im, pointwise_mul};
 use crate::stats::Stats;
 
 #[test]
@@ -128,6 +128,32 @@ fn test_conj() {
     .assert_debug_eq(&context.constants());
     expect![[r#"
         [6] = [3] * [5]
+        [5] = [3] x [4]
+
+    "#]]
+    .assert_debug_eq(&context.circuit);
+
+    context.validate_circuit();
+}
+
+#[test]
+fn test_im() {
+    let mut context = TraceContext::default();
+    let a = qm31_from_u32s(1, 2, 3, 4).guess(&mut context);
+    let b = im(&mut context, a);
+    assert_eq!(context.get(b), qm31_from_u32s(0, 0, 3, 4));
+
+    expect!["[5]"].assert_eq(&format!("{b:?}"));
+    expect![[r#"
+        {
+            (0 + 0i) + (0 + 0i)u: [0],
+            (1 + 0i) + (0 + 0i)u: [1],
+            (0 + 0i) + (1 + 0i)u: [2],
+            (0 + 0i) + (1 + 1i)u: [4],
+        }
+    "#]]
+    .assert_debug_eq(&context.constants());
+    expect![[r#"
         [5] = [3] x [4]
 
     "#]]
