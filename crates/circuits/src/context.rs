@@ -5,7 +5,6 @@ use stwo::core::fields::qm31::QM31;
 
 use crate::circuit::{Add, Circuit};
 use crate::ivalue::{IValue, qm31_from_u32s};
-use crate::ops::guess;
 use crate::stats::Stats;
 
 #[cfg(test)]
@@ -94,7 +93,7 @@ impl<Value: IValue> Context<Value> {
         if let Some(var) = self.constants.get(&value) {
             *var
         } else {
-            let var = guess(self, Value::from_qm31(value));
+            let var = self.new_var(Value::from_qm31(value));
             self.constants.insert(value, var);
             var
         }
@@ -133,8 +132,8 @@ impl<Value: IValue> Context<Value> {
         }
     }
 
-    /// Finalizes the set of guessed variables by adding a trivial constraint for each
-    /// non-constant guessed variable.
+    /// Finalizes the set of guessed variables by adding a trivial constraint for each guessed
+    /// variable.
     ///
     /// Each gate in the circuit has lookups for its inputs (use lookups) and outputs (yield
     /// lookups).
@@ -142,14 +141,8 @@ impl<Value: IValue> Context<Value> {
     /// appears exactly once as a yield lookup.
     /// For guessed value, add a trivial constraint so that the new variable appears once as
     /// a yield.
-    ///
-    /// Constants are skipped here — their yield gates are added by `finalize_constants`.
     pub fn finalize_guessed_vars(&mut self) {
-        let constant_idxs: HashSet<usize> = self.constants.values().map(|v| v.idx).collect();
         for idx in self.guessed_vars.take().unwrap().iter() {
-            if constant_idxs.contains(idx) {
-                continue; // Constants get yield gates from finalize_constants.
-            }
             self.circuit.add.push(Add { in0: *idx, in1: self.zero().idx, out: *idx });
         }
     }
