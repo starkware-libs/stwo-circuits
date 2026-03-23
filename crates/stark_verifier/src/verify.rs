@@ -14,7 +14,7 @@ use crate::oods::{
     collect_oods_responses, compute_fri_input, extract_expected_composition_eval, period_generators,
 };
 use crate::proof::{Proof, ProofConfig};
-use crate::proof_from_stark_proof::pack_into_qm31s;
+use crate::proof_from_stark_proof::{pack_enable_bits, pack_into_qm31s};
 use crate::select_queries::{get_query_selection_input_from_channel, select_queries};
 use crate::statement::{EvaluateArgs, OodsSamples, Statement};
 use circuits::context::{Context, Var};
@@ -91,7 +91,13 @@ pub fn verify<Value: IValue>(
 
     let n_components = context.constant(qm31_from_u32s(config.n_components as u32, 0, 0, 0));
     channel.mix_qm31s(context, [n_components]);
-    channel.mix_qm31s(context, proof.claim.packed_enable_bits.iter().cloned());
+
+    // TODO(Gali): Don't mix the enable bits.
+    let enable_bits = config.enabled_components().collect_vec();
+    let packed_enable_bits =
+        pack_enable_bits(&enable_bits).into_iter().map(|qm31| context.constant(qm31)).collect_vec();
+    channel.mix_qm31s(context, packed_enable_bits);
+
     channel.mix_qm31s(context, proof.claim.packed_component_log_sizes.iter().cloned());
     for claim_to_mix in statement.claims_to_mix(context) {
         channel.mix_qm31s(context, claim_to_mix.iter().cloned());
@@ -104,20 +110,10 @@ pub fn verify<Value: IValue>(
     // Pick the interaction elements.
     let [interaction_z, interaction_alpha] = channel.draw_two_qm31s(context);
 
-    let simd_enable_bits =
-        Simd::from_packed(proof.claim.packed_enable_bits.clone(), config.n_components);
-    simd_enable_bits.assert_bits(context);
-
-    // TODO(ilya): Consider removing claim.packed_enable_bits and deriving them from
-    // config.enabled_components directly.
-    let enable_bits = Simd::unpack(context, &simd_enable_bits);
-    for (enabled_bit, expected_enable_bit) in zip_eq(&enable_bits, config.enabled_components()) {
-        let expect_const = match expected_enable_bit {
-            true => context.one(),
-            false => context.zero(),
-        };
-        eq(context, *enabled_bit, expect_const);
-    }
+    let enable_bits: Vec<Var> = enable_bits
+        .into_iter()
+        .map(|enabled| if enabled { context.one() } else { context.zero() })
+        .collect_vec();
 
     let public_logup_sum = statement.public_logup_sum(context, [interaction_z, interaction_alpha]);
     validate_logup_sum(context, public_logup_sum, &proof.claim.claimed_sums, &enable_bits);
