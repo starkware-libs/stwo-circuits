@@ -5,7 +5,7 @@ use stwo::core::circle::CirclePoint;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 use crate::constraint_eval::CircuitEval;
-use crate::proof::InteractionAtOods;
+use crate::proof::{InteractionAtOods, ProofConfig};
 use circuits::context::{Context, Var};
 use circuits::ivalue::IValue;
 use circuits::simd::Simd;
@@ -56,7 +56,7 @@ pub trait Statement<Value: IValue> {
     fn verify_claim(
         &self,
         _context: &mut Context<Value>,
-        _enable_bits: &[Var],
+        _config: &ProofConfig,
         _component_sizes: &[Var],
         _shifted_relation_uses: &HashMap<&'static str, Var>,
     ) {
