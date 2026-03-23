@@ -59,34 +59,20 @@ pub fn finalize_constants(context: &mut Context<impl IValue>) {
 
     // 8. Handle broadcast constants: (x, x, x, x) = x * (1,1,1,1).
     let has_broadcast = constant_idxs.keys().any(|val| is_broadcast(val) && val != &QM31::zero());
-    let has_general_qm31 = constant_idxs
-        .keys()
-        .any(|val| !is_base_field_element(val) && !is_broadcast(val) && val != &qm31_from_u32s(0, 0, 1, 0));
+    let has_general_qm31 = constant_idxs.keys().any(|val| {
+        !is_base_field_element(val) && !is_broadcast(val) && val != &qm31_from_u32s(0, 0, 1, 0)
+    });
 
     if has_broadcast || has_general_qm31 {
         let (i_idx, iu_idx) = build_qm31_bases(context, &chain);
 
         if has_broadcast {
             let ones_idx = build_ones_vector(context, i_idx, u_idx, iu_idx);
-            decompose_broadcast_constants(
-                context,
-                &constant_idxs,
-                &chain,
-                base,
-                ones_idx,
-            );
+            decompose_broadcast_constants(context, &constant_idxs, &chain, base, ones_idx);
         }
 
         if has_general_qm31 {
-            decompose_qm31_constants(
-                context,
-                &constant_idxs,
-                &chain,
-                base,
-                u_idx,
-                i_idx,
-                iu_idx,
-            );
+            decompose_qm31_constants(context, &constant_idxs, &chain, base, u_idx, i_idx, iu_idx);
         }
     }
 }
@@ -199,8 +185,7 @@ fn compute_min_chain_length(
     // Need base^3 > max_needed (so that a = val/base^2 < base for any val <= max_needed).
     let min_base = if max_needed > 0 {
         // Cube root, rounded up.
-        let cbrt = (max_needed as f64).cbrt().ceil() as u32 + 1;
-        cbrt
+        (max_needed as f64).cbrt().ceil() as u32 + 1
     } else {
         2 // Minimum for non-base-field constants (need 2 in chain for i = u^2 - 2).
     };
@@ -213,11 +198,8 @@ fn compute_min_chain_length(
 
 /// Finds the largest N such that all M31 integers 1..=N are present as constants.
 fn find_max_consecutive(constant_idxs: &IndexMap<QM31, usize>) -> u32 {
-    let mut m31_values: Vec<u32> = constant_idxs
-        .keys()
-        .filter(|v| is_base_field_element(v))
-        .map(|v| v.0 .0 .0)
-        .collect();
+    let mut m31_values: Vec<u32> =
+        constant_idxs.keys().filter(|v| is_base_field_element(v)).map(|v| v.0.0.0).collect();
     m31_values.sort_unstable();
 
     // After sorting, a consecutive run from 0 satisfies m31_values[i] == i.
@@ -426,12 +408,7 @@ fn decompose_qm31_constants(
             continue;
         }
 
-        let limbs = [
-            qm31_val.0.0.0,
-            qm31_val.0.1.0,
-            qm31_val.1.0.0,
-            qm31_val.1.1.0,
-        ];
+        let limbs = [qm31_val.0.0.0, qm31_val.0.1.0, qm31_val.1.0.0, qm31_val.1.1.0];
 
         let limb_idxs: [usize; 4] =
             std::array::from_fn(|j| get_or_build_m31_var(context, chain, base, base_idx, limbs[j]));
