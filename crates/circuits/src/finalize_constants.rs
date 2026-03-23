@@ -62,9 +62,7 @@ pub fn finalize_constants(context: &mut Context<impl IValue>) {
     let mut m31_cache: HashMap<u32, usize> = chain.clone();
 
     // 8. Decompose M31 constants not in chain.
-    if base > 1 {
-        decompose_m31_constants(context, &constant_idxs, &mut m31_cache, base);
-    }
+    decompose_m31_constants(context, &constant_idxs, &mut m31_cache, base);
 
     // 9. Handle broadcast constants: (x, x, x, x) = x * (1,1,1,1).
     let has_broadcast = constant_idxs.keys().any(|val| is_broadcast(val) && val != &QM31::zero());
