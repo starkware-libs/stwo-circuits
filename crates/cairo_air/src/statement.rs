@@ -396,7 +396,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         let segment_ranges = &self.public_data.public_memory.segment_ranges;
         let public_params: HashMap<String, Var> = HashMap::from_iter(
             [
-                ("output_start_ptr", &segment_ranges[0]),
+                ("output_segment_start", &segment_ranges[0]),
                 ("pedersen_builtin_segment_start", &segment_ranges[1]),
                 ("range_check_builtin_segment_start", &segment_ranges[2]),
                 ("ecdsa_builtin_segment_start", &segment_ranges[3]),
