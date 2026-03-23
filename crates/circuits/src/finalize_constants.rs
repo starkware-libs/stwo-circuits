@@ -149,7 +149,7 @@ fn decompose_broadcast_constants(
         }
 
         let x = qm31_val.0.0.0;
-        let x_idx = get_or_build_m31_var(context, m31_cache, base, base_idx, x);
+        let x_idx = get_or_build_m31_var(context, m31_cache, constant_idxs, base, base_idx, x);
 
         // x * (1, 1, 1, 1) → output to reserved idx
         context.circuit.mul.push(Mul { in0: x_idx, in1: ones_idx, out: reserved_idx });
@@ -301,16 +301,27 @@ fn decompose_m31_constants(
             continue;
         }
 
-        build_m31_from_base(context, m31_cache, base, base_idx, m31_val, reserved_idx);
+        build_m31_from_base(
+            context,
+            m31_cache,
+            constant_idxs,
+            base,
+            base_idx,
+            m31_val,
+            reserved_idx,
+        );
         m31_cache.insert(m31_val, reserved_idx);
     }
 }
 
 /// Builds a single M31 value via decomposition: K = (a * base + b) * base + c.
-/// The final Add gate outputs to `out_idx`. Intermediates are cached in the chain for reuse.
+/// The final Add gate outputs to `out_idx`. Intermediates are cached in m31_cache for reuse.
+/// If an intermediate's value matches a reserved constant, the reserved Var idx is used as
+/// the gate output (ensuring it gets its yield gate).
 fn build_m31_from_base(
     context: &mut Context<impl IValue>,
     m31_cache: &mut HashMap<u32, usize>,
+    constant_idxs: &IndexMap<QM31, usize>,
     base: u32,
     base_idx: usize,
     val: u32,
@@ -334,10 +345,10 @@ fn build_m31_from_base(
     let temp1 = match m31_cache.get(&ab) {
         Some(&idx) => idx,
         None => {
-            let var = context.new_var(IValue::from_qm31(QM31::from(ab)));
-            context.circuit.mul.push(Mul { in0: a_idx, in1: base_idx, out: var.idx });
-            m31_cache.insert(ab, var.idx);
-            var.idx
+            let idx = var_idx_for_m31(context, constant_idxs, ab);
+            context.circuit.mul.push(Mul { in0: a_idx, in1: base_idx, out: idx });
+            m31_cache.insert(ab, idx);
+            idx
         }
     };
 
@@ -346,10 +357,10 @@ fn build_m31_from_base(
     let temp2 = match m31_cache.get(&ab_b) {
         Some(&idx) => idx,
         None => {
-            let var = context.new_var(IValue::from_qm31(QM31::from(ab_b)));
-            context.circuit.add.push(Add { in0: temp1, in1: b_idx, out: var.idx });
-            m31_cache.insert(ab_b, var.idx);
-            var.idx
+            let idx = var_idx_for_m31(context, constant_idxs, ab_b);
+            context.circuit.add.push(Add { in0: temp1, in1: b_idx, out: idx });
+            m31_cache.insert(ab_b, idx);
+            idx
         }
     };
 
@@ -358,15 +369,33 @@ fn build_m31_from_base(
     let temp3 = match m31_cache.get(&ab_b_base) {
         Some(&idx) => idx,
         None => {
-            let var = context.new_var(IValue::from_qm31(QM31::from(ab_b_base)));
-            context.circuit.mul.push(Mul { in0: temp2, in1: base_idx, out: var.idx });
-            m31_cache.insert(ab_b_base, var.idx);
-            var.idx
+            let idx = var_idx_for_m31(context, constant_idxs, ab_b_base);
+            context.circuit.mul.push(Mul { in0: temp2, in1: base_idx, out: idx });
+            m31_cache.insert(ab_b_base, idx);
+            idx
         }
     };
 
-    // result = (a * base + b) * base + c → output to out_idx
-    context.circuit.add.push(Add { in0: temp3, in1: c_idx, out: out_idx });
+    // result = (a * base + b) * base + c → output to out_idx.
+    // Skip if an intermediate already produced this value at out_idx (happens when b=0 or c=0
+    // causes an intermediate to equal val, and var_idx_for_m31 mapped it to out_idx).
+    if m31_cache.get(&val) != Some(&out_idx) {
+        context.circuit.add.push(Add { in0: temp3, in1: c_idx, out: out_idx });
+    }
+}
+
+/// Returns the Var idx to use for an M31 value: the reserved constant idx if one exists,
+/// otherwise a fresh Var.
+fn var_idx_for_m31(
+    context: &mut Context<impl IValue>,
+    constant_idxs: &IndexMap<QM31, usize>,
+    val: u32,
+) -> usize {
+    if let Some(&idx) = constant_idxs.get(&QM31::from(val)) {
+        idx
+    } else {
+        context.new_var(IValue::from_qm31(QM31::from(val))).idx
+    }
 }
 
 /// Builds the QM31 basis elements from u.
@@ -402,6 +431,7 @@ fn build_qm31_bases(
 fn get_or_build_m31_var(
     context: &mut Context<impl IValue>,
     m31_cache: &mut HashMap<u32, usize>,
+    constant_idxs: &IndexMap<QM31, usize>,
     base: u32,
     base_idx: usize,
     val: u32,
@@ -409,10 +439,10 @@ fn get_or_build_m31_var(
     if let Some(&idx) = m31_cache.get(&val) {
         return idx;
     }
-    let fresh = context.new_var(IValue::from_qm31(QM31::from(val)));
-    build_m31_from_base(context, m31_cache, base, base_idx, val, fresh.idx);
-    m31_cache.insert(val, fresh.idx);
-    fresh.idx
+    let out_idx = var_idx_for_m31(context, constant_idxs, val);
+    build_m31_from_base(context, m31_cache, constant_idxs, base, base_idx, val, out_idx);
+    m31_cache.insert(val, out_idx);
+    out_idx
 }
 
 /// Constructs QM31 constants as a + b*i + c*u + d*iu.
@@ -438,7 +468,7 @@ fn decompose_qm31_constants(
         let limbs = [qm31_val.0.0.0, qm31_val.0.1.0, qm31_val.1.0.0, qm31_val.1.1.0];
 
         let limb_idxs: [usize; 4] = std::array::from_fn(|j| {
-            get_or_build_m31_var(context, m31_cache, base, base_idx, limbs[j])
+            get_or_build_m31_var(context, m31_cache, constant_idxs, base, base_idx, limbs[j])
         });
 
         // b * i
