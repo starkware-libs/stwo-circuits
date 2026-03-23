@@ -246,7 +246,8 @@ impl<Value: IValue> CairoStatement<Value> {
             let index = all_components.get_index_of(name).unwrap();
             let component_size = component_sizes[index];
 
-            // Check that either actual_uses == 0 or is_disabled == 0.
+            // If the builtin is used it must be enabled.
+            // This is enforced by checking that either actual_uses == 0 or is_disabled == 0.
             let is_disabled = eval!(context, (1) - (enable_bits[index]));
             let constraint_val = eval!(context, (actual_uses) * (is_disabled));
             eq(context, constraint_val, context.zero());
