@@ -618,11 +618,14 @@ pub fn public_logup_sum(
         eval!(context, (initial_ap) - (one)),
     ];
 
-    let split_initial_ap = split_27bit_to_9bit_limbs(context, initial_ap);
-    let safe_call_values = [split_initial_ap.as_slice(), &[]];
-    // Handle the safe call memory section::
+    // Enforce correct initialization of the safe call memory section:
     // memory[initial_ap - 2] = (safe_call_id0, initial_ap)
     // memory[initial_ap - 1] = (safe_call_id1, 0).
+    let split_initial_ap = split_27bit_to_9bit_limbs(context, initial_ap);
+    // The value of memory[initial_ap - 1] is 0, so its 9-bit limbs are all zeros.
+    // Passing an empty slice to id_to_big_logup_term is equivalent to passing [0, 0, 0]
+    // because trailing zeros don't affect the polynomial combination in combine_term.
+    let safe_call_values = [split_initial_ap.as_slice(), &[]];
     for (address, id, value_limbs) in izip!(safe_call_addresses, safe_call_ids, safe_call_values) {
         let logup_term =
             safe_call_id_logup_term(context, interaction_elements, address, *id, value_limbs);
