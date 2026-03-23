@@ -280,6 +280,9 @@ fn test_prove_and_stark_verify_fibonacci_context() {
     );
 }
 
+const FIBONACCI_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
+    [493983326, 2001628964, 1869732312, 78395942, 1858642010, 1699996416, 862831504, 528346834];
+
 #[test]
 fn test_prove_and_circuit_verify_fibonacci_context() {
     let mut fibonacci_context = build_fibonacci_context();
@@ -301,17 +304,16 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
         &circuit_proof.pcs_config,
         INTERACTION_POW_BITS,
     );
-    let pcs_config = circuit_proof.pcs_config;
-    let (proof, public_data) =
-        prepare_circuit_proof_for_circuit_verifier(circuit_proof, &proof_config);
-    // Use the preprocessed root from the proof rather than hardcoding.
+    let preprocessed_root = FIBONACCI_CIRCUIT_PREPROCESSED_ROOT.into();
     let circuit_config = CircuitConfig {
-        config: pcs_config,
+        config: circuit_proof.pcs_config,
         output_addresses: preprocessed_circuit.params.output_addresses.clone(),
         n_blake_gates: preprocessed_circuit.params.n_blake_gates,
         preprocessed_column_ids,
-        preprocessed_root: proof.preprocessed_root,
+        preprocessed_root,
     };
+    let (proof, public_data) =
+        prepare_circuit_proof_for_circuit_verifier(circuit_proof, &proof_config);
     verify_circuit(circuit_config, proof, public_data).unwrap();
 }
 
