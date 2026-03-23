@@ -135,12 +135,7 @@ pub fn verify<Value: IValue>(
 
     let shifted_relation_uses = check_relation_uses(context, statement, &component_sizes_bits);
     let unpacked_component_sizes = Simd::unpack(context, &component_sizes);
-    statement.verify_claim(
-        context,
-        &enable_bits,
-        &unpacked_component_sizes,
-        &shifted_relation_uses,
-    );
+    statement.verify_claim(context, config, &unpacked_component_sizes, &shifted_relation_uses);
 
     // Compute the composition evaluation at the OODS point from `proof.*_at_oods` and compare
     // to `proof.composition_eval_at_oods`.
