@@ -30,7 +30,7 @@ pub struct ProofInfo {
     // Fixed scalars (QM31): channel_salt + 4 roots (2 QM31 each) + pow_nonce +
     // interaction_pow_nonce.
     pub fixed: usize,
-    // Claim (serialized in packed format): enable bits + log sizes + claimed sums.
+    // Claim: log sizes + claimed sums, serialized in packed form only for enabled components.
     pub claim: usize,
     // OODS evaluations (QM31 per column, plus cumulative sum prev-point samples).
     pub oods: usize,
@@ -58,10 +58,10 @@ impl ProofInfo {
 
         let fixed = (1 + 4 * 2 + 1 + 1) * SECURE_EXTENSION_DEGREE * N_U8S_PER_U32;
 
-        let packed_log_sizes = config.n_components.next_multiple_of(4); // 1 log per u8.
         let n_enabled = config.enabled_components().filter(|&b| b).count();
+        let log_sizes = n_enabled; // 1 byte per enabled component.
         let claimed_sums = n_enabled * SECURE_EXTENSION_DEGREE * N_U8S_PER_U32;
-        let claim = packed_log_sizes + claimed_sums;
+        let claim = log_sizes + claimed_sums;
 
         let n_columns_per_trace = config.n_columns_per_trace();
         let total_columns: usize = n_columns_per_trace.iter().sum();
