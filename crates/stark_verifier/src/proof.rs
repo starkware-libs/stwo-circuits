@@ -58,11 +58,10 @@ impl ProofInfo {
 
         let fixed = (1 + 4 * 2 + 1 + 1) * SECURE_EXTENSION_DEGREE * N_U8S_PER_U32;
 
-        let packed_enable_bits = config.n_components.div_ceil(8); // pack 8 enable bits per u8
         let packed_log_sizes = config.n_components.next_multiple_of(4); // 1 log per u8.
         let n_enabled = config.enabled_components().filter(|&b| b).count();
         let claimed_sums = n_enabled * SECURE_EXTENSION_DEGREE * N_U8S_PER_U32;
-        let claim = packed_enable_bits + packed_log_sizes + claimed_sums;
+        let claim = packed_log_sizes + claimed_sums;
 
         let n_columns_per_trace = config.n_columns_per_trace();
         let total_columns: usize = n_columns_per_trace.iter().sum();
