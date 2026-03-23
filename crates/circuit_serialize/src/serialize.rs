@@ -95,8 +95,7 @@ impl CircuitSerialize for HashValue<QM31> {
 }
 
 fn serialize_claim(claim: &Claim<QM31>, output: &mut Vec<u8>, config: &ProofConfig) {
-    // Note that the enable bits are not serialized, they are deduced from the config.
-    let Claim { packed_enable_bits: _, packed_component_log_sizes, claimed_sums } = claim;
+    let Claim { packed_component_log_sizes, claimed_sums } = claim;
 
     // Pack log sizes: 1 per u8 (requires `LOG_SIZE_BITS` <= 8).
     assert!(LOG_SIZE_BITS as usize <= 8);
