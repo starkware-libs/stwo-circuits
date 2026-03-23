@@ -7,12 +7,13 @@ use stwo::core::verifier::verify;
 use crate::simple_air::{INTERACTION_POW_BITS, LOG_SIZE_LONG, LOG_SIZE_SHORT, create_proof};
 use circuits::ivalue::qm31_from_u32s;
 use circuits_stark_verifier::proof::Claim;
+use circuits_stark_verifier::proof_from_stark_proof::pack_enable_bits;
 
 #[test]
 fn verify_simple_proof() {
     let (
         components,
-        Claim { packed_enable_bits, packed_component_log_sizes, claimed_sums },
+        Claim { packed_component_log_sizes, claimed_sums },
         config,
         proof,
         interaction_pow_nonce,
@@ -36,6 +37,7 @@ fn verify_simple_proof() {
     );
 
     verifier_channel.mix_felts(&[qm31_from_u32s(claimed_sums.len() as u32, 0, 0, 0)]);
+    let packed_enable_bits = pack_enable_bits(&[true, true, false]);
     verifier_channel.mix_felts(&packed_enable_bits);
     verifier_channel.mix_felts(&packed_component_log_sizes);
     verifier_channel.mix_felts(&[]);

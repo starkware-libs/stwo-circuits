@@ -323,7 +323,7 @@ pub fn create_proof_with_fold_step(
 
     (
         components,
-        Claim { packed_enable_bits, packed_component_log_sizes, claimed_sums },
+        Claim { packed_component_log_sizes, claimed_sums },
         config,
         proof,
         interaction_pow_nonce,

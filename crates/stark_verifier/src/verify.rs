@@ -14,7 +14,7 @@ use crate::oods::{
     collect_oods_responses, compute_fri_input, extract_expected_composition_eval, period_generators,
 };
 use crate::proof::{Proof, ProofConfig};
-use crate::proof_from_stark_proof::pack_into_qm31s;
+use crate::proof_from_stark_proof::{pack_enable_bits, pack_into_qm31s};
 use crate::select_queries::{get_query_selection_input_from_channel, select_queries};
 use crate::statement::{EvaluateArgs, OodsSamples, Statement};
 use circuits::context::{Context, Var};
@@ -31,13 +31,15 @@ pub const RELATION_USES_NUM_ROWS_SHIFT: usize = 16;
 
 pub fn validate_logup_sum(
     context: &mut Context<impl IValue>,
+    config: &ProofConfig,
     public_logup_sum: Var,
     claimed_sums: &[Var],
-    enable_bits: &[Var],
 ) {
     let mut log_up_sum = public_logup_sum;
-    for (claimed_sum, enable_bit) in zip_eq(claimed_sums, enable_bits) {
-        log_up_sum = eval!(context, (log_up_sum) + ((*claimed_sum) * (*enable_bit)));
+    for (claimed_sum, enable_bit) in zip_eq(claimed_sums, config.enabled_components()) {
+        if enable_bit {
+            log_up_sum = eval!(context, (log_up_sum) + (*claimed_sum));
+        }
     }
     eq(context, log_up_sum, context.zero());
 }
@@ -91,7 +93,14 @@ pub fn verify<Value: IValue>(
 
     let n_components = context.constant(qm31_from_u32s(config.n_components as u32, 0, 0, 0));
     channel.mix_qm31s(context, [n_components]);
-    channel.mix_qm31s(context, proof.claim.packed_enable_bits.iter().cloned());
+
+    // Mix the enable bits into the channel.
+
+    let enable_bits = pack_enable_bits(&config.enabled_components().collect_vec())
+        .into_iter()
+        .map(|v| context.constant(v))
+        .collect_vec();
+    channel.mix_qm31s(context, enable_bits);
     channel.mix_qm31s(context, proof.claim.packed_component_log_sizes.iter().cloned());
     for claim_to_mix in statement.claims_to_mix(context) {
         channel.mix_qm31s(context, claim_to_mix.iter().cloned());
@@ -104,23 +113,8 @@ pub fn verify<Value: IValue>(
     // Pick the interaction elements.
     let [interaction_z, interaction_alpha] = channel.draw_two_qm31s(context);
 
-    let simd_enable_bits =
-        Simd::from_packed(proof.claim.packed_enable_bits.clone(), config.n_components);
-    simd_enable_bits.assert_bits(context);
-
-    // TODO(ilya): Consider removing claim.packed_enable_bits and deriving them from
-    // config.enabled_components directly.
-    let enable_bits = Simd::unpack(context, &simd_enable_bits);
-    for (enabled_bit, expected_enable_bit) in zip_eq(&enable_bits, config.enabled_components()) {
-        let expect_const = match expected_enable_bit {
-            true => context.one(),
-            false => context.zero(),
-        };
-        eq(context, *enabled_bit, expect_const);
-    }
-
     let public_logup_sum = statement.public_logup_sum(context, [interaction_z, interaction_alpha]);
-    validate_logup_sum(context, public_logup_sum, &proof.claim.claimed_sums, &enable_bits);
+    validate_logup_sum(context, config, public_logup_sum, &proof.claim.claimed_sums);
 
     channel.mix_qm31s(context, proof.claim.claimed_sums.iter().cloned());
     channel.mix_commitment(context, proof.interaction_root);
@@ -154,7 +148,6 @@ pub fn verify<Value: IValue>(
             composition_polynomial_coeff,
             interaction_elements: [interaction_z, interaction_alpha],
             claimed_sums: &proof.claim.claimed_sums,
-            enable_bits: &enable_bits,
             component_sizes: &unpacked_component_sizes,
             n_instances_bits: &component_sizes_bits,
         },
