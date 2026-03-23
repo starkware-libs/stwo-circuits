@@ -1,6 +1,7 @@
 use std::array;
 use std::collections::HashSet;
 use std::fs::{File, OpenOptions};
+use std::sync::Arc;
 
 use cairo_air::CairoProof;
 use cairo_air::PreProcessedTraceVariant;
@@ -88,7 +89,7 @@ pub fn verify_cairo_with_component_set(
     let program = program
         .chunks_exact(MEMORY_VALUES_LIMBS)
         .map(|chunk| array::from_fn(|i| M31::from_u32_unchecked(chunk[i])))
-        .collect_vec();
+        .collect();
 
     let verifier_config = CairoVerifierConfig {
         preprocessed_root: get_preprocessed_root(
@@ -114,7 +115,8 @@ fn test_verify() {
     let program_len = 128;
     let flat_claim = vec![M31::zero(); PUBLIC_DATA_LEN + output_len + program_len];
     let outputs = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; output_len];
-    let program = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; program_len];
+    let program: Arc<[[M31; MEMORY_VALUES_LIMBS]]> =
+        std::iter::repeat_n([M31::zero(); MEMORY_VALUES_LIMBS], program_len).collect();
     let mut statement = CairoStatement::new(
         &mut novalue_context,
         flat_claim,
