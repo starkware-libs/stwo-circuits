@@ -12,7 +12,7 @@ use circuits::EXTENSION_DEGREE;
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::ivalue::{IValue, NoValue, qm31_from_u32s};
-use circuits::ops::{Guess, conj, div, from_partial_evals};
+use circuits::ops::{Guess, div, from_partial_evals, im};
 use circuits::simd::Simd;
 use circuits::wrappers::M31Wrapper;
 
@@ -261,46 +261,42 @@ pub fn collect_oods_responses(
 pub struct OodsPointAuxiliary {
     /// Coefficients `(d, e, f)` of the denominator line equation through (px, py), conj((px, py)).
 
-    /// The `d` coefficient of the denominator line, equals `py - conj(py)`.
+    /// The `d` coefficient of the denominator line, equals `im(py)`.
     pub d: Var,
-    /// The `e` coefficient of the denominator line, equals `px - conj(px)`.
+    /// The `e` coefficient of the denominator line, equals `im(px)`.
     pub e: Var,
     /// The `f` coefficient of the denominator line, equals `d * px - e * py`.
     pub f: Var,
 
     /// Batched versions of coefficients `(a, b, c)` of the numerator polynomial
-    /// `(c_i * f_i(q) - a_i * q_y - b_i) * alpha^i`. `a, b` are summed over all columns `f_i`
+    /// `(c_i * f_i(q) - a_i * qy - b_i) * alpha^i`. `a, b` are summed over all columns `f_i`
     /// corresponding to the point. The `c_i * alpha^i` coefficients are stored in a vector
     /// together with the trace and column index of the corresponding column. Note that for all i,
-    /// c_i = p_y - conj(p_y) = d.
+    /// c_i = im(py) = d.
     pub c_vec: Vec<(Var, usize, usize)>,
-    /// `sum_{i: p_i = p} a_i * alpha^i`, where `a_i = v_i - conj(v_i)`.
+    /// `sum_{i: p_i = p} a_i * alpha^i`, where `a_i = im(v_i)`.
     pub a_sum: Var,
-    /// `sum_{i: p_i = p} b_i * alpha^i`, where `b_i = p_y * conj(v_i) - conj(p_y) * v_i`.
+    /// `sum_{i: p_i = p} b_i * alpha^i`, where `b_i = c_i * v_i - a_i * py`.
     pub b_sum: Var,
 
-    /// Private intermediate variables retained for computing `a_sum, b_sum`.
+    /// Private intermediate variables retained for computing `b_sum`.
     mul_v_sum: Var,
-    mul_v_cnj_sum: Var,
     py: Var,
-    py_cnj: Var,
 }
 
 impl OodsPointAuxiliary {
     /// Compute the (d, e, f) values matching (px, py), and initialize the accumulators to null.
     pub fn new(context: &mut Context<impl IValue>, px: Var, py: Var) -> Self {
-        let px_cnj = conj(context, px);
-        let py_cnj = conj(context, py);
-        let d = eval!(context, (py) - (py_cnj));
-        let e = eval!(context, (px) - (px_cnj));
+        let d = im(context, py);
+        let e = im(context, px);
         let f = eval!(context, ((d) * (px)) - ((e) * (py)));
         let c_vec = Vec::new();
-        let [a_sum, b_sum, mul_v_sum, mul_v_cnj_sum] = [context.zero(); 4];
+        let [a_sum, b_sum, mul_v_sum] = [context.zero(); 3];
 
-        Self { d, e, f, c_vec, a_sum, b_sum, mul_v_sum, mul_v_cnj_sum, py, py_cnj }
+        Self { d, e, f, c_vec, a_sum, b_sum, mul_v_sum, py }
     }
 
-    /// Add the OodsResponse `r` data to c_vec and the mul_v accumulators.
+    /// Add the OodsResponse `r` data to c_vec and the a, mul_v accumulators.
     pub fn accumulate(
         &mut self,
         context: &mut Context<impl IValue>,
@@ -308,16 +304,14 @@ impl OodsPointAuxiliary {
         r: &OodsResponse,
     ) {
         self.c_vec.push((eval!(context, (self.d) * (alpha_power)), r.trace_idx, r.column_idx));
-        let v_cnj = conj(context, r.value);
+        let v_im = im(context, r.value);
+        self.a_sum = eval!(context, (self.a_sum) + ((alpha_power) * (v_im)));
         self.mul_v_sum = eval!(context, (self.mul_v_sum) + ((alpha_power) * (r.value)));
-        self.mul_v_cnj_sum = eval!(context, (self.mul_v_cnj_sum) + ((alpha_power) * (v_cnj)));
     }
 
-    /// Finalize the values of `a_sum` and `b_sum` from the accumulated mul_v, mul_v_cnj sums.
+    /// Finalize the value of `b_sum` from the accumulated a, mul_v sums.
     pub fn finalize(&mut self, context: &mut Context<impl IValue>) {
-        self.a_sum = eval!(context, (self.mul_v_sum) - (self.mul_v_cnj_sum));
-        self.b_sum =
-            eval!(context, ((self.mul_v_cnj_sum) * (self.py)) - ((self.mul_v_sum) * (self.py_cnj)));
+        self.b_sum = eval!(context, ((self.d) * (self.mul_v_sum)) - ((self.a_sum) * (self.py)));
     }
 }
 
@@ -330,12 +324,12 @@ impl OodsPointAuxiliary {
 /// ```
 /// where:
 /// ```plain
-///    a = value - conj(value)
-///    c = pt.y - conj(pt.y)
-///    b = a * pt.y - c * value
+///    a = im(value)
+///    c = im(pt.y)
+///    b = c * value - a * pt.y
 ///
-///    d = pt.y - conj(pt.y)
-///    e = pt.x - conj(pt.x)
+///    d = im(pt.y)
+///    e = im(pt.x)
 ///    f = d * pt.x - e * pt.y
 /// ```
 ///
