@@ -140,12 +140,17 @@ pub fn deserialize_proof_with_config(
 fn deserialize_claim(data: &mut &[u8], config: &ProofConfig) -> DeserializeResult<Claim<QM31>> {
     let n_components = config.n_components;
 
-    // Unpack log sizes from packed u8s (1 per u8, 8 bits each).
-    let log_sizes: Vec<u32> =
-        take_bytes(data, n_components.next_multiple_of(4))?.iter().map(|&b| b as u32).collect();
+    // Only enabled components have serialized log sizes / claimed sums; disabled get zeros.
+    let mut log_sizes = Vec::with_capacity(n_components);
+    for enabled in config.enabled_components() {
+        if enabled {
+            log_sizes.push(take_bytes(data, 1)?[0] as u32);
+        } else {
+            log_sizes.push(0);
+        }
+    }
     let packed_component_log_sizes = pack_component_log_sizes(&log_sizes);
 
-    // Only enabled components have serialized claimed sums; disabled get zero.
     let mut claimed_sums = Vec::with_capacity(n_components);
     for enabled in config.enabled_components() {
         if enabled {

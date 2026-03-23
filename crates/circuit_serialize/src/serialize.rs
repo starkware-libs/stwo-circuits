@@ -97,15 +97,17 @@ impl CircuitSerialize for HashValue<QM31> {
 fn serialize_claim(claim: &Claim<QM31>, output: &mut Vec<u8>, config: &ProofConfig) {
     let Claim { packed_component_log_sizes, claimed_sums } = claim;
 
-    // Pack log sizes: 1 per u8 (requires `LOG_SIZE_BITS` <= 8).
+    // Only serialize log sizes / claimed sums for enabled components (disabled have log size zero
+    // and zero claimed sum). Pack the enabled component log sizes: 1 per u8 (requires
+    // `LOG_SIZE_BITS` <= 8).
     assert!(LOG_SIZE_BITS as usize <= 8);
-    for qm31 in packed_component_log_sizes {
-        for m31 in qm31.to_m31_array().into_iter() {
-            output.push((m31.0 & 0xFF) as u8);
+    let log_sizes =
+        packed_component_log_sizes.iter().flat_map(|q| q.to_m31_array()).take(config.n_components);
+    for (log_size, enabled) in zip_eq(log_sizes, config.enabled_components()) {
+        if enabled {
+            output.push((log_size.0 & 0xFF) as u8);
         }
     }
-
-    // Only serialize claimed sums for enabled components (disabled have zero claimed sum).
     for (claimed_sum, enabled) in zip_eq(claimed_sums, config.enabled_components()) {
         if enabled {
             claimed_sum.serialize(output);
