@@ -12,9 +12,8 @@ use circuits::context::Context;
 use circuits_stark_verifier::proof::Proof;
 use circuits_stark_verifier::proof::{Claim, ProofConfig};
 use circuits_stark_verifier::proof_from_stark_proof::{
-    pack_component_log_sizes, pack_enable_bits, proof_from_stark_proof,
+    pack_component_log_sizes, proof_from_stark_proof,
 };
-use itertools::Itertools;
 use itertools::chain;
 use num_traits::Zero;
 use stwo::core::air::Component;
@@ -251,9 +250,6 @@ pub fn prepare_circuit_proof_for_circuit_verifier(
     let public_data = CircuitPublicData { output_values: claim.output_values.clone() };
 
     let claim = Claim {
-        packed_enable_bits: pack_enable_bits(
-            &claim.log_sizes.iter().map(|log_size| *log_size > 0).collect_vec(),
-        ),
         packed_component_log_sizes: pack_component_log_sizes(&claim.log_sizes),
         claimed_sums: interaction_claim.claimed_sums.to_vec(),
     };

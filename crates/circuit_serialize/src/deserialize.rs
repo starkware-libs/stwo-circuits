@@ -1,6 +1,5 @@
 use std::fmt;
 
-use itertools::Itertools;
 use num_traits::Zero;
 use stwo::core::fields::m31::{M31, P};
 use stwo::core::fields::qm31::QM31;
@@ -13,7 +12,7 @@ use circuits_stark_verifier::fri_proof::{
 use circuits_stark_verifier::merkle::{AuthPath, AuthPaths};
 use circuits_stark_verifier::oods::{EvalDomainSamples, N_COMPOSITION_COLUMNS};
 use circuits_stark_verifier::proof::{Claim, InteractionAtOods, N_TRACES, Proof, ProofConfig};
-use circuits_stark_verifier::proof_from_stark_proof::{pack_component_log_sizes, pack_enable_bits};
+use circuits_stark_verifier::proof_from_stark_proof::pack_component_log_sizes;
 
 #[derive(Debug)]
 pub enum DeserializeError {
@@ -141,9 +140,6 @@ pub fn deserialize_proof_with_config(
 fn deserialize_claim(data: &mut &[u8], config: &ProofConfig) -> DeserializeResult<Claim<QM31>> {
     let n_components = config.n_components;
 
-    // Get the enable bits from the config.
-    let packed_enable_bits = pack_enable_bits(&config.enabled_components().collect_vec());
-
     // Unpack log sizes from packed u8s (1 per u8, 8 bits each).
     let log_sizes: Vec<u32> =
         take_bytes(data, n_components.next_multiple_of(4))?.iter().map(|&b| b as u32).collect();
@@ -159,7 +155,7 @@ fn deserialize_claim(data: &mut &[u8], config: &ProofConfig) -> DeserializeResul
         }
     }
 
-    Ok(Claim { packed_enable_bits, packed_component_log_sizes, claimed_sums })
+    Ok(Claim { packed_component_log_sizes, claimed_sums })
 }
 
 fn deserialize_interaction_at_oods(

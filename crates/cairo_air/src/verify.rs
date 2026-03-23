@@ -12,7 +12,7 @@ use circuits::ops::Guess;
 use circuits_stark_verifier::empty_component::EmptyComponent;
 use circuits_stark_verifier::proof::{Claim, Proof, ProofConfig, empty_proof};
 use circuits_stark_verifier::proof_from_stark_proof::{
-    pack_component_log_sizes, pack_enable_bits, proof_from_stark_proof,
+    pack_component_log_sizes, proof_from_stark_proof,
 };
 use circuits_stark_verifier::verify::verify;
 use itertools::{Itertools, zip_eq};
@@ -178,7 +178,6 @@ pub fn prepare_cairo_proof_for_circuit_verifier(
     debug_assert_eq!(component_claimed_sums.len(), proof_config.n_components);
 
     let claim = Claim {
-        packed_enable_bits: pack_enable_bits(&component_enable_bits),
         packed_component_log_sizes: pack_component_log_sizes(&component_log_sizes),
         claimed_sums: component_claimed_sums,
     };
