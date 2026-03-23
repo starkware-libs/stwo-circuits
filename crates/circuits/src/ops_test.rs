@@ -155,15 +155,14 @@ fn test_from_partial_evals() {
 fn test_stats() {
     let mut context = TraceContext::default();
 
-    // 3 guesses are from the zero, one, and u constants.
-    let stats = Stats { guess: 3, ..Stats::default() };
+    let stats = Stats::default();
     assert_eq!(context.stats, stats);
 
     let x = guess(&mut context, 5.into());
     let y = context.constant(25.into());
 
     let x_sqr = eval!(&mut context, (x) * (x));
-    let stats = Stats { mul: 1, guess: 5, ..stats };
+    let stats = Stats { mul: 1, guess: 1, ..stats };
     assert_eq!(context.stats, stats);
 
     let x_sqr_minus_y = eval!(&mut context, (x_sqr) - (y));
