@@ -132,16 +132,22 @@ fn find_max_consecutive(constant_idxs: &IndexMap<QM31, usize>) -> u32 {
         .map(|v| v.0 .0 .0)
         .collect();
     m31_values.sort_unstable();
+    m31_values.dedup();
 
-    let mut n = 0u32;
-    for &val in &m31_values {
-        if val == n + 1 {
-            n = val;
-        } else if val > n + 1 {
-            break;
+    // After sort+dedup, a consecutive run from 0 satisfies m31_values[i] == i.
+    // Binary search for the first index where this property breaks.
+    let mut lo = 0usize;
+    let mut hi = m31_values.len();
+    while lo < hi {
+        let mid = lo + (hi - lo) / 2;
+        if m31_values[mid] == mid as u32 {
+            lo = mid + 1;
+        } else {
+            hi = mid;
         }
     }
-    n
+    // lo is the first index where m31_values[i] != i. The consecutive run is 0..lo.
+    if lo <= 1 { 0 } else { (lo - 1) as u32 }
 }
 
 /// Builds the +1 chain: Add gates for 1+1=2, 2+1=3, ..., (N-1)+1=N.
