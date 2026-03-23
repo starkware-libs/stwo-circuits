@@ -5,7 +5,7 @@ use stwo::core::vcs::blake2_hash::Blake2sHash;
 
 use crate::simple_air::{create_proof, create_proof_with_fold_step};
 use crate::simple_statement::SimpleStatement;
-use circuit_serialize::serialize::CircuitSerialize;
+use circuit_serialize::serialize::serialize_proof_with_config;
 use circuits::context::{Context, TraceContext};
 use circuits::ivalue::NoValue;
 use circuits::ops::Guess;
@@ -128,7 +128,7 @@ fn test_proof_info(#[case] fold_step: u32) {
     let circuit_proof =
         proof_from_stark_proof(&proof, &config, claim, interaction_pow_nonce, channel_salt);
     let mut serialized = vec![];
-    circuit_proof.serialize(&mut serialized);
+    serialize_proof_with_config(&circuit_proof, &mut serialized, &config);
     assert_eq!(serialized.len(), info.total_bytes());
     println!("fold_step={fold_step}:\n{info}");
 }
