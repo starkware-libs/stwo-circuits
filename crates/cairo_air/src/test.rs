@@ -23,12 +23,13 @@ use stwo::core::fields::qm31::QM31;
 use stwo::core::fri::FriConfig;
 use stwo::core::pcs::PcsConfig;
 use stwo::core::vcs_lifted::blake2_merkle::{Blake2sM31MerkleChannel, Blake2sM31MerkleHasher};
+use stwo_cairo_common::preprocessed_columns::preprocessed_trace::PreProcessedTrace;
 use stwo_cairo_dev_utils::utils::get_compiled_cairo_program_path;
 use stwo_cairo_dev_utils::vm_utils::{ProgramType, run_and_adapt};
 use stwo_cairo_prover::prover::{ChannelHash, ProverParameters, prove_cairo};
 
 use crate::all_components::all_components;
-use crate::preprocessed_columns::{CANONICAL_SMALL_PREPROCESSED_COLUMNS, MAX_SEQUENCE_LOG_SIZE};
+use crate::preprocessed_columns::MAX_SEQUENCE_LOG_SIZE;
 use crate::statement::{CairoStatement, MEMORY_VALUES_LIMBS, PUBLIC_DATA_LEN};
 use crate::utils::get_proof_file_path;
 use crate::verify::{
@@ -75,7 +76,7 @@ pub fn verify_cairo_with_component_set(
 
     let proof_config = ProofConfig::from_components(
         &components,
-        CANONICAL_SMALL_PREPROCESSED_COLUMNS.len(),
+        PreProcessedTrace::canonical_small().columns.len(),
         &cairo_proof.extended_stark_proof.proof.config,
         INTERACTION_POW_BITS,
     );

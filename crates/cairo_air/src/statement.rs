@@ -20,10 +20,11 @@ use stwo_cairo_common::builtins::{
     BITWISE_BUILTIN_MEMORY_CELLS, PEDERSEN_BUILTIN_MEMORY_CELLS, POSEIDON_BUILTIN_MEMORY_CELLS,
     RANGE_CHECK_BUILTIN_MEMORY_CELLS,
 };
+use stwo_cairo_common::preprocessed_columns::preprocessed_trace::PreProcessedTrace;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 use crate::all_components::all_components;
-use crate::preprocessed_columns::{CANONICAL_SMALL_PREPROCESSED_COLUMNS, MAX_SEQUENCE_LOG_SIZE};
+use crate::preprocessed_columns::MAX_SEQUENCE_LOG_SIZE;
 use circuits::context::{Context, Var};
 use circuits::ivalue::{IValue, qm31_from_u32s};
 use circuits::simd::Simd;
@@ -387,10 +388,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
     }
 
     fn get_preprocessed_column_ids(&self) -> Vec<PreProcessedColumnId> {
-        CANONICAL_SMALL_PREPROCESSED_COLUMNS
-            .iter()
-            .map(|id| PreProcessedColumnId { id: id.to_string() })
-            .collect()
+        PreProcessedTrace::canonical_small().columns.into_iter().map(|col| col.id()).collect()
     }
 
     fn public_params(&self, _context: &mut Context<Value>) -> HashMap<String, Var> {

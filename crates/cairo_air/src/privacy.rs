@@ -8,8 +8,9 @@ use std::collections::HashSet;
 use stwo::core::fri::FriConfig;
 use stwo::core::pcs::PcsConfig;
 
+use stwo_cairo_common::preprocessed_columns::preprocessed_trace::PreProcessedTrace;
+
 use crate::all_components::all_components;
-use crate::preprocessed_columns::CANONICAL_SMALL_PREPROCESSED_COLUMNS;
 use crate::utils::{get_test_data_dir, load_program};
 use crate::verify::{CairoVerifierConfig, get_preprocessed_root};
 
@@ -56,7 +57,7 @@ pub fn privacy_cairo_verifier_config(log_blowup_factor: u32) -> CairoVerifierCon
 
     let proof_config = ProofConfig::from_components(
         &components,
-        CANONICAL_SMALL_PREPROCESSED_COLUMNS.len(),
+        PreProcessedTrace::canonical_small().columns.len(),
         &pcs_config,
         INTERACTION_POW_BITS,
     );
