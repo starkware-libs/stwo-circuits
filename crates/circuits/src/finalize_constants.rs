@@ -4,7 +4,7 @@ use indexmap::IndexMap;
 use num_traits::Zero;
 use stwo::core::fields::qm31::QM31;
 
-use crate::circuit::{Add, Eq, Mul, Sub};
+use crate::circuit::{Add, Eq, Mul, Output, Sub};
 use crate::context::{Context, Var};
 use crate::ivalue::{IValue, qm31_from_u32s};
 
@@ -30,9 +30,12 @@ pub fn finalize_constants(context: &mut Context<impl IValue>) {
     let zero_idx = context.zero().idx;
     context.circuit.add.push(Add { in0: zero_idx, in1: zero_idx, out: zero_idx });
 
-    // 2. u: temporary trivial yield (will be replaced by public logup sum).
+    // 2. u: trivial yield gate + output gate. The output gate increases u's use multiplicity. The
+    //    public logup sum must add a corresponding logup_use_term with the hardcoded value
+    //    (0,0,1,0) to constrain u's value.
     let u_idx = context.u().idx;
     context.circuit.add.push(Add { in0: u_idx, in1: zero_idx, out: u_idx });
+    context.circuit.output.push(Output { in0: u_idx });
 
     // 3. One: trivial yield gate, plus u * one = u constraint to enforce one = 1.
     let one_idx = context.one().idx;
