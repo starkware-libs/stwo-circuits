@@ -166,26 +166,25 @@ impl<Value: IValue> CairoStatement<Value> {
         enable_bits: &[Var],
         component_sizes: &[Var],
     ) {
+        let [
+            output_segment_range,
+            pedersen_segment_range,
+            range_check_128_segment_range,
+            ecdsa_segment_range,
+            bitwise_segment_range,
+            ec_op_segment_range,
+            keccak_segment_range,
+            poseidon_segment_range,
+            range_check96_segment_range,
+            add_mod_segment_range,
+            mul_mod_segment_range,
+        ] = &self.public_data.public_memory.segment_ranges;
+
         // Validate the output segment range.
-        let segment_ranges = &self.public_data.public_memory.segment_ranges;
-        let SegmentRange::<Var> {
-            start: PubMemoryM31Value { id: _, value: output_start },
-            end: PubMemoryM31Value { id: _, value: output_end },
-        } = &segment_ranges[0];
-        let diff = eval!(context, (*output_end) - (*output_start));
+        let diff =
+            eval!(context, (output_segment_range.end.value) - (output_segment_range.start.value));
         let n_outputs = context.constant((self.packed_outputs.len() / MEMORY_VALUES_LIMBS).into());
         eq(context, diff, n_outputs);
-
-        let pedersen_segment_range = &segment_ranges[1];
-        let range_check_128_segment_range = &segment_ranges[2];
-        let ecdsa_segment_range = &segment_ranges[3];
-        let bitwise_segment_range = &segment_ranges[4];
-        let ec_op_segment_range = &segment_ranges[5];
-        let keccak_segment_range = &segment_ranges[6];
-        let poseidon_segment_range = &segment_ranges[7];
-        let range_check96_segment_range = &segment_ranges[8];
-        let add_mod_segment_range = &segment_ranges[9];
-        let mul_mod_segment_range = &segment_ranges[10];
 
         let supported_builtins = [
             pedersen_segment_range,
