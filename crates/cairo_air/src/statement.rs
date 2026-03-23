@@ -1,5 +1,6 @@
 use std::array;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use cairo_air::components::memory_address_to_id::MEMORY_ADDRESS_TO_ID_SPLIT;
 use cairo_air::relations::{
@@ -150,7 +151,7 @@ pub struct CairoStatement<Value: IValue> {
     pub components: Vec<Box<dyn CircuitEval<Value>>>,
     pub packed_public_data: Simd,
     pub public_data: PublicData<Var>,
-    pub program: Vec<[M31; MEMORY_VALUES_LIMBS]>,
+    pub program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
     pub packed_outputs: Simd,
     pub preprocessed_root: HashValue<QM31>,
 }
@@ -280,7 +281,7 @@ impl<Value: IValue> CairoStatement<Value> {
         context: &mut Context<Value>,
         public_data: Vec<M31>,
         outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
-        program: Vec<[M31; MEMORY_VALUES_LIMBS]>,
+        program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
         preprocessed_root: HashValue<QM31>,
     ) -> Self {
         let components = all_components().into_values().collect_vec();
@@ -291,7 +292,7 @@ impl<Value: IValue> CairoStatement<Value> {
         context: &mut Context<Value>,
         public_data: Vec<M31>,
         outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
-        program: Vec<[M31; MEMORY_VALUES_LIMBS]>,
+        program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
         components: Vec<Box<dyn CircuitEval<Value>>>,
         preprocessed_root: HashValue<QM31>,
     ) -> Self {

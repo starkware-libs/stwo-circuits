@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::all_components::all_components;
 use crate::statement::{CairoStatement, MEMORY_VALUES_LIMBS, PUBLIC_DATA_LEN};
 use cairo_air::CairoProof;
@@ -54,7 +56,7 @@ pub fn get_preprocessed_root(lifting_log_size: u32) -> HashValue<QM31> {
 
 pub struct CairoVerifierConfig {
     pub proof_config: ProofConfig,
-    pub program: Vec<[M31; MEMORY_VALUES_LIMBS]>,
+    pub program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
     pub n_outputs: usize,
     pub preprocessed_root: HashValue<QM31>,
 }
