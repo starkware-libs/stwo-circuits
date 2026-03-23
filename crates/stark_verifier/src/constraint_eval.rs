@@ -115,7 +115,7 @@ impl CompositionConstraintAccumulator {
         interaction_elements: [Var; 2],
     ) -> Self {
         Self {
-            enable_bit: context.zero(),
+            enable_bit: context.one(),
             preprocessed_columns,
             public_params,
             composition_polynomial_coeff,

@@ -286,7 +286,6 @@ mod tests {
             random_coeff,
             interaction_elements,
         );
-        accumulator.set_enable_bit(context.one());
         component.evaluate(&mut context, &component_data, &mut accumulator);
         accumulator.finalize_logup_in_pairs(
             &mut context,
