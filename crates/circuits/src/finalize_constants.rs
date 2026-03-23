@@ -4,11 +4,11 @@ use indexmap::IndexMap;
 use num_traits::Zero;
 use stwo::core::fields::qm31::QM31;
 
-use crate::circuit::{Add, Mul, Output};
+use crate::circuit::{Add, Mul};
 use crate::context::{Context, Var};
 use crate::eval;
 use crate::ivalue::{IValue, qm31_from_u32s};
-use crate::ops::eq;
+use crate::ops::{eq, output};
 
 #[cfg(test)]
 #[path = "finalize_constants_test.rs"]
@@ -37,7 +37,7 @@ pub fn finalize_constants(context: &mut Context<impl IValue>) {
     //    (0,0,1,0) to constrain u's value.
     let u_idx = context.u().idx;
     context.circuit.add.push(Add { in0: u_idx, in1: zero_idx, out: u_idx });
-    context.circuit.output.push(Output { in0: u_idx });
+    output(context, context.u());
 
     // 3. One: trivial yield gate, plus u * one = u constraint to enforce one = 1.
     let one = context.one();
