@@ -47,9 +47,8 @@ pub fn finalize_constants(context: &mut Context<impl IValue>) {
     let min_chain_len = compute_min_chain_length(&constant_idxs, &chain);
     extend_chain(context, &mut chain, min_chain_len, &constant_idxs);
 
-    // 6. Determine base = largest power of 2 <= chain length.
-    let max_chain = *chain.keys().max().unwrap_or(&1);
-    let base = if max_chain >= 2 { 1u32 << max_chain.ilog2() } else { 1 };
+    // 6. Use the chain length as the base for decomposition.
+    let base = *chain.keys().max().unwrap_or(&1);
 
     // 7. Decompose M31 constants not in chain.
     if base > 1 {
@@ -111,16 +110,14 @@ fn compute_min_chain_length(
 
     // Need base^3 > max_needed (so that a = val/base^2 < base for any val <= max_needed).
     let min_base = if max_needed > 0 {
-        let mut b = 2u32;
-        while b.saturating_mul(b).saturating_mul(b) <= max_needed {
-            b *= 2;
-        }
-        b
+        // Cube root, rounded up.
+        let cbrt = (max_needed as f64).cbrt().ceil() as u32 + 1;
+        cbrt
     } else {
         2 // Minimum for QM31 (need 2 in chain for i = u^2 - 2).
     };
 
-    // Chain must be at least min_base (so the base can be picked as the largest power of 2).
+    // Chain must be at least min_base.
     // Also must be at least 2 for QM31 bases.
     let needed = if has_qm31 { min_base.max(2) } else { min_base };
     current_max.max(needed)
