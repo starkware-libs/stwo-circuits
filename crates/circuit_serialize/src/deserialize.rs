@@ -1,5 +1,6 @@
 use std::fmt;
 
+use itertools::Itertools;
 use num_traits::Zero;
 use stwo::core::fields::m31::{M31, P};
 use stwo::core::fields::qm31::QM31;
@@ -140,16 +141,8 @@ pub fn deserialize_proof_with_config(
 fn deserialize_claim(data: &mut &[u8], config: &ProofConfig) -> DeserializeResult<Claim<QM31>> {
     let n_components = config.n_components;
 
-    // Unpack enable bits (8 enable bits per u8).
-    let n_enable_u8s = n_components.div_ceil(8);
-    let mut enable_bits = Vec::with_capacity(n_components);
-    for (i, &packed) in take_bytes(data, n_enable_u8s)?.iter().enumerate() {
-        let bits_in_word = std::cmp::min(8, n_components - i * 8);
-        for bit_idx in 0..bits_in_word {
-            enable_bits.push((packed >> bit_idx) & 1 != 0);
-        }
-    }
-    let packed_enable_bits = pack_enable_bits(&enable_bits);
+    // Get the enable bits from the config.
+    let packed_enable_bits = pack_enable_bits(&config.enabled_components().collect_vec());
 
     // Unpack log sizes from packed u8s (1 per u8, 8 bits each).
     let log_sizes: Vec<u32> =
@@ -158,7 +151,7 @@ fn deserialize_claim(data: &mut &[u8], config: &ProofConfig) -> DeserializeResul
 
     // Only enabled components have serialized claimed sums; disabled get zero.
     let mut claimed_sums = Vec::with_capacity(n_components);
-    for &enabled in &enable_bits {
+    for enabled in config.enabled_components() {
         if enabled {
             claimed_sums.push(QM31::deserialize(data)?);
         } else {
