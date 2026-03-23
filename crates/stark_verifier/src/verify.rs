@@ -31,13 +31,15 @@ pub const RELATION_USES_NUM_ROWS_SHIFT: usize = 16;
 
 pub fn validate_logup_sum(
     context: &mut Context<impl IValue>,
+    config: &ProofConfig,
     public_logup_sum: Var,
     claimed_sums: &[Var],
-    enable_bits: &[Var],
 ) {
     let mut log_up_sum = public_logup_sum;
-    for (claimed_sum, enable_bit) in zip_eq(claimed_sums, enable_bits) {
-        log_up_sum = eval!(context, (log_up_sum) + ((*claimed_sum) * (*enable_bit)));
+    for (claimed_sum, enable_bit) in zip_eq(claimed_sums, config.enabled_components()) {
+        if enable_bit {
+            log_up_sum = eval!(context, (log_up_sum) + (*claimed_sum));
+        }
     }
     eq(context, log_up_sum, context.zero());
 }
@@ -110,13 +112,8 @@ pub fn verify<Value: IValue>(
     // Pick the interaction elements.
     let [interaction_z, interaction_alpha] = channel.draw_two_qm31s(context);
 
-    let enable_bits: Vec<Var> = enable_bits
-        .into_iter()
-        .map(|enabled| if enabled { context.one() } else { context.zero() })
-        .collect_vec();
-
     let public_logup_sum = statement.public_logup_sum(context, [interaction_z, interaction_alpha]);
-    validate_logup_sum(context, public_logup_sum, &proof.claim.claimed_sums, &enable_bits);
+    validate_logup_sum(context, config, public_logup_sum, &proof.claim.claimed_sums);
 
     channel.mix_qm31s(context, proof.claim.claimed_sums.iter().cloned());
     channel.mix_commitment(context, proof.interaction_root);
@@ -150,7 +147,6 @@ pub fn verify<Value: IValue>(
             composition_polynomial_coeff,
             interaction_elements: [interaction_z, interaction_alpha],
             claimed_sums: &proof.claim.claimed_sums,
-            enable_bits: &enable_bits,
             component_sizes: &unpacked_component_sizes,
             n_instances_bits: &component_sizes_bits,
         },
