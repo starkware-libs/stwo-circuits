@@ -84,6 +84,21 @@ fn test_mixed_m31_and_qm31_constants() {
     context.validate_circuit();
 }
 
+#[test]
+fn test_broadcast_constants() {
+    let mut context = TraceContext::default();
+    for i in 0u32..20 {
+        context.constant(i.into());
+    }
+    // (5, 5, 5, 5) should use broadcast path: 5 * (1,1,1,1)
+    context.constant(qm31_from_u32s(5, 5, 5, 5));
+    context.constant(qm31_from_u32s(12, 12, 12, 12));
+    finalize_constants(&mut context);
+    finalize_non_constant_guessed_vars(&mut context);
+    context.circuit.check_yields();
+    context.validate_circuit();
+}
+
 /// Helper: finalize non-constant guessed vars (mimics the updated finalize_guessed_vars).
 fn finalize_non_constant_guessed_vars(context: &mut TraceContext) {
     let constant_idxs: std::collections::HashSet<usize> =
