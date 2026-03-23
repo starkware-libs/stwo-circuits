@@ -95,3 +95,20 @@ fn test_broadcast_constants() {
     context.circuit.check_yields();
     context.validate_circuit();
 }
+
+#[test]
+fn test_intermediate_shadows_constant() {
+    // Regression: decomposing 30000 with base=100 creates intermediate a*base=300.
+    // If constant 300 is also requested, it must get its yield from that intermediate gate,
+    // not be skipped.
+    let mut context = TraceContext::default();
+    for i in 0u32..101 {
+        context.constant(i.into());
+    }
+    context.constant(300u32.into());
+    context.constant(30000u32.into());
+    finalize_constants(&mut context);
+    context.finalize_guessed_vars();
+    context.circuit.check_yields();
+    context.validate_circuit();
+}
