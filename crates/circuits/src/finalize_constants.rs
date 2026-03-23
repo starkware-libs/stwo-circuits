@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 
-use crate::circuit::{Add, Eq, Mul, Sub};
-use crate::context::{Context, Var};
-use crate::ivalue::{IValue, qm31_from_u32s};
 use indexmap::IndexMap;
 use num_traits::Zero;
 use stwo::core::fields::qm31::QM31;
+
+use crate::circuit::{Add, Eq, Mul, Sub};
+use crate::context::{Context, Var};
+use crate::ivalue::{IValue, qm31_from_u32s};
 
 #[cfg(test)]
 #[path = "finalize_constants_test.rs"]
@@ -16,8 +17,9 @@ mod test;
 /// Instead of guessing constants and Blake-hashing them, we derive every constant from `u`
 /// (the QM31 extension element `(0,0,1,0)`) using arithmetic gates:
 /// - A `+1` chain for consecutive M31 integers
-/// - Power-of-2 base decomposition for larger M31 values
-/// - QM31 basis combination (`i`, `u`, `iu`) for extension field constants
+/// - Base decomposition for larger M31 values: K = (a*base + b)*base + c
+/// - Broadcast optimization for (x,x,x,x) constants: x * (1,1,1,1)
+/// - QM31 basis combination (`i`, `u`, `iu`) for general extension field constants
 ///
 /// The preprocessed trace commits to the circuit structure, implicitly verifying constants.
 pub fn finalize_constants(context: &mut Context<impl IValue>) {
@@ -141,9 +143,8 @@ fn decompose_broadcast_constants(
 
 /// Computes the minimum chain length needed to support decomposition of all constants.
 ///
-/// For a base B, 2-level decomposition can represent values up to B^3 - 1.
-/// The chain must be at least B long, and B must be a power of 2.
-/// Additionally, the chain must include 2 if QM31 constants exist (for i = u^2 - 2).
+/// For a base B (= chain length), 2-level decomposition can represent values up to B^3 - 1.
+/// Additionally, the chain must include 2 if non-base-field constants exist (for i = u^2 - 2).
 fn compute_min_chain_length(
     constant_idxs: &IndexMap<QM31, usize>,
     chain: &HashMap<u32, usize>,
@@ -219,12 +220,11 @@ fn find_max_consecutive(constant_idxs: &IndexMap<QM31, usize>) -> u32 {
     if lo <= 1 { 0 } else { (lo - 1) as u32 }
 }
 
-/// Builds the +1 chain: Add gates for 1+1=2, 2+1=3, ..., (N-1)+1=N.
+/// Builds the +1 chain: Add gates for 1+1=2, 2+1=3, ..., up to the max consecutive M31
+/// constant present. Returns a map from M31 value → Var idx for all values 0..=max_consecutive.
 ///
-/// For each value in the chain, if a constant with that M31 value was requested, the Add gate
-/// outputs directly to the reserved Var idx. Otherwise a fresh Var is allocated.
-///
-/// Returns a map from M31-as-u32 value → Var idx for all values 0..=max_consecutive.
+/// For each value, if a constant with that M31 value was requested, the Add gate outputs
+/// directly to the reserved Var idx. Otherwise a fresh Var is allocated.
 fn build_plus_one_chain(
     context: &mut Context<impl IValue>,
     constant_idxs: &IndexMap<QM31, usize>,
@@ -235,21 +235,7 @@ fn build_plus_one_chain(
     chain.insert(0, context.zero().idx);
     chain.insert(1, context.one().idx);
 
-    let one_idx = context.one().idx;
-    let mut prev_idx = one_idx;
-
-    for val in 2..=max_consecutive {
-        let qm31_val = QM31::from(val);
-        let out_idx = if let Some(&idx) = constant_idxs.get(&qm31_val) {
-            idx
-        } else {
-            context.new_var(IValue::from_qm31(qm31_val)).idx
-        };
-        context.circuit.add.push(Add { in0: prev_idx, in1: one_idx, out: out_idx });
-        chain.insert(val, out_idx);
-        prev_idx = out_idx;
-    }
-
+    extend_chain(context, &mut chain, max_consecutive, constant_idxs);
     chain
 }
 
