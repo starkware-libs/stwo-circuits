@@ -50,7 +50,7 @@ pub fn finalize_constants(context: &mut Context<impl IValue>) {
     let mut chain = build_plus_one_chain(context, &constant_idxs);
 
     // 5. Extend the chain to at least MIN_BASE, and further if decomposition requires it.
-    const MIN_BASE: u32 = 16;
+    const MIN_BASE: u32 = 256;
     let min_chain_len = compute_min_chain_length(&constant_idxs, &chain).max(MIN_BASE);
     extend_chain(context, &mut chain, min_chain_len, &constant_idxs);
 
@@ -139,60 +139,19 @@ fn decompose_broadcast_constants(
     }
 }
 
-/// Computes the minimum chain length needed to support decomposition of all constants.
-///
-/// For a base B (= chain length), 2-level decomposition can represent values up to B^3 - 1.
-/// Additionally, the chain must include 2 if non-base-field constants exist (for i = u^2 - 2).
+/// Computes the minimum chain length needed to support non-base-field constants.
+/// The chain must include 2 if QM31/broadcast constants exist (for i = u^2 - 2).
+/// With dynamic-limb decomposition, any base works for any value, so no minimum
+/// base computation is needed beyond this.
 fn compute_min_chain_length(
     constant_idxs: &IndexMap<QM31, usize>,
     chain: &HashMap<u32, usize>,
 ) -> u32 {
     let current_max = *chain.keys().max().unwrap();
-
-    // Collect all M31 values that need decomposition (not already in chain).
-    let mut max_needed: u32 = 0;
     let has_non_base = constant_idxs
         .keys()
         .any(|val| !is_base_field_element(val) && val != &qm31_from_u32s(0, 0, 1, 0));
-
-    for qm31_val in constant_idxs.keys() {
-        if is_base_field_element(qm31_val) || qm31_val == &qm31_from_u32s(0, 0, 1, 0) {
-            let v = qm31_val.0.0.0;
-            if !chain.contains_key(&v) {
-                max_needed = max_needed.max(v);
-            }
-        } else if is_broadcast(qm31_val) {
-            // Broadcast (x, x, x, x): only x needs to be available.
-            let v = qm31_val.0.0.0;
-            if !chain.contains_key(&v) {
-                max_needed = max_needed.max(v);
-            }
-        } else {
-            // General QM31: all 4 limbs need to be available.
-            for limb in [qm31_val.0.0.0, qm31_val.0.1.0, qm31_val.1.0.0, qm31_val.1.1.0] {
-                if !chain.contains_key(&limb) {
-                    max_needed = max_needed.max(limb);
-                }
-            }
-        }
-    }
-
-    if max_needed == 0 && !has_non_base {
-        return current_max;
-    }
-
-    // Need base^3 > max_needed (so that a = val/base^2 < base for any val <= max_needed).
-    let min_base = if max_needed > 0 {
-        // Cube root, rounded up.
-        (max_needed as f64).cbrt().ceil() as u32 + 1
-    } else {
-        2 // Minimum for non-base-field constants (need 2 in chain for i = u^2 - 2).
-    };
-
-    // Chain must be at least min_base.
-    // Also must be at least 2 for QM31/broadcast bases.
-    let needed = if has_non_base { min_base.max(2) } else { min_base };
-    current_max.max(needed)
+    if has_non_base { current_max.max(2) } else { current_max }
 }
 
 /// Finds the largest N such that all M31 integers 1..=N are present as constants.
@@ -297,8 +256,9 @@ fn decompose_m31_constants(
     }
 }
 
-/// Builds a single M31 value via decomposition: K = (a * base + b) * base + c.
-/// The final Add gate outputs to `out_idx`. Intermediates are cached in m31_cache for reuse.
+/// Decomposes a value into base-B limbs and builds it via repeated mul-add:
+/// val = (...((limbs[n] * B + limbs[n-1]) * B + limbs[n-2]) * B + ...) + limbs[0].
+/// The final gate outputs to `out_idx`. Intermediates are cached in m31_cache for reuse.
 /// If an intermediate's value matches a reserved constant, the reserved Var idx is used as
 /// the gate output (ensuring it gets its yield gate).
 fn build_m31_from_base(
@@ -310,60 +270,55 @@ fn build_m31_from_base(
     val: u32,
     out_idx: usize,
 ) {
-    let c = val % base;
-    let remainder = val / base;
-    let b = remainder % base;
-    let a = remainder / base;
-    assert!(
-        a < base,
-        "constant {val} requires more than 2 levels of decomposition (a={a}, base={base})"
-    );
+    // Decompose val into base-B limbs (least significant first).
+    let mut limbs = Vec::new();
+    let mut remaining = val;
+    while remaining > 0 {
+        limbs.push(remaining % base);
+        remaining /= base;
+    }
+    assert!(!limbs.is_empty());
+    assert!(*limbs.last().unwrap() < base, "most significant limb must be < base");
 
-    let a_idx = *m31_cache.get(&a).expect("a must be in cache");
-    let b_idx = *m31_cache.get(&b).expect("b must be in cache");
-    let c_idx = *m31_cache.get(&c).expect("c must be in cache");
+    // Build from the most significant limb down: acc = (...((limbs[n] * B + limbs[n-1]) * B)...)
+    let mut acc_val = *limbs.last().unwrap();
+    let mut acc_idx = *m31_cache.get(&acc_val).expect("limb must be in cache");
 
-    // temp1 = a * base
-    let ab = a * base;
-    let temp1 = match m31_cache.get(&ab) {
-        Some(&idx) => idx,
-        None => {
-            let idx = var_idx_for_m31(context, constant_idxs, ab);
-            context.circuit.mul.push(Mul { in0: a_idx, in1: base_idx, out: idx });
-            m31_cache.insert(ab, idx);
-            idx
-        }
-    };
+    for &limb in limbs.iter().rev().skip(1) {
+        let limb_idx = *m31_cache.get(&limb).expect("limb must be in cache");
 
-    // temp2 = a * base + b
-    let ab_b = ab + b;
-    let temp2 = match m31_cache.get(&ab_b) {
-        Some(&idx) => idx,
-        None => {
-            let idx = var_idx_for_m31(context, constant_idxs, ab_b);
-            context.circuit.add.push(Add { in0: temp1, in1: b_idx, out: idx });
-            m31_cache.insert(ab_b, idx);
-            idx
-        }
-    };
+        // acc = acc * base
+        let mul_val = acc_val * base;
+        let mul_idx = match m31_cache.get(&mul_val) {
+            Some(&idx) => idx,
+            None => {
+                let idx = var_idx_for_m31(context, constant_idxs, mul_val);
+                context.circuit.mul.push(Mul { in0: acc_idx, in1: base_idx, out: idx });
+                m31_cache.insert(mul_val, idx);
+                idx
+            }
+        };
 
-    // temp3 = (a * base + b) * base
-    let ab_b_base = ab_b * base;
-    let temp3 = match m31_cache.get(&ab_b_base) {
-        Some(&idx) => idx,
-        None => {
-            let idx = var_idx_for_m31(context, constant_idxs, ab_b_base);
-            context.circuit.mul.push(Mul { in0: temp2, in1: base_idx, out: idx });
-            m31_cache.insert(ab_b_base, idx);
-            idx
-        }
-    };
+        // acc = acc * base + limb
+        let add_val = mul_val + limb;
+        let add_idx = match m31_cache.get(&add_val) {
+            Some(&idx) => idx,
+            None => {
+                let idx = var_idx_for_m31(context, constant_idxs, add_val);
+                context.circuit.add.push(Add { in0: mul_idx, in1: limb_idx, out: idx });
+                m31_cache.insert(add_val, idx);
+                idx
+            }
+        };
 
-    // result = (a * base + b) * base + c → output to out_idx.
-    // Skip if an intermediate already produced this value at out_idx (happens when b=0 or c=0
-    // causes an intermediate to equal val, and var_idx_for_m31 mapped it to out_idx).
+        acc_val = add_val;
+        acc_idx = add_idx;
+    }
+
+    // The final value should equal val. Output to out_idx if not already there.
     if m31_cache.get(&val) != Some(&out_idx) {
-        context.circuit.add.push(Add { in0: temp3, in1: c_idx, out: out_idx });
+        let zero_idx = *m31_cache.get(&0).expect("0 must be in cache");
+        context.circuit.add.push(Add { in0: acc_idx, in1: zero_idx, out: out_idx });
     }
 }
 
@@ -389,7 +344,8 @@ fn build_qm31_bases(
     m31_cache: &HashMap<u32, usize>,
 ) -> (Var, Var) {
     let u = context.u();
-    let two = Var { idx: *m31_cache.get(&2).expect("2 must be in cache for QM31 base construction") };
+    let two =
+        Var { idx: *m31_cache.get(&2).expect("2 must be in cache for QM31 base construction") };
 
     // i = u * u - 2
     let i_var = eval!(context, ((u) * (u)) - (two));
@@ -440,8 +396,8 @@ fn decompose_qm31_constants(
         }
 
         let limbs = [qm31_val.0.0.0, qm31_val.0.1.0, qm31_val.1.0.0, qm31_val.1.1.0];
-        let limb_vars: [Var; 4] = std::array::from_fn(|j| {
-            Var { idx: get_or_build_m31_var(context, m31_cache, constant_idxs, base, base_idx, limbs[j]) }
+        let limb_vars: [Var; 4] = std::array::from_fn(|j| Var {
+            idx: get_or_build_m31_var(context, m31_cache, constant_idxs, base, base_idx, limbs[j]),
         });
         let [a, b, c, d] = limb_vars;
 
