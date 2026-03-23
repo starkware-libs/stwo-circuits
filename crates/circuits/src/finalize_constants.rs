@@ -4,6 +4,7 @@ use crate::circuit::{Add, Eq, Mul, Sub};
 use crate::context::{Context, Var};
 use crate::ivalue::{IValue, qm31_from_u32s};
 use indexmap::IndexMap;
+use num_traits::Zero;
 use stwo::core::fields::qm31::QM31;
 
 #[cfg(test)]
@@ -56,19 +57,100 @@ pub fn finalize_constants(context: &mut Context<impl IValue>) {
         decompose_m31_constants(context, &constant_idxs, &chain, base);
     }
 
-    // 8. Build QM31 bases and decompose QM31 constants.
-    let has_qm31 = constant_idxs
+    // 8. Handle broadcast constants: (x, x, x, x) = x * (1,1,1,1).
+    let has_broadcast = constant_idxs.keys().any(|val| is_broadcast(val) && val != &QM31::zero());
+    let has_general_qm31 = constant_idxs
         .keys()
-        .any(|val| !is_m31_broadcast(val) && val != &qm31_from_u32s(0, 0, 1, 0));
-    if has_qm31 {
+        .any(|val| !is_base_field_element(val) && !is_broadcast(val) && val != &qm31_from_u32s(0, 0, 1, 0));
+
+    if has_broadcast || has_general_qm31 {
         let (i_idx, iu_idx) = build_qm31_bases(context, &chain);
-        decompose_qm31_constants(context, &constant_idxs, &chain, base, u_idx, i_idx, iu_idx);
+
+        if has_broadcast {
+            let ones_idx = build_ones_vector(context, i_idx, u_idx, iu_idx);
+            decompose_broadcast_constants(
+                context,
+                &constant_idxs,
+                &chain,
+                base,
+                ones_idx,
+            );
+        }
+
+        if has_general_qm31 {
+            decompose_qm31_constants(
+                context,
+                &constant_idxs,
+                &chain,
+                base,
+                u_idx,
+                i_idx,
+                iu_idx,
+            );
+        }
     }
 }
 
-/// Returns true if a QM31 value is a "broadcast" M31 value (only first coordinate nonzero).
-fn is_m31_broadcast(val: &QM31) -> bool {
+/// Returns true if a QM31 value is a base field (M31) element embedded in QM31,
+/// i.e. of the form (x, 0, 0, 0).
+fn is_base_field_element(val: &QM31) -> bool {
     val.0.1 == 0.into() && val.1.0 == 0.into() && val.1.1 == 0.into()
+}
+
+/// Returns true if a QM31 value is a broadcast: (x, x, x, x).
+fn is_broadcast(val: &QM31) -> bool {
+    val.0.0 == val.0.1 && val.0.0 == val.1.0 && val.0.0 == val.1.1
+}
+
+/// Builds the (1, 1, 1, 1) QM31 value as (1 + i) + (u + iu).
+/// Returns the Var idx.
+fn build_ones_vector(
+    context: &mut Context<impl IValue>,
+    i_idx: usize,
+    u_idx: usize,
+    iu_idx: usize,
+) -> usize {
+    let one_idx = context.one().idx;
+
+    // 1 + i
+    let one_plus_i_val = context.get(Var { idx: one_idx }) + context.get(Var { idx: i_idx });
+    let one_plus_i = context.new_var(one_plus_i_val);
+    context.circuit.add.push(Add { in0: one_idx, in1: i_idx, out: one_plus_i.idx });
+
+    // u + iu
+    let u_plus_iu_val = context.get(Var { idx: u_idx }) + context.get(Var { idx: iu_idx });
+    let u_plus_iu = context.new_var(u_plus_iu_val);
+    context.circuit.add.push(Add { in0: u_idx, in1: iu_idx, out: u_plus_iu.idx });
+
+    // (1 + i) + (u + iu)
+    let ones_val = one_plus_i_val + u_plus_iu_val;
+    let ones = context.new_var(ones_val);
+    context.circuit.add.push(Add { in0: one_plus_i.idx, in1: u_plus_iu.idx, out: ones.idx });
+
+    ones.idx
+}
+
+/// Constructs broadcast constants (x, x, x, x) as x * (1, 1, 1, 1).
+fn decompose_broadcast_constants(
+    context: &mut Context<impl IValue>,
+    constant_idxs: &IndexMap<QM31, usize>,
+    chain: &HashMap<u32, usize>,
+    base: u32,
+    ones_idx: usize,
+) {
+    let base_idx = *chain.get(&base).expect("base must be in chain");
+
+    for (qm31_val, &reserved_idx) in constant_idxs {
+        if !is_broadcast(qm31_val) || qm31_val == &QM31::zero() {
+            continue;
+        }
+
+        let x = qm31_val.0.0.0;
+        let x_idx = get_or_build_m31_var(context, chain, base, base_idx, x);
+
+        // x * (1, 1, 1, 1) → output to reserved idx
+        context.circuit.mul.push(Mul { in0: x_idx, in1: ones_idx, out: reserved_idx });
+    }
 }
 
 /// Computes the minimum chain length needed to support decomposition of all constants.
@@ -84,28 +166,33 @@ fn compute_min_chain_length(
 
     // Collect all M31 values that need decomposition (not already in chain).
     let mut max_needed: u32 = 0;
-    let has_qm31 = constant_idxs
+    let has_non_base = constant_idxs
         .keys()
-        .any(|val| !is_m31_broadcast(val) && val != &qm31_from_u32s(0, 0, 1, 0));
+        .any(|val| !is_base_field_element(val) && val != &qm31_from_u32s(0, 0, 1, 0));
 
     for qm31_val in constant_idxs.keys() {
-        if is_m31_broadcast(qm31_val) {
+        if is_base_field_element(qm31_val) || qm31_val == &qm31_from_u32s(0, 0, 1, 0) {
             let v = qm31_val.0.0.0;
             if !chain.contains_key(&v) {
                 max_needed = max_needed.max(v);
             }
-        } else if qm31_val != &qm31_from_u32s(0, 0, 1, 0) {
-            // QM31 constant: all 4 limbs need to be available.
+        } else if is_broadcast(qm31_val) {
+            // Broadcast (x, x, x, x): only x needs to be available.
+            let v = qm31_val.0.0.0;
+            if !chain.contains_key(&v) {
+                max_needed = max_needed.max(v);
+            }
+        } else {
+            // General QM31: all 4 limbs need to be available.
             for limb in [qm31_val.0.0.0, qm31_val.0.1.0, qm31_val.1.0.0, qm31_val.1.1.0] {
-                let v = limb;
-                if !chain.contains_key(&v) {
-                    max_needed = max_needed.max(v);
+                if !chain.contains_key(&limb) {
+                    max_needed = max_needed.max(limb);
                 }
             }
         }
     }
 
-    if max_needed == 0 && !has_qm31 {
+    if max_needed == 0 && !has_non_base {
         return current_max;
     }
 
@@ -115,12 +202,12 @@ fn compute_min_chain_length(
         let cbrt = (max_needed as f64).cbrt().ceil() as u32 + 1;
         cbrt
     } else {
-        2 // Minimum for QM31 (need 2 in chain for i = u^2 - 2).
+        2 // Minimum for non-base-field constants (need 2 in chain for i = u^2 - 2).
     };
 
     // Chain must be at least min_base.
-    // Also must be at least 2 for QM31 bases.
-    let needed = if has_qm31 { min_base.max(2) } else { min_base };
+    // Also must be at least 2 for QM31/broadcast bases.
+    let needed = if has_non_base { min_base.max(2) } else { min_base };
     current_max.max(needed)
 }
 
@@ -128,7 +215,7 @@ fn compute_min_chain_length(
 fn find_max_consecutive(constant_idxs: &IndexMap<QM31, usize>) -> u32 {
     let mut m31_values: Vec<u32> = constant_idxs
         .keys()
-        .filter(|v| is_m31_broadcast(v))
+        .filter(|v| is_base_field_element(v))
         .map(|v| v.0 .0 .0)
         .collect();
     m31_values.sort_unstable();
@@ -223,7 +310,7 @@ fn decompose_m31_constants(
     let base_idx = *chain.get(&base).expect("base must be in chain");
 
     for (qm31_val, &reserved_idx) in constant_idxs {
-        if !is_m31_broadcast(qm31_val) {
+        if !is_base_field_element(qm31_val) {
             continue;
         }
         let m31_val = qm31_val.0.0.0;
@@ -332,7 +419,7 @@ fn decompose_qm31_constants(
     let base_idx = *chain.get(&base).expect("base must be in chain");
 
     for (qm31_val, &reserved_idx) in constant_idxs {
-        if is_m31_broadcast(qm31_val) {
+        if is_base_field_element(qm31_val) || is_broadcast(qm31_val) {
             continue;
         }
         if reserved_idx == u_idx {
