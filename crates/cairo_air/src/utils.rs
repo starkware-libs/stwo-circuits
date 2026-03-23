@@ -1,6 +1,6 @@
-use itertools::Itertools;
 use std::fs::File;
 use std::path::PathBuf;
+use std::sync::Arc;
 use stwo::core::fields::m31::M31;
 use stwo_cairo_common::prover_types::felt::split_f252;
 
@@ -16,7 +16,7 @@ pub fn get_proof_file_path(test_name: &str) -> PathBuf {
 
 /// Loads a compiled Cairo program from a JSON file and converts each felt252
 /// into 28 9-bit M31 limbs using [split_f252].
-pub fn load_program(json_path: &std::path::Path) -> Vec<[M31; MEMORY_VALUES_LIMBS]> {
+pub fn load_program(json_path: &std::path::Path) -> Arc<[[M31; MEMORY_VALUES_LIMBS]]> {
     let json: serde_json::Value = serde_json::from_reader(File::open(json_path).unwrap()).unwrap();
     json["data"]
         .as_array()
@@ -34,5 +34,5 @@ pub fn load_program(json_path: &std::path::Path) -> Vec<[M31; MEMORY_VALUES_LIMB
             }
             split_f252(words)
         })
-        .collect_vec()
+        .collect()
 }

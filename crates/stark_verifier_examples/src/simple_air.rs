@@ -1,7 +1,7 @@
 use circuits::ivalue::qm31_from_u32s;
 use circuits_stark_verifier::proof::Claim;
 use circuits_stark_verifier::proof_from_stark_proof::{
-    pack_component_log_sizes, pack_public_claim,
+    pack_component_log_sizes, pack_enable_bits, pack_public_claim,
 };
 
 use itertools::{Itertools, zip_eq};
@@ -34,8 +34,6 @@ use stwo_constraint_framework::{
 };
 
 use crate::simple_statement::COMPONENT_LOG_SIZES;
-
-use circuits_stark_verifier::proof_from_stark_proof::pack_enable_bits;
 
 pub const INTERACTION_POW_BITS: u32 = 8;
 
@@ -323,7 +321,7 @@ pub fn create_proof_with_fold_step(
 
     (
         components,
-        Claim { packed_enable_bits, packed_component_log_sizes, claimed_sums },
+        Claim { packed_component_log_sizes, claimed_sums },
         config,
         proof,
         interaction_pow_nonce,

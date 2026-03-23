@@ -1,5 +1,6 @@
 use std::array;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use cairo_air::components::memory_address_to_id::MEMORY_ADDRESS_TO_ID_SPLIT;
 use cairo_air::relations::{
@@ -150,7 +151,7 @@ pub struct CairoStatement<Value: IValue> {
     pub components: Vec<Box<dyn CircuitEval<Value>>>,
     pub packed_public_data: Simd,
     pub public_data: PublicData<Var>,
-    pub program: Vec<[M31; MEMORY_VALUES_LIMBS]>,
+    pub program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
     pub packed_outputs: Simd,
     pub preprocessed_root: HashValue<QM31>,
 }
@@ -166,26 +167,25 @@ impl<Value: IValue> CairoStatement<Value> {
         enable_bits: &[Var],
         component_sizes: &[Var],
     ) {
+        let [
+            output_segment_range,
+            pedersen_segment_range,
+            range_check_128_segment_range,
+            ecdsa_segment_range,
+            bitwise_segment_range,
+            ec_op_segment_range,
+            keccak_segment_range,
+            poseidon_segment_range,
+            range_check96_segment_range,
+            add_mod_segment_range,
+            mul_mod_segment_range,
+        ] = &self.public_data.public_memory.segment_ranges;
+
         // Validate the output segment range.
-        let segment_ranges = &self.public_data.public_memory.segment_ranges;
-        let SegmentRange::<Var> {
-            start: PubMemoryM31Value { id: _, value: output_start },
-            end: PubMemoryM31Value { id: _, value: output_end },
-        } = &segment_ranges[0];
-        let diff = eval!(context, (*output_end) - (*output_start));
+        let diff =
+            eval!(context, (output_segment_range.end.value) - (output_segment_range.start.value));
         let n_outputs = context.constant((self.packed_outputs.len() / MEMORY_VALUES_LIMBS).into());
         eq(context, diff, n_outputs);
-
-        let pedersen_segment_range = &segment_ranges[1];
-        let range_check_128_segment_range = &segment_ranges[2];
-        let ecdsa_segment_range = &segment_ranges[3];
-        let bitwise_segment_range = &segment_ranges[4];
-        let ec_op_segment_range = &segment_ranges[5];
-        let keccak_segment_range = &segment_ranges[6];
-        let poseidon_segment_range = &segment_ranges[7];
-        let range_check96_segment_range = &segment_ranges[8];
-        let add_mod_segment_range = &segment_ranges[9];
-        let mul_mod_segment_range = &segment_ranges[10];
 
         let supported_builtins = [
             pedersen_segment_range,
@@ -209,20 +209,20 @@ impl<Value: IValue> CairoStatement<Value> {
         );
         let diff = Simd::sub(context, &end_addresses, &start_addresses);
 
-        let builtin_memory_cells = [
+        let builtin_instance_sizes = [
             ("pedersen_builtin_narrow_windows", PEDERSEN_BUILTIN_MEMORY_CELLS),
             ("range_check_builtin", RANGE_CHECK_BUILTIN_MEMORY_CELLS),
             ("bitwise_builtin", BITWISE_BUILTIN_MEMORY_CELLS),
             ("poseidon_builtin", POSEIDON_BUILTIN_MEMORY_CELLS),
         ];
-        let instance_size_inverses = pack_into_qm31s(
-            builtin_memory_cells.iter().map(|(_name, size)| M31::from(*size).inverse()),
+        let builtin_instance_size_inverses = pack_into_qm31s(
+            builtin_instance_sizes.iter().map(|(_name, size)| M31::from(*size).inverse()),
         )
         .into_iter()
         .map(|qm31| context.constant(qm31))
         .collect();
         let packed_instance_size_inverses =
-            Simd::from_packed(instance_size_inverses, supported_builtins.len());
+            Simd::from_packed(builtin_instance_size_inverses, supported_builtins.len());
 
         let n_uses_simd = Simd::mul(context, &diff, &packed_instance_size_inverses);
 
@@ -231,22 +231,23 @@ impl<Value: IValue> CairoStatement<Value> {
         // instance_size (mod M31_P). Since all values are less than 2^27, this equality
         // also holds over the integers.
         extract_bits(context, &n_uses_simd, SMALL_VALUE_BITS);
-        let max_builtin_memory_cell =
-            builtin_memory_cells.iter().map(|(_name, size)| size).max().unwrap();
+        let max_builtin_instance_size =
+            builtin_instance_sizes.iter().map(|(_name, size)| size).max().unwrap();
         assert!(
-            max_builtin_memory_cell.ilog2() < (31 - SMALL_VALUE_BITS),
-            "max_builtin_memory_cell * segment_range.start might exceed M31_P"
+            max_builtin_instance_size.ilog2() < (31 - SMALL_VALUE_BITS),
+            "max_builtin_memory_cell * n_uses might exceed M31_P"
         );
 
         let actual_uses_iter = Simd::unpack(context, &n_uses_simd).into_iter();
         let mut range_checks = vec![];
         let all_components = all_components::<Value>();
 
-        for ((name, _size), actual_uses) in zip_eq(builtin_memory_cells, actual_uses_iter) {
+        for ((name, _size), actual_uses) in zip_eq(builtin_instance_sizes, actual_uses_iter) {
             let index = all_components.get_index_of(name).unwrap();
             let component_size = component_sizes[index];
 
-            // Check that either actual_uses == 0 or is_disabled == 0.
+            // If the builtin is used it must be enabled.
+            // This is enforced by checking that either actual_uses == 0 or is_disabled == 0.
             let is_disabled = eval!(context, (1) - (enable_bits[index]));
             let constraint_val = eval!(context, (actual_uses) * (is_disabled));
             eq(context, constraint_val, context.zero());
@@ -280,7 +281,7 @@ impl<Value: IValue> CairoStatement<Value> {
         context: &mut Context<Value>,
         public_data: Vec<M31>,
         outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
-        program: Vec<[M31; MEMORY_VALUES_LIMBS]>,
+        program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
         preprocessed_root: HashValue<QM31>,
     ) -> Self {
         let components = all_components().into_values().collect_vec();
@@ -291,7 +292,7 @@ impl<Value: IValue> CairoStatement<Value> {
         context: &mut Context<Value>,
         public_data: Vec<M31>,
         outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
-        program: Vec<[M31; MEMORY_VALUES_LIMBS]>,
+        program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
         components: Vec<Box<dyn CircuitEval<Value>>>,
         preprocessed_root: HashValue<QM31>,
     ) -> Self {
@@ -396,7 +397,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         let segment_ranges = &self.public_data.public_memory.segment_ranges;
         let public_params: HashMap<String, Var> = HashMap::from_iter(
             [
-                ("output_start_ptr", &segment_ranges[0]),
+                ("output_segment_start", &segment_ranges[0]),
                 ("pedersen_builtin_segment_start", &segment_ranges[1]),
                 ("range_check_builtin_segment_start", &segment_ranges[2]),
                 ("ecdsa_builtin_segment_start", &segment_ranges[3]),
@@ -564,20 +565,21 @@ fn safe_call_id_logup_term(
 pub fn memory_segment_logup_sum(
     context: &mut Context<impl IValue>,
     interaction_elements: [Var; 2],
-    mut start_address: Var,
+    start_address: Var,
     ids: &[Var],
     memory_values: &[[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]],
 ) -> Var {
     let one = context.one();
     let mut sum = context.zero();
 
+    let mut address = start_address;
     for (i, (&id, value_limbs)) in zip_eq(ids, memory_values).enumerate() {
         if i != 0 {
-            start_address = eval!(context, (start_address) + (one));
+            address = eval!(context, (address) + (one));
         }
 
         let address_to_id_logup_term =
-            address_to_id_logup_term(context, start_address, id, interaction_elements);
+            address_to_id_logup_term(context, address, id, interaction_elements);
         sum = eval!(context, (sum) + (address_to_id_logup_term));
 
         let id_to_value_logup_term = id_to_big_logup_term(
@@ -617,11 +619,14 @@ pub fn public_logup_sum(
         eval!(context, (initial_ap) - (one)),
     ];
 
-    let split_initial_ap = split_27bit_to_9bit_limbs(context, initial_ap);
-    let safe_call_values = [split_initial_ap.as_slice(), &[]];
-    // Handle the safe call memory section::
+    // Enforce correct initialization of the safe call memory section:
     // memory[initial_ap - 2] = (safe_call_id0, initial_ap)
     // memory[initial_ap - 1] = (safe_call_id1, 0).
+    let split_initial_ap = split_27bit_to_9bit_limbs(context, initial_ap);
+    // The value of memory[initial_ap - 1] is 0, so its 9-bit limbs are all zeros.
+    // Passing an empty slice to id_to_big_logup_term is equivalent to passing [0, 0, 0]
+    // because trailing zeros don't affect the polynomial combination in combine_term.
+    let safe_call_values = [split_initial_ap.as_slice(), &[]];
     for (address, id, value_limbs) in izip!(safe_call_addresses, safe_call_ids, safe_call_values) {
         let logup_term =
             safe_call_id_logup_term(context, interaction_elements, address, *id, value_limbs);

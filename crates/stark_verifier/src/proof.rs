@@ -58,11 +58,10 @@ impl ProofInfo {
 
         let fixed = (1 + 4 * 2 + 1 + 1) * SECURE_EXTENSION_DEGREE * N_U8S_PER_U32;
 
-        let packed_enable_bits = config.n_components.div_ceil(8); // pack 8 enable bits per u8
         let packed_log_sizes = config.n_components.next_multiple_of(4); // 1 log per u8.
         let n_enabled = config.enabled_components().filter(|&b| b).count();
         let claimed_sums = n_enabled * SECURE_EXTENSION_DEGREE * N_U8S_PER_U32;
-        let claim = packed_enable_bits + packed_log_sizes + claimed_sums;
+        let claim = packed_log_sizes + claimed_sums;
 
         let n_columns_per_trace = config.n_columns_per_trace();
         let total_columns: usize = n_columns_per_trace.iter().sum();
@@ -393,10 +392,6 @@ impl<Value: IValue> Guess<Value> for InteractionAtOods<Value> {
 
 #[derive(Debug, PartialEq)]
 pub struct Claim<T> {
-    // Every QM31 hold 4 bit.
-    // TODO(ilya): Consider packing 29 bits into one M31.
-    pub packed_enable_bits: Vec<T>,
-
     // The log sizes of the components in the AIR.
     // Every QM31 hold up to 4 component log sizes.
     pub packed_component_log_sizes: Vec<T>,
@@ -409,7 +404,6 @@ impl<Value: IValue> Guess<Value> for Claim<Value> {
 
     fn guess(&self, context: &mut Context<Value>) -> Self::Target {
         Claim {
-            packed_enable_bits: self.packed_enable_bits.guess(context),
             packed_component_log_sizes: self.packed_component_log_sizes.guess(context),
             claimed_sums: self.claimed_sums.guess(context),
         }
@@ -505,7 +499,6 @@ pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
             })
             .collect(),
         claim: Claim {
-            packed_enable_bits: vec![NoValue; config.n_components.div_ceil(4)],
             packed_component_log_sizes: vec![NoValue; config.n_components.div_ceil(4)],
             claimed_sums: vec![NoValue; config.n_components],
         },
