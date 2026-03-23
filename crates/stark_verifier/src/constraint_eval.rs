@@ -120,7 +120,7 @@ impl CompositionConstraintAccumulator {
             public_params,
             composition_polynomial_coeff,
             interaction_elements,
-            accumulation: context.zero(),
+            accumulation: context.one(),
             terms: Vec::new(),
         }
     }
