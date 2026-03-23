@@ -126,12 +126,18 @@ fn compute_min_chain_length(
 
 /// Finds the largest N such that all M31 integers 1..=N are present as constants.
 fn find_max_consecutive(constant_idxs: &IndexMap<QM31, usize>) -> u32 {
+    let mut m31_values: Vec<u32> = constant_idxs
+        .keys()
+        .filter(|v| is_m31_broadcast(v))
+        .map(|v| v.0 .0 .0)
+        .collect();
+    m31_values.sort_unstable();
+
     let mut n = 0u32;
-    loop {
-        let next = n + 1;
-        if constant_idxs.contains_key(&QM31::from(next)) {
-            n = next;
-        } else {
+    for &val in &m31_values {
+        if val == n + 1 {
+            n = val;
+        } else if val > n + 1 {
             break;
         }
     }
