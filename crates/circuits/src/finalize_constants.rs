@@ -4,9 +4,11 @@ use indexmap::IndexMap;
 use num_traits::Zero;
 use stwo::core::fields::qm31::QM31;
 
-use crate::circuit::{Add, Eq, Mul, Output, Sub};
+use crate::circuit::{Add, Mul, Output};
 use crate::context::{Context, Var};
+use crate::eval;
 use crate::ivalue::{IValue, qm31_from_u32s};
+use crate::ops::eq;
 
 #[cfg(test)]
 #[path = "finalize_constants_test.rs"]
@@ -38,13 +40,11 @@ pub fn finalize_constants(context: &mut Context<impl IValue>) {
     context.circuit.output.push(Output { in0: u_idx });
 
     // 3. One: trivial yield gate, plus u * one = u constraint to enforce one = 1.
-    let one_idx = context.one().idx;
-    context.circuit.add.push(Add { in0: one_idx, in1: zero_idx, out: one_idx });
-    // Constraint: u * one must equal u.
-    let u_times_one_val = context.get(Var { idx: u_idx }) * context.get(Var { idx: one_idx });
-    let u_times_one = context.new_var(u_times_one_val);
-    context.circuit.mul.push(Mul { in0: u_idx, in1: one_idx, out: u_times_one.idx });
-    context.circuit.eq.push(Eq { in0: u_times_one.idx, in1: u_idx });
+    let one = context.one();
+    context.circuit.add.push(Add { in0: one.idx, in1: zero_idx, out: one.idx });
+    let u = context.u();
+    let u_times_one = eval!(context, (u) * (one));
+    eq(context, u_times_one, u);
 
     // 4. Build the +1 chain for consecutive M31 integer constants.
     let mut chain = build_plus_one_chain(context, &constant_idxs);
@@ -71,11 +71,12 @@ pub fn finalize_constants(context: &mut Context<impl IValue>) {
     });
 
     if has_broadcast || has_general_qm31 {
-        let (i_idx, iu_idx) = build_qm31_bases(context, &m31_cache);
+        let u = context.u();
+        let (i_var, iu_var) = build_qm31_bases(context, &m31_cache);
 
         if has_broadcast {
-            let ones_idx = build_ones_vector(context, i_idx, u_idx, iu_idx);
-            decompose_broadcast_constants(context, &constant_idxs, &mut m31_cache, base, ones_idx);
+            let ones = build_ones_vector(context, i_var, u, iu_var);
+            decompose_broadcast_constants(context, &constant_idxs, &mut m31_cache, base, ones);
         }
 
         if has_general_qm31 {
@@ -84,9 +85,9 @@ pub fn finalize_constants(context: &mut Context<impl IValue>) {
                 &constant_idxs,
                 &mut m31_cache,
                 base,
-                u_idx,
-                i_idx,
-                iu_idx,
+                u,
+                i_var,
+                iu_var,
             );
         }
     }
@@ -107,28 +108,12 @@ fn is_broadcast(val: &QM31) -> bool {
 /// Returns the Var idx.
 fn build_ones_vector(
     context: &mut Context<impl IValue>,
-    i_idx: usize,
-    u_idx: usize,
-    iu_idx: usize,
-) -> usize {
-    let one_idx = context.one().idx;
-
-    // 1 + i
-    let one_plus_i_val = context.get(Var { idx: one_idx }) + context.get(Var { idx: i_idx });
-    let one_plus_i = context.new_var(one_plus_i_val);
-    context.circuit.add.push(Add { in0: one_idx, in1: i_idx, out: one_plus_i.idx });
-
-    // u + iu
-    let u_plus_iu_val = context.get(Var { idx: u_idx }) + context.get(Var { idx: iu_idx });
-    let u_plus_iu = context.new_var(u_plus_iu_val);
-    context.circuit.add.push(Add { in0: u_idx, in1: iu_idx, out: u_plus_iu.idx });
-
-    // (1 + i) + (u + iu)
-    let ones_val = one_plus_i_val + u_plus_iu_val;
-    let ones = context.new_var(ones_val);
-    context.circuit.add.push(Add { in0: one_plus_i.idx, in1: u_plus_iu.idx, out: ones.idx });
-
-    ones.idx
+    i_var: Var,
+    u_var: Var,
+    iu_var: Var,
+) -> Var {
+    let one = context.one();
+    eval!(context, ((one) + (i_var)) + ((u_var) + (iu_var)))
 }
 
 /// Constructs broadcast constants (x, x, x, x) as x * (1, 1, 1, 1).
@@ -137,7 +122,7 @@ fn decompose_broadcast_constants(
     constant_idxs: &IndexMap<QM31, usize>,
     m31_cache: &mut HashMap<u32, usize>,
     base: u32,
-    ones_idx: usize,
+    ones: Var,
 ) {
     let base_idx = *m31_cache.get(&base).expect("base must be in cache");
 
@@ -150,7 +135,7 @@ fn decompose_broadcast_constants(
         let x_idx = get_or_build_m31_var(context, m31_cache, constant_idxs, base, base_idx, x);
 
         // x * (1, 1, 1, 1) → output to reserved idx
-        context.circuit.mul.push(Mul { in0: x_idx, in1: ones_idx, out: reserved_idx });
+        context.circuit.mul.push(Mul { in0: x_idx, in1: ones.idx, out: reserved_idx });
     }
 }
 
@@ -402,25 +387,16 @@ fn var_idx_for_m31(
 fn build_qm31_bases(
     context: &mut Context<impl IValue>,
     m31_cache: &HashMap<u32, usize>,
-) -> (usize, usize) {
-    let u_idx = context.u().idx;
-    let two_idx = *m31_cache.get(&2).expect("2 must be in cache for QM31 base construction");
+) -> (Var, Var) {
+    let u = context.u();
+    let two = Var { idx: *m31_cache.get(&2).expect("2 must be in cache for QM31 base construction") };
 
     // i = u * u - 2
-    let u_sq_val = context.get(Var { idx: u_idx }) * context.get(Var { idx: u_idx });
-    let u_squared = context.new_var(u_sq_val);
-    context.circuit.mul.push(Mul { in0: u_idx, in1: u_idx, out: u_squared.idx });
-
-    let i_val = u_sq_val - context.get(Var { idx: two_idx });
-    let i_var = context.new_var(i_val);
-    context.circuit.sub.push(Sub { in0: u_squared.idx, in1: two_idx, out: i_var.idx });
-
+    let i_var = eval!(context, ((u) * (u)) - (two));
     // iu = i * u
-    let iu_val = i_val * context.get(Var { idx: u_idx });
-    let iu_var = context.new_var(iu_val);
-    context.circuit.mul.push(Mul { in0: i_var.idx, in1: u_idx, out: iu_var.idx });
+    let iu_var = eval!(context, (i_var) * (u));
 
-    (i_var.idx, iu_var.idx)
+    (i_var, iu_var)
 }
 
 /// Gets or builds a Var for an M31 value. Returns the Var idx.
@@ -449,9 +425,9 @@ fn decompose_qm31_constants(
     constant_idxs: &IndexMap<QM31, usize>,
     m31_cache: &mut HashMap<u32, usize>,
     base: u32,
-    u_idx: usize,
-    i_idx: usize,
-    iu_idx: usize,
+    u_var: Var,
+    i_var: Var,
+    iu_var: Var,
 ) {
     let base_idx = *m31_cache.get(&base).expect("base must be in cache");
 
@@ -459,45 +435,22 @@ fn decompose_qm31_constants(
         if is_base_field_element(qm31_val) || is_broadcast(qm31_val) {
             continue;
         }
-        if reserved_idx == u_idx {
+        if reserved_idx == u_var.idx {
             continue;
         }
 
         let limbs = [qm31_val.0.0.0, qm31_val.0.1.0, qm31_val.1.0.0, qm31_val.1.1.0];
-
-        let limb_idxs: [usize; 4] = std::array::from_fn(|j| {
-            get_or_build_m31_var(context, m31_cache, constant_idxs, base, base_idx, limbs[j])
+        let limb_vars: [Var; 4] = std::array::from_fn(|j| {
+            Var { idx: get_or_build_m31_var(context, m31_cache, constant_idxs, base, base_idx, limbs[j]) }
         });
+        let [a, b, c, d] = limb_vars;
 
-        // b * i
-        let bi_val = context.get(Var { idx: limb_idxs[1] }) * context.get(Var { idx: i_idx });
-        let bi = context.new_var(bi_val);
-        context.circuit.mul.push(Mul { in0: limb_idxs[1], in1: i_idx, out: bi.idx });
-
-        // a + b*i
-        let a_plus_bi_val = context.get(Var { idx: limb_idxs[0] }) + bi_val;
-        let a_plus_bi = context.new_var(a_plus_bi_val);
-        context.circuit.add.push(Add { in0: limb_idxs[0], in1: bi.idx, out: a_plus_bi.idx });
-
-        // c * u
-        let cu_val = context.get(Var { idx: limb_idxs[2] }) * context.get(Var { idx: u_idx });
-        let cu = context.new_var(cu_val);
-        context.circuit.mul.push(Mul { in0: limb_idxs[2], in1: u_idx, out: cu.idx });
-
-        // d * iu
-        let diu_val = context.get(Var { idx: limb_idxs[3] }) * context.get(Var { idx: iu_idx });
-        let diu = context.new_var(diu_val);
-        context.circuit.mul.push(Mul { in0: limb_idxs[3], in1: iu_idx, out: diu.idx });
-
-        // c*u + d*iu
-        let cu_plus_diu_val = cu_val + diu_val;
-        let cu_plus_diu = context.new_var(cu_plus_diu_val);
-        context.circuit.add.push(Add { in0: cu.idx, in1: diu.idx, out: cu_plus_diu.idx });
-
-        // (a + b*i) + (c*u + d*iu) → output to reserved idx
+        // a + b*i + c*u + d*iu → output to reserved idx
+        let first_half = eval!(context, (a) + ((b) * (i_var)));
+        let second_half = eval!(context, ((c) * (u_var)) + ((d) * (iu_var)));
         context.circuit.add.push(Add {
-            in0: a_plus_bi.idx,
-            in1: cu_plus_diu.idx,
+            in0: first_half.idx,
+            in1: second_half.idx,
             out: reserved_idx,
         });
     }
