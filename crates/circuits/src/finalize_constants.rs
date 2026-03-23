@@ -55,7 +55,7 @@ pub fn finalize_constants(context: &mut Context<impl IValue>) {
     extend_chain(context, &mut chain, min_chain_len, &constant_idxs);
 
     // 6. Use the chain length as the base for decomposition.
-    let base = *chain.keys().max().unwrap_or(&1);
+    let base = *chain.keys().max().unwrap();
 
     // 7. Build a cache of known M31 var indices, seeded from the chain. Decomposition results are
     //    cached here for reuse across constants.
@@ -147,7 +147,7 @@ fn compute_min_chain_length(
     constant_idxs: &IndexMap<QM31, usize>,
     chain: &HashMap<u32, usize>,
 ) -> u32 {
-    let current_max = *chain.keys().max().unwrap_or(&1);
+    let current_max = *chain.keys().max().unwrap();
 
     // Collect all M31 values that need decomposition (not already in chain).
     let mut max_needed: u32 = 0;
@@ -244,7 +244,7 @@ fn extend_chain(
     target: u32,
     constant_idxs: &IndexMap<QM31, usize>,
 ) {
-    let current_max = *chain.keys().max().unwrap_or(&1);
+    let current_max = *chain.keys().max().unwrap();
     if target <= current_max {
         return;
     }
