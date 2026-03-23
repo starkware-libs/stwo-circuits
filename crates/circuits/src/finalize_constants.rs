@@ -43,8 +43,9 @@ pub fn finalize_constants(context: &mut Context<impl IValue>) {
     // 4. Build the +1 chain for consecutive M31 integer constants.
     let mut chain = build_plus_one_chain(context, &constant_idxs);
 
-    // 5. Extend the chain if needed to support all constants that require decomposition.
-    let min_chain_len = compute_min_chain_length(&constant_idxs, &chain);
+    // 5. Extend the chain to at least MIN_BASE, and further if decomposition requires it.
+    const MIN_BASE: u32 = 16;
+    let min_chain_len = compute_min_chain_length(&constant_idxs, &chain).max(MIN_BASE);
     extend_chain(context, &mut chain, min_chain_len, &constant_idxs);
 
     // 6. Use the chain length as the base for decomposition.
