@@ -38,11 +38,8 @@ pub trait Statement<Value: IValue> {
 
     fn get_preprocessed_column_ids(&self) -> Vec<PreProcessedColumnId>;
 
-    fn verify_preprocessed_root(
-        &self,
-        context: &mut Context<Value>,
-        preprocessed_root: HashValue<Var>,
-    );
+    /// Returns the expected preprocessed trace root as circuit variables.
+    fn get_preprocessed_root(&self, context: &mut Context<Value>) -> HashValue<Var>;
 
     /// Computes the part of the logup sum that is determined by the (public) statement rather than
     /// by the witness.

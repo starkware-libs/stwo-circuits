@@ -27,7 +27,7 @@ pub struct ProofInfo {
     pub log_blowup_factor: usize,
     pub n_queries: usize,
     pub n_columns_per_trace: [usize; N_TRACES],
-    // Fixed scalars (QM31): channel_salt + 4 roots (2 QM31 each) + pow_nonce +
+    // Fixed scalars (QM31): channel_salt + 3 roots (2 QM31 each) + pow_nonce +
     // interaction_pow_nonce.
     pub fixed: usize,
     // Claim (serialized in packed format): enable bits + log sizes + claimed sums.
@@ -56,7 +56,7 @@ impl ProofInfo {
         let n_queries = config.fri.n_queries;
         let log_eval_domain = config.fri.log_evaluation_domain_size();
 
-        let fixed = (1 + 4 * 2 + 1 + 1) * SECURE_EXTENSION_DEGREE * N_U8S_PER_U32;
+        let fixed = (1 + 3 * 2 + 1 + 1) * SECURE_EXTENSION_DEGREE * N_U8S_PER_U32;
 
         let packed_log_sizes = config.n_components.next_multiple_of(4); // 1 log per u8.
         let n_enabled = config.enabled_components().filter(|&b| b).count();
@@ -415,7 +415,6 @@ pub struct Proof<T> {
     pub channel_salt: T,
 
     // Merkle roots.
-    pub preprocessed_root: HashValue<T>,
     pub trace_root: HashValue<T>,
     pub interaction_root: HashValue<T>,
     pub composition_polynomial_root: HashValue<T>,
@@ -462,17 +461,13 @@ impl<T> Proof<T> {
         self.fri.validate_structure(&config.fri);
     }
 
-    /// Returns the list of all 4 roots.
-    pub fn merkle_roots(&self) -> [HashValue<T>; N_TRACES]
+    /// Returns the 3 witness Merkle roots (trace, interaction, composition polynomial).
+    /// The preprocessed root is excluded since it is not stored in the proof.
+    pub fn merkle_roots(&self) -> [HashValue<T>; N_TRACES - 1]
     where
         T: Copy,
     {
-        [
-            self.preprocessed_root,
-            self.trace_root,
-            self.interaction_root,
-            self.composition_polynomial_root,
-        ]
+        [self.trace_root, self.interaction_root, self.composition_polynomial_root]
     }
 }
 
@@ -481,7 +476,6 @@ pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
         AuthPath(vec![HashValue(NoValue, NoValue); config.log_evaluation_domain_size()]);
 
     Proof {
-        preprocessed_root: HashValue(NoValue, NoValue),
         trace_root: HashValue(NoValue, NoValue),
         interaction_root: HashValue(NoValue, NoValue),
         composition_polynomial_root: HashValue(NoValue, NoValue),
@@ -522,7 +516,6 @@ impl<Value: IValue> Guess<Value> for Proof<Value> {
 
     fn guess(&self, context: &mut Context<Value>) -> Self::Target {
         Proof {
-            preprocessed_root: self.preprocessed_root.guess(context),
             trace_root: self.trace_root.guess(context),
             interaction_root: self.interaction_root.guess(context),
             composition_polynomial_root: self.composition_polynomial_root.guess(context),
