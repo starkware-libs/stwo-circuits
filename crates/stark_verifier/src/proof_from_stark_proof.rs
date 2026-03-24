@@ -44,7 +44,6 @@ pub fn proof_from_stark_proof(
     );
 
     Proof {
-        preprocessed_root: commitments[0].into(),
         trace_root: commitments[1].into(),
         interaction_root: commitments[2].into(),
         composition_polynomial_root: commitments[3].into(),

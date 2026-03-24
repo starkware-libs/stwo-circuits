@@ -8,7 +8,7 @@ use circuits::blake::HashValue;
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::ivalue::IValue;
-use circuits::ops::{Guess, div, eq};
+use circuits::ops::{Guess, div};
 use circuits::simd::Simd;
 use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
@@ -128,17 +128,11 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
         self.preprocessed_column_ids.clone()
     }
 
-    fn verify_preprocessed_root(
-        &self,
-        context: &mut Context<Value>,
-        preprocessed_root: HashValue<Var>,
-    ) {
-        let expected_preprocessed_root = HashValue(
+    fn get_preprocessed_root(&self, context: &mut Context<Value>) -> HashValue<Var> {
+        HashValue(
             context.constant(self.preprocessed_root.0),
             context.constant(self.preprocessed_root.1),
-        );
-        eq(context, preprocessed_root.0, expected_preprocessed_root.0);
-        eq(context, preprocessed_root.1, expected_preprocessed_root.1);
+        )
     }
 }
 
