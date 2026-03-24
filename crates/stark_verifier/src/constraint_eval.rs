@@ -244,6 +244,10 @@ pub trait CircuitEval<Value: IValue> {
     fn interaction_columns(&self) -> usize;
 
     fn relation_uses_per_row(&self) -> &[RelationUse];
+
+    fn is_disabled(&self) -> bool {
+        self.interaction_columns() == 0
+    }
 }
 
 pub fn get_n_columns<'a, T>(columns: &mut &'a [T], n: usize) -> &'a [T] {
@@ -301,15 +305,15 @@ pub fn compute_composition_polynomial<Value: IValue>(
     )
     .enumerate()
     {
-        evaluation_accumulator.set_enable_bit(enable_bit);
-        let trace_columns = get_n_columns(&mut oods_samples.trace, *n_trace_columns_in_component);
-        if trace_columns.is_empty() {
-            // The variable is unused unless its a builtin component, in that case we access it in
-            // verify_builtins.
+        if component.is_disabled() {
+            // Disabled components have no constraints to evaluate. Mark size as maybe
+            // unused since it might still be referenced elsewhere (e.g. verify_builtins).
             context.mark_as_maybe_unused(&component_size);
             continue;
         }
 
+        evaluation_accumulator.set_enable_bit(enable_bit);
+        let trace_columns = get_n_columns(&mut oods_samples.trace, *n_trace_columns_in_component);
         let interaction_columns =
             get_n_columns(&mut oods_samples.interaction, *n_interaction_columns_in_component);
 
