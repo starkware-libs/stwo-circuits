@@ -508,11 +508,11 @@ fn add_triple_xor_to_preprocessed_trace(
     fill_triple_xor_columns(&circuit.triple_xor, multiplicities, &mut columns);
 
     let ids = [
-        "triple_xor_a_address",
-        "triple_xor_b_address",
-        "triple_xor_c_address",
-        "triple_xor_output_address",
-        "triple_xor_mult",
+        "triple_xor_input_addr_0",
+        "triple_xor_input_addr_1",
+        "triple_xor_input_addr_2",
+        "triple_xor_output_addr",
+        "triple_xor_multiplicity",
     ];
     for (id, column) in zip_eq(ids, columns) {
         pp_trace.push_column(PreProcessedColumnId { id: id.to_owned() }, column);
@@ -600,10 +600,6 @@ impl PreProcessedTrace {
         };
 
         self.columns.iter().map(|c| to_evaluation(c)).collect()
-    }
-
-    pub fn has_column(&self, id: &PreProcessedColumnId) -> bool {
-        self.column_indices.contains_key(id)
     }
 
     pub fn get_column(&self, id: &PreProcessedColumnId) -> &Vec<usize> {

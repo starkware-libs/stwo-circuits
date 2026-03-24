@@ -10,6 +10,7 @@ use crate::witness::components::qm31_ops;
 use crate::witness::components::range_check_15;
 use crate::witness::components::range_check_16;
 use crate::witness::components::triple_xor_32;
+use crate::witness::components::triple_xor;
 use crate::witness::components::m_31_to_u_32;
 use crate::witness::components::verify_bitwise_xor_4;
 use crate::witness::components::verify_bitwise_xor_7;
@@ -201,6 +202,11 @@ pub fn write_trace(
         m_31_to_u_32::write_trace(context_values, preprocessed_trace_ref, &range_check_16_state);
     trace_evals.extend(m_31_to_u_32_trace.to_evals());
 
+    // Write triple_xor component.
+    let (triple_xor_trace, triple_xor_claim, triple_xor_interaction_claim_gen) =
+        triple_xor::write_trace(context_values, preprocessed_trace_ref, &verify_bitwise_xor_8_state);
+    trace_evals.extend(triple_xor_trace.to_evals());
+
     // Write xor and range-check components in parallel.
     let (
         verify_bitwise_xor_8_result,
@@ -290,6 +296,7 @@ pub fn write_trace(
                 blake_output_claim.log_size,
                 triple_xor_32_claim.log_size,
                 m_31_to_u_32_claim.log_size,
+                triple_xor_claim.log_size,
                 circuit_air::components::verify_bitwise_xor_8::LOG_SIZE,
                 circuit_air::components::verify_bitwise_xor_12::LOG_SIZE,
                 circuit_air::components::verify_bitwise_xor_4::LOG_SIZE,
@@ -310,6 +317,7 @@ pub fn write_trace(
             blake_output: blake_output_interaction_claim_gen,
             triple_xor_32: triple_xor_32_interaction_claim_gen,
             m_31_to_u_32: m_31_to_u_32_interaction_claim_gen,
+            triple_xor: triple_xor_interaction_claim_gen,
             verify_bitwise_xor_8: verify_bitwise_xor_8_interaction_claim_gen,
             verify_bitwise_xor_12: verify_bitwise_xor_12_interaction_claim_gen,
             verify_bitwise_xor_4: verify_bitwise_xor_4_interaction_claim_gen,
@@ -331,6 +339,7 @@ pub struct CircuitInteractionClaimGenerator {
     pub blake_output: blake_output::InteractionClaimGenerator,
     pub triple_xor_32: triple_xor_32::InteractionClaimGenerator,
     pub m_31_to_u_32: m_31_to_u_32::InteractionClaimGenerator,
+    pub triple_xor: triple_xor::InteractionClaimGenerator,
     pub verify_bitwise_xor_8: verify_bitwise_xor_8::InteractionClaimGenerator,
     pub verify_bitwise_xor_12: verify_bitwise_xor_12::InteractionClaimGenerator,
     pub verify_bitwise_xor_4: verify_bitwise_xor_4::InteractionClaimGenerator,
@@ -401,11 +410,16 @@ pub fn write_interaction_trace(
     tree_builder.extend_evals(triple_xor_32_trace);
 
     // Write m31_to_u32 interaction trace.
-    let _m_31_to_u_32_log_size = component_log_size_iter.next().unwrap();
     let (m_31_to_u_32_trace, m_31_to_u_32_interaction_claim) = circuit_interaction_claim_generator
         .m_31_to_u_32
         .write_interaction_trace(&interaction_elements.common_lookup_elements);
     tree_builder.extend_evals(m_31_to_u_32_trace);
+
+    // Write triple_xor interaction trace.
+    let (triple_xor_trace, triple_xor_interaction_claim) = circuit_interaction_claim_generator
+        .triple_xor
+        .write_interaction_trace(&interaction_elements.common_lookup_elements);
+    tree_builder.extend_evals(triple_xor_trace);
 
     // Write verify bitwise xor 8 interaction trace.
     let (verify_bitwise_xor_8_trace, verify_bitwise_xor_8_interaction_claim) =
@@ -465,6 +479,7 @@ pub fn write_interaction_trace(
             blake_output_interaction_claim.claimed_sum,
             triple_xor_32_interaction_claim.claimed_sum,
             m_31_to_u_32_interaction_claim.claimed_sum,
+            triple_xor_interaction_claim.claimed_sum,
             verify_bitwise_xor_8_interaction_claim.claimed_sum,
             verify_bitwise_xor_12_interaction_claim.claimed_sum,
             verify_bitwise_xor_4_interaction_claim.claimed_sum,
