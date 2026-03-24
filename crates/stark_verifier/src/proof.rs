@@ -256,10 +256,18 @@ impl ProofConfig {
         pcs_config: &PcsConfig,
         n_interaction_pow_bits: u32,
     ) -> Self {
-        let trace_columns_per_component =
-            components.iter().map(|c| c.trace_columns()).collect_vec();
-        let interaction_columns_per_component =
-            components.iter().map(|c| c.interaction_columns()).collect_vec();
+        let mut trace_columns_per_component = Vec::with_capacity(components.len());
+        let mut interaction_columns_per_component = Vec::with_capacity(components.len());
+        for component in components {
+            let trace_columns = component.trace_columns();
+            let interaction_columns = component.interaction_columns();
+            if component.is_disabled() {
+                assert!(trace_columns == 0, "disabled component must have no trace columns");
+                assert!(interaction_columns == 0, "disabled component must have no interaction columns");
+            }
+            trace_columns_per_component.push(trace_columns);
+            interaction_columns_per_component.push(interaction_columns);
+        }
         Self::new(
             components.len(),
             trace_columns_per_component,

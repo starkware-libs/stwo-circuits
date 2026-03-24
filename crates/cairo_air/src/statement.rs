@@ -12,7 +12,6 @@ use circuits::extract_bits::extract_bits;
 use circuits::ops::{Guess, eq, output};
 use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::logup::logup_use_term;
-use circuits_stark_verifier::proof::ProofConfig;
 use circuits_stark_verifier::proof_from_stark_proof::pack_into_qm31s;
 use circuits_stark_verifier::verify::RELATION_USES_NUM_ROWS_SHIFT;
 use itertools::{Itertools, chain, izip, zip_eq};
@@ -165,7 +164,6 @@ impl<Value: IValue> CairoStatement<Value> {
     pub fn verify_builtins(
         &self,
         context: &mut Context<Value>,
-        config: &ProofConfig,
         component_sizes: &[Var],
     ) {
         let [
@@ -243,10 +241,9 @@ impl<Value: IValue> CairoStatement<Value> {
         let mut range_checks = vec![];
         let all_components = all_components::<Value>();
 
-        let enabled_components = config.enabled_components().collect_vec();
         for ((name, _size), actual_uses) in zip_eq(builtin_instance_sizes, actual_uses_iter) {
-            let index = all_components.get_index_of(name).unwrap();
-            if !enabled_components[index] {
+            let (index, _name, component) = all_components.get_full(name).unwrap();
+            if component.is_disabled() {
                 // Component is disabled - actual_uses must be 0.
                 eq(context, actual_uses, context.zero());
             }
@@ -418,13 +415,13 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
     fn verify_claim(
         &self,
         context: &mut Context<Value>,
-        config: &ProofConfig,
+        _config: &circuits_stark_verifier::proof::ProofConfig,
         component_sizes: &[Var],
         shifted_relation_uses: &HashMap<&'static str, Var>,
     ) {
         let PublicData { initial_state, final_state, public_memory: _ } = &self.public_data;
 
-        self.verify_builtins(context, config, component_sizes);
+        self.verify_builtins(context, component_sizes);
         // TODO(ilya): Consider adding sanity checks on the content of the program segment.
 
         let CasmState { pc: initial_pc, ap: initial_ap, fp: initial_fp } = initial_state;
