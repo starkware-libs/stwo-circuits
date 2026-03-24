@@ -1,6 +1,7 @@
 // This file was created by the AIR team.
 
 #![allow(unused_parens)]
+#![allow(clippy::too_many_arguments)]
 use crate::witness::components::prelude::*;
 use crate::witness::components::verify_bitwise_xor_8;
 use circuit_air::components::triple_xor::{Claim, InteractionClaim, N_TRACE_COLUMNS};

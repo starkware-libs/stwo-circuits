@@ -1,5 +1,3 @@
-// This file was created by the AIR team.
-
 use super::prelude::*;
 
 pub const N_TRACE_COLUMNS: usize = 4;
@@ -26,7 +24,6 @@ pub fn accumulate_constraints<Value: IValue>(
     });
     let m31_to_u32_output_addr = acc
         .get_preprocessed_column(&PreProcessedColumnId { id: "m31_to_u32_output_addr".to_owned() });
-
     // Use RangeCheck_16.
     let tuple_0 = &[eval!(context, 1008385708), eval!(context, input_u32_limb_0_col1)];
     let numerator_0 = eval!(context, 1);

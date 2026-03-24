@@ -4,7 +4,7 @@ use crate::witness::components::range_check_16;
 use circuit_air::components::m_31_to_u_32::{Claim, InteractionClaim, N_TRACE_COLUMNS};
 use stwo::core::fields::FieldExpOps;
 use stwo::core::fields::qm31::QM31;
-use stwo_cairo_prover::witness::prelude::EqExtend;
+use stwo_cairo_common::prover_types::simd::EqExtend;
 
 pub type InputType = (M31, UInt32);
 pub type PackedInputType = (PackedM31, PackedUInt32);
@@ -163,8 +163,12 @@ pub struct InteractionClaimGenerator {
 impl InteractionClaimGenerator {
     pub fn write_interaction_trace(
         self,
-        common_lookup_elements: &relations::CommonLookupElements,
+        _common_lookup_elements: &relations::CommonLookupElements,
     ) -> (Vec<CircleEvaluation<SimdBackend, M31, BitReversedOrder>>, InteractionClaim) {
+        if self.log_size == 0 {
+            return (vec![], InteractionClaim { claimed_sum: QM31::zero() });
+        }
+        let common_lookup_elements = _common_lookup_elements;
         let mut logup_gen = unsafe { LogupTraceGenerator::uninitialized(self.log_size) };
 
         //Sum logup terms in pairs.
@@ -185,18 +189,18 @@ impl InteractionClaimGenerator {
         let mut col_gen = logup_gen.new_col();
         (col_gen.par_iter_mut(), &self.lookup_data.range_check_16_2, &self.lookup_data.gate_0)
             .into_par_iter()
-            .for_each(|(writer, values0, values1)| {
+            .for_each(|(writer, values0, gate_values)| {
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
-                let denom1: PackedQM31 = common_lookup_elements.combine(values1);
+                let denom1: PackedQM31 = common_lookup_elements.combine(gate_values);
                 writer.write_frac(denom0 + denom1, denom0 * denom1);
             });
         col_gen.finalize_col();
 
         //Sum last logup term.
         let mut col_gen = logup_gen.new_col();
-        (col_gen.par_iter_mut(), &self.lookup_data.gate_1, self.lookup_data.mults_0)
+        (col_gen.par_iter_mut(), &self.lookup_data.gate_1, &self.lookup_data.mults_0)
             .into_par_iter()
-            .for_each(|(writer, values, mults_0)| {
+            .for_each(|(writer, values, &mults_0)| {
                 let denom = common_lookup_elements.combine(values);
                 writer.write_frac(-PackedQM31::one() * mults_0, denom);
             });
