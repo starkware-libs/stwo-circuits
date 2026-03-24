@@ -1,6 +1,7 @@
 // This file was created by the AIR team.
 
 #![allow(unused_parens)]
+#![allow(clippy::too_many_arguments)]
 use crate::witness::components::prelude::*;
 use crate::witness::components::verify_bitwise_xor_4;
 use crate::witness::components::verify_bitwise_xor_7;

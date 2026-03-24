@@ -1,5 +1,5 @@
 use crate::circuit_eval_components::{
-    blake_g, blake_gate, blake_output, blake_round, blake_round_sigma, m_31_to_u_32,
+    blake_g, blake_g_gate, blake_gate, blake_output, blake_round, blake_round_sigma, m_31_to_u_32,
     range_check_15, range_check_16, triple_xor, triple_xor_32, verify_bitwise_xor_4,
     verify_bitwise_xor_7, verify_bitwise_xor_8, verify_bitwise_xor_9, verify_bitwise_xor_12,
 };
@@ -152,6 +152,7 @@ pub fn all_circuit_components<Value: IValue>() -> Vec<Box<dyn CircuitEval<Value>
         Box::new(blake_g::Component {}),
         Box::new(blake_output::Component {}),
         Box::new(triple_xor_32::Component {}),
+        Box::new(blake_g_gate::Component {}),
         Box::new(m_31_to_u_32::Component {}),
         Box::new(triple_xor::Component {}),
         Box::new(verify_bitwise_xor_8::Component {}),

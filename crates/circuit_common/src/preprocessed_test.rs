@@ -196,10 +196,12 @@ fn test_preprocess_decomposed_gates() {
     assert!(m31_mult.iter().all(|&m| m > 0));
 
     // Verify BlakeG columns exist and have correct addresses.
-    let bg_a = pp_trace.get_column(&PreProcessedColumnId { id: "blake_g_a_address".to_owned() });
+    let bg_a =
+        pp_trace.get_column(&PreProcessedColumnId { id: "blake_g_gate_input_addr_a".to_owned() });
     let bg_out_a =
-        pp_trace.get_column(&PreProcessedColumnId { id: "blake_g_out_a_address".to_owned() });
-    let bg_mult = pp_trace.get_column(&PreProcessedColumnId { id: "blake_g_mult".to_owned() });
+        pp_trace.get_column(&PreProcessedColumnId { id: "blake_g_gate_output_addr_a".to_owned() });
+    let bg_mult =
+        pp_trace.get_column(&PreProcessedColumnId { id: "blake_g_gate_multiplicity".to_owned() });
     assert_eq!(bg_a.len(), 16);
     assert_eq!(bg_a[0], 16); // First gate's a = wire 16.
     assert_eq!(bg_out_a[0], 32); // First gate's out_a = wire 32.

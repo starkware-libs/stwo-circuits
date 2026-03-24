@@ -2,14 +2,8 @@ use crate::components::prelude::*;
 
 pub const N_TRACE_COLUMNS: usize = 4;
 pub const RELATION_USES_PER_ROW: [RelationUse; 2] = [
-    RelationUse {
-        relation_id: "Gate",
-        uses: 1,
-    },
-    RelationUse {
-        relation_id: "RangeCheck_16",
-        uses: 3,
-    },
+    RelationUse { relation_id: "Gate", uses: 1 },
+    RelationUse { relation_id: "RangeCheck_16", uses: 3 },
 ];
 
 pub struct Eval {
@@ -92,10 +86,7 @@ impl FrameworkEval for Eval {
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
             E::EF::one(),
-            &[
-                M31_1008385708.clone(),
-                (M31_32767.clone() - input_u32_limb_1_col2.clone()),
-            ],
+            &[M31_1008385708.clone(), (M31_32767.clone() - input_u32_limb_1_col2.clone())],
         ));
 
         //input is zero then limb_low is zero.
@@ -112,11 +103,7 @@ impl FrameworkEval for Eval {
         eval.add_to_relation(RelationEntry::new(
             &self.common_lookup_elements,
             E::EF::one(),
-            &[
-                M31_378353459.clone(),
-                m31_to_u32_input_addr.clone(),
-                input_m31_col0.clone(),
-            ],
+            &[M31_378353459.clone(), m31_to_u32_input_addr.clone(), input_m31_col0.clone()],
         ));
 
         eval.add_to_relation(RelationEntry::new(

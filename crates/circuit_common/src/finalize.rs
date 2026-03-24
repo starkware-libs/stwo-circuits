@@ -1,6 +1,6 @@
 use crate::N_LANES;
 use circuits::blake::{HashValue, blake};
-use circuits::circuit::{M31ToU32Gate, TripleXorGate};
+use circuits::circuit::{BlakeGGate, M31ToU32Gate, TripleXorGate};
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::ivalue::{IValue, qm31_from_u32s};
@@ -54,6 +54,30 @@ fn pad_blake(context: &mut Context<impl IValue>) {
     }
 }
 
+fn pad_blake_g(context: &mut Context<impl IValue>) {
+    let n_rows = context.circuit.blake_g.len();
+    let padded = std::cmp::max(n_rows.next_power_of_two(), N_LANES);
+    let zero = context.zero();
+    for _ in n_rows..padded {
+        let out_a = context.new_var(IValue::from_qm31(0.into()));
+        let out_b = context.new_var(IValue::from_qm31(0.into()));
+        let out_c = context.new_var(IValue::from_qm31(0.into()));
+        let out_d = context.new_var(IValue::from_qm31(0.into()));
+        context.circuit.blake_g.push(BlakeGGate {
+            a: zero.idx,
+            b: zero.idx,
+            c: zero.idx,
+            d: zero.idx,
+            m0: zero.idx,
+            m1: zero.idx,
+            out_a: out_a.idx,
+            out_b: out_b.idx,
+            out_c: out_c.idx,
+            out_d: out_d.idx,
+        });
+    }
+}
+
 fn pad_m31_to_u32(context: &mut Context<impl IValue>) {
     let n_rows = context.circuit.m31_to_u32.len();
     let padded = std::cmp::max(n_rows.next_power_of_two(), N_LANES);
@@ -72,10 +96,12 @@ fn pad_triple_xor(context: &mut Context<impl IValue>) {
     for _ in n_rows..padded {
         // Pad with gates that XOR zeros: 0 ^ 0 ^ 0 = 0.
         let out = context.new_var(IValue::from_qm31(0.into()));
-        context
-            .circuit
-            .triple_xor
-            .push(TripleXorGate { a: zero.idx, b: zero.idx, c: zero.idx, out: out.idx });
+        context.circuit.triple_xor.push(TripleXorGate {
+            a: zero.idx,
+            b: zero.idx,
+            c: zero.idx,
+            out: out.idx,
+        });
     }
 }
 
@@ -102,6 +128,7 @@ pub fn finalize_context(context: &mut Context<impl IValue>) {
     pad_eq(context);
     pad_qm31_ops(context);
     pad_blake(context);
+    pad_blake_g(context);
     pad_m31_to_u32(context);
     pad_triple_xor(context);
 }

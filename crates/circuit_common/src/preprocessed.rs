@@ -397,11 +397,7 @@ fn add_m31_to_u32_to_preprocessed_trace(
     let mut columns: [_; N_M31_TO_U32_PP_COLUMNS] = std::array::from_fn(|_| vec![]);
     fill_m31_to_u32_columns(&circuit.m31_to_u32, multiplicities, &mut columns);
 
-    let ids = [
-        "m31_to_u32_input_addr",
-        "m31_to_u32_output_addr",
-        "m31_to_u32_multiplicity",
-    ];
+    let ids = ["m31_to_u32_input_addr", "m31_to_u32_output_addr", "m31_to_u32_multiplicity"];
     for (id, column) in zip_eq(ids, columns) {
         pp_trace.push_column(PreProcessedColumnId { id: id.to_owned() }, column);
     }
@@ -459,17 +455,17 @@ fn add_blake_g_to_preprocessed_trace(
     fill_blake_g_columns(&circuit.blake_g, multiplicities, &mut columns);
 
     let ids = [
-        "blake_g_a_address",
-        "blake_g_b_address",
-        "blake_g_c_address",
-        "blake_g_d_address",
-        "blake_g_m0_address",
-        "blake_g_m1_address",
-        "blake_g_out_a_address",
-        "blake_g_out_b_address",
-        "blake_g_out_c_address",
-        "blake_g_out_d_address",
-        "blake_g_mult",
+        "blake_g_gate_input_addr_a",
+        "blake_g_gate_input_addr_b",
+        "blake_g_gate_input_addr_c",
+        "blake_g_gate_input_addr_d",
+        "blake_g_gate_input_addr_f0",
+        "blake_g_gate_input_addr_f1",
+        "blake_g_gate_output_addr_a",
+        "blake_g_gate_output_addr_b",
+        "blake_g_gate_output_addr_c",
+        "blake_g_gate_output_addr_d",
+        "blake_g_gate_multiplicity",
     ];
     for (id, column) in zip_eq(ids, columns) {
         pp_trace.push_column(PreProcessedColumnId { id: id.to_owned() }, column);
