@@ -8,7 +8,6 @@ use circuit_air::{CircuitClaim, CircuitInteractionClaim, CircuitInteractionEleme
 use circuit_common::CircuitParams;
 use circuit_common::Qm31OpsTraceGenerator;
 use circuit_common::preprocessed::PreprocessedCircuit;
-use circuits::context::Context;
 use circuits_stark_verifier::proof::Proof;
 use circuits_stark_verifier::proof::{Claim, ProofConfig};
 use circuits_stark_verifier::proof_from_stark_proof::{
@@ -73,16 +72,6 @@ pub fn to_component_provers(
         &components.range_check_16 as &dyn ComponentProver<SimdBackend>,
     ])
     .collect()
-}
-
-pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
-    let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(context);
-    prove_circuit_assignment(
-        context.values(),
-        &preprocessed_circuit,
-        &BaseColumnPool::<SimdBackend>::new(),
-        PcsConfig::default(),
-    )
 }
 
 pub fn prove_circuit_assignment(
