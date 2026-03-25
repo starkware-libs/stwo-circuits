@@ -116,6 +116,7 @@ fn test_verify_privacy_with_recursion() {
         context.values(),
         &preprocessed,
         &BaseColumnPool::<SimdBackend>::new(),
+        PcsConfig::default(),
     );
     // To test with a precomputed preprocessed root, change `None` to
     // `Some(privacy_circuit_preprocessed_root())`.
@@ -144,6 +145,7 @@ fn test_privacy_recursion_with_preprocessed_context() {
         assignment_context.values(),
         &preprocessed,
         &BaseColumnPool::<SimdBackend>::new(),
+        PcsConfig::default(),
     );
     assert!(assignment_proof.stark_proof.is_ok());
 

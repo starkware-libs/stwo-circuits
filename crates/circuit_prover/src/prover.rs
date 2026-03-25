@@ -81,6 +81,7 @@ pub fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
         context.values(),
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
+        PcsConfig::default(),
     )
 }
 
@@ -88,11 +89,11 @@ pub fn prove_circuit_assignment(
     values: &[QM31],
     preprocessed_circuit: &PreprocessedCircuit,
     base_column_pool: &BaseColumnPool<SimdBackend>,
+    pcs_config: PcsConfig,
 ) -> CircuitProof {
     let trace_log_size = preprocessed_circuit.params.trace_log_size;
-    let mut pcs_config = PcsConfig::default();
     let lifting_log_size = trace_log_size + pcs_config.fri_config.log_blowup_factor;
-    pcs_config.lifting_log_size = Some(lifting_log_size);
+    let pcs_config = PcsConfig { lifting_log_size: Some(lifting_log_size), ..pcs_config };
 
     // Precompute twiddles.
     // Account for blowup factor and for composition polynomial calculation (taking the max since

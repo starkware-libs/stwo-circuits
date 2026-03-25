@@ -19,7 +19,7 @@ use stwo::core::air::Component;
 use stwo::core::channel::Blake2sM31Channel;
 use stwo::core::channel::Channel;
 use stwo::core::fields::qm31::QM31;
-use stwo::core::pcs::{CommitmentSchemeVerifier, TreeVec};
+use stwo::core::pcs::{CommitmentSchemeVerifier, PcsConfig, TreeVec};
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 
 // Not a power of 2 so that we can test component padding.
@@ -95,6 +95,7 @@ fn test_prove_and_stark_verify_blake_gate_context() {
         blake_gate_context.values(),
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
+        PcsConfig::default(),
     );
     assert!(stark_proof.is_ok(), "Got error: {}", stark_proof.err().unwrap());
     let proof = stark_proof.unwrap();
@@ -164,6 +165,7 @@ fn test_prove_and_stark_verify_permutation_context() {
         permutation_context.values(),
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
+        PcsConfig::default(),
     );
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
@@ -230,6 +232,7 @@ fn test_prove_and_stark_verify_fibonacci_context() {
         fibonacci_context.values(),
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
+        PcsConfig::default(),
     );
     assert!(stark_proof.is_ok());
     let proof = stark_proof.unwrap();
@@ -291,6 +294,7 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
         fibonacci_context.values(),
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
+        PcsConfig::default(),
     );
 
     let preprocessed_column_ids = preprocessed_circuit.preprocessed_trace.ids();
