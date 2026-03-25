@@ -3,7 +3,7 @@ use num_traits::Zero;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::fields::{cm31::CM31, m31::M31};
 
-use crate::blake::{HashValue, blake_qm31};
+use crate::blake::{HashValue, blake_g_mixing as blake_g_mixing_u32, blake_qm31, pack_u32, unpack_u32};
 
 #[cfg(test)]
 #[path = "ivalue_test.rs"]
@@ -45,6 +45,10 @@ pub trait IValue:
 
     fn blake(input: &[Self], n_bytes: usize) -> HashValue<Self>;
 
+    fn blake_g_mixing(a: Self, b: Self, c: Self, d: Self, m0: Self, m1: Self) -> (Self, Self, Self, Self);
+    fn triple_xor(a: Self, b: Self, c: Self) -> Self;
+    fn m31_to_u32(v: Self) -> Self;
+
     /// Sorts the input by the u coordinate.
     fn sort_by_u_coordinate(input: &[Self]) -> Vec<Self>;
 }
@@ -74,6 +78,22 @@ impl IValue for QM31 {
         blake_qm31(input, n_bytes)
     }
 
+    fn blake_g_mixing(a: Self, b: Self, c: Self, d: Self, m0: Self, m1: Self) -> (Self, Self, Self, Self) {
+        let (ra, rb, rc, rd) = blake_g_mixing_u32(
+            unpack_u32(a), unpack_u32(b), unpack_u32(c), unpack_u32(d),
+            unpack_u32(m0), unpack_u32(m1),
+        );
+        (pack_u32(ra), pack_u32(rb), pack_u32(rc), pack_u32(rd))
+    }
+
+    fn triple_xor(a: Self, b: Self, c: Self) -> Self {
+        pack_u32(unpack_u32(a) ^ unpack_u32(b) ^ unpack_u32(c))
+    }
+
+    fn m31_to_u32(v: Self) -> Self {
+        pack_u32(v.0.0.0)
+    }
+
     fn sort_by_u_coordinate(input: &[Self]) -> Vec<Self> {
         input.iter().cloned().sorted_by_key(|val| val.1.0).collect_vec()
     }
@@ -101,6 +121,18 @@ impl IValue for NoValue {
 
     fn blake(_: &[Self], _: usize) -> HashValue<Self> {
         HashValue(Self, Self)
+    }
+
+    fn blake_g_mixing(_: Self, _: Self, _: Self, _: Self, _: Self, _: Self) -> (Self, Self, Self, Self) {
+        (Self, Self, Self, Self)
+    }
+
+    fn triple_xor(_: Self, _: Self, _: Self) -> Self {
+        Self
+    }
+
+    fn m31_to_u32(_: Self) -> Self {
+        Self
     }
 
     fn sort_by_u_coordinate(input: &[Self]) -> Vec<Self> {

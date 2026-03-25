@@ -1,10 +1,4 @@
-pub mod blake_g;
 pub mod blake_g_gate;
-pub mod blake_gate;
-pub mod blake_message;
-pub mod blake_output;
-pub mod blake_round;
-pub mod blake_round_sigma;
 pub mod eq;
 pub mod m_31_to_u_32;
 pub mod prelude;
@@ -13,7 +7,6 @@ pub mod range_check_15;
 pub mod range_check_16;
 pub mod split_16_low_part_size_9;
 pub mod triple_xor;
-pub mod triple_xor_32;
 pub mod verify_bitwise_xor_12;
 pub mod verify_bitwise_xor_4;
 pub mod verify_bitwise_xor_7;

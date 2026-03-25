@@ -1,9 +1,4 @@
-pub mod blake_g;
 pub mod blake_g_gate;
-pub mod blake_gate;
-pub mod blake_output;
-pub mod blake_round;
-pub mod blake_round_sigma;
 pub mod eq;
 pub mod m_31_to_u_32;
 pub mod prelude;
@@ -12,7 +7,6 @@ pub mod range_check_15;
 pub mod range_check_16;
 pub mod subroutines;
 pub mod triple_xor;
-pub mod triple_xor_32;
 pub mod verify_bitwise_xor_12;
 pub mod verify_bitwise_xor_4;
 pub mod verify_bitwise_xor_7;
@@ -36,12 +30,6 @@ macro_rules! define_component_list {
 define_component_list! {
     Eq,
     Qm31Ops,
-    BlakeGate,
-    BlakeRound,
-    BlakeRoundSigma,
-    BlakeG,
-    BlakeOutput,
-    TripleXor32,
     BlakeGGate,
     M31ToU32,
     TripleXor,
@@ -57,12 +45,6 @@ define_component_list! {
 pub struct CircuitComponents {
     pub eq: eq::Component,
     pub qm31_ops: qm31_ops::Component,
-    pub blake_gate: blake_gate::Component,
-    pub blake_round: blake_round::Component,
-    pub blake_round_sigma: blake_round_sigma::Component,
-    pub blake_g: blake_g::Component,
-    pub blake_output: blake_output::Component,
-    pub triple_xor_32: triple_xor_32::Component,
     pub blake_g_gate: blake_g_gate::Component,
     pub m_31_to_u_32: m_31_to_u_32::Component,
     pub triple_xor: triple_xor::Component,
@@ -100,64 +82,6 @@ impl CircuitComponents {
                 common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
             },
             interaction_claim.claimed_sums[ComponentList::Qm31Ops as usize],
-        );
-        let blake_gate_component = blake_gate::Component::new(
-            tree_span_provider,
-            blake_gate::Eval {
-                claim: blake_gate::Claim {
-                    log_size: circuit_claim.log_sizes[ComponentList::BlakeGate as usize],
-                },
-                common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
-            },
-            interaction_claim.claimed_sums[ComponentList::BlakeGate as usize],
-        );
-        let blake_round_component = blake_round::Component::new(
-            tree_span_provider,
-            blake_round::Eval {
-                claim: blake_round::Claim {
-                    log_size: circuit_claim.log_sizes[ComponentList::BlakeRound as usize],
-                },
-                common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
-            },
-            interaction_claim.claimed_sums[ComponentList::BlakeRound as usize],
-        );
-        let blake_round_sigma_component = blake_round_sigma::Component::new(
-            tree_span_provider,
-            blake_round_sigma::Eval {
-                claim: blake_round_sigma::Claim {},
-                common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
-            },
-            interaction_claim.claimed_sums[ComponentList::BlakeRoundSigma as usize],
-        );
-        let blake_g_component = blake_g::Component::new(
-            tree_span_provider,
-            blake_g::Eval {
-                claim: blake_g::Claim {
-                    log_size: circuit_claim.log_sizes[ComponentList::BlakeG as usize],
-                },
-                common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
-            },
-            interaction_claim.claimed_sums[ComponentList::BlakeG as usize],
-        );
-        let blake_output_component = blake_output::Component::new(
-            tree_span_provider,
-            blake_output::Eval {
-                claim: blake_output::Claim {
-                    log_size: circuit_claim.log_sizes[ComponentList::BlakeOutput as usize],
-                },
-                common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
-            },
-            interaction_claim.claimed_sums[ComponentList::BlakeOutput as usize],
-        );
-        let triple_xor_32_component = triple_xor_32::Component::new(
-            tree_span_provider,
-            triple_xor_32::Eval {
-                claim: triple_xor_32::Claim {
-                    log_size: circuit_claim.log_sizes[ComponentList::TripleXor32 as usize],
-                },
-                common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
-            },
-            interaction_claim.claimed_sums[ComponentList::TripleXor32 as usize],
         );
         let blake_g_gate_component = blake_g_gate::Component::new(
             tree_span_provider,
@@ -248,12 +172,6 @@ impl CircuitComponents {
         Self {
             eq: eq_component,
             qm31_ops: qm31_ops_component,
-            blake_gate: blake_gate_component,
-            blake_round: blake_round_component,
-            blake_round_sigma: blake_round_sigma_component,
-            blake_g: blake_g_component,
-            blake_output: blake_output_component,
-            triple_xor_32: triple_xor_32_component,
             blake_g_gate: blake_g_gate_component,
             m_31_to_u_32: m_31_to_u_32_component,
             triple_xor: triple_xor_component,
@@ -271,12 +189,6 @@ impl CircuitComponents {
         vec![
             Box::new(self.eq) as Box<dyn Component>,
             Box::new(self.qm31_ops) as Box<dyn Component>,
-            Box::new(self.blake_gate) as Box<dyn Component>,
-            Box::new(self.blake_round) as Box<dyn Component>,
-            Box::new(self.blake_round_sigma) as Box<dyn Component>,
-            Box::new(self.blake_g) as Box<dyn Component>,
-            Box::new(self.blake_output) as Box<dyn Component>,
-            Box::new(self.triple_xor_32) as Box<dyn Component>,
             Box::new(self.blake_g_gate) as Box<dyn Component>,
             Box::new(self.m_31_to_u_32) as Box<dyn Component>,
             Box::new(self.triple_xor) as Box<dyn Component>,

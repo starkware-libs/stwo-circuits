@@ -1,6 +1,5 @@
 use crate::circuit_eval_components::{
-    blake_g, blake_g_gate, blake_gate, blake_output, blake_round, blake_round_sigma, m_31_to_u_32,
-    range_check_15, range_check_16, triple_xor, triple_xor_32, verify_bitwise_xor_4,
+    blake_g_gate, m_31_to_u_32, range_check_15, range_check_16, triple_xor, verify_bitwise_xor_4,
     verify_bitwise_xor_7, verify_bitwise_xor_8, verify_bitwise_xor_9, verify_bitwise_xor_12,
 };
 use crate::components::{eq::CircuitEqComponent, qm31_ops::CircuitQm31OpsComponent};
@@ -8,11 +7,11 @@ use circuits::blake::HashValue;
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::ivalue::IValue;
-use circuits::ops::{Guess, div, eq};
+use circuits::ops::{Guess, eq};
 use circuits::simd::Simd;
 use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
-use circuits_stark_verifier::logup::{combine_term, logup_use_term};
+use circuits_stark_verifier::logup::logup_use_term;
 use circuits_stark_verifier::statement::Statement;
 use itertools::{Itertools, zip_eq};
 use stwo::core::fields::qm31::QM31;
@@ -97,30 +96,6 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
             sum = eval!(context, (sum) + (term));
         }
 
-        // Blake IV public logup sum contribution.
-        if self.n_blake_gates > 0 {
-            let initial_state = crate::blake2s_initial_state();
-            let blake_output_relation_id = context.constant(1061955672.into());
-            let iv_state_address = context.zero();
-            let mut logup_terms = vec![blake_output_relation_id, iv_state_address];
-            for &word in &initial_state {
-                let low = context.constant((word & 0xffff).into());
-                let high = context.constant((word >> 16).into());
-                logup_terms.push(low);
-                logup_terms.push(high);
-            }
-            let blake_iv_denom = combine_term(context, &logup_terms, interaction_elements);
-
-            // There are `self.n_blake_gates.next_power_of_two()` BlakeOutput rows, each one uses
-            // the same IV state, either indirectly through a blakeGate or directly in padding rows
-            // of the BlakeOutput component.
-            let n_iv_uses = self.n_blake_gates.next_power_of_two();
-
-            let n_blakes = context.constant((n_iv_uses as u32).into());
-            let blake_iv_yield = div(context, n_blakes, blake_iv_denom);
-            sum = eval!(context, (sum) - (blake_iv_yield));
-        }
-
         sum
     }
 
@@ -146,12 +121,6 @@ pub fn all_circuit_components<Value: IValue>() -> Vec<Box<dyn CircuitEval<Value>
     vec![
         Box::new(CircuitEqComponent {}),
         Box::new(CircuitQm31OpsComponent {}),
-        Box::new(blake_gate::Component {}),
-        Box::new(blake_round::Component {}),
-        Box::new(blake_round_sigma::Component {}),
-        Box::new(blake_g::Component {}),
-        Box::new(blake_output::Component {}),
-        Box::new(triple_xor_32::Component {}),
         Box::new(blake_g_gate::Component {}),
         Box::new(m_31_to_u_32::Component {}),
         Box::new(triple_xor::Component {}),

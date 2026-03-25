@@ -5,7 +5,7 @@ use stwo::core::vcs::blake2_hash::Blake2sHash;
 use stwo::core::{fields::qm31::QM31, vcs::blake2_hash::reduce_to_m31};
 
 use crate::circuit::{Blake, BlakeGGate, M31ToU32Gate, TripleXorGate};
-use crate::context::{Context, TraceContext, Var};
+use crate::context::{Context, Var};
 use crate::eval;
 use crate::ivalue::{IValue, qm31_from_u32s};
 use crate::ops::{Guess, from_partial_evals};
@@ -96,39 +96,7 @@ pub fn blake<Value: IValue>(
     input: &[Var],
     n_bytes: usize,
 ) -> HashValue<Var> {
-    // Sanity check: check the number of bytes is consistent with the number of [QM31] values.
-    assert_eq!(input.len(), n_bytes.div_ceil(16));
-
-    // Compute the hash.
-    let out = Value::blake(&input.iter().map(|v| context.get(*v)).collect::<Vec<_>>(), n_bytes);
-
-    // Pad input with zeros and split into chunks of 4 [QM31] values.
-    let zero_idx = context.zero().idx;
-    let chunks = input
-        .iter()
-        .chunks(4)
-        .into_iter()
-        .map(|chunk| {
-            let mut res = [zero_idx; 4];
-            for (i, v) in chunk.enumerate() {
-                res[i] = v.idx;
-            }
-            res
-        })
-        .collect_vec();
-
-    context.stats.blake_updates += chunks.len();
-    let out_var0 = context.new_var(out.0);
-    let out_var1 = context.new_var(out.1);
-
-    context.circuit.blake.push(Blake {
-        input: chunks,
-        n_bytes,
-        out0: out_var0.idx,
-        out1: out_var1.idx,
-    });
-
-    HashValue(out_var0, out_var1)
+    blake_from_gates(context, input, n_bytes)
 }
 
 pub const BLAKE2S_IV: [u32; 8] = [
@@ -195,14 +163,9 @@ pub fn blake_g_mixing(
 
 type U32Var = U32Wrapper<Var>;
 
-/// Reads a [`U32Var`] from the context and unpacks it to a u32.
-fn read_u32(ctx: &TraceContext, v: U32Var) -> u32 {
-    unpack_u32(ctx.get(*v.get()))
-}
-
 /// Adds a BlakeG gate. All inputs and outputs are [`U32Wrapper`] packed-limbs wires.
-pub fn blake_g_gate(
-    ctx: &mut TraceContext,
+pub fn blake_g_gate<Value: IValue>(
+    ctx: &mut Context<Value>,
     a: U32Var,
     b: U32Var,
     c: U32Var,
@@ -210,19 +173,15 @@ pub fn blake_g_gate(
     m0: U32Var,
     m1: U32Var,
 ) -> (U32Var, U32Var, U32Var, U32Var) {
-    let (a_val, b_val, c_val, d_val) = blake_g_mixing(
-        read_u32(ctx, a),
-        read_u32(ctx, b),
-        read_u32(ctx, c),
-        read_u32(ctx, d),
-        read_u32(ctx, m0),
-        read_u32(ctx, m1),
+    let (a_val, b_val, c_val, d_val) = Value::blake_g_mixing(
+        ctx.get(*a.get()), ctx.get(*b.get()), ctx.get(*c.get()),
+        ctx.get(*d.get()), ctx.get(*m0.get()), ctx.get(*m1.get()),
     );
 
-    let out_a = ctx.new_var(pack_u32(a_val));
-    let out_b = ctx.new_var(pack_u32(b_val));
-    let out_c = ctx.new_var(pack_u32(c_val));
-    let out_d = ctx.new_var(pack_u32(d_val));
+    let out_a = ctx.new_var(a_val);
+    let out_b = ctx.new_var(b_val);
+    let out_c = ctx.new_var(c_val);
+    let out_d = ctx.new_var(d_val);
 
     ctx.stats.blake_g += 1;
     ctx.circuit.blake_g.push(BlakeGGate {
@@ -247,9 +206,14 @@ pub fn blake_g_gate(
 }
 
 /// Adds a TripleXor gate. All operands are [`U32Wrapper`] packed-limbs wires.
-pub fn triple_xor_gate(ctx: &mut TraceContext, a: U32Var, b: U32Var, c: U32Var) -> U32Var {
-    let result = read_u32(ctx, a) ^ read_u32(ctx, b) ^ read_u32(ctx, c);
-    let out = ctx.new_var(pack_u32(result));
+pub fn triple_xor_gate<Value: IValue>(
+    ctx: &mut Context<Value>,
+    a: U32Var,
+    b: U32Var,
+    c: U32Var,
+) -> U32Var {
+    let result = Value::triple_xor(ctx.get(*a.get()), ctx.get(*b.get()), ctx.get(*c.get()));
+    let out = ctx.new_var(result);
 
     ctx.stats.triple_xor += 1;
     ctx.circuit.triple_xor.push(TripleXorGate {
@@ -264,9 +228,8 @@ pub fn triple_xor_gate(ctx: &mut TraceContext, a: U32Var, b: U32Var, c: U32Var) 
 
 /// Converts an M31 wire `(x, 0, 0, 0)` to a [`U32Wrapper`] packed-limbs wire
 /// `(low_u16, high_u15, 0, 0)`.
-pub fn m31_to_u32_gate(ctx: &mut TraceContext, input: Var) -> U32Var {
-    let x = ctx.get(input).0.0.0;
-    let out = ctx.new_var(pack_u32(x));
+pub fn m31_to_u32_gate<Value: IValue>(ctx: &mut Context<Value>, input: Var) -> U32Var {
+    let out = ctx.new_var(Value::m31_to_u32(ctx.get(input)));
 
     ctx.stats.m31_to_u32 += 1;
     ctx.circuit.m31_to_u32.push(M31ToU32Gate { input: input.idx, out: out.idx });
@@ -281,7 +244,7 @@ pub fn m31_to_u32_gate(ctx: &mut TraceContext, input: Var) -> U32Var {
 /// remaining bytes are zero.
 /// For example, if `n_bytes` is 4, only the first coordinate of the [QM31] may be non-zero.
 /// If `n_bytes` is 1, that coordinate must be < 256.
-pub fn blake_from_gates(ctx: &mut TraceContext, input: &[Var], n_bytes: usize) -> HashValue<Var> {
+pub fn blake_from_gates<Value: IValue>(ctx: &mut Context<Value>, input: &[Var], n_bytes: usize) -> HashValue<Var> {
     assert_eq!(input.len(), n_bytes.div_ceil(16));
 
     // Unpack each QM31 containing the message into U32Vars.

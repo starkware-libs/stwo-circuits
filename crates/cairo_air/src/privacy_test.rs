@@ -105,6 +105,8 @@ fn test_verify_privacy_with_recursion() {
 
     let mut context = verify_cairo(&cairo_proof).unwrap();
 
+    eprintln!("Circuit stats: {:#?}", context.stats);
+
     let trace_commitment = cairo_proof.extended_stark_proof.proof.commitments.0[1];
     add_zk_blinding(
         &mut context,
@@ -112,11 +114,50 @@ fn test_verify_privacy_with_recursion() {
         cairo_proof.extended_stark_proof.proof.config.fri_config.n_queries,
     );
     let preprocessed = PreprocessedCircuit::preprocess_circuit(&mut context);
+
+    eprintln!("n_vars (trace size): {}", context.circuit.n_vars);
+    eprintln!("trace_log_size: {}", preprocessed.params.trace_log_size);
+    let pp_log_sizes = preprocessed.preprocessed_trace.log_sizes();
+    eprintln!("preprocessed columns: {}", pp_log_sizes.len());
+    eprintln!("preprocessed log_sizes: {:?}", pp_log_sizes);
+
     let circuit_proof = prove_circuit_assignment(
         context.values(),
         &preprocessed,
         &BaseColumnPool::<SimdBackend>::new(),
     );
+
+    eprintln!("claim log_sizes: {:?}", circuit_proof.claim.log_sizes);
+    let components = &circuit_proof.components;
+    let total_trace_columns: usize = components.iter().map(|c| {
+        c.trace_log_degree_bounds().iter().map(|col| col.len()).sum::<usize>()
+    }).sum();
+    eprintln!("total trace columns across all components: {}", total_trace_columns);
+    for (i, comp) in components.iter().enumerate() {
+        let bounds = comp.trace_log_degree_bounds();
+        let per_tree: Vec<usize> = bounds.iter().map(|v| v.len()).collect();
+        eprintln!("  component {}: {:?} (pp={}, trace={}, interaction={})", i, per_tree, per_tree[0], per_tree[1], per_tree[2]);
+    }
+    let total_pp: usize = components.iter().map(|c| c.trace_log_degree_bounds()[0].len()).sum();
+    let total_base: usize = components.iter().map(|c| c.trace_log_degree_bounds()[1].len()).sum();
+    let total_interaction: usize = components.iter().map(|c| c.trace_log_degree_bounds()[2].len()).sum();
+    eprintln!("TOTALS: pp={}, trace={}, interaction={}, all={}", total_pp, total_base, total_interaction, total_pp + total_base + total_interaction);
+
+    // Total cells (columns * rows) per component.
+    let mut total_cells: u64 = 0;
+    for (i, comp) in components.iter().enumerate() {
+        let bounds = comp.trace_log_degree_bounds();
+        let cells: u64 = bounds.iter().map(|tree| {
+            tree.iter().map(|&log_size| 1u64 << log_size).sum::<u64>()
+        }).sum();
+        total_cells += cells;
+        let n_cols: usize = bounds.iter().map(|v| v.len()).sum();
+        let log_size = circuit_proof.claim.log_sizes[i];
+        eprintln!("  component {} (log={}): {} cols x {} rows = {} cells", i, log_size, n_cols, 1u64 << log_size, cells);
+    }
+    eprintln!("TOTAL CELLS: {}", total_cells);
+    eprintln!("TOTAL CELLS (M): {:.1}M", total_cells as f64 / 1_000_000.0);
+
     // To test with a precomputed preprocessed root, change `None` to
     // `Some(privacy_circuit_preprocessed_root())`.
     verify_circuit_proof(&preprocessed, circuit_proof, None);
@@ -139,13 +180,49 @@ fn test_privacy_recursion_with_preprocessed_context() {
 
     // Prove via the assignment flow: finalize separately, then prove with pre-computed
     // preprocessed data.
+    eprintln!("=== Privacy recursion (cairo proof log_blowup=3) ===");
+    eprintln!("Circuit stats: {:#?}", assignment_context.stats);
     finalize_context(&mut assignment_context);
+
+    eprintln!("n_vars: {}", assignment_context.circuit.n_vars);
+    eprintln!("trace_log_size: {}", preprocessed.params.trace_log_size);
+    let pp_log_sizes = preprocessed.preprocessed_trace.log_sizes();
+    eprintln!("preprocessed columns: {}", pp_log_sizes.len());
+
     let assignment_proof = prove_circuit_assignment(
         assignment_context.values(),
         &preprocessed,
         &BaseColumnPool::<SimdBackend>::new(),
     );
     assert!(assignment_proof.stark_proof.is_ok());
+
+    let pcs = &assignment_proof.pcs_config;
+    eprintln!("Circuit prover PCS config: log_blowup={}, n_queries={}, pow_bits={}",
+        pcs.fri_config.log_blowup_factor, pcs.fri_config.n_queries, pcs.pow_bits);
+
+    let components = &assignment_proof.components;
+    let component_names = ["Eq", "Qm31Ops", "BlakeGGate", "M31ToU32", "TripleXor",
+        "VerifyBitwiseXor8", "VerifyBitwiseXor12", "VerifyBitwiseXor4",
+        "VerifyBitwiseXor7", "VerifyBitwiseXor9", "RangeCheck15", "RangeCheck16"];
+    let mut total_cells: u64 = 0;
+    let mut total_cols = 0usize;
+    for (i, comp) in components.iter().enumerate() {
+        let bounds = comp.trace_log_degree_bounds();
+        let per_tree: Vec<usize> = bounds.iter().map(|v| v.len()).collect();
+        let n_cols: usize = per_tree.iter().sum();
+        let log_size = assignment_proof.claim.log_sizes[i];
+        let rows = 1u64 << log_size;
+        let cells: u64 = bounds.iter().map(|tree| tree.iter().map(|&ls| 1u64 << ls).sum::<u64>()).sum();
+        total_cells += cells;
+        total_cols += n_cols;
+        let name = component_names.get(i).unwrap_or(&"?");
+        eprintln!("  {:20} log={:2}  pp={:2} trace={:3} inter={:3} total={:3}  rows={:>10}  cells={:>12}", name, log_size, per_tree[0], per_tree[1], per_tree[2], n_cols, rows, cells);
+    }
+    eprintln!("  {:20}             pp={:2} trace={:3} inter={:3} total={:3}               cells={:>12} ({:.1}M)", "TOTAL",
+        components.iter().map(|c| c.trace_log_degree_bounds()[0].len()).sum::<usize>(),
+        components.iter().map(|c| c.trace_log_degree_bounds()[1].len()).sum::<usize>(),
+        components.iter().map(|c| c.trace_log_degree_bounds()[2].len()).sum::<usize>(),
+        total_cols, total_cells, total_cells as f64 / 1_000_000.0);
 
     // Prove via the full flow for comparison.
     let mut full_prove_context =

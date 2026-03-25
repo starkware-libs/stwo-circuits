@@ -337,6 +337,9 @@ fn add_blake_to_preprocessed_trace(
         permutation: _,
         output: _,
     } = circuit;
+    if blake.is_empty() {
+        return;
+    }
     let mut blake_columns: [_; N_BLAKE_PP_COLUMNS] = std::array::from_fn(|_| vec![]);
     fill_blake_columns(blake, multiplicities, &mut blake_columns);
 
@@ -652,34 +655,22 @@ impl PreprocessedCircuit {
         // Add QM31 operations columns.
         let qm31_ops_trace_generator =
             add_qm31_ops_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
-        // Add Blake columns.
+        // Add Blake columns (skipped when circuit uses decomposed gates only).
         add_blake_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
-        let log_n_blake_updates = pp_trace
-            .get_column(&PreProcessedColumnId { id: "finalize_flag".to_owned() })
-            .len()
-            .ilog2();
         // Add decomposed gate columns.
         add_m31_to_u32_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
         add_blake_g_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
         add_triple_xor_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
 
-        // Generate seq columns for sizes needed by circuit components:
-        // - 15, 16: needed by range_check_15 and range_check_16.
-        // - 4: needed by blake_sigma.
-        // - log_n_blake_updates: needed by blake_gate component which uses seq_of_component_size.
-        let mut log_seq_sizes = vec![log_n_blake_updates, 4, 15, 16];
+        // Generate seq columns for sizes needed by circuit components.
+        let mut log_seq_sizes = vec![4, 15, 16];
         log_seq_sizes.sort();
         log_seq_sizes.dedup();
 
         PreProcessedTrace::add_non_circuit_preprocessed_columns(&mut pp_trace, &log_seq_sizes);
         pp_trace.sort_by_size();
 
-        // The trace size is the max between:
-        // 1. The largest preprocessed column size.
-        // 2. BlakeG trace size (= number of blake updates * 2^7).
-        let max_pp_trace_log_size = pp_trace.log_sizes().into_iter().max().unwrap();
-        let blake_g_log_size = log_n_blake_updates + 7;
-        let trace_log_size = std::cmp::max(max_pp_trace_log_size, blake_g_log_size);
+        let trace_log_size = pp_trace.log_sizes().into_iter().max().unwrap();
 
         let params = CircuitParams {
             trace_log_size,

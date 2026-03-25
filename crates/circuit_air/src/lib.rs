@@ -77,6 +77,9 @@ fn blake_iv_public_logup_sum(
     n_blake_gates: usize,
     common_lookup_elements: &CommonLookupElements,
 ) -> QM31 {
+    if n_blake_gates == 0 {
+        return QM31::zero();
+    }
     // Each Blake gate uses the initial state once and creates one row in blake_output.
     // Then blake_output is padded to a power of two, and each padding row uses the
     // initial state once. In total we have n_blake_gates.next_power_of_two() uses.

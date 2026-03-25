@@ -43,15 +43,9 @@ fn blake_padding_count(n_blake_compress_rows: usize) -> usize {
     target_blake_compress_rows - n_blake_compress_rows
 }
 
-fn pad_blake(context: &mut Context<impl IValue>) {
-    let n_blake_compress_rows: usize =
-        context.circuit.blake.iter().map(|gate| gate.input.len()).sum();
-    let n_single_block_padding_gates = blake_padding_count(n_blake_compress_rows);
-
-    let zero = context.zero();
-    for _ in 0..n_single_block_padding_gates {
-        circuits::blake::blake(context, &[zero], 1);
-    }
+fn pad_blake(_context: &mut Context<impl IValue>) {
+    // Monolithic blake padding is no longer needed — blake now uses decomposed gates.
+    // Each decomposed gate (blake_g, triple_xor, m31_to_u32) has its own padding.
 }
 
 fn pad_blake_g(context: &mut Context<impl IValue>) {
