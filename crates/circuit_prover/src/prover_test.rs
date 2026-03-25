@@ -280,7 +280,7 @@ fn test_prove_and_stark_verify_fibonacci_context() {
 }
 
 const FIBONACCI_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
-    [623845414, 632928349, 1241137236, 579888351, 1255246133, 1278652435, 1440752206, 143572365];
+    [1625992078, 1553232422, 2029837661, 1220728835, 92443153, 352989348, 1017863105, 760716838];
 
 #[test]
 fn test_prove_and_circuit_verify_fibonacci_context() {

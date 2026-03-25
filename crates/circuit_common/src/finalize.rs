@@ -1,10 +1,9 @@
 use crate::N_LANES;
-use circuits::blake::{HashValue, blake};
 use circuits::circuit::{BlakeGGate, M31ToU32Gate, TripleXorGate};
-use circuits::context::{Context, Var};
+use circuits::context::Context;
 use circuits::eval;
 use circuits::ivalue::{IValue, qm31_from_u32s};
-use circuits::ops::{eq, output};
+use circuits::ops::eq;
 use rand_chacha::rand_core::{RngCore, SeedableRng};
 
 fn pad_qm31_ops(context: &mut Context<impl IValue>) {
@@ -34,18 +33,6 @@ fn pad_eq(context: &mut Context<impl IValue>) {
     for _ in 0..eq_padding {
         circuits::ops::eq(context, zero, zero);
     }
-}
-
-fn blake_padding_count(n_blake_compress_rows: usize) -> usize {
-    let target_blake_compress_rows =
-        std::cmp::max(n_blake_compress_rows.next_multiple_of(N_LANES), N_LANES);
-
-    target_blake_compress_rows - n_blake_compress_rows
-}
-
-fn pad_blake(_context: &mut Context<impl IValue>) {
-    // Monolithic blake padding is no longer needed — blake now uses decomposed gates.
-    // Each decomposed gate (blake_g, triple_xor, m31_to_u32) has its own padding.
 }
 
 fn pad_blake_g(context: &mut Context<impl IValue>) {
@@ -99,29 +86,12 @@ fn pad_triple_xor(context: &mut Context<impl IValue>) {
     }
 }
 
-fn hash_constants(context: &mut Context<impl IValue>) -> HashValue<Var> {
-    let constants: Vec<_> = context.constants().values().copied().collect();
-    let n_bytes = constants.len() * 16;
-    blake(context, &constants, n_bytes)
-}
-
-/// Finalizes the context by appending gates to the context for:
-/// - Hashing the constants.
-/// - Hashing the outputs.
-/// - Padding the components to a power of two.
+/// Finalizes the context by padding the components to a power of two.
 // TODO(Gali): Have it under a trait.
 // TODO(Ilya): Make it pub(crate).
 pub fn finalize_context(context: &mut Context<impl IValue>) {
-    let HashValue(hash0, hash1) = hash_constants(context);
-    // Add the hash of the constants to the outputs.
-    // TODO(Leo): consider storing these values at a fixed address.
-    output(context, hash0);
-    output(context, hash1);
-
-    // Padding the components to a power of two.
     pad_eq(context);
     pad_qm31_ops(context);
-    pad_blake(context);
     pad_blake_g(context);
     pad_m31_to_u32(context);
     pad_triple_xor(context);

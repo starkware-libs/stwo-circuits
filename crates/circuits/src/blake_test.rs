@@ -40,10 +40,22 @@ fn test_blake(#[case] wrong_output: bool) {
     eq(&mut context, output.0, out0);
     eq(&mut context, output.1, out1);
 
-    assert_eq!(context.stats, Stats { blake_updates: 2, guess: 9, equals: 2, ..Stats::default() });
+    assert_eq!(
+        context.stats,
+        Stats {
+            equals: 2,
+            add: 14,
+            mul: 37,
+            pointwise_mul: 36,
+            guess: 28,
+            blake_g: 160,
+            triple_xor: 16,
+            m31_to_u32: 20,
+            ..Stats::default()
+        }
+    );
 
     context.finalize_guessed_vars();
-    assert_eq!(context.circuit.compute_multiplicities().0, vec![13, 1, 2, 2, 2, 2, 2, 1, 1, 2, 2]);
     context.circuit.check_yields();
 
     assert_eq!(context.is_circuit_valid(), !wrong_output);

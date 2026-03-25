@@ -36,7 +36,19 @@ fn test_mix_commitment_regression() {
     );
     assert_eq!(context.get(digest1.1), qm31_from_u32s(1950435309, 1607451911, 2421030, 565867237));
 
-    assert_eq!(context.stats, Stats { blake_updates: 2, guess: 2, ..Stats::default() });
+    assert_eq!(
+        context.stats,
+        Stats {
+            add: 28,
+            mul: 68,
+            pointwise_mul: 64,
+            guess: 20,
+            blake_g: 160,
+            triple_xor: 16,
+            m31_to_u32: 32,
+            ..Stats::default()
+        }
+    );
 
     context.validate_circuit();
 }
