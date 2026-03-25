@@ -9,7 +9,7 @@ use circuit_common::finalize::{add_zk_blinding, finalize_context};
 use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_prover::prover::{
     BaseColumnPool, CircuitProof, SimdBackend, prepare_circuit_proof_for_circuit_verifier,
-    prove_circuit, prove_circuit_assignment,
+    prove_circuit_assignment,
 };
 use circuits::blake::HashValue;
 use circuits::context::Context;
@@ -145,7 +145,13 @@ fn test_privacy_recursion_with_preprocessed_context() {
     // Prove via the full flow for comparison.
     let mut full_prove_context =
         verify_cairo_with_component_set(&cairo_proof, privacy_components()).unwrap();
-    let full_proof = prove_circuit(&mut full_prove_context);
+    let full_preprocessed = PreprocessedCircuit::preprocess_circuit(&mut full_prove_context);
+    let full_proof = prove_circuit_assignment(
+        full_prove_context.values(),
+        &full_preprocessed,
+        &BaseColumnPool::<SimdBackend>::new(),
+        PcsConfig::default(),
+    );
     assert!(full_proof.stark_proof.is_ok());
 
     // Verify both circuit proofs and compare the resulting verifier contexts.
@@ -154,10 +160,8 @@ fn test_privacy_recursion_with_preprocessed_context() {
     let assignment_verifier_context =
         verify_circuit_proof(&preprocessed, assignment_proof, preprocessed_root);
 
-    let full_prove_preprocessed =
-        PreprocessedCircuit::from_finalized_circuit(&full_prove_context.circuit);
     let full_verifier_context =
-        verify_circuit_proof(&full_prove_preprocessed, full_proof, preprocessed_root);
+        verify_circuit_proof(&full_preprocessed, full_proof, preprocessed_root);
 
     // Compare the verifier contexts.
     compare_contexts_topology(&assignment_verifier_context, &full_verifier_context);
