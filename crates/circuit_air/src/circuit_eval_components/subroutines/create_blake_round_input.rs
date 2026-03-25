@@ -69,7 +69,6 @@ pub fn accumulate_constraints<Value: IValue>(
         ],
         context,
         component_data,
-        enabler,
         acc,
     );
 
@@ -77,7 +76,6 @@ pub fn accumulate_constraints<Value: IValue>(
         &[eval!(context, ms_8_bits_col0), eval!(context, 82), eval!(context, xor_col3)],
         context,
         component_data,
-        enabler,
         acc,
     );
 
@@ -89,7 +87,6 @@ pub fn accumulate_constraints<Value: IValue>(
         ],
         context,
         component_data,
-        enabler,
         acc,
     );
 
@@ -97,7 +94,6 @@ pub fn accumulate_constraints<Value: IValue>(
         &[eval!(context, ms_8_bits_col1), eval!(context, 81), eval!(context, xor_col5)],
         context,
         component_data,
-        enabler,
         acc,
     );
     vec![
