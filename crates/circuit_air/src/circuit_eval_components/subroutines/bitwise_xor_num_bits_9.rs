@@ -10,7 +10,6 @@ pub fn accumulate_constraints<Value: IValue>(
     input: &[Var],
     context: &mut Context<Value>,
     component_data: &dyn ComponentDataTrait<Value>,
-    enabler: Var,
     acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
     let [bitwise_xor_num_bits_9_input_limb_0, bitwise_xor_num_bits_9_input_limb_1, xor_col0] =
@@ -23,7 +22,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, bitwise_xor_num_bits_9_input_limb_1),
         eval!(context, xor_col0),
     ];
-    let numerator_0 = eval!(context, enabler);
+    let numerator_0 = eval!(context, 1);
     acc.add_to_relation(context, numerator_0, tuple_0);
     vec![]
 }
