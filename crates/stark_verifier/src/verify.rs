@@ -93,7 +93,8 @@ pub fn verify<Value: IValue>(
     channel.mix_qm31s(context, [n_components]);
 
     // TODO(Gali): Don't mix the enable bits.
-    let enable_bits = config.enabled_components().collect_vec();
+    let enable_bits =
+        statement.get_components().iter().map(|component| !component.is_disabled()).collect_vec();
     let packed_enable_bits =
         pack_enable_bits(&enable_bits).into_iter().map(|qm31| context.constant(qm31)).collect_vec();
     channel.mix_qm31s(context, packed_enable_bits);
@@ -131,7 +132,7 @@ pub fn verify<Value: IValue>(
 
     let shifted_relation_uses = check_relation_uses(context, statement, &component_sizes_bits);
     let unpacked_component_sizes = Simd::unpack(context, &component_sizes);
-    statement.verify_claim(context, config, &unpacked_component_sizes, &shifted_relation_uses);
+    statement.verify_claim(context, &unpacked_component_sizes, &shifted_relation_uses);
 
     // Compute the composition evaluation at the OODS point from `proof.*_at_oods` and compare
     // to `proof.composition_eval_at_oods`.
