@@ -469,17 +469,11 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         );
     }
 
-    fn verify_preprocessed_root(
-        &self,
-        context: &mut Context<Value>,
-        preprocessed_root: HashValue<Var>,
-    ) {
-        let expected_preprocessed_root = HashValue(
+    fn get_preprocessed_root(&self, context: &mut Context<Value>) -> HashValue<Var> {
+        HashValue(
             context.constant(self.preprocessed_root.0),
             context.constant(self.preprocessed_root.1),
-        );
-        eq(context, preprocessed_root.0, expected_preprocessed_root.0);
-        eq(context, preprocessed_root.1, expected_preprocessed_root.1);
+        )
     }
 }
 

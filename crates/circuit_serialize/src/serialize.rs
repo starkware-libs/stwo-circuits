@@ -21,7 +21,6 @@ pub fn serialize_proof_with_config(
 ) {
     let Proof {
         channel_salt,
-        preprocessed_root,
         trace_root,
         interaction_root,
         composition_polynomial_root,
@@ -38,7 +37,6 @@ pub fn serialize_proof_with_config(
     } = proof;
 
     CircuitSerialize::serialize(channel_salt, output);
-    CircuitSerialize::serialize(preprocessed_root, output);
     CircuitSerialize::serialize(trace_root, output);
     CircuitSerialize::serialize(interaction_root, output);
     CircuitSerialize::serialize(composition_polynomial_root, output);

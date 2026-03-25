@@ -103,7 +103,6 @@ pub fn deserialize_proof_with_config(
     config: &ProofConfig,
 ) -> DeserializeResult<Proof<QM31>> {
     let channel_salt = QM31::deserialize(data)?;
-    let preprocessed_root = HashValue::<QM31>::deserialize(data)?;
     let trace_root = HashValue::<QM31>::deserialize(data)?;
     let interaction_root = HashValue::<QM31>::deserialize(data)?;
     let composition_polynomial_root = HashValue::<QM31>::deserialize(data)?;
@@ -120,7 +119,6 @@ pub fn deserialize_proof_with_config(
 
     Ok(Proof {
         channel_salt,
-        preprocessed_root,
         trace_root,
         interaction_root,
         composition_polynomial_root,

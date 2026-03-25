@@ -70,9 +70,9 @@ pub fn verify<Value: IValue>(
         .collect_vec();
     channel.mix_qm31s(context, pcs_config_vars);
 
-    // Mix the trace commitments into the channel.
-    statement.verify_preprocessed_root(context, proof.preprocessed_root);
-    channel.mix_commitment(context, proof.preprocessed_root);
+    // Mix the preprocessed root (known from the statement) into the channel.
+    let preprocessed_root = statement.get_preprocessed_root(context);
+    channel.mix_commitment(context, preprocessed_root);
 
     let component_log_sizes =
         Simd::from_packed(proof.claim.packed_component_log_sizes.clone(), config.n_components);
@@ -226,7 +226,10 @@ pub fn verify<Value: IValue>(
         &proof.eval_domain_samples,
         &proof.eval_domain_auth_paths,
         &bits,
-        &proof.merkle_roots(),
+        &{
+            let [trace, interaction, composition] = proof.merkle_roots();
+            [preprocessed_root, trace, interaction, composition]
+        },
     );
 
     // Compute FRI input.
