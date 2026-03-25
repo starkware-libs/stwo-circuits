@@ -9,7 +9,7 @@ use circuit_common::finalize::{add_zk_blinding, finalize_context};
 use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_prover::prover::{
     BaseColumnPool, CircuitProof, SimdBackend, prepare_circuit_proof_for_circuit_verifier,
-    prove_circuit, prove_circuit_assignment,
+    prove_circuit_assignment,
 };
 use circuits::blake::HashValue;
 use circuits::context::Context;
@@ -32,6 +32,16 @@ use crate::verify::build_cairo_verifier_circuit;
 
 fn privacy_circuit_preprocessed_root() -> HashValue<QM31> {
     PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT.into()
+}
+
+fn prove_circuit(context: &mut Context<QM31>) -> CircuitProof {
+    let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(context);
+    prove_circuit_assignment(
+        context.values(),
+        &preprocessed_circuit,
+        &BaseColumnPool::<SimdBackend>::new(),
+        PcsConfig::default(),
+    )
 }
 
 /// Verifies with a circuit a proof of execution of another circuit.
