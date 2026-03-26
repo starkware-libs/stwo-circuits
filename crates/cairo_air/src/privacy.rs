@@ -18,11 +18,12 @@ use crate::verify::{CairoVerifierConfig, get_preprocessed_root};
 pub mod test;
 
 pub const PRIVACY_CAIRO_VERIFIER_CONSTS_HASH: [u32; 8] =
-    [0, 0, 0, 0, 0, 0, 0, 0]; // recompute after rebase
+    [1512880553, 525479473, 1585436940, 1475597139, 1800990449, 1975251348, 2001100946, 299744987];
 
 pub const PRIVACY_RECURSION_CIRCUIT_CONSTS_HASH: [u32; 8] =
-    [0, 0, 0, 0, 0, 0, 0, 0]; // recompute after rebase
+    [2022562963, 1603214417, 2039203382, 1731270385, 331501505, 1117559213, 1393505714, 1996309692];
 
+// TODO(constants-infra): Recompute after constants infrastructure change stabilizes.
 pub const PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
     [508568022, 560796586, 23051264, 1581025607, 2142614309, 1977417935, 764169026, 1105472291];
 

@@ -98,15 +98,13 @@ fn test_broadcast_constants() {
 
 #[test]
 fn test_intermediate_shadows_constant() {
-    // Regression: decomposing 30000 with base=100 creates intermediate a*base=300.
-    // If constant 300 is also requested, it must get its yield from that intermediate gate,
-    // not be skipped.
+    // Regression: if decomposing one constant creates an intermediate whose value matches
+    // another requested constant, the intermediate gate must output to the reserved Var idx.
+    // E.g. with base=256: decomposing 131584 = 2*256^2 + 0*256 + 0 creates intermediate
+    // 2*256 = 512. If constant 512 is also requested, it must get its yield from that Mul gate.
     let mut context = TraceContext::default();
-    for i in 0u32..101 {
-        context.constant(i.into());
-    }
-    context.constant(300u32.into());
-    context.constant(30000u32.into());
+    context.constant(512u32.into());
+    context.constant(131584u32.into()); // 2*256*256 + 0*256 + 0
     finalize_constants(&mut context);
     context.finalize_guessed_vars();
     context.circuit.check_yields();
