@@ -1,6 +1,5 @@
 use std::fmt;
 
-use num_traits::Zero;
 use stwo::core::fields::m31::{M31, P};
 use stwo::core::fields::qm31::QM31;
 
@@ -143,15 +142,7 @@ fn deserialize_claim(data: &mut &[u8], config: &ProofConfig) -> DeserializeResul
         take_bytes(data, n_components.next_multiple_of(4))?.iter().map(|&b| b as u32).collect();
     let packed_component_log_sizes = pack_component_log_sizes(&log_sizes);
 
-    // Only enabled components have serialized claimed sums; disabled get zero.
-    let mut claimed_sums = Vec::with_capacity(n_components);
-    for enabled in config.enabled_components() {
-        if enabled {
-            claimed_sums.push(QM31::deserialize(data)?);
-        } else {
-            claimed_sums.push(QM31::zero());
-        }
-    }
+    let claimed_sums = deserialize_vec(data, n_components)?;
 
     Ok(Claim { packed_component_log_sizes, claimed_sums })
 }

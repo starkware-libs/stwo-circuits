@@ -1,4 +1,3 @@
-use itertools::zip_eq;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 
@@ -7,49 +6,47 @@ use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::fri_proof::{FriCommitProof, FriProof, FriWitness};
 use circuits_stark_verifier::merkle::{AuthPath, AuthPaths};
 use circuits_stark_verifier::oods::EvalDomainSamples;
-use circuits_stark_verifier::proof::{Claim, InteractionAtOods, Proof, ProofConfig};
+use circuits_stark_verifier::proof::{Claim, InteractionAtOods, Proof};
 use circuits_stark_verifier::verify::LOG_SIZE_BITS;
 
 pub trait CircuitSerialize {
     fn serialize(&self, output: &mut Vec<u8>);
 }
 
-pub fn serialize_proof_with_config(
-    proof: &Proof<QM31>,
-    output: &mut Vec<u8>,
-    config: &ProofConfig,
-) {
-    let Proof {
-        channel_salt,
-        trace_root,
-        interaction_root,
-        composition_polynomial_root,
-        preprocessed_columns_at_oods,
-        trace_at_oods,
-        composition_eval_at_oods,
-        claim,
-        interaction_at_oods,
-        eval_domain_samples,
-        eval_domain_auth_paths,
-        pow_nonce,
-        interaction_pow_nonce,
-        fri,
-    } = proof;
+impl CircuitSerialize for Proof<QM31> {
+    fn serialize(&self, output: &mut Vec<u8>) {
+        let Self {
+            channel_salt,
+            trace_root,
+            interaction_root,
+            composition_polynomial_root,
+            preprocessed_columns_at_oods,
+            trace_at_oods,
+            composition_eval_at_oods,
+            claim,
+            interaction_at_oods,
+            eval_domain_samples,
+            eval_domain_auth_paths,
+            pow_nonce,
+            interaction_pow_nonce,
+            fri,
+        } = self;
 
-    CircuitSerialize::serialize(channel_salt, output);
-    CircuitSerialize::serialize(trace_root, output);
-    CircuitSerialize::serialize(interaction_root, output);
-    CircuitSerialize::serialize(composition_polynomial_root, output);
-    serialize_claim(claim, output, config);
-    CircuitSerialize::serialize(preprocessed_columns_at_oods.as_slice(), output);
-    CircuitSerialize::serialize(trace_at_oods.as_slice(), output);
-    CircuitSerialize::serialize(interaction_at_oods.as_slice(), output);
-    CircuitSerialize::serialize(composition_eval_at_oods, output);
-    CircuitSerialize::serialize(eval_domain_samples, output);
-    CircuitSerialize::serialize(eval_domain_auth_paths, output);
-    CircuitSerialize::serialize(pow_nonce, output);
-    CircuitSerialize::serialize(interaction_pow_nonce, output);
-    CircuitSerialize::serialize(fri, output);
+        channel_salt.serialize(output);
+        trace_root.serialize(output);
+        interaction_root.serialize(output);
+        composition_polynomial_root.serialize(output);
+        claim.serialize(output);
+        preprocessed_columns_at_oods.as_slice().serialize(output);
+        trace_at_oods.as_slice().serialize(output);
+        interaction_at_oods.as_slice().serialize(output);
+        composition_eval_at_oods.serialize(output);
+        eval_domain_samples.serialize(output);
+        eval_domain_auth_paths.serialize(output);
+        pow_nonce.serialize(output);
+        interaction_pow_nonce.serialize(output);
+        fri.serialize(output);
+    }
 }
 
 impl CircuitSerialize for M31 {
@@ -92,22 +89,19 @@ impl CircuitSerialize for HashValue<QM31> {
     }
 }
 
-fn serialize_claim(claim: &Claim<QM31>, output: &mut Vec<u8>, config: &ProofConfig) {
-    let Claim { packed_component_log_sizes, claimed_sums } = claim;
+impl CircuitSerialize for Claim<QM31> {
+    fn serialize(&self, output: &mut Vec<u8>) {
+        let Self { packed_component_log_sizes, claimed_sums } = self;
 
-    // Pack log sizes: 1 per u8 (requires `LOG_SIZE_BITS` <= 8).
-    assert!(LOG_SIZE_BITS as usize <= 8);
-    for qm31 in packed_component_log_sizes {
-        for m31 in qm31.to_m31_array().into_iter() {
-            output.push((m31.0 & 0xFF) as u8);
+        // Pack log sizes: 1 per u8 (requires `LOG_SIZE_BITS` <= 8).
+        assert!(LOG_SIZE_BITS as usize <= 8);
+        for qm31 in packed_component_log_sizes {
+            for m31 in qm31.to_m31_array().into_iter() {
+                output.push((m31.0 & 0xFF) as u8);
+            }
         }
-    }
 
-    // Only serialize claimed sums for enabled components (disabled have zero claimed sum).
-    for (claimed_sum, enabled) in zip_eq(claimed_sums, config.enabled_components()) {
-        if enabled {
-            claimed_sum.serialize(output);
-        }
+        claimed_sums.serialize(output);
     }
 }
 
