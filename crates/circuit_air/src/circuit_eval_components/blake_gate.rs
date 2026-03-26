@@ -242,7 +242,6 @@ pub fn accumulate_constraints<Value: IValue>(
         ],
         context,
         component_data,
-        compress_enabler,
         acc,
     )
     .try_into()
