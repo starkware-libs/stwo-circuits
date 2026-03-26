@@ -73,28 +73,24 @@ impl CreateBlakeRoundInput {
             [split_16_low_part_size_8_output_tmp_4d188_1_limb_0.clone(), M31_127.clone()],
             xor_col2.clone(),
             common_lookup_elements,
-            enabler.clone(),
             eval,
         );
         BitwiseXorNumBits8::evaluate(
             [ms_8_bits_col0.clone(), M31_82.clone()],
             xor_col3.clone(),
             common_lookup_elements,
-            enabler.clone(),
             eval,
         );
         BitwiseXorNumBits8::evaluate(
             [split_16_low_part_size_8_output_tmp_4d188_3_limb_0.clone(), M31_14.clone()],
             xor_col4.clone(),
             common_lookup_elements,
-            enabler.clone(),
             eval,
         );
         BitwiseXorNumBits8::evaluate(
             [ms_8_bits_col1.clone(), M31_81.clone()],
             xor_col5.clone(),
             common_lookup_elements,
-            enabler.clone(),
             eval,
         );
         [
