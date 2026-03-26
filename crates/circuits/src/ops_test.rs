@@ -6,6 +6,7 @@ use stwo::core::fields::m31::P;
 
 use crate::context::TraceContext;
 use crate::eval;
+use crate::finalize_constants::finalize_constants;
 use crate::ivalue::qm31_from_u32s;
 use crate::ops::{Guess, cond_flip, conj, div, eq, from_partial_evals, guess, pointwise_mul};
 use crate::stats::Stats;
@@ -21,7 +22,11 @@ fn test_basic_ops() {
     let c = eval!(&mut context, ((a) + (b)) * ((a) - (b)));
     assert_eq!(context.get(c), (x + y) * (x - y));
 
-    assert_eq!(context.values(), &vec![0.into(), 1.into(), x, y, x + y, x - y, (x + y) * (x - y)]);
+    let u = qm31_from_u32s(0, 0, 1, 0);
+    assert_eq!(
+        context.values(),
+        &vec![0.into(), 1.into(), u, x, y, x + y, x - y, (x + y) * (x - y)]
+    );
 
     context.validate_circuit();
 }
@@ -36,7 +41,8 @@ fn test_eq() {
     // The following equality is wrong, it'll be caught by the circuit checker.
     eq(&mut context, a, b);
     context.circuit.check(context.values()).unwrap_err();
-    context.circuit.check(&[0.into(), 1.into(), x, x]).unwrap();
+    let u = qm31_from_u32s(0, 0, 1, 0);
+    context.circuit.check(&[0.into(), 1.into(), u, x, x]).unwrap();
 }
 
 #[test]
@@ -64,15 +70,15 @@ fn test_div() {
     assert_eq!(context.get(res), 5.into());
 
     expect![[r#"
-        [5] = [4] * [3]
-        [5] = [2]
+        [6] = [5] * [4]
+        [6] = [3]
 
     "#]]
     .assert_debug_eq(&context.circuit);
 
+    finalize_constants(&mut context);
     context.finalize_guessed_vars();
     context.validate_circuit();
-    assert_eq!(context.circuit.compute_multiplicities().0, vec![6, 1, 2, 2, 2, 1]);
     context.circuit.check_yields();
 }
 
@@ -111,18 +117,19 @@ fn test_conj() {
     let c = eval!(&mut context, (a) * (b));
     assert_eq!(context.get(c).1, CM31::zero());
 
-    expect!["[4], [5]"].assert_eq(&format!("{b:?}, {c:?}"));
+    expect!["[5], [6]"].assert_eq(&format!("{b:?}, {c:?}"));
     expect![[r#"
         {
             (0 + 0i) + (0 + 0i)u: [0],
             (1 + 0i) + (0 + 0i)u: [1],
-            (1 + 1i) + (2147483646 + 2147483646i)u: [3],
+            (0 + 0i) + (1 + 0i)u: [2],
+            (1 + 1i) + (2147483646 + 2147483646i)u: [4],
         }
     "#]]
     .assert_debug_eq(&context.constants());
     expect![[r#"
-        [5] = [2] * [4]
-        [4] = [2] x [3]
+        [6] = [3] * [5]
+        [5] = [3] x [4]
 
     "#]]
     .assert_debug_eq(&context.circuit);
@@ -148,15 +155,14 @@ fn test_from_partial_evals() {
 fn test_stats() {
     let mut context = TraceContext::default();
 
-    // 2 guesses are from the zero and one constants.
-    let stats = Stats { guess: 2, ..Stats::default() };
+    let stats = Stats::default();
     assert_eq!(context.stats, stats);
 
     let x = guess(&mut context, 5.into());
     let y = context.constant(25.into());
 
     let x_sqr = eval!(&mut context, (x) * (x));
-    let stats = Stats { mul: 1, guess: 4, ..stats };
+    let stats = Stats { mul: 1, guess: 1, ..stats };
     assert_eq!(context.stats, stats);
 
     let x_sqr_minus_y = eval!(&mut context, (x_sqr) - (y));

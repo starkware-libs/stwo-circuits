@@ -261,6 +261,7 @@ fn test_public_logup_sum() {
     assert_eq!(result_value, expected);
 
     // Validate the circuit
+    circuits::finalize_constants::finalize_constants(&mut context);
     context.check_vars_used();
     context.finalize_guessed_vars();
     context.circuit.check_yields();

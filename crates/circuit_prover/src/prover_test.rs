@@ -79,6 +79,7 @@ pub fn build_blake_gate_context() -> Context<QM31> {
 #[test]
 fn test_prove_and_stark_verify_blake_gate_context() {
     let mut blake_gate_context = build_blake_gate_context();
+    circuits::finalize_constants::finalize_constants(&mut blake_gate_context);
     blake_gate_context.finalize_guessed_vars();
     blake_gate_context.validate_circuit();
 
@@ -149,6 +150,7 @@ fn test_prove_and_stark_verify_blake_gate_context() {
 #[test]
 fn test_prove_and_stark_verify_permutation_context() {
     let mut permutation_context = build_permutation_context();
+    circuits::finalize_constants::finalize_constants(&mut permutation_context);
     permutation_context.finalize_guessed_vars();
     permutation_context.validate_circuit();
 
@@ -216,6 +218,7 @@ fn test_prove_and_stark_verify_permutation_context() {
 #[test]
 fn test_prove_and_stark_verify_fibonacci_context() {
     let mut fibonacci_context = build_fibonacci_context();
+    circuits::finalize_constants::finalize_constants(&mut fibonacci_context);
     fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
 
@@ -281,11 +284,12 @@ fn test_prove_and_stark_verify_fibonacci_context() {
 }
 
 const FIBONACCI_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
-    [941288497, 2016512921, 1400906859, 921304346, 725229321, 1512211411, 216784080, 578042533];
+    [1516680779, 1707131143, 546321957, 2052124516, 1923386778, 1095741350, 1500093873, 2067325542];
 
 #[test]
 fn test_prove_and_circuit_verify_fibonacci_context() {
     let mut fibonacci_context = build_fibonacci_context();
+    circuits::finalize_constants::finalize_constants(&mut fibonacci_context);
     fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
 
