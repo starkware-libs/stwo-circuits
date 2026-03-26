@@ -28,7 +28,7 @@ use stwo_cairo_dev_utils::vm_utils::{ProgramType, run_and_adapt};
 use stwo_cairo_prover::prover::{ChannelHash, ProverParameters, prove_cairo};
 
 use crate::all_components::all_components;
-use crate::preprocessed_columns::{CANONICAL_SMALL_PREPROCESSED_COLUMNS, MAX_SEQUENCE_LOG_SIZE};
+use crate::preprocessed_columns::MAX_SEQUENCE_LOG_SIZE;
 use crate::statement::{CairoStatement, MEMORY_VALUES_LIMBS, PUBLIC_DATA_LEN};
 use crate::utils::get_proof_file_path;
 use crate::verify::{
@@ -75,7 +75,7 @@ pub fn verify_cairo_with_component_set(
 
     let proof_config = ProofConfig::from_components(
         &components,
-        CANONICAL_SMALL_PREPROCESSED_COLUMNS.len(),
+        cairo_proof.preprocessed_trace_variant.to_preprocessed_trace().ids().len(),
         &cairo_proof.extended_stark_proof.proof.config,
         INTERACTION_POW_BITS,
     );
@@ -91,13 +91,13 @@ pub fn verify_cairo_with_component_set(
         .map(|chunk| array::from_fn(|i| M31::from_u32_unchecked(chunk[i])))
         .collect();
 
+    let ppt_root = cairo_proof.extended_stark_proof.proof.commitments[0];
     let verifier_config = CairoVerifierConfig {
-        preprocessed_root: get_preprocessed_root(
-            proof_config.log_evaluation_domain_size().try_into().unwrap(),
-        ),
+        preprocessed_root: ppt_root.into(),
         proof_config,
         program,
         n_outputs: cairo_proof.claim.public_data.public_memory.output.len(),
+        preprocessed_trace_variant: cairo_proof.preprocessed_trace_variant,
     };
 
     verify_fixed_cairo_circuit(&verifier_config, proof, public_claim, outputs)
@@ -123,6 +123,7 @@ fn test_verify() {
         outputs,
         program,
         get_preprocessed_root(20 + pcs_config.fri_config.log_blowup_factor),
+        PreProcessedTraceVariant::CanonicalSmall,
     );
     // Remove the pedersen points table component since it requires long preprocessed columns, which
     // are not supported.
@@ -146,7 +147,9 @@ fn test_verify() {
 #[test]
 fn test_verify_all_opcodes() {
     let proof_path = get_proof_file_path("all_opcode_components");
-    let low_blowup_factor = 2;
+    let preprocessed_trace_variant = PreProcessedTraceVariant::Canonical;
+    let low_blowup_factor = 1;
+    let trace_log_size = 25;
 
     if std::env::var("FIX_PROOF").is_ok() {
         let compiled_program =
@@ -156,11 +159,11 @@ fn test_verify_all_opcodes() {
             channel_hash: ChannelHash::Blake2sM31,
             pcs_config: PcsConfig {
                 pow_bits: 26,
-                // Fold step = 3.
-                fri_config: FriConfig::new(0, low_blowup_factor, 70, 3),
-                lifting_log_size: Some(20 + low_blowup_factor),
+                // Fold step = 4.
+                fri_config: FriConfig::new(0, low_blowup_factor, 70, 4),
+                lifting_log_size: Some(trace_log_size + low_blowup_factor),
             },
-            preprocessed_trace: PreProcessedTraceVariant::CanonicalSmall,
+            preprocessed_trace: preprocessed_trace_variant,
             channel_salt: 0,
             store_polynomials_coefficients: true,
             include_all_preprocessed_columns: true,

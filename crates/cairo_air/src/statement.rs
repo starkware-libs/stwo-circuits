@@ -2,6 +2,7 @@ use std::array;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use cairo_air::PreProcessedTraceVariant;
 use cairo_air::components::memory_address_to_id::MEMORY_ADDRESS_TO_ID_SPLIT;
 use cairo_air::relations::{
     MEMORY_ADDRESS_TO_ID_RELATION_ID, MEMORY_ID_TO_BIG_RELATION_ID, OPCODES_RELATION_ID,
@@ -23,7 +24,7 @@ use stwo_cairo_common::builtins::{
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 use crate::all_components::all_components;
-use crate::preprocessed_columns::{CANONICAL_SMALL_PREPROCESSED_COLUMNS, MAX_SEQUENCE_LOG_SIZE};
+use crate::preprocessed_columns::MAX_SEQUENCE_LOG_SIZE;
 use circuits::context::{Context, Var};
 use circuits::ivalue::{IValue, qm31_from_u32s};
 use circuits::simd::Simd;
@@ -154,6 +155,7 @@ pub struct CairoStatement<Value: IValue> {
     pub program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
     pub packed_outputs: Simd,
     pub preprocessed_root: HashValue<QM31>,
+    pub preprocessed_trace_variant: PreProcessedTraceVariant,
 }
 
 impl<Value: IValue> CairoStatement<Value> {
@@ -276,9 +278,18 @@ impl<Value: IValue> CairoStatement<Value> {
         outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
         program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
         preprocessed_root: HashValue<QM31>,
+        preprocessed_trace_variant: PreProcessedTraceVariant,
     ) -> Self {
         let components = all_components().into_values().collect_vec();
-        Self::new_ex(context, public_data, outputs, program, components, preprocessed_root)
+        Self::new_ex(
+            context,
+            public_data,
+            outputs,
+            program,
+            components,
+            preprocessed_root,
+            preprocessed_trace_variant,
+        )
     }
 
     pub fn new_ex(
@@ -288,6 +299,7 @@ impl<Value: IValue> CairoStatement<Value> {
         program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
         components: Vec<Box<dyn CircuitEval<Value>>>,
         preprocessed_root: HashValue<QM31>,
+        preprocessed_trace_variant: PreProcessedTraceVariant,
     ) -> Self {
         let packed_public_data = pack_into_qm31s(public_data.iter().cloned())
             .into_iter()
@@ -315,6 +327,7 @@ impl<Value: IValue> CairoStatement<Value> {
             packed_outputs,
             components,
             preprocessed_root,
+            preprocessed_trace_variant,
         }
     }
 }
@@ -332,6 +345,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
             program,
             packed_outputs,
             preprocessed_root: _preprocessed_root,
+            preprocessed_trace_variant: _preprocessed_trace_variant,
         } = self;
         let program_len = context.constant(qm31_from_u32s(program.len() as u32, 0, 0, 0));
 
@@ -380,10 +394,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
     }
 
     fn get_preprocessed_column_ids(&self) -> Vec<PreProcessedColumnId> {
-        CANONICAL_SMALL_PREPROCESSED_COLUMNS
-            .iter()
-            .map(|id| PreProcessedColumnId { id: id.to_string() })
-            .collect()
+        self.preprocessed_trace_variant.to_preprocessed_trace().ids()
     }
 
     fn public_params(&self, _context: &mut Context<Value>) -> HashMap<String, Var> {
