@@ -1,5 +1,6 @@
 use std::array;
 use std::collections::HashMap;
+use std::ptr;
 use std::sync::Arc;
 
 use cairo_air::components::memory_address_to_id::MEMORY_ADDRESS_TO_ID_SPLIT;
@@ -162,25 +163,27 @@ impl<Value: IValue> CairoStatement<Value> {
     /// Assumes that the start and end addresses of the segment ranges are less than 2^27 (this is
     /// guaranteed by `segment_ranges_logup_sum`).
     pub fn verify_builtins(&self, context: &mut Context<Value>, component_sizes: &[Var]) {
-        let [
-            output_segment_range,
-            pedersen_segment_range,
-            range_check_128_segment_range,
-            ecdsa_segment_range,
-            bitwise_segment_range,
-            ec_op_segment_range,
-            keccak_segment_range,
-            poseidon_segment_range,
-            range_check96_segment_range,
-            add_mod_segment_range,
-            mul_mod_segment_range,
-        ] = &self.public_data.public_memory.segment_ranges;
+        let [output_segment_range, builtin_segment_ranges @ ..] =
+            &self.public_data.public_memory.segment_ranges;
 
         // Validate the output segment range.
         let diff =
             eval!(context, (output_segment_range.end.value) - (output_segment_range.start.value));
         let n_outputs = context.constant((self.packed_outputs.len() / MEMORY_VALUES_LIMBS).into());
         eq(context, diff, n_outputs);
+
+        let [
+            pedersen_segment_range,
+            range_check_128_segment_range,
+            _ecdsa_segment_range,
+            bitwise_segment_range,
+            _ec_op_segment_range,
+            _keccak_segment_range,
+            poseidon_segment_range,
+            _range_check96_segment_range,
+            _add_mod_segment_range,
+            _mul_mod_segment_range,
+        ] = builtin_segment_ranges;
 
         let supported_builtins = [
             pedersen_segment_range,
@@ -253,18 +256,14 @@ impl<Value: IValue> CairoStatement<Value> {
         let rc_simd = Simd::pack(context, &range_checks);
         extract_bits(context, &rc_simd, SMALL_VALUE_BITS);
 
-        // Handle the builtins not supported by the circuit.
+        // Assert that every builtin segment is either supported or not supported (empty).
+        // Builtins not in `supported_builtins` must have an empty segment.
         let zero = context.zero();
-        for segment_range in [
-            ec_op_segment_range,
-            ecdsa_segment_range,
-            keccak_segment_range,
-            range_check96_segment_range,
-            add_mod_segment_range,
-            mul_mod_segment_range,
-        ] {
-            let diff = eval!(context, (segment_range.end.value) - (segment_range.start.value));
-            eq(context, diff, zero);
+        for segment_range in builtin_segment_ranges {
+            if !supported_builtins.iter().any(|s| ptr::eq(*s, segment_range)) {
+                let diff = eval!(context, (segment_range.end.value) - (segment_range.start.value));
+                eq(context, diff, zero);
+            }
         }
     }
 }
