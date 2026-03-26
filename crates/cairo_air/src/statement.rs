@@ -47,7 +47,8 @@ pub const PUBLIC_DATA_LEN: usize =
     2 * STATE_LEN + 2 * PUB_MEMORY_VALUE_M31_LEN * N_SEGMENTS + N_SAFE_CALL_IDS;
 
 const LIMB_BITS: usize = 9;
-const SMALL_VALUE_BITS: u32 = 27;
+const SMALL_VALUE_BITS: u32 = 29;
+const BUILTIN_USAGE_BITS: u32 = 27;
 
 pub struct CasmState<T> {
     pub pc: T,
@@ -66,13 +67,13 @@ impl CasmState<Var> {
     }
 }
 
-// A public memory value that fits in 27bits.
+// A public memory value that fits in 29 bits.
 pub struct PubMemoryM31Value<T> {
     pub id: T,
     pub value: T,
 }
 
-pub fn split_27bit_to_9bit_limbs(context: &mut Context<impl IValue>, value: Var) -> [Var; 3] {
+pub fn split_29bit_value_to_9bit_limbs(context: &mut Context<impl IValue>, value: Var) -> [Var; 4] {
     let simd = Simd::from_packed(vec![value], 1);
     let extracted_bits = extract_bits(context, &simd, SMALL_VALUE_BITS);
 
@@ -90,7 +91,7 @@ impl PubMemoryM31Value<Var> {
         context: &mut Context<impl IValue>,
         interaction_elements: [Var; 2],
     ) -> Var {
-        let limbs = split_27bit_to_9bit_limbs(context, self.value);
+        let limbs = split_29bit_value_to_9bit_limbs(context, self.value);
         id_to_big_logup_term(context, self.id, limbs.into_iter(), interaction_elements)
     }
 }
@@ -223,13 +224,14 @@ impl<Value: IValue> CairoStatement<Value> {
 
         // Range-check the number of times each builtin is used.
         // n_uses = (end - start) / instance_size, which implies end = start + n_uses *
-        // instance_size (mod M31_P). Since all values are less than 2^27, this equality
-        // also holds over the integers.
-        extract_bits(context, &n_uses_simd, SMALL_VALUE_BITS);
+        // instance_size (mod M31_P). Since end and start are 29 bits and n_uses is 27 bits,
+        // start + n_uses * instance_size < 2^29 + 2^27 * 6 < M31_P, so this equality also
+        // holds over the integers. The assertion below guarantees this doesn't overflow.
+        extract_bits(context, &n_uses_simd, BUILTIN_USAGE_BITS);
         let max_builtin_instance_size =
             builtin_instance_sizes.iter().map(|(_name, size)| size).max().unwrap();
         assert!(
-            max_builtin_instance_size.ilog2() < (31 - SMALL_VALUE_BITS),
+            max_builtin_instance_size.ilog2() < (31 - BUILTIN_USAGE_BITS),
             "max_builtin_memory_cell * n_uses might exceed M31_P"
         );
 
@@ -251,7 +253,7 @@ impl<Value: IValue> CairoStatement<Value> {
         }
 
         let rc_simd = Simd::pack(context, &range_checks);
-        extract_bits(context, &rc_simd, SMALL_VALUE_BITS);
+        extract_bits(context, &rc_simd, BUILTIN_USAGE_BITS);
 
         // Handle the builtins not supported by the circuit.
         let zero = context.zero();
@@ -608,9 +610,9 @@ pub fn public_logup_sum(
     // Enforce correct initialization of the safe call memory section:
     // memory[initial_ap - 2] = (safe_call_id0, initial_ap)
     // memory[initial_ap - 1] = (safe_call_id1, 0).
-    let split_initial_ap = split_27bit_to_9bit_limbs(context, initial_ap);
+    let split_initial_ap = split_29bit_value_to_9bit_limbs(context, initial_ap);
     // The value of memory[initial_ap - 1] is 0, so its 9-bit limbs are all zeros.
-    // Passing an empty slice to id_to_big_logup_term is equivalent to passing [0, 0, 0]
+    // Passing an empty slice to id_to_big_logup_term is equivalent to passing [0, 0, 0, 0]
     // because trailing zeros don't affect the polynomial combination in combine_term.
     let safe_call_values = [split_initial_ap.as_slice(), &[]];
     for (address, id, value_limbs) in izip!(safe_call_addresses, safe_call_ids, safe_call_values) {
