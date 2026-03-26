@@ -11,6 +11,7 @@ pub mod split_16_low_part_size_12;
 pub mod split_16_low_part_size_7;
 pub mod split_16_low_part_size_8;
 pub mod triple_sum_32;
+pub mod verify_triple_sum_32;
 pub mod xor_rot_32_r_12;
 pub mod xor_rot_32_r_16;
 pub mod xor_rot_32_r_7;
