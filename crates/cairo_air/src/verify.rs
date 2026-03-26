@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::all_components::all_components;
 use crate::statement::{CairoStatement, MEMORY_VALUES_LIMBS, PUBLIC_DATA_LEN};
 use cairo_air::CairoProof;
+use cairo_air::PreProcessedTraceVariant;
 use cairo_air::air::PublicData;
 use cairo_air::flat_claims::FlatClaim;
 use circuits::blake::HashValue;
@@ -59,6 +60,7 @@ pub struct CairoVerifierConfig {
     pub program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
     pub n_outputs: usize,
     pub preprocessed_root: HashValue<QM31>,
+    pub preprocessed_trace_variant: PreProcessedTraceVariant,
 }
 
 /// Verifies a [CairoProof] for a fixed [CairoVerifierConfig].
@@ -112,6 +114,7 @@ pub fn build_fixed_cairo_circuit(
         verifier_config.program.clone(),
         components,
         verifier_config.preprocessed_root,
+        verifier_config.preprocessed_trace_variant,
     );
 
     let proof_vars = proof.guess(&mut context);
@@ -148,6 +151,7 @@ pub fn build_cairo_verifier_circuit(verifier_config: &CairoVerifierConfig) -> Co
         verifier_config.program.clone(),
         components,
         verifier_config.preprocessed_root,
+        verifier_config.preprocessed_trace_variant,
     );
 
     let proof_vars = empty_proof(config).guess(&mut context);
