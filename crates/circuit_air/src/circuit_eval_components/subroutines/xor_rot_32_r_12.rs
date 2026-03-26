@@ -12,7 +12,6 @@ pub fn accumulate_constraints<Value: IValue>(
     input: &[Var],
     context: &mut Context<Value>,
     component_data: &dyn ComponentDataTrait<Value>,
-    enabler: Var,
     acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
     let [
@@ -70,6 +69,8 @@ pub fn accumulate_constraints<Value: IValue>(
         .try_into()
         .unwrap();
 
+    //  Manually added
+    let enabler = eval!(context, 1);
     bitwise_xor_num_bits_12::accumulate_constraints(
         &[
             eval!(context, split_16_low_part_size_12_output_tmp_cf62f_1_limb_0),
