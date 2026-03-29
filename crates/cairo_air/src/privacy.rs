@@ -1,3 +1,4 @@
+use cairo_air::PreProcessedTraceVariant;
 use cairo_air::verifier::INTERACTION_POW_BITS;
 use circuits::ivalue::NoValue;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
@@ -9,7 +10,6 @@ use stwo::core::fri::FriConfig;
 use stwo::core::pcs::PcsConfig;
 
 use crate::all_components::all_components;
-use crate::preprocessed_columns::CANONICAL_SMALL_PREPROCESSED_COLUMNS;
 use crate::utils::{get_test_data_dir, load_program};
 use crate::verify::{CairoVerifierConfig, get_preprocessed_root};
 
@@ -28,6 +28,7 @@ pub const PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
 
 /// Returns a [CairoVerifierConfig] for the privacy proof setup with the given log blowup factor.
 pub fn privacy_cairo_verifier_config(log_blowup_factor: u32) -> CairoVerifierConfig {
+    let preprocessed_trace_variant = PreProcessedTraceVariant::CanonicalSmall;
     let privacy_set = privacy_components();
     let components: Vec<Box<dyn CircuitEval<NoValue>>> = all_components::<NoValue>()
         .into_iter()
@@ -56,7 +57,7 @@ pub fn privacy_cairo_verifier_config(log_blowup_factor: u32) -> CairoVerifierCon
 
     let proof_config = ProofConfig::from_components(
         &components,
-        CANONICAL_SMALL_PREPROCESSED_COLUMNS.len(),
+        preprocessed_trace_variant.to_preprocessed_trace().ids().len(),
         &pcs_config,
         INTERACTION_POW_BITS,
     );
@@ -69,6 +70,7 @@ pub fn privacy_cairo_verifier_config(log_blowup_factor: u32) -> CairoVerifierCon
         proof_config,
         program,
         n_outputs: 1,
+        preprocessed_trace_variant,
     }
 }
 
