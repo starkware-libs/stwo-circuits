@@ -113,6 +113,12 @@ fn test_verify_privacy_with_recursion() {
         &BaseColumnPool::<SimdBackend>::new(),
         PcsConfig::default(),
     );
+
+    let actual_root: HashValue<QM31> =
+        circuit_proof.stark_proof.as_ref().unwrap().proof.commitments.0[0].into();
+    let expected_root: HashValue<QM31> = PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT.into();
+    assert_eq!(actual_root, expected_root);
+
     verify_circuit_proof(&preprocessed, circuit_proof, privacy_circuit_preprocessed_root());
 }
 
