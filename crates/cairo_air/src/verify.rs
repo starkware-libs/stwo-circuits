@@ -63,7 +63,7 @@ pub struct CairoVerifierConfig {
     pub preprocessed_trace_variant: PreProcessedTraceVariant,
 }
 
-/// Verifies a [CairoProof] for a fixed [CairoVerifierConfig].
+/// Verifies a [Proof] for a fixed [CairoVerifierConfig].
 pub fn verify_fixed_cairo_circuit(
     verifier_config: &CairoVerifierConfig,
     proof: Proof<QM31>,
