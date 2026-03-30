@@ -117,11 +117,13 @@ fn test_verify() {
     let outputs = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; output_len];
     let program: Arc<[[M31; MEMORY_VALUES_LIMBS]]> =
         std::iter::repeat_n([M31::zero(); MEMORY_VALUES_LIMBS], program_len).collect();
+    let components = all_components().into_values().collect_vec();
     let mut statement = CairoStatement::new(
         &mut novalue_context,
         flat_claim,
         outputs,
         program,
+        components,
         get_preprocessed_root(20 + pcs_config.fri_config.log_blowup_factor),
         PreProcessedTraceVariant::CanonicalSmall,
     );

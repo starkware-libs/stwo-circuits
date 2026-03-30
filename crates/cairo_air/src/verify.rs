@@ -107,7 +107,7 @@ pub fn build_fixed_cairo_circuit(
 
     let public_claim = public_claim.iter().map(|u32| M31::from(*u32)).collect_vec();
     let mut context = TraceContext::default();
-    let statement = CairoStatement::<QM31>::new_ex(
+    let statement = CairoStatement::<QM31>::new(
         &mut context,
         public_claim,
         outputs,
@@ -144,7 +144,7 @@ pub fn build_cairo_verifier_circuit(verifier_config: &CairoVerifierConfig) -> Co
     let outputs = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; n_outputs];
 
     let mut context = Context::<NoValue>::default();
-    let statement = CairoStatement::<NoValue>::new_ex(
+    let statement = CairoStatement::<NoValue>::new(
         &mut context,
         public_data,
         outputs,
