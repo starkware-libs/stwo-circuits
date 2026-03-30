@@ -7,6 +7,7 @@ use crate::witness::components::blake_output;
 use crate::witness::components::blake_round;
 use crate::witness::components::blake_round_sigma;
 use crate::witness::components::eq;
+use crate::witness::components::m_31_to_u_32;
 use crate::witness::components::qm31_ops;
 use crate::witness::components::range_check_15;
 use crate::witness::components::range_check_16;
@@ -82,6 +83,9 @@ pub fn write_trace(
     let mut range_check_16_result = MaybeUninit::uninit();
     let mut blake_g_trace_data = MaybeUninit::uninit();
     let mut triple_xor_32_trace_data = MaybeUninit::uninit();
+    let mut m_31_to_u_32_trace_data = MaybeUninit::uninit();
+    let mut m_31_to_u_32_claim_icg = MaybeUninit::uninit();
+    let mut m_31_to_u_32_polys_result = MaybeUninit::uninit();
     scope(|s| {
         // Eq and qm31_ops traces run for the full duration of the parent scope.
         s.spawn(|_| {
@@ -218,8 +222,8 @@ pub fn write_trace(
             blake_output_claim_icg.write((claim, icg));
         });
 
-        // blake_g and triple_xor_32 mutate xor/range-check states through shared refs,
-        // so they must complete before those states are consumed.
+        // blake_g, triple_xor_32, and m31_to_u32 mutate xor/range-check states through shared
+        // refs, so they must complete before those states are consumed.
         scope(|s| {
             s.spawn(|_| {
                 let (trace, claim, icg) = blake_g_generator.write_trace(
@@ -238,6 +242,15 @@ pub fn write_trace(
                 triple_xor_32_trace_data.write(trace);
                 triple_xor_32_claim_icg.write((claim, icg));
             });
+            s.spawn(|_| {
+                let (trace, claim, icg) = m_31_to_u_32::write_trace(
+                    context_values,
+                    preprocessed_trace_ref,
+                    &range_check_16_state,
+                );
+                m_31_to_u_32_trace_data.write(trace);
+                m_31_to_u_32_claim_icg.write((claim, icg));
+            });
         });
 
         // SAFETY: The subscope above guarantees blake_g, triple_xor_32 have finished
@@ -251,6 +264,11 @@ pub fn write_trace(
         s.spawn(|_| {
             let trace = unsafe { triple_xor_32_trace_data.assume_init() };
             triple_xor_32_polys_result
+                .write(SimdBackend::interpolate_columns(trace.to_evals(), twiddles));
+        });
+        s.spawn(|_| {
+            let trace = unsafe { m_31_to_u_32_trace_data.assume_init() };
+            m_31_to_u_32_polys_result
                 .write(SimdBackend::interpolate_columns(trace.to_evals(), twiddles));
         });
         s.spawn(|_| {
@@ -305,6 +323,8 @@ pub fn write_trace(
         (blake_output_claim, blake_output_interaction_claim_gen),
         triple_xor_32_polys,
         (triple_xor_32_claim, triple_xor_32_interaction_claim_gen),
+        m_31_to_u_32_polys,
+        (m_31_to_u_32_claim, m_31_to_u_32_interaction_claim_gen),
         (verify_bitwise_xor_8_polys, verify_bitwise_xor_8_interaction_claim_gen),
         (verify_bitwise_xor_12_polys, verify_bitwise_xor_12_interaction_claim_gen),
         (verify_bitwise_xor_4_polys, verify_bitwise_xor_4_interaction_claim_gen),
@@ -329,6 +349,8 @@ pub fn write_trace(
             blake_output_claim_icg.assume_init(),
             triple_xor_32_polys_result.assume_init(),
             triple_xor_32_claim_icg.assume_init(),
+            m_31_to_u_32_polys_result.assume_init(),
+            m_31_to_u_32_claim_icg.assume_init(),
             verify_bitwise_xor_8_result.assume_init(),
             verify_bitwise_xor_12_result.assume_init(),
             verify_bitwise_xor_4_result.assume_init(),
@@ -350,6 +372,7 @@ pub fn write_trace(
     tree_builder.extend_polys(blake_g_polys);
     tree_builder.extend_polys(blake_output_polys);
     tree_builder.extend_polys(triple_xor_32_polys);
+    tree_builder.extend_polys(m_31_to_u_32_polys);
     tree_builder.extend_polys(verify_bitwise_xor_8_polys);
     tree_builder.extend_polys(verify_bitwise_xor_12_polys);
     tree_builder.extend_polys(verify_bitwise_xor_4_polys);
@@ -371,6 +394,7 @@ pub fn write_trace(
                 blake_g_claim.log_size,
                 blake_output_claim.log_size,
                 triple_xor_32_claim.log_size,
+                m_31_to_u_32_claim.log_size,
                 circuit_air::components::verify_bitwise_xor_8::LOG_SIZE,
                 circuit_air::components::verify_bitwise_xor_12::LOG_SIZE,
                 circuit_air::components::verify_bitwise_xor_4::LOG_SIZE,
@@ -390,6 +414,7 @@ pub fn write_trace(
             blake_g: blake_g_interaction_claim_gen,
             blake_output: blake_output_interaction_claim_gen,
             triple_xor_32: triple_xor_32_interaction_claim_gen,
+            m_31_to_u_32: m_31_to_u_32_interaction_claim_gen,
             verify_bitwise_xor_8: verify_bitwise_xor_8_interaction_claim_gen,
             verify_bitwise_xor_12: verify_bitwise_xor_12_interaction_claim_gen,
             verify_bitwise_xor_4: verify_bitwise_xor_4_interaction_claim_gen,
@@ -410,6 +435,7 @@ pub struct CircuitInteractionClaimGenerator {
     pub blake_g: blake_g::InteractionClaimGenerator,
     pub blake_output: blake_output::InteractionClaimGenerator,
     pub triple_xor_32: triple_xor_32::InteractionClaimGenerator,
+    pub m_31_to_u_32: m_31_to_u_32::InteractionClaimGenerator,
     pub verify_bitwise_xor_8: verify_bitwise_xor_8::InteractionClaimGenerator,
     pub verify_bitwise_xor_12: verify_bitwise_xor_12::InteractionClaimGenerator,
     pub verify_bitwise_xor_4: verify_bitwise_xor_4::InteractionClaimGenerator,
@@ -435,7 +461,7 @@ pub fn write_interaction_trace(
 
     // Write all interaction traces in parallel, including interpolation.
     // Preallocate poly slots; each spawned task writes into its own mutable slice.
-    let mut all_polys: [Vec<_>; 15] = std::array::from_fn(|_| Vec::new());
+    let mut all_polys: [Vec<_>; 16] = std::array::from_fn(|_| Vec::new());
     let [
         eq_polys,
         qm31_ops_polys,
@@ -445,6 +471,7 @@ pub fn write_interaction_trace(
         blake_g_polys,
         blake_output_polys,
         triple_xor_32_polys,
+        m_31_to_u_32_polys,
         verify_bitwise_xor_8_polys,
         verify_bitwise_xor_12_polys,
         verify_bitwise_xor_4_polys,
@@ -453,7 +480,7 @@ pub fn write_interaction_trace(
         range_check_15_polys,
         range_check_16_polys,
     ] = &mut all_polys;
-    let mut claimed_sums = [QM31::zero(); 15];
+    let mut claimed_sums = [QM31::zero(); 16];
     let [
         eq_claimed_sum,
         qm31_ops_claimed_sum,
@@ -463,6 +490,7 @@ pub fn write_interaction_trace(
         blake_g_claimed_sum,
         blake_output_claimed_sum,
         triple_xor_32_claimed_sum,
+        m_31_to_u_32_claimed_sum,
         verify_bitwise_xor_8_claimed_sum,
         verify_bitwise_xor_12_claimed_sum,
         verify_bitwise_xor_4_claimed_sum,
@@ -480,6 +508,7 @@ pub fn write_interaction_trace(
         let blake_g = circuit_interaction_claim_generator.blake_g;
         let blake_output = circuit_interaction_claim_generator.blake_output;
         let triple_xor_32 = circuit_interaction_claim_generator.triple_xor_32;
+        let m_31_to_u_32 = circuit_interaction_claim_generator.m_31_to_u_32;
         let verify_bitwise_xor_8 = circuit_interaction_claim_generator.verify_bitwise_xor_8;
         let verify_bitwise_xor_12 = circuit_interaction_claim_generator.verify_bitwise_xor_12;
         let verify_bitwise_xor_4 = circuit_interaction_claim_generator.verify_bitwise_xor_4;
@@ -541,6 +570,12 @@ pub fn write_interaction_trace(
                     .write_interaction_trace(&interaction_elements.common_lookup_elements);
                 *triple_xor_32_polys = SimdBackend::interpolate_columns(trace, twiddles);
                 *triple_xor_32_claimed_sum = claim.claimed_sum;
+            });
+            s.spawn(|_| {
+                let (trace, claim) = m_31_to_u_32
+                    .write_interaction_trace(&interaction_elements.common_lookup_elements);
+                *m_31_to_u_32_polys = SimdBackend::interpolate_columns(trace, twiddles);
+                *m_31_to_u_32_claimed_sum = claim.claimed_sum;
             });
             s.spawn(|_| {
                 let (trace, claim) = verify_bitwise_xor_8
