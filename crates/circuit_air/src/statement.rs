@@ -4,6 +4,7 @@ use crate::circuit_eval_components::{
     verify_bitwise_xor_8, verify_bitwise_xor_9, verify_bitwise_xor_12,
 };
 use crate::components::{eq::CircuitEqComponent, qm31_ops::CircuitQm31OpsComponent};
+use crate::relations::{BLAKE_STATE_RELATION_ID, GATE_RELATION_ID};
 use circuits::blake::HashValue;
 use circuits::context::{Context, Var};
 use circuits::eval;
@@ -76,7 +77,7 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
         let mut sum = context.zero();
 
         // Output gates public logup sum contribution.
-        let gate_relation_id = eval!(context, 378353459);
+        let gate_relation_id = context.constant(GATE_RELATION_ID.into());
         for (output_address, output_value) in zip_eq(&self.output_addresses, &self.output_values) {
             let [output_value_0, output_value_1, output_value_2, output_value_3] =
                 Simd::unpack(context, &Simd::from_packed(vec![*output_value], 4))
@@ -100,9 +101,9 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
         // Blake IV public logup sum contribution.
         if self.n_blake_gates > 0 {
             let initial_state = crate::blake2s_initial_state();
-            let blake_output_relation_id = context.constant(1061955672.into());
+            let blake_state_relation_id = context.constant(BLAKE_STATE_RELATION_ID.into());
             let iv_state_address = context.zero();
-            let mut logup_terms = vec![blake_output_relation_id, iv_state_address];
+            let mut logup_terms = vec![blake_state_relation_id, iv_state_address];
             for &word in &initial_state {
                 let low = context.constant((word & 0xffff).into());
                 let high = context.constant((word >> 16).into());
