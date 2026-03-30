@@ -63,6 +63,7 @@ pub fn to_component_provers(
         &components.blake_g as &dyn ComponentProver<SimdBackend>,
         &components.blake_output as &dyn ComponentProver<SimdBackend>,
         &components.triple_xor_32 as &dyn ComponentProver<SimdBackend>,
+        &components.m_31_to_u_32 as &dyn ComponentProver<SimdBackend>,
         &components.verify_bitwise_xor_8 as &dyn ComponentProver<SimdBackend>,
         &components.verify_bitwise_xor_12 as &dyn ComponentProver<SimdBackend>,
         &components.verify_bitwise_xor_4 as &dyn ComponentProver<SimdBackend>,
