@@ -3,7 +3,7 @@ use itertools::Itertools;
 use stwo::core::vcs::blake2_hash::Blake2sHash;
 use stwo::core::{fields::qm31::QM31, vcs::blake2_hash::reduce_to_m31};
 
-use crate::circuit::Blake;
+use crate::circuit::{Blake, M31ToU32};
 use crate::context::{Context, Var};
 use crate::ivalue::{IValue, qm31_from_u32s};
 use crate::ops::Guess;
@@ -125,4 +125,13 @@ pub fn blake<Value: IValue>(
     });
 
     HashValue(out_var0, out_var1)
+}
+
+/// Adds an M31ToU32 gate to the circuit: convert an `M31` value into its `u32` representation, i.e
+/// `(x, 0, 0, 0)` into `(x & 0xFFFF, x >> 16, 0, 0)`.
+pub fn m31_to_u32<Value: IValue>(ctx: &mut Context<Value>, input: Var) -> Var {
+    let out = ctx.new_var(ctx.get(input).m31_to_u32());
+    ctx.stats.m31_to_u32 += 1;
+    ctx.circuit.m31_to_u32.push(M31ToU32 { input: input.idx, out: out.idx });
+    out
 }

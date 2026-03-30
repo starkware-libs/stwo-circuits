@@ -204,6 +204,41 @@ impl std::fmt::Debug for Blake {
     }
 }
 
+/// Represents an M31ToU32 gate in the circuit: `(x & 0xFFFF, x >> 16, 0, 0) = M31ToU32(x, 0, 0,
+/// 0)`.
+#[derive(PartialEq, Eq)]
+pub struct M31ToU32 {
+    pub input: usize,
+    pub out: usize,
+}
+impl Gate for M31ToU32 {
+    fn check(&self, values: &[QM31]) -> Result<(), String> {
+        let input = values[self.input];
+
+        // Assert that the input is M31.
+        let [_, b, c, d] = input.to_m31_array().map(|m| m.0);
+        if b != 0 || c != 0 || d != 0 {
+            return Err(format!("M31ToU32: input is not M31, got {input}"));
+        }
+        let expected_output = input.m31_to_u32();
+        check_eq(values[self.out], expected_output)
+    }
+
+    fn uses(&self) -> Vec<usize> {
+        vec![self.input]
+    }
+
+    fn yields(&self) -> Vec<usize> {
+        vec![self.out]
+    }
+}
+
+impl std::fmt::Debug for M31ToU32 {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{}] = m31_to_u32([{}])", self.out, self.input)
+    }
+}
+
 /// Represents a permutation gate in the circuit.
 /// The gate enforces that the input values as a multi-set are equal to the output values
 /// as a multi-set.
@@ -283,6 +318,7 @@ pub struct Circuit {
     pub pointwise_mul: Vec<PointwiseMul>,
     pub eq: Vec<Eq>,
     pub blake: Vec<Blake>,
+    pub m31_to_u32: Vec<M31ToU32>,
     pub permutation: Vec<Permutation>,
     pub output: Vec<Output>,
 }
@@ -290,8 +326,18 @@ pub struct Circuit {
 impl Circuit {
     /// Returns an iterator over all the gates in the circuit.
     pub fn all_gates(&self) -> impl Iterator<Item = &dyn Gate> {
-        let Circuit { n_vars: _, add, sub, mul, pointwise_mul, eq, blake, permutation, output } =
-            self;
+        let Circuit {
+            n_vars: _,
+            add,
+            sub,
+            mul,
+            pointwise_mul,
+            eq,
+            blake,
+            m31_to_u32,
+            permutation,
+            output,
+        } = self;
         chain!(
             add.iter().map(|g| g as &dyn Gate),
             sub.iter().map(|g| g as &dyn Gate),
@@ -299,6 +345,7 @@ impl Circuit {
             pointwise_mul.iter().map(|g| g as &dyn Gate),
             eq.iter().map(|g| g as &dyn Gate),
             blake.iter().map(|g| g as &dyn Gate),
+            m31_to_u32.iter().map(|g| g as &dyn Gate),
             permutation.iter().map(|g| g as &dyn Gate),
             output.iter().map(|g| g as &dyn Gate),
         )
