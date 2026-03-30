@@ -53,6 +53,9 @@ impl<Value: IValue> Guess<Value> for M31Wrapper<Value> {
     type Target = M31Wrapper<Var>;
 
     fn guess(&self, context: &mut Context<Value>) -> Self::Target {
+
+        // TODO(audit): Implement this more efficiently.
+
         let value = self.0.guess(context);
         // Mask the value with `1 + 0 * i + 0 * u + 0 * iu` to ensure (in the circuit) it is
         // in the base field `M31`.

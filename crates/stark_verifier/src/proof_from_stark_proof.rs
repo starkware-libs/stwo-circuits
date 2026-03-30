@@ -249,6 +249,7 @@ pub fn pack_public_claim(public_claim: &[M31]) -> Vec<QM31> {
     pack_into_qm31s(public_claim.iter().cloned())
 }
 
+// TODO(ilya): this is risky for u32.
 pub fn pack_into_qm31s<T: Into<M31>>(values: impl Iterator<Item = T>) -> Vec<QM31> {
     values
         .chunks(4)

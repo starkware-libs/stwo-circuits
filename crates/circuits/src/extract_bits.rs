@@ -22,6 +22,7 @@ pub fn extract_bits(context: &mut Context<impl IValue>, input: &Simd, n_bits: u3
         let lsb = value.guess_lsb(context);
         bits.push(lsb.clone());
         value = Simd::sub(context, &value, &lsb);
+        // TODO(audit): scalar mul.
         value = Simd::mul(context, &value, &inv_two);
     }
 

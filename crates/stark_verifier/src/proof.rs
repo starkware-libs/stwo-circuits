@@ -221,6 +221,7 @@ pub struct ProofConfig {
     pub n_preprocessed_columns: usize,
     pub n_trace_columns: usize,
     pub n_interaction_columns: usize,
+    // TODO(audit): Document - according to the fixed component order in all_components().
     pub trace_columns_per_component: Vec<usize>,
     pub interaction_columns_per_component: Vec<usize>,
 
@@ -266,6 +267,7 @@ impl ProofConfig {
         )
     }
 
+    // TODO(ilya): remove n_components.
     pub fn new(
         n_components: usize,
         trace_columns_per_component: Vec<usize>,
@@ -276,8 +278,12 @@ impl ProofConfig {
     ) -> Self {
         let n_interaction_columns = interaction_columns_per_component.iter().sum();
         let mut cumulative_sum_columns = Vec::with_capacity(n_interaction_columns);
+        // The last SECURE_EXTENSION_DEGREE interaction columns of every component are
+        // the cumulative sum columns.
+        // Build a boolean vector that is true for the cumulative sum columns and false for the other columns.
         for n_interaction_columns_in_component in &interaction_columns_per_component {
             if *n_interaction_columns_in_component == 0 {
+                // Empty component.
                 continue;
             }
             // The last SECURE_EXTENSION_DEGREE interaction columns of every component are
@@ -309,7 +315,7 @@ impl ProofConfig {
             panic!("Lifting log size must be set");
         };
 
-        let log_trace_size = (*lifting_log_size - log_blowup_factor) as usize;
+        let log_trace_size: usize = (*lifting_log_size - log_blowup_factor).try_into().unwrap();
 
         Self {
             n_proof_of_work_bits: *pow_bits,
@@ -322,10 +328,10 @@ impl ProofConfig {
             cumulative_sum_columns,
             fri: FriConfig {
                 log_trace_size,
-                log_blowup_factor: *log_blowup_factor as usize,
+                log_blowup_factor: (*log_blowup_factor).try_into().unwrap(),
                 n_queries: *n_queries,
-                log_n_last_layer_coefs: *log_last_layer_degree_bound as usize,
-                fold_step: *fold_step as usize,
+                log_n_last_layer_coefs: (*log_last_layer_degree_bound).try_into().unwrap(),
+                fold_step: (*fold_step).try_into().unwrap(),
             },
             interaction_pow_bits,
         }
@@ -447,6 +453,8 @@ impl<T> Proof<T> {
         // Validate trace_at_oods.
         assert_eq!(self.trace_at_oods.len(), config.n_trace_columns);
 
+        // TODO(audit):validate the claim.
+
         // Validate interaction_at_oods.
         assert_eq!(self.interaction_at_oods.len(), config.n_interaction_columns);
         for (interaction_at_oods, is_cumulative_sum) in
@@ -458,6 +466,8 @@ impl<T> Proof<T> {
         // Validate eval_domain_samples.
         self.eval_domain_samples
             .validate_structure(&config.n_columns_per_trace(), config.n_queries());
+
+        // Validate eval_domain_auth_paths.
 
         // Validate FRI.
         self.fri.validate_structure(&config.fri);
