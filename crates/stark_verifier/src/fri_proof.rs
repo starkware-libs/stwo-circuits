@@ -105,13 +105,14 @@ impl<T> FriProof<T> {
         // Check that the authentication paths' lengths are consistent with the folding schedule.
         assert_eq!(auth_paths.data.len(), all_fold_steps.len());
         let first_layer_log_size = config.log_evaluation_domain_size();
-        let mut fold_sum = 0;
+        let mut expected_log_size = first_layer_log_size;
         for (tree_data, fold_step) in zip_eq(&auth_paths.data, &all_fold_steps) {
+            expected_log_size -= fold_step;
             assert_eq!(tree_data.len(), config.n_queries);
             for query_data in tree_data {
-                assert_eq!(query_data.0.len(), first_layer_log_size - fold_sum - fold_step);
+                // TODO(audit): Note that the authentication path is the path from the coset.
+                assert_eq!(query_data.0.len(), expected_log_size);
             }
-            fold_sum += fold_step
         }
 
         // Check the witness.
@@ -172,11 +173,11 @@ pub fn empty_fri_proof(config: &FriConfig) -> FriProof<NoValue> {
 /// - `degree_log_ratio`: (log degree of committed polynomial) - (log degree of FRI's last layer).
 /// - `fold_step`: the folding step of all the FRI folds except possibly the last.
 pub fn compute_all_fold_steps(degree_log_ratio: usize, fold_step: usize) -> Vec<usize> {
-    let n_folds = degree_log_ratio.div_ceil(fold_step);
+    let n_full_folds = degree_log_ratio / fold_step;
     let rem = degree_log_ratio % fold_step;
-    let mut all_fold_steps = vec![fold_step; n_folds];
+    let mut all_fold_steps = vec![fold_step; n_full_folds];
     if rem != 0 {
-        *all_fold_steps.last_mut().unwrap() = rem;
+        all_fold_steps.push(rem);
     }
     all_fold_steps
 }

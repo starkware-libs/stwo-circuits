@@ -218,6 +218,7 @@ impl Simd {
         let x = pointwise_mul(context, qm31_var, unit_vec);
         // Then, divide by `unit_vecs[coord]` to get `c`.
         if coord == 0 {
+            // TODO(audit): Document no need to divide by 1.
             x
         } else {
             eval!(context, (x) * (context.constant(UNIT_VECS_INV[coord - 1])))
@@ -233,6 +234,7 @@ impl Simd {
             .map(|i| {
                 let mut res = *values[4 * i].get();
                 for j in 1..4 {
+                    // TODO(audit): idx = 4 * i + j.
                     if 4 * i + j == n {
                         break;
                     }
@@ -244,18 +246,20 @@ impl Simd {
         Simd::from_packed(data, values.len())
     }
 
+    // TODO(audit): document.
+    // document assumptions.
     pub fn pow2(context: &mut Context<impl IValue>, bits: &[Simd]) -> Simd {
         let len = bits[0].len();
         let mut res = Simd::one(context, len);
-        let one = context.one();
-        let mut pow2 = M31Wrapper::new_unsafe(eval!(context, (one) + (one)));
+        let mut pow2 = M31Wrapper::new_unsafe(context.constant(QM31::from(2)));
         for (bit_idx, bit) in bits.iter().enumerate() {
+            if bit_idx != 0 {
+                // TODO(audit): Document.
+                pow2 = M31Wrapper::mul(context, pow2.clone(), pow2.clone());
+            }
             let res_if_bit_is_one = Simd::scalar_mul(context, &res, &pow2);
             // Select between `res` and `res_if_bit_is_one` based on the value of the bit.
             res = Simd::select(context, bit, &res, &res_if_bit_is_one);
-            if bit_idx < bits.len() - 1 {
-                pow2 = M31Wrapper::mul(context, pow2.clone(), pow2.clone());
-            }
         }
         res
     }
@@ -265,10 +269,12 @@ impl Simd {
     ///
     /// Assumes each `bits[i]` contains only 0/1 values;
     /// returns Σ `bits[i] * (1 << i)` per lane.
+    /// TODO(audit): document bits len.
     pub fn combine_bits(context: &mut Context<impl IValue>, bits: &[Simd]) -> Simd {
+        assert!(bits.len() < 30);
         let mut iter = bits.iter().rev();
         let mut res = iter.next().unwrap().clone();
-        let two = M31Wrapper::new_unsafe(eval!(context, context.constant(QM31::from(2))));
+        let two = M31Wrapper::new_unsafe(context.constant(QM31::from(2)));
         for bit in iter {
             res = Simd::scalar_mul(context, &res, &two);
             res = Simd::add(context, &res, bit);
@@ -279,6 +285,7 @@ impl Simd {
     /// Asserts that not all the bits in each [Simd] are ones.
     ///
     /// Note that this function assumes that `bits.is_empty()` is false.
+    // TODO(audit): Add test.
     pub fn assert_not_all_ones(context: &mut Context<impl IValue>, bits: &[Simd]) {
         let mut iter = bits.iter();
         let mut res = iter.next().unwrap().clone();

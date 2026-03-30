@@ -50,18 +50,21 @@ pub fn verify<Value: IValue>(
 ) {
     proof.validate_structure(config);
     let mut channel = Channel::new(context);
-
+    // TODO(audit): Mix protocol version into the channel.
+    
     // Mix the channel salt.
     channel.mix_qm31s(context, [proof.channel_salt]);
 
-    let lifting_log_size = config.log_trace_size() + config.fri.log_blowup_factor;
+
+    // TODO(audit): move to mix_pcs_config function.
+    // TODO(audit): optimize hashing.
     let pcs_config_values = vec![
         config.n_proof_of_work_bits,
-        config.fri.log_blowup_factor as u32,
-        config.fri.n_queries as u32,
-        config.fri.log_n_last_layer_coefs as u32,
-        config.fri.fold_step as u32,
-        lifting_log_size as u32,
+        config.fri.log_blowup_factor.try_into().unwrap(),
+        config.fri.n_queries.try_into().unwrap(),
+        config.fri.log_n_last_layer_coefs.try_into().unwrap(),
+        config.fri.fold_step.try_into().unwrap(),
+        config.log_evaluation_domain_size().try_into().unwrap(),
     ];
 
     let pcs_config_vars = pack_into_qm31s(pcs_config_values.into_iter())
@@ -74,27 +77,32 @@ pub fn verify<Value: IValue>(
     statement.verify_preprocessed_root(context, proof.preprocessed_root);
     channel.mix_commitment(context, proof.preprocessed_root);
 
+
     let component_log_sizes =
         Simd::from_packed(proof.claim.packed_component_log_sizes.clone(), config.n_components);
 
     // Range check the component log sizes.
     let component_log_size_bits = extract_bits(context, &component_log_sizes, LOG_SIZE_BITS);
+    // TODO(audit): Use static assertion.
+    assert_eq!(LOG_SIZE_BITS, 5);
     // Since LOG_SIZE_BITS is 5, and 2**31 - 1 = M31, we need to check that not all the bits in the
     // component log sizes are ones.
+
+    // TODO(audit): Assert len <= 30. 
     Simd::assert_not_all_ones(context, &component_log_size_bits);
 
     let component_sizes = Simd::pow2(context, &component_log_size_bits);
     // Check that the component sizes are at most 2^config.log_trace_size().
     // Note that we need k + 1 bits to represent 2^k.
     let component_sizes_bits =
-        extract_bits(context, &component_sizes, config.log_trace_size() as u32 + 1);
+        extract_bits(context, &component_sizes, u32::try_from(config.log_trace_size()).unwrap() + 1);
 
-    let n_components = context.constant(qm31_from_u32s(config.n_components as u32, 0, 0, 0));
+    let n_components = context.constant(qm31_from_u32s(u32::try_from(config.n_components).unwrap(), 0, 0, 0));
     channel.mix_qm31s(context, [n_components]);
     channel.mix_qm31s(context, proof.claim.packed_enable_bits.iter().cloned());
     channel.mix_qm31s(context, proof.claim.packed_component_log_sizes.iter().cloned());
     for claim_to_mix in statement.claims_to_mix(context) {
-        channel.mix_qm31s(context, claim_to_mix.iter().cloned());
+        channel.mix_qm31s(context, claim_to_mix.into_iter());
     }
 
     // Mix the trace commitments into the channel.

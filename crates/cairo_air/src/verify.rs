@@ -135,6 +135,8 @@ pub fn build_cairo_verifier_circuit(verifier_config: &CairoVerifierConfig) -> Co
 
     let n_outputs = verifier_config.n_outputs;
     let program_len = verifier_config.program.len();
+    // Construct dummy data
+    // TODO(audit): document all fields.
     let public_data = vec![M31::zero(); PUBLIC_DATA_LEN + n_outputs + program_len];
     let outputs = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; n_outputs];
 
@@ -150,6 +152,7 @@ pub fn build_cairo_verifier_circuit(verifier_config: &CairoVerifierConfig) -> Co
 
     let proof_vars = empty_proof(config).guess(&mut context);
     verify(&mut context, &proof_vars, config, &statement);
+    // TODO(audit): Remove the finalize_guessed_vars call.
     context.finalize_guessed_vars();
     context
 }

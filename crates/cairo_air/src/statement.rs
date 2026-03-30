@@ -42,6 +42,7 @@ pub const MEMORY_VALUES_LIMBS: usize = 28;
 pub const PUB_MEMORY_VALUE_LEN: usize = 1 + MEMORY_VALUES_LIMBS;
 const PUB_MEMORY_VALUE_M31_LEN: usize = 2;
 const STATE_LEN: usize = 3;
+// TODO(audit): rename.
 pub const PUBLIC_DATA_LEN: usize =
     2 * STATE_LEN + 2 * PUB_MEMORY_VALUE_M31_LEN * N_SEGMENTS + N_SAFE_CALL_IDS;
 
@@ -136,6 +137,7 @@ impl PublicData<Var> {
         let safe_call_ids = [*iter.next().unwrap(), *iter.next().unwrap()];
         let output_ids = iter.by_ref().take(output_len).cloned().collect_vec();
         let program_ids = iter.cloned().collect_vec();
+        // TODO(audit): use is_empty.
         assert_eq!(program_ids.len(), program_len);
 
         Self {
@@ -302,12 +304,12 @@ impl<Value: IValue> CairoStatement<Value> {
 
         let packed_public_data = Simd::from_packed(packed_public_data, public_data.len());
         // Note that we don't enforce anything on the padding M31 in packed_public_data.
-        let unpacked_simd = Simd::unpack(context, &packed_public_data);
-
-        let public_data =
-            PublicData::<Var>::parse_from_vars(&unpacked_simd[..], outputs.len(), program.len());
-
+        let unpacked = Simd::unpack(context, &packed_public_data);
+        
         let n_outputs = outputs.len();
+        let public_data =
+            PublicData::<Var>::parse_from_vars(&unpacked[..], n_outputs, program.len());
+
         let packed_outputs = pack_into_qm31s(outputs.into_iter().flatten())
             .into_iter()
             .map(|qm31| Value::from_qm31(qm31).guess(context))
@@ -339,7 +341,9 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
             packed_outputs,
             preprocessed_root: _preprocessed_root,
         } = self;
-        let program_len = context.constant(qm31_from_u32s(program.len() as u32, 0, 0, 0));
+
+        // TODO(audit): Consider fixing m31::from_u32 to panic instead of reduce.
+        let program_len = context.constant(qm31_from_u32s(program.len().try_into().unwrap(), 0, 0, 0));
 
         let output_hash = blake(context, packed_outputs.get_packed(), 4 * packed_outputs.len());
 
