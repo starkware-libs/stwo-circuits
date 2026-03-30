@@ -7,7 +7,7 @@ pub mod statement;
 pub mod verify;
 
 use crate::components::N_COMPONENTS;
-use crate::relations::CommonLookupElements;
+use crate::relations::{BLAKE_STATE_RELATION_ID, CommonLookupElements, GATE_RELATION_ID};
 use circuits::ivalue::qm31_from_u32s;
 use circuits_stark_verifier::proof_from_stark_proof::{pack_component_log_sizes, pack_enable_bits};
 use itertools::zip_eq;
@@ -83,7 +83,7 @@ fn blake_iv_public_logup_sum(
     // initial state once. In total we have n_blake_gates.next_power_of_two() uses.
     let initial_state_uses = n_blake_gates.next_power_of_two();
 
-    let state_id = M31::from(1061955672);
+    let state_relation_id = M31::from(BLAKE_STATE_RELATION_ID);
     let initial_state = blake2s_initial_state();
     let initial_state_limbs = [
         M31::from(initial_state[0] & 0xffff),
@@ -105,7 +105,7 @@ fn blake_iv_public_logup_sum(
     ];
 
     let limbs = [
-        state_id,
+        state_relation_id,
         M31::from(0u32),
         initial_state_limbs[0],
         initial_state_limbs[1],
@@ -140,7 +140,7 @@ pub fn lookup_sum(
 
     // Compute the public logup sum from output gates.
     let mut output_sum = QM31::zero();
-    let gate_relation_id = M31::from(378353459);
+    let gate_relation_id = M31::from(GATE_RELATION_ID);
     for (addr, value) in zip_eq(output_addresses, &claim.output_values) {
         let values =
             [gate_relation_id, M31::from(*addr as u32), value.0.0, value.0.1, value.1.0, value.1.1];
