@@ -47,6 +47,9 @@ pub trait IValue:
 
     /// Sorts the input by the u coordinate.
     fn sort_by_u_coordinate(input: &[Self]) -> Vec<Self>;
+
+    /// Converts an M31 value `(x, 0, 0, 0)` into limb representation `(low_u16, high_u15, 0, 0)`.
+    fn m31_to_u32(&self) -> Self;
 }
 
 impl IValue for QM31 {
@@ -77,6 +80,11 @@ impl IValue for QM31 {
     fn sort_by_u_coordinate(input: &[Self]) -> Vec<Self> {
         input.iter().cloned().sorted_by_key(|val| val.1.0).collect_vec()
     }
+
+    fn m31_to_u32(&self) -> Self {
+        let x = self.0.0.0;
+        qm31_from_u32s(x & 0xFFFF, x >> 16, 0, 0)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Ord, PartialOrd)]
@@ -96,6 +104,10 @@ impl IValue for NoValue {
     }
 
     fn pointwise_lsb(&self) -> Self {
+        Self
+    }
+
+    fn m31_to_u32(&self) -> Self {
         Self
     }
 
