@@ -4,6 +4,7 @@ pub mod blake_output;
 pub mod blake_round;
 pub mod blake_round_sigma;
 pub mod eq;
+pub mod m_31_to_u_32;
 pub mod prelude;
 pub mod qm31_ops;
 pub mod range_check_15;
@@ -39,6 +40,7 @@ define_component_list! {
     BlakeG,
     BlakeOutput,
     TripleXor32,
+    M31ToU32,
     VerifyBitwiseXor8,
     VerifyBitwiseXor12,
     VerifyBitwiseXor4,
@@ -57,6 +59,7 @@ pub struct CircuitComponents {
     pub blake_g: blake_g::Component,
     pub blake_output: blake_output::Component,
     pub triple_xor_32: triple_xor_32::Component,
+    pub m_31_to_u_32: m_31_to_u_32::Component,
     pub verify_bitwise_xor_8: verify_bitwise_xor_8::Component,
     pub verify_bitwise_xor_12: verify_bitwise_xor_12::Component,
     pub verify_bitwise_xor_4: verify_bitwise_xor_4::Component,
@@ -150,6 +153,16 @@ impl CircuitComponents {
             },
             interaction_claim.claimed_sums[ComponentList::TripleXor32 as usize],
         );
+        let m_31_to_u_32_component = m_31_to_u_32::Component::new(
+            tree_span_provider,
+            m_31_to_u_32::Eval {
+                claim: m_31_to_u_32::Claim {
+                    log_size: circuit_claim.log_sizes[ComponentList::M31ToU32 as usize],
+                },
+                common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
+            },
+            interaction_claim.claimed_sums[ComponentList::M31ToU32 as usize],
+        );
         let verify_bitwise_xor_8_component = verify_bitwise_xor_8::Component::new(
             tree_span_provider,
             verify_bitwise_xor_8::Eval {
@@ -215,6 +228,7 @@ impl CircuitComponents {
             blake_g: blake_g_component,
             blake_output: blake_output_component,
             triple_xor_32: triple_xor_32_component,
+            m_31_to_u_32: m_31_to_u_32_component,
             verify_bitwise_xor_8: verify_bitwise_xor_8_component,
             verify_bitwise_xor_12: verify_bitwise_xor_12_component,
             verify_bitwise_xor_4: verify_bitwise_xor_4_component,
@@ -235,6 +249,7 @@ impl CircuitComponents {
             Box::new(self.blake_g) as Box<dyn Component>,
             Box::new(self.blake_output) as Box<dyn Component>,
             Box::new(self.triple_xor_32) as Box<dyn Component>,
+            Box::new(self.m_31_to_u_32) as Box<dyn Component>,
             Box::new(self.verify_bitwise_xor_8) as Box<dyn Component>,
             Box::new(self.verify_bitwise_xor_12) as Box<dyn Component>,
             Box::new(self.verify_bitwise_xor_4) as Box<dyn Component>,
