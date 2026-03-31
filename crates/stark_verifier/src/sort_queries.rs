@@ -19,18 +19,12 @@ const COLUMN_IDX_BOUND: u32 = 1 << COLUMN_IDX_BITS;
 use circuits::extract_bits::extract_bits;
 
 /// Generates the column indices for the columns.
-/// The column indices are the values 1..n_columns.
+/// The column indices are the values 0..n_columns, created as constants.
 pub fn generate_column_indices<Value: IValue>(
     context: &mut Context<Value>,
     n_columns: usize,
 ) -> Vec<Var> {
-    let mut column_idx = context.zero();
-    let mut column_indices = vec![column_idx];
-    for _ in 1..n_columns {
-        column_idx = eval!(context, (column_idx) + (context.one()));
-        column_indices.push(column_idx);
-    }
-    column_indices
+    (0..n_columns).map(|i| context.constant((i as u32).into())).collect()
 }
 
 /// Generates the keys for sorting the query values by the column indices and log sizes.
