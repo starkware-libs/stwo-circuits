@@ -27,8 +27,11 @@ use crate::privacy::{
     PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT, privacy_cairo_verifier_config, privacy_components,
 };
 use crate::test::verify_cairo_with_component_set;
+
+mod privacy_test_utils;
 use crate::utils::get_proof_file_path;
 use crate::verify::build_cairo_verifier_circuit;
+use privacy_test_utils::{hash_to_u32s, update_const_in_privacy_rs};
 
 fn privacy_circuit_preprocessed_root() -> HashValue<QM31> {
     PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT.into()
@@ -116,8 +119,15 @@ fn test_verify_privacy_with_recursion() {
 
     let actual_root: HashValue<QM31> =
         circuit_proof.stark_proof.as_ref().unwrap().proof.commitments.0[0].into();
-    let expected_root: HashValue<QM31> = PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT.into();
-    assert_eq!(actual_root, expected_root);
+    if std::env::var("FIX_CONSTS").is_ok() {
+        update_const_in_privacy_rs(
+            "PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT",
+            hash_to_u32s(actual_root),
+        );
+    } else {
+        let expected_root: HashValue<QM31> = PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT.into();
+        assert_eq!(actual_root, expected_root);
+    }
 
     verify_circuit_proof(&preprocessed, circuit_proof, privacy_circuit_preprocessed_root());
 }
@@ -176,12 +186,18 @@ fn test_privacy_recursion_with_preprocessed_context() {
 
 #[test]
 fn test_privacy_consts() {
+    let fix_consts = std::env::var("FIX_CONSTS").is_ok();
+
     let cairo_proof_log_blowup_factor = 2;
     let const_config = privacy_cairo_verifier_config(cairo_proof_log_blowup_factor);
     let mut novalue_context = build_cairo_verifier_circuit(&const_config);
     let constants = novalue_context.constants().keys().cloned().collect_vec();
     let blake_value = QM31::blake(constants.as_slice(), constants.len() * 16);
-    assert_eq!(blake_value, PRIVACY_CAIRO_VERIFIER_CONSTS_HASH.into());
+    if fix_consts {
+        update_const_in_privacy_rs("PRIVACY_CAIRO_VERIFIER_CONSTS_HASH", hash_to_u32s(blake_value));
+    } else {
+        assert_eq!(blake_value, PRIVACY_CAIRO_VERIFIER_CONSTS_HASH.into());
+    }
 
     // Finalization should not add any new constants.
     finalize_context(&mut novalue_context);
@@ -224,7 +240,14 @@ fn test_privacy_consts() {
         build_verification_circuit(circuit_config, proof, public_data).unwrap();
     let constants = verifier_context.constants().keys().cloned().collect_vec();
     let blake_value = QM31::blake(constants.as_slice(), constants.len() * 16);
-    assert_eq!(blake_value, PRIVACY_RECURSION_CIRCUIT_CONSTS_HASH.into());
+    if fix_consts {
+        update_const_in_privacy_rs(
+            "PRIVACY_RECURSION_CIRCUIT_CONSTS_HASH",
+            hash_to_u32s(blake_value),
+        );
+    } else {
+        assert_eq!(blake_value, PRIVACY_RECURSION_CIRCUIT_CONSTS_HASH.into());
+    }
 
     // Finalization should not add any new constants.
     finalize_context(&mut verifier_context);

@@ -8,6 +8,7 @@ use circuit_air::{CircuitClaim, CircuitInteractionClaim, CircuitInteractionEleme
 use circuit_common::CircuitParams;
 use circuit_common::Qm31OpsTraceGenerator;
 use circuit_common::preprocessed::PreprocessedCircuit;
+use circuits::blake::HashValue;
 use circuits_stark_verifier::proof::Proof;
 use circuits_stark_verifier::proof::{Claim, ProofConfig};
 use circuits_stark_verifier::proof_from_stark_proof::{
@@ -72,6 +73,33 @@ pub fn to_component_provers(
         &components.range_check_16 as &dyn ComponentProver<SimdBackend>,
     ])
     .collect()
+}
+
+/// Computes the Merkle root of the preprocessed trace for the given circuit and PCS config.
+pub fn compute_preprocessed_root(
+    preprocessed_circuit: &PreprocessedCircuit,
+    pcs_config: PcsConfig,
+) -> HashValue<QM31> {
+    let trace_log_size = preprocessed_circuit.params.trace_log_size;
+    let lifting_log_size = trace_log_size + pcs_config.fri_config.log_blowup_factor;
+    let pcs_config = PcsConfig { lifting_log_size: Some(lifting_log_size), ..pcs_config };
+    let twiddles = SimdBackend::precompute_twiddles(
+        CanonicCoset::new(trace_log_size + pcs_config.fri_config.log_blowup_factor)
+            .circle_domain()
+            .half_coset,
+    );
+    let preprocessed_trace = preprocessed_circuit.preprocessed_trace.get_trace::<SimdBackend>();
+    let preprocessed_trace_polys = SimdBackend::interpolate_columns(preprocessed_trace, &twiddles);
+    let base_column_pool = BaseColumnPool::<SimdBackend>::new();
+    let preprocessed_tree = CommitmentTreeProver::<SimdBackend, Blake2sM31MerkleChannel>::new(
+        preprocessed_trace_polys,
+        pcs_config.fri_config.log_blowup_factor,
+        &twiddles,
+        false,
+        pcs_config.lifting_log_size,
+        &base_column_pool,
+    );
+    preprocessed_tree.commitment.root().into()
 }
 
 pub fn prove_circuit_assignment(
