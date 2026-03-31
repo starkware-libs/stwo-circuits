@@ -9,7 +9,6 @@ pub fn accumulate_constraints<Value: IValue>(
     input: &[Var],
     context: &mut Context<Value>,
     component_data: &dyn ComponentDataTrait<Value>,
-    enabler: Var,
     acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
     let [

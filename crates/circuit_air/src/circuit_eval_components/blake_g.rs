@@ -76,7 +76,6 @@ pub fn accumulate_constraints<Value: IValue>(
         xor_col51,
         enabler_col52,
     ] = input.try_into().unwrap();
-    let enabler = context.one();
 
     triple_sum_32::accumulate_constraints(
         &[
@@ -91,7 +90,6 @@ pub fn accumulate_constraints<Value: IValue>(
         ],
         context,
         component_data,
-        enabler,
         acc,
     );
 
@@ -113,7 +111,6 @@ pub fn accumulate_constraints<Value: IValue>(
             ],
             context,
             component_data,
-            enabler,
             acc,
         )
         .try_into()
@@ -132,7 +129,6 @@ pub fn accumulate_constraints<Value: IValue>(
         ],
         context,
         component_data,
-        enabler,
         acc,
     );
 
@@ -154,7 +150,6 @@ pub fn accumulate_constraints<Value: IValue>(
             ],
             context,
             component_data,
-            enabler,
             acc,
         )
         .try_into()
@@ -173,7 +168,6 @@ pub fn accumulate_constraints<Value: IValue>(
         ],
         context,
         component_data,
-        enabler,
         acc,
     );
 
@@ -195,7 +189,6 @@ pub fn accumulate_constraints<Value: IValue>(
             ],
             context,
             component_data,
-            enabler,
             acc,
         )
         .try_into()
@@ -214,7 +207,6 @@ pub fn accumulate_constraints<Value: IValue>(
         ],
         context,
         component_data,
-        enabler,
         acc,
     );
 
@@ -236,7 +228,6 @@ pub fn accumulate_constraints<Value: IValue>(
             ],
             context,
             component_data,
-            enabler,
             acc,
         )
         .try_into()

@@ -1,5 +1,3 @@
-// This file was created by the AIR team.
-
 use super::prelude::*;
 
 pub const N_TRACE_COLUMNS: usize = 151;
@@ -242,7 +240,6 @@ pub fn accumulate_constraints<Value: IValue>(
         ],
         context,
         component_data,
-        compress_enabler,
         acc,
     )
     .try_into()
