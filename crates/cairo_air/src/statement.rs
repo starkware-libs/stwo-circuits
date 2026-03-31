@@ -164,8 +164,16 @@ impl<Value: IValue> CairoStatement<Value> {
     /// Assumes that the start and end addresses of the segment ranges are less than 2^27 (this is
     /// guaranteed by `segment_ranges_logup_sum`).
     pub fn verify_builtins(&self, context: &mut Context<Value>, component_sizes: &[Var]) {
+        let [output_segment_range, builtin_segment_ranges @ ..] =
+            &self.public_data.public_memory.segment_ranges;
+
+        // Validate the output segment range.
+        let diff =
+            eval!(context, (output_segment_range.end.value) - (output_segment_range.start.value));
+        let n_outputs = context.constant((self.packed_outputs.len() / MEMORY_VALUES_LIMBS).into());
+        eq(context, diff, n_outputs);
+
         let [
-            output_segment_range,
             pedersen_segment_range,
             range_check_128_segment_range,
             ecdsa_segment_range,
@@ -176,44 +184,59 @@ impl<Value: IValue> CairoStatement<Value> {
             range_check96_segment_range,
             add_mod_segment_range,
             mul_mod_segment_range,
-        ] = &self.public_data.public_memory.segment_ranges;
+        ] = builtin_segment_ranges;
 
-        // Validate the output segment range.
-        let diff =
-            eval!(context, (output_segment_range.end.value) - (output_segment_range.start.value));
-        let n_outputs = context.constant((self.packed_outputs.len() / MEMORY_VALUES_LIMBS).into());
-        eq(context, diff, n_outputs);
-
-        let supported_builtins = [
-            pedersen_segment_range,
-            range_check_128_segment_range,
-            bitwise_segment_range,
-            poseidon_segment_range,
+        // Each builtin is either supported (Some with component name + instance size) or not
+        // supported (None, meaning its segment must be empty).
+        let all_builtins: [_; N_SEGMENTS - 1] = [
+            (
+                pedersen_segment_range,
+                Some(("pedersen_builtin_narrow_windows", PEDERSEN_BUILTIN_MEMORY_CELLS)),
+            ),
+            (
+                range_check_128_segment_range,
+                Some(("range_check_builtin", RANGE_CHECK_BUILTIN_MEMORY_CELLS)),
+            ),
+            (ecdsa_segment_range, None),
+            (bitwise_segment_range, Some(("bitwise_builtin", BITWISE_BUILTIN_MEMORY_CELLS))),
+            (ec_op_segment_range, None),
+            (keccak_segment_range, None),
+            (poseidon_segment_range, Some(("poseidon_builtin", POSEIDON_BUILTIN_MEMORY_CELLS))),
+            (range_check96_segment_range, None),
+            (add_mod_segment_range, None),
+            (mul_mod_segment_range, None),
         ];
+
+        // Enforce not-supported builtins have empty segments, collect supported builtins.
+        let mut supported_builtins: Vec<(&SegmentRange<Var>, &str, usize)> = vec![];
+        for (segment_range, maybe_builtin) in all_builtins {
+            match maybe_builtin {
+                Some((name, size)) => supported_builtins.push((segment_range, name, size)),
+                None => {
+                    eq(context, segment_range.end.value, segment_range.start.value);
+                }
+            }
+        }
+
+        // Compute n_uses for all supported builtins.
         let start_addresses = Simd::pack(
             context,
             &supported_builtins
                 .iter()
-                .map(|segment_range| M31Wrapper::new_unsafe(segment_range.start.value))
+                .map(|(segment_range, _, _)| M31Wrapper::new_unsafe(segment_range.start.value))
                 .collect_vec(),
         );
         let end_addresses = Simd::pack(
             context,
             &supported_builtins
                 .iter()
-                .map(|segment_range| M31Wrapper::new_unsafe(segment_range.end.value))
+                .map(|(segment_range, _, _)| M31Wrapper::new_unsafe(segment_range.end.value))
                 .collect_vec(),
         );
         let diff = Simd::sub(context, &end_addresses, &start_addresses);
 
-        let builtin_instance_sizes = [
-            ("pedersen_builtin_narrow_windows", PEDERSEN_BUILTIN_MEMORY_CELLS),
-            ("range_check_builtin", RANGE_CHECK_BUILTIN_MEMORY_CELLS),
-            ("bitwise_builtin", BITWISE_BUILTIN_MEMORY_CELLS),
-            ("poseidon_builtin", POSEIDON_BUILTIN_MEMORY_CELLS),
-        ];
         let builtin_instance_size_inverses = pack_into_qm31s(
-            builtin_instance_sizes.iter().map(|(_name, size)| M31::from(*size).inverse()),
+            supported_builtins.iter().map(|(_, _, size)| M31::from(*size as u32).inverse()),
         )
         .into_iter()
         .map(|qm31| context.constant(qm31))
@@ -228,10 +251,9 @@ impl<Value: IValue> CairoStatement<Value> {
         // instance_size (mod M31_P). Since all values are less than 2^27, this equality
         // also holds over the integers.
         extract_bits(context, &n_uses_simd, SMALL_VALUE_BITS);
-        let max_builtin_instance_size =
-            builtin_instance_sizes.iter().map(|(_name, size)| size).max().unwrap();
+        let max_instance_size = *supported_builtins.iter().map(|(_, _, size)| size).max().unwrap();
         assert!(
-            max_builtin_instance_size.ilog2() < (31 - SMALL_VALUE_BITS),
+            (max_instance_size as u32).ilog2() < (31 - SMALL_VALUE_BITS),
             "max_builtin_memory_cell * n_uses might exceed M31_P"
         );
 
@@ -239,8 +261,8 @@ impl<Value: IValue> CairoStatement<Value> {
         let mut range_checks = vec![];
         let all_components = all_components::<Value>();
 
-        for ((name, _size), actual_uses) in zip_eq(builtin_instance_sizes, actual_uses_iter) {
-            let index = all_components.get_index_of(name).unwrap();
+        for ((_, name, _), actual_uses) in zip_eq(&supported_builtins, actual_uses_iter) {
+            let index = all_components.get_index_of(*name).unwrap();
             if self.components[index].is_disabled() {
                 // Component is disabled - actual_uses must be 0.
                 eq(context, actual_uses, context.zero());
@@ -254,20 +276,6 @@ impl<Value: IValue> CairoStatement<Value> {
 
         let rc_simd = Simd::pack(context, &range_checks);
         extract_bits(context, &rc_simd, SMALL_VALUE_BITS);
-
-        // Handle the builtins not supported by the circuit.
-        let zero = context.zero();
-        for segment_range in [
-            ec_op_segment_range,
-            ecdsa_segment_range,
-            keccak_segment_range,
-            range_check96_segment_range,
-            add_mod_segment_range,
-            mul_mod_segment_range,
-        ] {
-            let diff = eval!(context, (segment_range.end.value) - (segment_range.start.value));
-            eq(context, diff, zero);
-        }
     }
 }
 
