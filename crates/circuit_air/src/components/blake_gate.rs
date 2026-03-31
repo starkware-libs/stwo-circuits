@@ -298,7 +298,6 @@ impl FrameworkEval for Eval {
             xor_col52.clone(),
             xor_col53.clone(),
             &self.common_lookup_elements,
-            E::EF::from(blake_gate_enabler.clone()),
             t0.clone(),
             t1.clone(),
             &mut eval,
