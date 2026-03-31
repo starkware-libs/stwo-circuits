@@ -277,26 +277,6 @@ impl<Value: IValue> CairoStatement<Value> {
         public_data: Vec<M31>,
         outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
         program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
-        preprocessed_root: HashValue<QM31>,
-        preprocessed_trace_variant: PreProcessedTraceVariant,
-    ) -> Self {
-        let components = all_components().into_values().collect_vec();
-        Self::new_ex(
-            context,
-            public_data,
-            outputs,
-            program,
-            components,
-            preprocessed_root,
-            preprocessed_trace_variant,
-        )
-    }
-
-    pub fn new_ex(
-        context: &mut Context<Value>,
-        public_data: Vec<M31>,
-        outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
-        program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
         components: Vec<Box<dyn CircuitEval<Value>>>,
         preprocessed_root: HashValue<QM31>,
         preprocessed_trace_variant: PreProcessedTraceVariant,
