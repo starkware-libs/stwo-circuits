@@ -86,6 +86,7 @@ pub fn verify_fixed_cairo_circuit(
 /// Builds the Cairo verifier circuit context for a fixed circuit configuration.
 ///
 /// The context can be used for proof verification or recursive proving.
+// TODO(audit): Unite with the function build_cairo_verifier_circuit
 pub fn build_fixed_cairo_circuit(
     verifier_config: &CairoVerifierConfig,
     proof: Proof<QM31>,

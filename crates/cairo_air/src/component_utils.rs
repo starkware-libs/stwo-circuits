@@ -8,9 +8,13 @@ use circuits_stark_verifier::constraint_eval::*;
 
 // Create a variable with the evaluation of seq_k where k is the log-height of
 // the component. The height is taken from component_data.get_n_instances_bits.
+
+// TODO(audit): Consider making this function a member of `ComponentDataTrait`.
+
 pub fn seq_of_component_size<Value: IValue>(
     context: &mut Context<Value>,
     component_data: &dyn ComponentDataTrait<Value>,
+    // TODO: get the processed columns instead of the accumulator.
     acc: &mut CompositionConstraintAccumulator,
 ) -> Var {
     // Compute:
@@ -19,8 +23,13 @@ pub fn seq_of_component_size<Value: IValue>(
     let mut sum_bits = context.zero();
     let mut result = context.zero();
 
+
+    // Consider using `component_data.n_instances_bits.enumerate()`instead.
     for log_size in 0..component_data.max_component_size_bits() {
         let seq_name = PreProcessedColumnId { id: format!("seq_{log_size}") };
+
+        
+        // TODO(audit): Use let else...
         if !acc.preprocessed_columns.contains_key(&seq_name) {
             // Our preprocessed trace doesn't contain a seq column of this size
             continue;

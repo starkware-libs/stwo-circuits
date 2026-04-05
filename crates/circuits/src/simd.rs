@@ -274,7 +274,7 @@ impl Simd {
         assert!(bits.len() < 30);
         let mut iter = bits.iter().rev();
         let mut res = iter.next().unwrap().clone();
-        let two = M31Wrapper::new_unsafe(context.constant(QM31::from(2)));
+        let two = M31Wrapper::new_unsafe(eval!(context, 2));
         for bit in iter {
             res = Simd::scalar_mul(context, &res, &two);
             res = Simd::add(context, &res, bit);

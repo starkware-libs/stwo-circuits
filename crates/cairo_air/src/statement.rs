@@ -72,6 +72,7 @@ pub struct PubMemoryM31Value<T> {
     pub value: T,
 }
 
+// TODO(audit): Split into 9 bit limbs and call extract_bits for each limb.
 pub fn split_27bit_to_9bit_limbs(context: &mut Context<impl IValue>, value: Var) -> [Var; 3] {
     let simd = Simd::from_packed(vec![value], 1);
     let extracted_bits = extract_bits(context, &simd, SMALL_VALUE_BITS);
@@ -175,7 +176,8 @@ impl<Value: IValue> CairoStatement<Value> {
             end: PubMemoryM31Value { id: _, value: output_end },
         } = &segment_ranges[0];
         let diff = eval!(context, (*output_end) - (*output_start));
-        let n_outputs = context.constant((self.packed_outputs.len() / MEMORY_VALUES_LIMBS).into());
+        // TODO(audit): use safe_div.
+        let n_outputs = context.constant(self.packed_outputs.len() / MEMORY_VALUES_LIMBS).into();
         eq(context, diff, n_outputs);
 
         let pedersen_segment_range = &segment_ranges[1];
@@ -188,6 +190,7 @@ impl<Value: IValue> CairoStatement<Value> {
         let range_check96_segment_range = &segment_ranges[8];
         let add_mod_segment_range = &segment_ranges[9];
         let mul_mod_segment_range = &segment_ranges[10];
+        // TODO(audit): assert segment_ranges.len() == 11..
 
         let supported_builtins = [
             pedersen_segment_range,
@@ -223,6 +226,8 @@ impl<Value: IValue> CairoStatement<Value> {
         .into_iter()
         .map(|qm31| context.constant(qm31))
         .collect();
+
+        // TODO(audit): assert builtin_memory_cells.len() == supported_builtins.len().
         let packed_instance_size_inverses =
             Simd::from_packed(instance_size_inverses, supported_builtins.len());
 
@@ -234,7 +239,8 @@ impl<Value: IValue> CairoStatement<Value> {
         // also holds over the integers.
         extract_bits(context, &n_uses_simd, SMALL_VALUE_BITS);
         let max_builtin_memory_cell =
-            builtin_memory_cells.iter().map(|(_name, size)| size).max().unwrap();
+            builtin_memory_cells.iter().map(|(_name, instance_size)| instance_size).max().unwrap();
+        // sanity check.
         assert!(
             max_builtin_memory_cell.ilog2() < (31 - SMALL_VALUE_BITS),
             "max_builtin_memory_cell * segment_range.start might exceed M31_P"
@@ -244,11 +250,12 @@ impl<Value: IValue> CairoStatement<Value> {
         let mut range_checks = vec![];
         let all_components = all_components::<Value>();
 
-        for ((name, _size), actual_uses) in zip_eq(builtin_memory_cells, actual_uses_iter) {
+        for ((name, _instance_size), actual_uses) in zip_eq(builtin_memory_cells, actual_uses_iter) {
             let index = all_components.get_index_of(name).unwrap();
             let component_size = component_sizes[index];
 
             // Check that either actual_uses == 0 or is_disabled == 0.
+            // enable_bit = 0 -> actual_uses should be 0..
             let is_disabled = eval!(context, (1) - (enable_bits[index]));
             let constraint_val = eval!(context, (actual_uses) * (is_disabled));
             eq(context, constraint_val, context.zero());
@@ -445,7 +452,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
 
         eq(context, *initial_fp, *final_fp);
         eq(context, *initial_fp, *initial_ap);
-        let expected_final_pc = context.constant(5.into());
+        let expected_final_pc = eval!(context, 5);
         eq(context, *final_pc, expected_final_pc);
         // Check that the initial_ap <= final_ap.
         // i.e. 0 <= final_ap - initial_ap < 2**29.
@@ -461,7 +468,9 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         // a 29-bit address space (i.e., is less than 2**29).
         // Higher addresses are not supported by components that assume 29-bit addresses.
         // Assumes that there is only one ADDRESS_TO_ID component and it uses Seq.
-        const { assert!(MEMORY_ADDRESS_TO_ID_SPLIT * MAX_SEQUENCE_LOG_SIZE < 1 << 29) };
+
+        // TODO(audit): use MAX_SMALL_SEQUENCE_SIZE. (no log).
+        const { assert!((MEMORY_ADDRESS_TO_ID_SPLIT * (1 << MAX_SEQUENCE_LOG_SIZE)) < (1 << 29)) };
 
         let shifted_opcode_relation_uses =
             Simd::from_packed(vec![shifted_relation_uses["Opcodes"]], 1);
@@ -518,12 +527,11 @@ pub fn segment_ranges_logup_sum(
     mut argument_address: Var,
     mut return_value_address: Var,
 ) -> Var {
-    let one = context.one();
     let mut sum = context.zero();
     for (i, segment_range) in segment_ranges.iter().enumerate() {
         if i != 0 {
-            argument_address = eval!(context, (argument_address) + (one));
-            return_value_address = eval!(context, (return_value_address) + (one));
+            argument_address = eval!(context, (argument_address) + (1));
+            return_value_address = eval!(context, (return_value_address) + (1));
         }
 
         let arg_address_to_id_logup_term = address_to_id_logup_term(
@@ -532,6 +540,8 @@ pub fn segment_ranges_logup_sum(
             segment_range.start.id,
             interaction_elements,
         );
+
+        // TODO(audit): Move inside PubMemoryM31Value.logup_term. 
         let return_value_to_id_logup_term = address_to_id_logup_term(
             context,
             return_value_address,
@@ -550,7 +560,7 @@ pub fn segment_ranges_logup_sum(
     sum
 }
 
-fn safe_call_id_logup_term(
+fn safe_call_logup_term(
     context: &mut Context<impl IValue>,
     interaction_elements: [Var; 2],
     address: Var,
@@ -572,12 +582,11 @@ pub fn memory_segment_logup_sum(
     ids: &[Var],
     memory_values: &[[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]],
 ) -> Var {
-    let one = context.one();
     let mut sum = context.zero();
 
     for (i, (&id, value_limbs)) in zip_eq(ids, memory_values).enumerate() {
         if i != 0 {
-            start_address = eval!(context, (start_address) + (one));
+            start_address = eval!(context, (start_address) + (1));
         }
 
         let address_to_id_logup_term =
@@ -615,10 +624,9 @@ pub fn public_logup_sum(
         public_data.initial_state.logup_term(context, interaction_elements);
     let mut sum = eval!(context, (final_state_logup_term) - (initial_state_logup_term));
 
-    let one = context.one();
     let safe_call_addresses = vec![
-        eval!(context, (initial_ap) - (context.constant(QM31::from(2)))),
-        eval!(context, (initial_ap) - (one)),
+        eval!(context, (initial_ap) - (2)),
+        eval!(context, (initial_ap) - (1)),
     ];
 
     let split_initial_ap = split_27bit_to_9bit_limbs(context, initial_ap);
@@ -628,7 +636,7 @@ pub fn public_logup_sum(
     // memory[initial_ap - 1] = (safe_call_id1, 0).
     for (address, id, value_limbs) in izip!(safe_call_addresses, safe_call_ids, safe_call_values) {
         let logup_term =
-            safe_call_id_logup_term(context, interaction_elements, address, *id, value_limbs);
+            safe_call_logup_term(context, interaction_elements, address, *id, value_limbs);
         sum = eval!(context, (sum) + (logup_term));
     }
 

@@ -29,6 +29,7 @@ pub const LOG_SIZE_BITS: u32 = 5;
 
 pub const RELATION_USES_NUM_ROWS_SHIFT: usize = 16;
 
+// TODO(audit): document.S
 pub fn validate_logup_sum(
     context: &mut Context<impl IValue>,
     public_logup_sum: Var,
@@ -36,6 +37,9 @@ pub fn validate_logup_sum(
     enable_bits: &[Var],
 ) {
     let mut log_up_sum = public_logup_sum;
+
+    // TODO(audit): Remove multiply by enable_bit (add constraint that the logup sum is 0 if the enable bit is 0).
+    // Verify that all the claimed sums appear in constraint.
     for (claimed_sum, enable_bit) in zip_eq(claimed_sums, enable_bits) {
         log_up_sum = eval!(context, (log_up_sum) + ((*claimed_sum) * (*enable_bit)));
     }
@@ -110,8 +114,10 @@ pub fn verify<Value: IValue>(
 
     channel.proof_of_work(context, config.interaction_pow_bits, proof.interaction_pow_nonce);
     // Pick the interaction elements.
+    // TODO(audit): how does it affect the security of the protocol?
     let [interaction_z, interaction_alpha] = channel.draw_two_qm31s(context);
 
+    // TODO(audit):do this earlier.
     let simd_enable_bits =
         Simd::from_packed(proof.claim.packed_enable_bits.clone(), config.n_components);
     simd_enable_bits.assert_bits(context);
@@ -141,6 +147,7 @@ pub fn verify<Value: IValue>(
     // Draw a random point for the OODS.
     let oods_point = channel.draw_point(context);
 
+    // TODO(audit): move up.
     let shifted_relation_uses = check_relation_uses(context, statement, &component_sizes_bits);
     let unpacked_component_sizes = Simd::unpack(context, &component_sizes);
     statement.verify_claim(
@@ -148,6 +155,33 @@ pub fn verify<Value: IValue>(
         &enable_bits,
         &unpacked_component_sizes,
         &shifted_relation_uses,
+    );
+
+
+    // Verify the values in `proof.trace_at_oods` and `proof.composition_eval_at_oods`.
+    // Start by adding the values to the channel. Values belonging to cumulative sum columns are
+    // added twice, once for the previous point and once for the OODS point.
+    let interaction_at_oods = proof
+        .interaction_at_oods
+        .iter()
+        .flat_map(|interaction| {
+            if let Some(interaction_at_prev) = interaction.at_prev {
+                vec![interaction_at_prev, interaction.at_oods]
+            } else {
+                vec![interaction.at_oods]
+            }
+        })
+        .collect_vec();
+
+    // TODO(audit): mix before usage in composition polynomial evaluation.
+    channel.mix_qm31s(
+        context,
+        chain!(
+            proof.preprocessed_columns_at_oods.iter().cloned(),
+            proof.trace_at_oods.iter().cloned(),
+            interaction_at_oods,
+            proof.composition_eval_at_oods,
+        ),
     );
 
     // Compute the composition evaluation at the OODS point from `proof.*_at_oods` and compare
@@ -190,29 +224,6 @@ pub fn verify<Value: IValue>(
         .map(|pt| add_points(context, &oods_point, &pt))
         .collect_vec();
 
-    // Verify the values in `proof.trace_at_oods` and `proof.composition_eval_at_oods`.
-    // Start by adding the values to the channel. Values belonging to cumulative sum columns are
-    // added twice, once for the previous point and once for the OODS point.
-    let interaction_at_oods = proof
-        .interaction_at_oods
-        .iter()
-        .flat_map(|interaction| {
-            if let Some(interaction_at_prev) = interaction.at_prev {
-                vec![interaction_at_prev, interaction.at_oods]
-            } else {
-                vec![interaction.at_oods]
-            }
-        })
-        .collect_vec();
-    channel.mix_qm31s(
-        context,
-        chain!(
-            proof.preprocessed_columns_at_oods.iter().cloned(),
-            proof.trace_at_oods.iter().cloned(),
-            interaction_at_oods,
-            proof.composition_eval_at_oods,
-        ),
-    );
 
     // Draw a random challenge for the linear combination of the OODS quotients.
     let oods_quotient_coef = channel.draw_qm31(context);
@@ -280,6 +291,13 @@ fn check_relation_uses<Value: IValue>(
 ) -> HashMap<&'static str, Var> {
     let components = statement.get_components();
 
+    // TODO(audit): Consider adding the publc memory uses (specifically the program).
+
+
+    // TODO(audit): use trace_size instead of P.
+    // TODO(audit):doc.
+    let shifted_component_size_upper_bound = u64::from((P >> RELATION_USES_NUM_ROWS_SHIFT) + 1);
+
     // Check that sum(uses_per_row * (floor(num_rows / DIV) + 1)) cannot overflow even for the
     // maximal num_rows (num_rows = P).
     // This is a sanity check that `NUM_ROWS_SHIFT` is large enough for the given statement, it
@@ -288,10 +306,11 @@ fn check_relation_uses<Value: IValue>(
     for component in components.iter() {
         for relation_use in component.relation_uses_per_row() {
             let entry = max_shifted_uses_per_relation.entry(relation_use.relation_id).or_insert(0);
-            *entry += relation_use.uses * (((P >> RELATION_USES_NUM_ROWS_SHIFT) + 1) as u64);
+            // TODO(audit): Use checked_add.
+            *entry += relation_use.uses * shifted_component_size_upper_bound;
         }
     }
-    assert!(max_shifted_uses_per_relation.values().all(|count| *count < (P as u64)));
+    assert!(max_shifted_uses_per_relation.values().all(|count| *count < P.into()));
 
     // Compute floor(num_rows / DIV) for all components
     let shifted_component_sizes = match component_sizes_bits.get(RELATION_USES_NUM_ROWS_SHIFT..) {
@@ -302,6 +321,9 @@ fn check_relation_uses<Value: IValue>(
     // components don't use any relations.
     Simd::mark_partly_used(context, &shifted_component_sizes);
 
+    
+    // TODO(audit): Consider moving + 1 here.
+
     // Sum uses_per_row * (floor(num_rows / DIV) + 1) for all relations
     let mut shifted_relation_uses = HashMap::new();
     for (i, component) in components.iter().enumerate() {
@@ -310,23 +332,29 @@ fn check_relation_uses<Value: IValue>(
             continue;
         }
         let shifted_size = Simd::unpack_idx(context, &shifted_component_sizes, i);
-        for relation_use in component.relation_uses_per_row() {
+        for relation_use in relation_uses {
+            // TODO(audit): consider remove zero + gate.
             let entry =
                 shifted_relation_uses.entry(relation_use.relation_id).or_insert(context.zero());
             let uses_per_row =
-                context.constant(TryInto::<u32>::try_into(relation_use.uses).unwrap().into());
+                context.constant(u32::try_from(relation_use.uses).unwrap().into());
             *entry = eval!(context, (*entry) + (((shifted_size) + (1)) * (uses_per_row)));
         }
     }
 
     // Verify that the sum is less than floor(P / DIV) by expressing it as a
     // floor(log2(P / DIV))-bit number
+
+
+    // TODO(audit): Consider using IndexMap instead of sort_by_key.
     let shifted_use_counts = shifted_relation_uses
         .iter()
         .sorted_by_key(|(k, _v)| *k)
         .map(|(_k, v)| M31Wrapper::new_unsafe(*v))
         .collect_vec();
     let shifted_use_counts = Simd::pack(context, &shifted_use_counts);
+
+    // TODO(audit): Consider range checking ((P >> RELATION_USES_NUM_ROWS_SHIFT) - shifted_use_counts) > 0.
     extract_bits(context, &shifted_use_counts, (P >> RELATION_USES_NUM_ROWS_SHIFT).ilog2());
     shifted_relation_uses
 }

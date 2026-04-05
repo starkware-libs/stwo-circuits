@@ -26,6 +26,7 @@ pub struct EvaluateArgs<'a> {
     pub enable_bits: &'a [Var],
     pub claimed_sums: &'a [Var],
     pub component_sizes: &'a [Var],
+    // TODO(audit): rename n_instances_bits to be consistent with component_sizes.
     pub n_instances_bits: &'a [Simd],
 }
 

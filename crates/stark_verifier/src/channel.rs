@@ -75,6 +75,7 @@ impl Channel {
     }
 
     /// Draws two `QM31` random values from the channel.
+    /// TODO(audit): Add comment to explain why its ok that it is not uniformly random.
     pub fn draw_two_qm31s(&mut self, context: &mut Context<impl IValue>) -> [Var; 2] {
         let n_draws_var =
             context.constant(qm31_from_u32s(self.n_draws.try_into().unwrap(), 0, 0, 0));
@@ -124,6 +125,8 @@ impl Channel {
 
         // Check that the n_bits least significant bits are zero.
         let bits = extract_bits(context, &Simd::from_packed(vec![first_word], 1), MODULUS_BITS);
+
+        // TODO(audit): Add comment to exaplain why its ok that it is not uniformly random.
         for bit in &bits[0..n_bits.try_into().unwrap()] {
             eq(context, bit.get_packed()[0], context.zero());
         }

@@ -7,7 +7,7 @@ use crate::statement::{EvaluateArgs, Statement};
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::ivalue::IValue;
-use circuits::ops::{div, from_partial_evals};
+use circuits::ops::{div, eq, from_partial_evals};
 use circuits::simd::Simd;
 use itertools::{Itertools, izip, zip_eq};
 use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
@@ -108,7 +108,7 @@ pub struct CompositionConstraintAccumulator {
 
 impl CompositionConstraintAccumulator {
     pub fn new(
-        context: &mut Context<impl IValue>,
+        context: &Context<impl IValue>,
         preprocessed_columns: HashMap<PreProcessedColumnId, Var>,
         public_params: HashMap<String, Var>,
         composition_polynomial_coeff: Var,
@@ -306,7 +306,11 @@ pub fn compute_composition_polynomial<Value: IValue>(
         if trace_columns.is_empty() {
             // The variable is unused unless its a builtin component, in that case we access it in
             // verify_builtins.
+            // TODO(audit): enforce that claimed_sum is zero.
+            eq(context, claimed_sum, context.zero());
             context.mark_as_maybe_unused(&component_size);
+
+            // TODO(audit): check that the number of interaction columns 0.
             continue;
         }
 
@@ -321,7 +325,11 @@ pub fn compute_composition_polynomial<Value: IValue>(
             index: component_index,
             n_instances_bits,
         };
+        // TODO(audit): Consider removing ComponentData.index if it is unpacked elsewhere.
 
+        // TODO(audit): Remove claimed_sum from the component data, pass it directly to `finalize_logup_in_pairs`.
+
+        // TODO(audit): consider using the StwoEvaluator.
         component.evaluate(context, &component_data, &mut evaluation_accumulator);
 
         evaluation_accumulator.finalize_logup_in_pairs(
