@@ -91,7 +91,6 @@ pub fn accumulate_constraints<Value: IValue>(
         ],
         context,
         component_data,
-        enabler,
         acc,
     );
 
@@ -113,7 +112,6 @@ pub fn accumulate_constraints<Value: IValue>(
             ],
             context,
             component_data,
-            enabler,
             acc,
         )
         .try_into()
@@ -132,7 +130,6 @@ pub fn accumulate_constraints<Value: IValue>(
         ],
         context,
         component_data,
-        enabler,
         acc,
     );
 
@@ -154,7 +151,6 @@ pub fn accumulate_constraints<Value: IValue>(
             ],
             context,
             component_data,
-            enabler,
             acc,
         )
         .try_into()
@@ -173,7 +169,6 @@ pub fn accumulate_constraints<Value: IValue>(
         ],
         context,
         component_data,
-        enabler,
         acc,
     );
 
@@ -214,7 +209,6 @@ pub fn accumulate_constraints<Value: IValue>(
         ],
         context,
         component_data,
-        enabler,
         acc,
     );
 
