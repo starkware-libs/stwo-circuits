@@ -17,15 +17,6 @@ use crate::verify::{CairoVerifierConfig, get_preprocessed_root};
 #[path = "privacy_test.rs"]
 pub mod test;
 
-pub const PRIVACY_CAIRO_VERIFIER_CONSTS_HASH: [u32; 8] =
-    [1475597088, 82387995, 2025635294, 1627893473, 1363087133, 1249059061, 1912910361, 1304702628];
-
-pub const PRIVACY_RECURSION_CIRCUIT_CONSTS_HASH: [u32; 8] =
-    [1239482021, 1480225209, 431023925, 1568934665, 1750091358, 998964007, 793967007, 1484046160];
-
-pub const PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
-    [217108077, 94133105, 287486499, 807908439, 981003728, 385994783, 1130394961, 21201222];
-
 /// Returns a [CairoVerifierConfig] for the privacy proof setup with the given log blowup factor.
 pub fn privacy_cairo_verifier_config(log_blowup_factor: u32) -> CairoVerifierConfig {
     let preprocessed_trace_variant = PreProcessedTraceVariant::CanonicalSmall;
