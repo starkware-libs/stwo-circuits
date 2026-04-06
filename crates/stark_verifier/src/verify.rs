@@ -74,8 +74,9 @@ pub fn verify<Value: IValue>(
     let preprocessed_root = statement.get_preprocessed_root(context);
     channel.mix_commitment(context, preprocessed_root);
 
+    let n_components = config.n_components();
     let component_log_sizes =
-        Simd::from_packed(proof.claim.packed_component_log_sizes.clone(), config.n_components);
+        Simd::from_packed(proof.claim.packed_component_log_sizes.clone(), n_components);
     let component_sizes = validate_and_compute_component_sizes(context, &component_log_sizes);
 
     // Check that the component sizes are at most 2^config.log_trace_size().
@@ -205,7 +206,7 @@ pub fn verify<Value: IValue>(
 
     let column_log_sizes_by_trace = column_log_sizes_by_trace(context, config, component_log_sizes);
     let periodicity_sample_points_per_column =
-        column_periodicity_sample_points(context, config, &periodicity_sample_points_per_component);
+        column_periodicity_sample_points(config, &periodicity_sample_points_per_component);
 
     decommit_eval_domain_samples(
         context,
@@ -317,17 +318,11 @@ fn column_log_sizes_by_trace(
         Vec::with_capacity(config.n_interaction_columns),
     ];
 
-    for (n_trace_columns_in_component, n_interaction_columns_in_component, log_size) in izip!(
-        &config.trace_columns_per_component,
-        &config.interaction_columns_per_component,
-        Simd::unpack(context, &component_log_sizes)
-    ) {
-        if *n_trace_columns_in_component == 0 {
-            context.mark_as_unused(log_size);
-            continue;
-        }
-        column_log_sizes[0].extend(vec![log_size; *n_trace_columns_in_component]);
-        column_log_sizes[1].extend(vec![log_size; *n_interaction_columns_in_component]);
+    for (component_shape, log_size) in
+        izip!(&config.component_shapes, Simd::unpack(context, &component_log_sizes))
+    {
+        column_log_sizes[0].extend(vec![log_size; component_shape.trace_columns]);
+        column_log_sizes[1].extend(vec![log_size; component_shape.interaction_columns]);
     }
     column_log_sizes
 }
@@ -336,21 +331,16 @@ fn column_log_sizes_by_trace(
 /// for each column in the interaction trace.
 /// The periodicity sample points are the sample points used for the periodicity check.
 fn column_periodicity_sample_points(
-    context: &mut Context<impl IValue>,
     config: &ProofConfig,
     sample_points_per_component: &[CirclePoint<Var>],
 ) -> Vec<CirclePoint<Var>> {
-    let mut periodicity_sample_points_per_column = Vec::with_capacity(config.n_interaction_columns);
-    for (n_interaction_columns_in_component, sample_point) in
-        izip!(&config.interaction_columns_per_component, sample_points_per_component)
+    let mut periodicity_sample_points_per_column =
+        Vec::with_capacity(config.component_shapes.len());
+    for (component_shape, sample_point) in
+        izip!(&config.component_shapes, sample_points_per_component)
     {
-        if *n_interaction_columns_in_component == 0 {
-            context.mark_as_unused(sample_point.x);
-            context.mark_as_unused(sample_point.y);
-            continue;
-        }
         periodicity_sample_points_per_column
-            .extend(vec![sample_point; *n_interaction_columns_in_component]);
+            .extend(vec![sample_point; component_shape.interaction_columns]);
     }
     periodicity_sample_points_per_column
 }
