@@ -277,15 +277,13 @@ pub fn compute_composition_polynomial<Value: IValue>(
         component_index,
         (
             component,
-            n_trace_columns_in_component,
-            n_interaction_columns_in_component,
+            component_info,
             &claimed_sum,
             &component_size,
         ),
     ) in izip!(
         statement.get_components(),
-        &config.trace_columns_per_component,
-        &config.interaction_columns_per_component,
+        &config.component_infos,
         claimed_sums,
         component_sizes,
     )
@@ -298,9 +296,9 @@ pub fn compute_composition_polynomial<Value: IValue>(
             continue;
         }
 
-        let trace_columns = get_n_columns(&mut oods_samples.trace, *n_trace_columns_in_component);
+        let trace_columns = get_n_columns(&mut oods_samples.trace, component_info.trace_columns);
         let interaction_columns =
-            get_n_columns(&mut oods_samples.interaction, *n_interaction_columns_in_component);
+            get_n_columns(&mut oods_samples.interaction, component_info.interaction_columns);
 
         let component_data = ComponentData {
             trace_columns,

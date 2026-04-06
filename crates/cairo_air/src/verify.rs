@@ -178,8 +178,8 @@ pub fn prepare_cairo_proof_for_circuit_verifier(
         claim.flatten_claim();
     let component_claimed_sums = interaction_claim.flatten_interaction_claim();
 
-    debug_assert_eq!(component_enable_bits.len(), proof_config.n_components);
-    debug_assert_eq!(component_claimed_sums.len(), proof_config.n_components);
+    debug_assert_eq!(component_enable_bits.len(), proof_config.n_components());
+    debug_assert_eq!(component_claimed_sums.len(), proof_config.n_components());
 
     let claim = Claim {
         packed_component_log_sizes: pack_component_log_sizes(&component_log_sizes),

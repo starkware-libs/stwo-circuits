@@ -76,8 +76,9 @@ pub fn verify<Value: IValue>(
     let preprocessed_root = statement.get_preprocessed_root(context);
     channel.mix_commitment(context, preprocessed_root);
 
+    let n_components = config.n_components();
     let component_log_sizes =
-        Simd::from_packed(proof.claim.packed_component_log_sizes.clone(), config.n_components);
+        Simd::from_packed(proof.claim.packed_component_log_sizes.clone(), n_components);
 
     // Range check the component log sizes.
     let component_log_size_bits = extract_bits(context, &component_log_sizes, LOG_SIZE_BITS);
@@ -91,7 +92,7 @@ pub fn verify<Value: IValue>(
     let component_sizes_bits =
         extract_bits(context, &component_sizes, config.log_trace_size() as u32 + 1);
 
-    let n_components = context.constant(qm31_from_u32s(config.n_components as u32, 0, 0, 0));
+    let n_components = context.constant(qm31_from_u32s(n_components.try_into().unwrap(), 0, 0, 0));
     channel.mix_qm31s(context, [n_components]);
 
     // TODO(Gali): Don't mix the enable bits.
@@ -321,22 +322,22 @@ fn column_log_sizes_by_trace(
     config: &ProofConfig,
     component_log_sizes: Simd,
 ) -> [Vec<Var>; 2] {
+    let n_components = config.component_infos.len();
     let mut column_log_sizes = [
-        Vec::with_capacity(config.n_trace_columns),
-        Vec::with_capacity(config.n_interaction_columns),
+        Vec::with_capacity(n_components),
+        Vec::with_capacity(n_components),
     ];
 
-    for (n_trace_columns_in_component, n_interaction_columns_in_component, log_size) in izip!(
-        &config.trace_columns_per_component,
-        &config.interaction_columns_per_component,
+    for (component_info, log_size) in izip!(
+        &config.component_infos,
         Simd::unpack(context, &component_log_sizes)
     ) {
-        if *n_trace_columns_in_component == 0 {
+        if component_info.trace_columns == 0 {
             context.mark_as_unused(log_size);
             continue;
         }
-        column_log_sizes[0].extend(vec![log_size; *n_trace_columns_in_component]);
-        column_log_sizes[1].extend(vec![log_size; *n_interaction_columns_in_component]);
+        column_log_sizes[0].extend(vec![log_size; component_info.trace_columns]);
+        column_log_sizes[1].extend(vec![log_size; component_info.interaction_columns]);
     }
     column_log_sizes
 }
@@ -349,17 +350,18 @@ fn column_periodicity_sample_points(
     config: &ProofConfig,
     sample_points_per_component: &[CirclePoint<Var>],
 ) -> Vec<CirclePoint<Var>> {
-    let mut periodicity_sample_points_per_column = Vec::with_capacity(config.n_interaction_columns);
-    for (n_interaction_columns_in_component, sample_point) in
-        izip!(&config.interaction_columns_per_component, sample_points_per_component)
+    let mut periodicity_sample_points_per_column = Vec::with_capacity(config.component_infos.len());
+    for (component_info, sample_point) in
+        izip!(&config.component_infos, sample_points_per_component)
     {
-        if *n_interaction_columns_in_component == 0 {
+        let n_interaction_columns = component_info.interaction_columns;
+        if n_interaction_columns == 0 {
             context.mark_as_unused(sample_point.x);
             context.mark_as_unused(sample_point.y);
             continue;
         }
         periodicity_sample_points_per_column
-            .extend(vec![sample_point; *n_interaction_columns_in_component]);
+            .extend(vec![sample_point; n_interaction_columns]);
     }
     periodicity_sample_points_per_column
 }
