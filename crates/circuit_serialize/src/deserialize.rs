@@ -135,7 +135,7 @@ pub fn deserialize_proof_with_config(
 }
 
 fn deserialize_claim(data: &mut &[u8], config: &ProofConfig) -> DeserializeResult<Claim<QM31>> {
-    let n_components = config.n_components;
+    let n_components = config.n_components();
 
     // Unpack log sizes from packed u8s (1 per u8, 8 bits each).
     let log_sizes: Vec<u32> =
