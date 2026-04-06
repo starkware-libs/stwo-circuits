@@ -84,18 +84,6 @@ pub fn split_27bit_to_9bit_limbs(context: &mut Context<impl IValue>, value: Var)
     array::from_fn(|_| limbs_iter.next().unwrap())
 }
 
-impl PubMemoryM31Value<Var> {
-    /// Computes the address to id logup term for the public memory value.
-    pub fn logup_term(
-        &self,
-        context: &mut Context<impl IValue>,
-        interaction_elements: [Var; 2],
-    ) -> Var {
-        let limbs = split_27bit_to_9bit_limbs(context, self.value);
-        id_to_big_logup_term(context, self.id, limbs.into_iter(), interaction_elements)
-    }
-}
-
 pub struct SegmentRange<T> {
     pub start: PubMemoryM31Value<T>,
     pub end: PubMemoryM31Value<T>,
@@ -460,31 +448,6 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
     }
 }
 
-pub fn address_to_id_logup_term(
-    context: &mut Context<impl IValue>,
-    address: Var,
-    id: Var,
-    interaction_elements: [Var; 2],
-) -> Var {
-    let memory_address_to_id_relation_id =
-        context.constant(MEMORY_ADDRESS_TO_ID_RELATION_ID.into());
-
-    logup_use_term(context, &[memory_address_to_id_relation_id, address, id], interaction_elements)
-}
-
-/// Calculates the logup term for a provided id and its associated value limbs.
-/// Each value limb is 9 bits wide, with the least significant limb appearing first.
-pub fn id_to_big_logup_term(
-    context: &mut Context<impl IValue>,
-    id: Var,
-    value_limbs: impl Iterator<Item = Var>,
-    interaction_elements: [Var; 2],
-) -> Var {
-    let memory_id_to_big_relation_id = context.constant(MEMORY_ID_TO_BIG_RELATION_ID.into());
-    let elements = chain!([memory_id_to_big_relation_id, id], value_limbs).collect_vec();
-    logup_use_term(context, &elements, interaction_elements)
-}
-
 pub fn segment_ranges_logup_sum(
     context: &mut Context<impl IValue>,
     interaction_elements: [Var; 2],
@@ -500,42 +463,50 @@ pub fn segment_ranges_logup_sum(
             return_value_address = eval!(context, (return_value_address) + (one));
         }
 
-        let arg_address_to_id_logup_term = address_to_id_logup_term(
+        let start_value_limbs = split_27bit_to_9bit_limbs(context, segment_range.start.value);
+        let segment_start_logup_term = public_memory_logup_terms(
             context,
+            interaction_elements,
             argument_address,
             segment_range.start.id,
-            interaction_elements,
+            &start_value_limbs,
         );
-        let return_value_to_id_logup_term = address_to_id_logup_term(
+        sum = eval!(context, (sum) + (segment_start_logup_term));
+        let end_value_limbs = split_27bit_to_9bit_limbs(context, segment_range.end.value);
+        let segment_end_logup_term = public_memory_logup_terms(
             context,
+            interaction_elements,
             return_value_address,
             segment_range.end.id,
-            interaction_elements,
+            &end_value_limbs,
         );
-
-        sum = eval!(context, (sum) + (arg_address_to_id_logup_term));
-        sum = eval!(context, (sum) + (return_value_to_id_logup_term));
-
-        sum =
-            eval!(context, (sum) + (segment_range.start.logup_term(context, interaction_elements)));
-        sum = eval!(context, (sum) + (segment_range.end.logup_term(context, interaction_elements)));
+        sum = eval!(context, (sum) + (segment_end_logup_term));
     }
 
     sum
 }
 
-fn safe_call_id_logup_term(
+/// Computes the address to id and id to value logup terms for a public memory value, returning the
+/// sum.
+fn public_memory_logup_terms<'a>(
     context: &mut Context<impl IValue>,
     interaction_elements: [Var; 2],
     address: Var,
     id: Var,
-    value_limbs: &[Var],
+    value_limbs: impl IntoIterator<Item = &'a Var>,
 ) -> Var {
-    let address_to_id_logup_term =
-        address_to_id_logup_term(context, address, id, interaction_elements);
+    let memory_address_to_id_relation_id =
+        context.constant(MEMORY_ADDRESS_TO_ID_RELATION_ID.into());
+    let address_to_id_logup_term = logup_use_term(
+        context,
+        &[memory_address_to_id_relation_id, address, id],
+        interaction_elements,
+    );
 
-    let id_to_value_logup_term =
-        id_to_big_logup_term(context, id, value_limbs.iter().cloned(), interaction_elements);
+    let memory_id_to_big_relation_id = context.constant(MEMORY_ID_TO_BIG_RELATION_ID.into());
+    let elements =
+        chain!([memory_id_to_big_relation_id, id], value_limbs.into_iter().cloned()).collect_vec();
+    let id_to_value_logup_term = logup_use_term(context, &elements, interaction_elements);
     eval!(context, (address_to_id_logup_term) + (id_to_value_logup_term))
 }
 
@@ -555,17 +526,14 @@ pub fn memory_segment_logup_sum(
             address = eval!(context, (address) + (one));
         }
 
-        let address_to_id_logup_term =
-            address_to_id_logup_term(context, address, id, interaction_elements);
-        sum = eval!(context, (sum) + (address_to_id_logup_term));
-
-        let id_to_value_logup_term = id_to_big_logup_term(
+        let logup_term = public_memory_logup_terms(
             context,
-            id,
-            value_limbs.iter().map(|limb| *limb.get()),
             interaction_elements,
+            address,
+            id,
+            value_limbs.iter().map(|limb| limb.get()),
         );
-        sum = eval!(context, (sum) + (id_to_value_logup_term));
+        sum = eval!(context, (sum) + (logup_term));
     }
 
     sum
@@ -606,7 +574,7 @@ pub fn public_logup_sum(
     let safe_call_values = [split_initial_ap.as_slice(), &[]];
     for (address, id, value_limbs) in izip!(safe_call_addresses, safe_call_ids, safe_call_values) {
         let logup_term =
-            safe_call_id_logup_term(context, interaction_elements, address, *id, value_limbs);
+            public_memory_logup_terms(context, interaction_elements, address, *id, value_limbs);
         sum = eval!(context, (sum) + (logup_term));
     }
 
