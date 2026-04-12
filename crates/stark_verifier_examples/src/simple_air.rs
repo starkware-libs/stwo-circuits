@@ -1,7 +1,7 @@
 use circuits::ivalue::qm31_from_u32s;
 use circuits_stark_verifier::proof::Claim;
 use circuits_stark_verifier::proof_from_stark_proof::{
-    pack_component_log_sizes, pack_enable_bits, pack_public_claim,
+    pack_component_log_sizes, pack_enable_bits, pack_into_qm31s, pack_public_claim, pad_disabled,
 };
 
 use itertools::{Itertools, zip_eq};
@@ -33,7 +33,7 @@ use stwo_constraint_framework::{
     TraceLocationAllocator, relation,
 };
 
-use crate::simple_statement::COMPONENT_LOG_SIZES;
+use crate::simple_statement::{COMPONENT_ENABLE_BITS, COMPONENT_LOG_SIZES};
 
 pub const INTERACTION_POW_BITS: u32 = 8;
 
@@ -242,12 +242,18 @@ pub fn create_proof_with_fold_step(
     prover_channel.mix_felts(&[qm31_from_u32s(n_components, 0, 0, 0)]);
 
     // Mix the enable bits into the channel.
-    let packed_enable_bits = pack_enable_bits(&[true, true, false]);
+    let packed_enable_bits = pack_enable_bits(&COMPONENT_ENABLE_BITS);
     prover_channel.mix_felts(&packed_enable_bits);
 
     // Mix the component log sizes into the channel.
-    // Component_3 is disabled, so it has trace size 0.
     let packed_component_log_sizes = pack_component_log_sizes(&COMPONENT_LOG_SIZES);
+    // Note that zero padding does not change the packed values. here.
+    assert_eq!(
+        packed_component_log_sizes,
+        pack_into_qm31s(
+            pad_disabled(&COMPONENT_LOG_SIZES, &COMPONENT_ENABLE_BITS, 0u32).into_iter()
+        )
+    );
     prover_channel.mix_felts(&packed_component_log_sizes);
 
     // Mix the public claim into the channel.
@@ -272,8 +278,8 @@ pub fn create_proof_with_fold_step(
     let (interaction_trace_2, claimed_sum_2) =
         generate_interaction_trace(&trace_2, &lookup_elements.0);
 
-    let claimed_sums = vec![claimed_sum_1, claimed_sum_2, QM31::zero()];
-    prover_channel.mix_felts(&claimed_sums);
+    let claimed_sums = vec![claimed_sum_1, claimed_sum_2];
+    prover_channel.mix_felts(&pad_disabled(&claimed_sums, &COMPONENT_ENABLE_BITS, QM31::zero()));
     let mut tree_builder = commitment_scheme.tree_builder();
     tree_builder.extend_evals([interaction_trace_1, interaction_trace_2].concat());
     tree_builder.commit(prover_channel);
@@ -318,7 +324,6 @@ pub fn create_proof_with_fold_step(
     .unwrap();
 
     let components: Vec<Box<dyn Component>> = vec![Box::new(component_1), Box::new(component_2)];
-
     (
         components,
         Claim { packed_component_log_sizes, claimed_sums },
