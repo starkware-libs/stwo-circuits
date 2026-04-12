@@ -48,6 +48,7 @@ fn test_fri_decommit_with_jumps(
     let mut context = TraceContext::default();
     // Make a dummy config.
     let config = ProofConfig {
+        enabled_bits: vec![],
         n_pow_bits: 0,
         n_interaction_pow_bits: 0,
         n_preprocessed_columns: 0,

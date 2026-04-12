@@ -1,3 +1,4 @@
+use circuits_stark_verifier::statement::Statement;
 use stwo::core::fields::qm31::QM31;
 
 use crate::deserialize::deserialize_proof_with_config;
@@ -13,7 +14,12 @@ fn test_serialize_deserialize() {
         create_proof();
 
     let statement = &SimpleStatement::<QM31>::default();
-    let config = ProofConfig::from_statement(statement, &pcs_config, 8);
+    let config = ProofConfig::from_statement(
+        statement,
+        vec![true; statement.get_components().len()],
+        &pcs_config,
+        8,
+    );
     let proof = proof_from_stark_proof(&proof, &config, claim, interaction_pow_nonce, channel_salt);
 
     let mut serialized = Vec::new();
