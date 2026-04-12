@@ -4,7 +4,7 @@ use stwo::core::fields::qm31::QM31;
 use stwo::core::vcs::blake2_hash::Blake2sHash;
 
 use crate::simple_air::{create_proof, create_proof_with_fold_step};
-use crate::simple_statement::SimpleStatement;
+use crate::simple_statement::{COMPONENT_ENABLE_BITS, SimpleStatement};
 use circuit_serialize::serialize::CircuitSerialize;
 use circuits::context::{Context, TraceContext};
 use circuits::ivalue::NoValue;
@@ -33,8 +33,9 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
     let (_components, claim, pcs_config, mut proof, interaction_pow_nonce, channel_salt) =
         create_proof();
 
+    let statement = SimpleStatement::<NoValue>::default();
     let config =
-        ProofConfig::from_statement(&SimpleStatement::<NoValue>::default(), &pcs_config, 8);
+        ProofConfig::from_statement(&statement, COMPONENT_ENABLE_BITS.to_vec(), &pcs_config, 8);
     // Create a NoValue version.
     let novalue_circuit = {
         let empty_proof = empty_proof(&config);
@@ -123,7 +124,8 @@ fn test_proof_info(#[case] fold_step: u32) {
         create_proof_with_fold_step(fold_step);
 
     let statement = &SimpleStatement::<NoValue>::default();
-    let config = ProofConfig::from_statement(statement, &pcs_config, 8);
+    let config =
+        ProofConfig::from_statement(statement, COMPONENT_ENABLE_BITS.to_vec(), &pcs_config, 8);
     let info = ProofInfo::from_config(&config);
     let circuit_proof =
         proof_from_stark_proof(&proof, &config, claim, interaction_pow_nonce, channel_salt);

@@ -1,6 +1,7 @@
 use circuits::{blake::HashValue, context::Context, ivalue::IValue, ops::Guess};
 use circuits_stark_verifier::{
     proof::{Proof, ProofConfig},
+    statement::Statement,
     verify::verify,
 };
 use stwo::core::{fields::qm31::QM31, pcs::PcsConfig};
@@ -36,8 +37,12 @@ pub fn build_verification_circuit<Value: IValue>(
         circuit_config.preprocessed_root,
     );
 
-    let proof_config =
-        ProofConfig::from_statement(&statement, &circuit_config.config, INTERACTION_POW_BITS);
+    let proof_config = ProofConfig::from_statement(
+        &statement,
+        vec![true; statement.get_components().len()],
+        &circuit_config.config,
+        INTERACTION_POW_BITS,
+    );
     let proof_vars = proof.guess(&mut context);
 
     verify(&mut context, &proof_vars, &proof_config, &statement);

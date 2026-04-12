@@ -226,11 +226,11 @@ impl<Value: IValue> CairoStatement<Value> {
         let mut range_checks = vec![];
 
         for ((name, _size), actual_uses) in zip_eq(builtin_instance_sizes, actual_uses_iter) {
-            let index = self.components.get_index_of(name).unwrap();
-            if self.components[index].is_disabled() {
-                // Component is disabled - actual_uses must be 0.
+            let Some(index) = self.components.get_index_of(name) else {
+                // The component is not supported by the circuit - actual_uses must be 0.
                 eq(context, actual_uses, context.zero());
-            }
+                continue;
+            };
 
             let component_size = component_sizes[index];
             // Check that 0 <= component_size - actual_uses < 2^27 => actual_uses <= component_size.

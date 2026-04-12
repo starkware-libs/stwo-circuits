@@ -193,8 +193,11 @@ fn circuit_verify(
     preprocessed_root: [u32; 8],
 ) {
     let preprocessed_column_ids = preprocessed_circuit.preprocessed_trace.ids();
+    let all_components = all_circuit_components::<QM31>();
+    let enabled_bits: Vec<bool> = vec![true; all_components.len()];
     let proof_config = ProofConfig::from_components(
-        &all_circuit_components::<QM31>(),
+        &all_components,
+        enabled_bits,
         preprocessed_column_ids.len(),
         &circuit_proof.pcs_config,
         INTERACTION_POW_BITS,
