@@ -226,7 +226,7 @@ pub fn accumulate_constraints<Value: IValue>(
         partial_ec_mul_window_bits_18_output_limb_69_col204,
         multiplicity_0_col205,
     ] = input.try_into().unwrap();
-    let seq = seq_of_component_size(context, component_data, acc);
+    let seq = seq_of_component_size(context, component_data, &acc.preprocessed_columns);
 
     read_positive_known_id_num_bits_252::accumulate_constraints(
         &[

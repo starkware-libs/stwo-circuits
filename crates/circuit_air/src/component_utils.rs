@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 use circuits::context::*;
@@ -11,7 +13,7 @@ use circuits_stark_verifier::constraint_eval::*;
 pub fn seq_of_component_size<Value: IValue>(
     context: &mut Context<Value>,
     component_data: &dyn ComponentDataTrait<Value>,
-    acc: &mut CompositionConstraintAccumulator,
+    preprocessed_columns: &HashMap<PreProcessedColumnId, Var>,
 ) -> Var {
     // Compute:
     //      sum_bits = size_bits[0] + size_bits[1] + ... + size_bits[MAX_BITS]
@@ -21,7 +23,7 @@ pub fn seq_of_component_size<Value: IValue>(
 
     for log_size in 0..component_data.max_component_size_bits() {
         let seq_name = PreProcessedColumnId { id: format!("seq_{log_size}") };
-        let Some(seq_value) = acc.preprocessed_columns.get(&seq_name) else {
+        let Some(seq_value) = preprocessed_columns.get(&seq_name) else {
             // Our preprocessed trace doesn't contain a seq column of this size
             continue;
         };
