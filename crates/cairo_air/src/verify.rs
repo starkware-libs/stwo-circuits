@@ -12,9 +12,7 @@ use circuits::ivalue::NoValue;
 use circuits::ops::Guess;
 use circuits_stark_verifier::empty_component::EmptyComponent;
 use circuits_stark_verifier::proof::{Claim, Proof, ProofConfig, empty_proof};
-use circuits_stark_verifier::proof_from_stark_proof::{
-    pack_component_log_sizes, proof_from_stark_proof,
-};
+use circuits_stark_verifier::proof_from_stark_proof::{pack_into_qm31s, proof_from_stark_proof};
 use circuits_stark_verifier::verify::verify;
 use itertools::{Itertools, zip_eq};
 use num_traits::Zero;
@@ -97,12 +95,8 @@ pub fn build_fixed_cairo_circuit(
     outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
 ) -> Context<QM31> {
     let config = &verifier_config.proof_config;
-    let components = zip_eq(all_components().into_values(), config.enabled_components())
-        .map(
-            |(component, enable_bit)| {
-                if enable_bit { component } else { Box::new(EmptyComponent {}) }
-            },
-        )
+    let components = zip_eq(all_components().into_values(), &config.enabled_bits)
+        .filter_map(|(component, enable_bit)| if *enable_bit { Some(component) } else { None })
         .collect_vec();
 
     let public_claim = public_claim.iter().map(|u32| M31::from(*u32)).collect_vec();
@@ -178,13 +172,20 @@ pub fn prepare_cairo_proof_for_circuit_verifier(
         claim.flatten_claim();
     let component_claimed_sums = interaction_claim.flatten_interaction_claim();
 
-    debug_assert_eq!(component_enable_bits.len(), proof_config.n_components);
-    debug_assert_eq!(component_claimed_sums.len(), proof_config.n_components);
+    debug_assert_eq!(component_enable_bits, proof_config.enabled_bits);
+    debug_assert_eq!(component_claimed_sums.len(), proof_config.enabled_bits.len());
 
-    let claim = Claim {
-        packed_component_log_sizes: pack_component_log_sizes(&component_log_sizes),
-        claimed_sums: component_claimed_sums,
-    };
+    let component_log_sizes = zip_eq(component_log_sizes, &proof_config.enabled_bits).filter_map(
+        |(log_size, enabled)| {
+            if *enabled { Some(log_size) } else { None }
+        },
+    );
+    let claimed_sums = zip_eq(component_claimed_sums, &proof_config.enabled_bits)
+        .filter_map(|(sum, enabled)| if *enabled { Some(sum) } else { None })
+        .collect_vec();
+
+    let claim =
+        Claim { packed_component_log_sizes: pack_into_qm31s(component_log_sizes), claimed_sums };
 
     let proof = proof_from_stark_proof(
         extended_stark_proof,

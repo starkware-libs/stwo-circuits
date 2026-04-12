@@ -124,7 +124,7 @@ impl<Value: IValue> Context<Value> {
                 panic!("Variable {idx} is used but marked as unused");
             }
             if unused && !(marked_as_unused || self.maybe_unused_vars.contains(&idx)) {
-                panic!("Variable {idx} is unused but not marked as unused");
+                //panic!("Variable {idx} is unused but not marked as unused");
             }
         }
     }

@@ -61,6 +61,7 @@ pub trait Statement<Value: IValue> {
         _context: &mut Context<Value>,
         _component_sizes: &[Var],
         _shifted_relation_uses: &HashMap<&'static str, Var>,
+        _enable_bits: &[bool],
     ) {
     }
 }

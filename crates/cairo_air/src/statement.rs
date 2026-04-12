@@ -163,7 +163,12 @@ impl<Value: IValue> CairoStatement<Value> {
     ///
     /// Assumes that the start and end addresses of the segment ranges are less than 2^27 (this is
     /// guaranteed by `segment_ranges_logup_sum`).
-    pub fn verify_builtins(&self, context: &mut Context<Value>, component_sizes: &[Var]) {
+    pub fn verify_builtins(
+        &self,
+        context: &mut Context<Value>,
+        component_sizes: &[Var],
+        enable_bits: &[bool],
+    ) {
         let [
             output_segment_range,
             pedersen_segment_range,
@@ -241,9 +246,10 @@ impl<Value: IValue> CairoStatement<Value> {
 
         for ((name, _size), actual_uses) in zip_eq(builtin_instance_sizes, actual_uses_iter) {
             let index = all_components.get_index_of(name).unwrap();
-            if self.components[index].is_disabled() {
+            if !enable_bits[index] {
                 // Component is disabled - actual_uses must be 0.
                 eq(context, actual_uses, context.zero());
+                continue;
             }
 
             let component_size = component_sizes[index];
@@ -404,10 +410,11 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         context: &mut Context<Value>,
         component_sizes: &[Var],
         shifted_relation_uses: &HashMap<&'static str, Var>,
+        enable_bits: &[bool],
     ) {
         let PublicData { initial_state, final_state, public_memory: _ } = &self.public_data;
 
-        self.verify_builtins(context, component_sizes);
+        self.verify_builtins(context, component_sizes, enable_bits);
         // TODO(ilya): Consider adding sanity checks on the content of the program segment.
 
         let CasmState { pc: initial_pc, ap: initial_ap, fp: initial_fp } = initial_state;

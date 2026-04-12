@@ -59,22 +59,23 @@ pub fn verify_cairo_with_component_set(
         cairo_proof.claim.flatten_claim();
     let components: Vec<Box<dyn CircuitEval<QM31>>> =
         zip_eq(all_components::<QM31>().into_iter(), &component_enable_bits)
-            .map(|((component_name, component), &enable_bit)| {
+            .filter_map(|((component_name, component), &enable_bit)| {
                 let component_in_set = component_set.contains(component_name);
                 if component_in_set != enable_bit {
-                    return Err(format!(
+                    return Some(Err(format!(
                         "Proof was produced with the wrong components set: expected the component '{}' to be {} according to the component set, but it is {} in the proof.",
                         component_name,
                         if component_in_set { "enabled" } else { "disabled" },
                         if enable_bit { "enabled" } else { "disabled" }
-                    ));
+                    )));
                 }
-                Ok(if enable_bit { component } else { Box::new(EmptyComponent {}) })
+                if enable_bit { Some(Ok(component)) } else { None }
             })
             .try_collect()?;
 
     let proof_config = ProofConfig::from_components(
         &components,
+        component_enable_bits,
         cairo_proof.preprocessed_trace_variant.to_preprocessed_trace().ids().len(),
         &cairo_proof.extended_stark_proof.proof.config,
         INTERACTION_POW_BITS,
@@ -133,7 +134,10 @@ fn test_verify() {
         all_components::<NoValue>().get_full("pedersen_points_table_window_bits_18").unwrap().0;
     statement.components[pedersen_points_index] = Box::new(EmptyComponent {});
 
-    let config = ProofConfig::from_statement(&statement, &pcs_config, INTERACTION_POW_BITS);
+    let mut enabled_bits = vec![true; all_components::<NoValue>().len()];
+    enabled_bits[pedersen_points_index] = false;
+    let config =
+        ProofConfig::from_statement(&statement, enabled_bits, &pcs_config, INTERACTION_POW_BITS);
 
     let empty_proof = empty_proof(&config);
 
