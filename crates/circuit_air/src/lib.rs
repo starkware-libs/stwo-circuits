@@ -1,5 +1,4 @@
 pub mod circuit_eval_components;
-pub mod component_utils;
 pub mod components;
 pub mod relations;
 pub mod sample_evaluations;

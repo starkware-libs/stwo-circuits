@@ -286,7 +286,7 @@ pub fn accumulate_constraints<Value: IValue>(
         carry_12_col265,
         carry_13_col266,
     ] = input.try_into().unwrap();
-    let seq = seq_of_component_size(context, component_data, &acc.preprocessed_columns);
+    let seq = component_data.seq_of_component_size(context, &acc.preprocessed_columns);
     let add_mod_builtin_segment_start =
         *acc.public_params.get("add_mod_builtin_segment_start").unwrap();
 
