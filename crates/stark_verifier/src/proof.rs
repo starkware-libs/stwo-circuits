@@ -232,11 +232,18 @@ pub struct ProofConfig {
     // Number of components in the AIR.
     pub n_components: usize,
 
+    // Per component in the full list of components, an indicator of whether it is enabled.
+    // This field is used for compatibility with the Cairo1 verifier where the set of components in
+    // the AIR can be set dynamically. In the Circuit verifier, the set of components is static
+    // and we always have enabled_bits.len() >= n_components.
+    pub enabled_bits: Vec<bool>,
+
     pub fri: FriConfig,
 }
 impl ProofConfig {
     pub fn from_statement<Value: IValue>(
         statement: &impl Statement<Value>,
+        enabled_bits: Vec<bool>,
         pcs_config: &PcsConfig,
         n_interaction_pow_bits: u32,
     ) -> Self {
@@ -244,6 +251,7 @@ impl ProofConfig {
         let n_preprocessed_columns = statement.get_preprocessed_column_ids().len();
         Self::from_components(
             components,
+            enabled_bits,
             n_preprocessed_columns,
             pcs_config,
             n_interaction_pow_bits,
@@ -252,6 +260,7 @@ impl ProofConfig {
 
     pub fn from_components<Value: IValue>(
         components: &IndexMap<&'static str, Box<dyn CircuitEval<Value>>>,
+        enabled_bits: Vec<bool>,
         n_preprocessed_columns: usize,
         pcs_config: &PcsConfig,
         n_interaction_pow_bits: u32,
@@ -259,22 +268,14 @@ impl ProofConfig {
         let mut trace_columns_per_component = Vec::with_capacity(components.len());
         let mut interaction_columns_per_component = Vec::with_capacity(components.len());
         for component in components.values() {
-            let trace_columns = component.trace_columns();
-            let interaction_columns = component.interaction_columns();
-            if component.is_disabled() {
-                assert!(trace_columns == 0, "disabled component must have no trace columns");
-                assert!(
-                    interaction_columns == 0,
-                    "disabled component must have no interaction columns"
-                );
-            }
-            trace_columns_per_component.push(trace_columns);
-            interaction_columns_per_component.push(interaction_columns);
+            trace_columns_per_component.push(component.trace_columns());
+            interaction_columns_per_component.push(component.interaction_columns());
         }
         Self::new(
             components.len(),
             trace_columns_per_component,
             interaction_columns_per_component,
+            enabled_bits,
             n_preprocessed_columns,
             pcs_config,
             n_interaction_pow_bits,
@@ -285,6 +286,7 @@ impl ProofConfig {
         n_components: usize,
         trace_columns_per_component: Vec<usize>,
         interaction_columns_per_component: Vec<usize>,
+        enabled_bits: Vec<bool>,
         n_preprocessed_columns: usize,
         pcs_config: &PcsConfig,
         n_interaction_pow_bits: u32,
@@ -336,6 +338,7 @@ impl ProofConfig {
             interaction_columns_per_component,
             n_components,
             cumulative_sum_columns,
+            enabled_bits,
             fri: FriConfig {
                 log_trace_size,
                 log_blowup_factor: *log_blowup_factor as usize,
@@ -344,16 +347,6 @@ impl ProofConfig {
                 fold_step: *fold_step as usize,
             },
         }
-    }
-
-    // TODO(ilya): Remove this once it is removed from the serializtion.
-    /// Returns an iterator over the enabled components.
-    pub fn enabled_components(&self) -> impl Iterator<Item = bool> {
-        // A real component need to interact with the other components or the public logup sum and
-        // therefore it must have some interaction columns.
-        self.interaction_columns_per_component
-            .iter()
-            .map(|interaction_columns| *interaction_columns > 0)
     }
 
     /// Returns the log2 of the size of the trace.
