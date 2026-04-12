@@ -12,7 +12,7 @@ pub fn accumulate_constraints<Value: IValue>(
     acc: &mut CompositionConstraintAccumulator,
 ) {
     // Addresses are offsetted by 1, as 0 address is reserved.
-    let seq = seq_of_component_size(context, component_data, acc);
+    let seq = seq_of_component_size(context, component_data, &acc.preprocessed_columns);
     let mut address = eval!(context, (seq) + (1));
 
     for i in 0..MEMORY_ADDRESS_TO_ID_SPLIT {

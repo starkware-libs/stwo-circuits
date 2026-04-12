@@ -110,7 +110,7 @@ pub fn accumulate_constraints<Value: IValue>(
         xor_id_col87,
         or_id_col88,
     ] = input.try_into().unwrap();
-    let seq = seq_of_component_size(context, component_data, acc);
+    let seq = seq_of_component_size(context, component_data, &acc.preprocessed_columns);
     let bitwise_builtin_segment_start =
         *acc.public_params.get("bitwise_builtin_segment_start").unwrap();
 
