@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use itertools::{Itertools, chain, izip, zip_eq};
+use itertools::{Itertools, chain, izip};
 use stwo::core::circle::CirclePoint;
 use stwo::core::fields::m31::P;
 use stwo::core::verifier::COMPOSITION_LOG_SPLIT;
@@ -14,7 +14,7 @@ use crate::oods::{
     collect_oods_responses, compute_fri_input, extract_expected_composition_eval, period_generators,
 };
 use crate::proof::{Proof, ProofConfig};
-use crate::proof_from_stark_proof::{pack_enable_bits, pack_into_qm31s};
+use crate::proof_from_stark_proof::{pack_enable_bits, pack_into_qm31s, pad_disabled};
 use crate::select_queries::{get_query_selection_input_from_channel, select_queries};
 use crate::statement::{EvaluateArgs, OodsSamples, Statement};
 use circuits::context::{Context, Var};
@@ -31,15 +31,12 @@ pub const RELATION_USES_NUM_ROWS_SHIFT: usize = 16;
 
 pub fn validate_logup_sum(
     context: &mut Context<impl IValue>,
-    enable_bits: &[bool],
     public_logup_sum: Var,
     claimed_sums: &[Var],
 ) {
     let mut log_up_sum = public_logup_sum;
-    for (claimed_sum, enable_bit) in zip_eq(claimed_sums, enable_bits) {
-        if *enable_bit {
-            log_up_sum = eval!(context, (log_up_sum) + (*claimed_sum));
-        }
+    for claimed_sum in claimed_sums {
+        log_up_sum = eval!(context, (log_up_sum) + (*claimed_sum));
     }
     eq(context, log_up_sum, context.zero());
 }
@@ -91,17 +88,29 @@ pub fn verify<Value: IValue>(
     let component_sizes_bits =
         extract_bits(context, &component_sizes, config.log_trace_size() as u32 + 1);
 
-    let n_components = context.constant(qm31_from_u32s(config.n_components as u32, 0, 0, 0));
-    channel.mix_qm31s(context, [n_components]);
+    // Mix the (hardcoded) enable bits into the channel for compatibility with the Cairo1 verifier.
+    let enable_bits = &config.enabled_bits;
+    let n_enable_bits = context.constant(qm31_from_u32s(enable_bits.len() as u32, 0, 0, 0));
+    channel.mix_qm31s(context, [n_enable_bits]);
 
-    // TODO(Gali): Don't mix the enable bits.
-    let enable_bits =
-        statement.get_components().values().map(|component| !component.is_disabled()).collect_vec();
     let packed_enable_bits =
-        pack_enable_bits(&enable_bits).into_iter().map(|qm31| context.constant(qm31)).collect_vec();
+        pack_enable_bits(enable_bits).into_iter().map(|qm31| context.constant(qm31)).collect_vec();
     channel.mix_qm31s(context, packed_enable_bits);
 
-    channel.mix_qm31s(context, proof.claim.packed_component_log_sizes.iter().cloned());
+    // TODO(ilya): Mix component_log_sizes instead of padded_component_log_sizes.
+    let unpacked_component_log_sizes = Simd::unpack(context, &component_log_sizes)
+        .into_iter()
+        .map(M31Wrapper::new_unsafe)
+        .collect_vec();
+    let padded_component_log_sizes = Simd::pack(
+        context,
+        &pad_disabled(
+            &unpacked_component_log_sizes,
+            &config.enabled_bits,
+            M31Wrapper::new_unsafe(context.zero()),
+        ),
+    );
+    channel.mix_qm31s(context, padded_component_log_sizes.get_packed().iter().cloned());
     for claim_to_mix in statement.claims_to_mix(context) {
         channel.mix_qm31s(context, claim_to_mix.iter().cloned());
     }
@@ -114,9 +123,11 @@ pub fn verify<Value: IValue>(
     let [interaction_z, interaction_alpha] = channel.draw_two_qm31s(context);
 
     let public_logup_sum = statement.public_logup_sum(context, [interaction_z, interaction_alpha]);
-    validate_logup_sum(context, &enable_bits, public_logup_sum, &proof.claim.claimed_sums);
+    validate_logup_sum(context, public_logup_sum, &proof.claim.claimed_sums);
 
-    channel.mix_qm31s(context, proof.claim.claimed_sums.iter().cloned());
+    let padded_claimed_sums =
+        pad_disabled(&proof.claim.claimed_sums, &config.enabled_bits, context.zero());
+    channel.mix_qm31s(context, padded_claimed_sums.iter().cloned());
     channel.mix_commitment(context, proof.interaction_root);
 
     // Draw a random QM31 coefficient for the composition polynomial.
