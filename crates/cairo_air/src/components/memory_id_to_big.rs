@@ -46,7 +46,7 @@ pub fn accumulate_constraints<Value: IValue>(
         memory_id_to_big_output_col27,
         multiplicity_0,
     ] = input.try_into().unwrap();
-    let seq = seq_of_component_size(context, component_data, &acc.preprocessed_columns);
+    let seq = component_data.seq_of_component_size(context, &acc.preprocessed_columns);
 
     range_check_mem_value_n_28::accumulate_constraints(
         &[

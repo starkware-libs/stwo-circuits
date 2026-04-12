@@ -1,5 +1,4 @@
 pub use crate::circuit_eval_components::subroutines::*;
-pub use crate::component_utils::*;
 pub use circuits::context::{Context, Var};
 pub use circuits::eval;
 pub use circuits::ivalue::IValue;

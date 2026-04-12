@@ -199,7 +199,7 @@ pub fn accumulate_constraints<Value: IValue>(
         new_state_7_id_col172,
         enabler_col173,
     ] = input.try_into().unwrap();
-    let seq = seq_of_component_size(context, component_data, &acc.preprocessed_columns);
+    let seq = component_data.seq_of_component_size(context, &acc.preprocessed_columns);
 
     let [
         decode_blake_opcode_output_tmp_53f39_42_limb_0,
