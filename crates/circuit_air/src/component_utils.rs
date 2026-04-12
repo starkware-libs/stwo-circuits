@@ -21,13 +21,12 @@ pub fn seq_of_component_size<Value: IValue>(
 
     for log_size in 0..component_data.max_component_size_bits() {
         let seq_name = PreProcessedColumnId { id: format!("seq_{log_size}") };
-        if !acc.preprocessed_columns.contains_key(&seq_name) {
+        let Some(seq_value) = acc.preprocessed_columns.get(&seq_name).copied() else {
             // Our preprocessed trace doesn't contain a seq column of this size
             continue;
-        }
+        };
 
         let bit = component_data.get_n_instances_bit(context, log_size);
-        let seq_value = acc.get_preprocessed_column(&seq_name);
 
         sum_bits = eval!(context, (sum_bits) + (bit));
         result = eval!(context, (result) + ((bit) * (seq_value)))
