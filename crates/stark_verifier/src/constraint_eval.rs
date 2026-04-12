@@ -27,8 +27,6 @@ pub struct ComponentData<'a> {
     pub interaction_columns: &'a [InteractionAtOods<Var>],
     /// The number of instances in the component.
     pub n_instances: Var,
-    /// The claimed sum of the component.
-    pub claimed_sum: Var,
 
     /// The index of the component.
     index: usize,
@@ -43,8 +41,6 @@ pub trait ComponentDataTrait<Value: IValue> {
     fn interaction_columns(&self) -> &[InteractionAtOods<Var>];
 
     fn n_instances(&self) -> Var;
-
-    fn claimed_sum(&self) -> Var;
 
     /// Returns one of the bits of the component number of rows (bit 0 is LSB).
     /// Because the number of rows is always a power of two, only one of the bits
@@ -68,10 +64,6 @@ impl<'a, Value: IValue> ComponentDataTrait<Value> for ComponentData<'a> {
 
     fn n_instances(&self) -> Var {
         self.n_instances
-    }
-
-    fn claimed_sum(&self) -> Var {
-        self.claimed_sum
     }
 
     fn get_n_instances_bit(&self, context: &mut Context<Value>, bit: usize) -> Var {
@@ -162,6 +154,7 @@ impl CompositionConstraintAccumulator {
         context: &mut Context<Value>,
         interaction_columns: &[InteractionAtOods<Var>],
         component_data: &dyn ComponentDataTrait<Value>,
+        claimed_sum: Var,
     ) {
         // TODO(Gali): Get the terms from the component instead of storing them in the accumulator.
         let n_batches = self.terms.len().div_ceil(2);
@@ -191,7 +184,7 @@ impl CompositionConstraintAccumulator {
         let cur_cumsum = from_partial_evals(context, last_chunk.each_ref().map(|x| x.at_oods));
 
         let diff = eval!(context, ((cur_cumsum) - (prev_row_cumsum)) - (prev_col_cumsum));
-        let cumsum_shift = div(context, component_data.claimed_sum(), component_data.n_instances());
+        let cumsum_shift = div(context, claimed_sum, component_data.n_instances());
         // Instead of checking diff = num / denom, check diff = num / denom - cumsum_shift.
         // This makes (num / denom - cumsum_shift) have sum zero, which makes the constraint
         // uniform - apply on all rows.
@@ -305,7 +298,6 @@ pub fn compute_composition_polynomial<Value: IValue>(
         let component_data = ComponentData {
             trace_columns,
             interaction_columns,
-            claimed_sum,
             n_instances: component_size,
             index: component_index,
             n_instances_bits,
@@ -317,6 +309,7 @@ pub fn compute_composition_polynomial<Value: IValue>(
             context,
             interaction_columns,
             &component_data,
+            claimed_sum,
         );
     }
 
