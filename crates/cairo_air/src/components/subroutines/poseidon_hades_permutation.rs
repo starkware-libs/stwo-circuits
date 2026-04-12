@@ -248,7 +248,7 @@ pub fn accumulate_constraints<Value: IValue>(
         poseidon_full_round_chain_output_limb_28_col195,
         poseidon_full_round_chain_output_limb_29_col196,
     ] = input.try_into().unwrap();
-    let seq = seq_of_component_size(context, component_data, &acc.preprocessed_columns);
+    let seq = component_data.seq_of_component_size(context, &acc.preprocessed_columns);
 
     linear_combination_n_2_coefs_1_1::accumulate_constraints(
         &[
