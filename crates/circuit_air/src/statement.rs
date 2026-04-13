@@ -1,3 +1,4 @@
+use crate::circuit_claim::blake2s_initial_state;
 use crate::circuit_eval_components::{
     blake_g, blake_gate, blake_output, blake_round, blake_round_sigma, range_check_15,
     range_check_16, triple_xor_32, verify_bitwise_xor_4, verify_bitwise_xor_7,
@@ -100,7 +101,7 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
 
         // Blake IV public logup sum contribution.
         if self.n_blake_gates > 0 {
-            let initial_state = crate::blake2s_initial_state();
+            let initial_state = blake2s_initial_state();
             let blake_state_relation_id = context.constant(BLAKE_STATE_RELATION_ID.into());
             let iv_state_address = context.zero();
             let mut logup_terms = vec![blake_state_relation_id, iv_state_address];

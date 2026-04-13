@@ -1,7 +1,7 @@
 use crate::prover::prepare_circuit_proof_for_circuit_verifier;
 use crate::prover::{BaseColumnPool, CircuitProof, SimdBackend, prove_circuit_assignment};
-use circuit_air::CircuitInteractionElements;
-use circuit_air::lookup_sum;
+use circuit_air::circuit_claim::CircuitInteractionElements;
+use circuit_air::circuit_claim::lookup_sum;
 use circuit_air::statement::{INTERACTION_POW_BITS, all_circuit_components};
 use circuit_air::verify::{CircuitConfig, verify_circuit};
 use circuit_common::finalize::finalize_context;
