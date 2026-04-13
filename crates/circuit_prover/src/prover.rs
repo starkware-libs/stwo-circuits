@@ -1,10 +1,12 @@
 use crate::witness::trace::TraceGenerator;
 use crate::witness::trace::write_interaction_trace;
 use crate::witness::trace::write_trace;
-use circuit_air::components::CircuitComponents;
+use circuit_air::circuit_claim::{
+    CircuitClaim, CircuitInteractionClaim, CircuitInteractionElements, lookup_sum,
+};
+use circuit_air::circuit_components::CircuitComponents;
 use circuit_air::statement::INTERACTION_POW_BITS;
 use circuit_air::verify::CircuitPublicData;
-use circuit_air::{CircuitClaim, CircuitInteractionClaim, CircuitInteractionElements, lookup_sum};
 use circuit_common::CircuitParams;
 use circuit_common::Qm31OpsTraceGenerator;
 use circuit_common::preprocessed::PreprocessedCircuit;
