@@ -13,5 +13,6 @@ pub struct Stats {
     /// The number of inputs to permutation gates.
     pub permutation_inputs: usize,
     pub outputs: usize,
+    pub triple_xor: usize,
     pub m31_to_u32: usize,
 }
