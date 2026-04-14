@@ -10,6 +10,7 @@ pub mod qm31_ops;
 pub mod range_check_15;
 pub mod range_check_16;
 pub mod subroutines;
+pub mod triple_xor;
 pub mod triple_xor_32;
 pub mod verify_bitwise_xor_12;
 pub mod verify_bitwise_xor_4;
@@ -40,6 +41,7 @@ define_component_list! {
     BlakeG,
     BlakeOutput,
     TripleXor32,
+    TripleXor,
     M31ToU32,
     VerifyBitwiseXor8,
     VerifyBitwiseXor12,
@@ -59,6 +61,7 @@ pub struct CircuitComponents {
     pub blake_g: blake_g::Component,
     pub blake_output: blake_output::Component,
     pub triple_xor_32: triple_xor_32::Component,
+    pub triple_xor: triple_xor::Component,
     pub m_31_to_u_32: m_31_to_u_32::Component,
     pub verify_bitwise_xor_8: verify_bitwise_xor_8::Component,
     pub verify_bitwise_xor_12: verify_bitwise_xor_12::Component,
@@ -153,6 +156,16 @@ impl CircuitComponents {
             },
             interaction_claim.claimed_sums[ComponentList::TripleXor32 as usize],
         );
+        let triple_xor_component = triple_xor::Component::new(
+            tree_span_provider,
+            triple_xor::Eval {
+                claim: triple_xor::Claim {
+                    log_size: circuit_claim.log_sizes[ComponentList::TripleXor as usize],
+                },
+                common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
+            },
+            interaction_claim.claimed_sums[ComponentList::TripleXor as usize],
+        );
         let m_31_to_u_32_component = m_31_to_u_32::Component::new(
             tree_span_provider,
             m_31_to_u_32::Eval {
@@ -228,6 +241,7 @@ impl CircuitComponents {
             blake_g: blake_g_component,
             blake_output: blake_output_component,
             triple_xor_32: triple_xor_32_component,
+            triple_xor: triple_xor_component,
             m_31_to_u_32: m_31_to_u_32_component,
             verify_bitwise_xor_8: verify_bitwise_xor_8_component,
             verify_bitwise_xor_12: verify_bitwise_xor_12_component,
@@ -249,6 +263,7 @@ impl CircuitComponents {
             Box::new(self.blake_g) as Box<dyn Component>,
             Box::new(self.blake_output) as Box<dyn Component>,
             Box::new(self.triple_xor_32) as Box<dyn Component>,
+            Box::new(self.triple_xor) as Box<dyn Component>,
             Box::new(self.m_31_to_u_32) as Box<dyn Component>,
             Box::new(self.verify_bitwise_xor_8) as Box<dyn Component>,
             Box::new(self.verify_bitwise_xor_12) as Box<dyn Component>,

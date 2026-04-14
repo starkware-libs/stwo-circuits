@@ -204,6 +204,51 @@ impl std::fmt::Debug for Blake {
     }
 }
 
+/// Represents a triple XOR gate: `out = a ^ b ^ c` (u32 XOR).
+/// Inputs must be encoded as `(u16, u16, 0, 0)` in QM31.
+#[derive(PartialEq, Eq)]
+pub struct TripleXor {
+    pub input_a: usize,
+    pub input_b: usize,
+    pub input_c: usize,
+    pub out: usize,
+}
+impl Gate for TripleXor {
+    fn check(&self, values: &[QM31]) -> Result<(), String> {
+        for (i, &input) in [self.input_a, self.input_b, self.input_c].iter().enumerate() {
+            let [_, _, c, d] = values[input].to_m31_array().map(|m| m.0);
+            if c != 0 || d != 0 {
+                return Err(format!(
+                    "TripleXor: input {i} is not of the form (u16, u16, 0, 0), got {}",
+                    values[input]
+                ));
+            }
+        }
+        let a = values[self.input_a].unpack_u32();
+        let b = values[self.input_b].unpack_u32();
+        let c = values[self.input_c].unpack_u32();
+        check_eq(values[self.out], QM31::pack_u32(a ^ b ^ c))
+    }
+
+    fn uses(&self) -> Vec<usize> {
+        vec![self.input_a, self.input_b, self.input_c]
+    }
+
+    fn yields(&self) -> Vec<usize> {
+        vec![self.out]
+    }
+}
+
+impl std::fmt::Debug for TripleXor {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "[{}] = TripleXor([{}], [{}], [{}])",
+            self.out, self.input_a, self.input_b, self.input_c
+        )
+    }
+}
+
 /// Represents an M31ToU32 gate in the circuit: `(x & 0xFFFF, x >> 16, 0, 0) = M31ToU32(x, 0, 0,
 /// 0)`.
 #[derive(PartialEq, Eq)]
@@ -318,6 +363,7 @@ pub struct Circuit {
     pub pointwise_mul: Vec<PointwiseMul>,
     pub eq: Vec<Eq>,
     pub blake: Vec<Blake>,
+    pub triple_xor: Vec<TripleXor>,
     pub m31_to_u32: Vec<M31ToU32>,
     pub permutation: Vec<Permutation>,
     pub output: Vec<Output>,
@@ -334,6 +380,7 @@ impl Circuit {
             pointwise_mul,
             eq,
             blake,
+            triple_xor,
             m31_to_u32,
             permutation,
             output,
@@ -345,6 +392,7 @@ impl Circuit {
             pointwise_mul.iter().map(|g| g as &dyn Gate),
             eq.iter().map(|g| g as &dyn Gate),
             blake.iter().map(|g| g as &dyn Gate),
+            triple_xor.iter().map(|g| g as &dyn Gate),
             m31_to_u32.iter().map(|g| g as &dyn Gate),
             permutation.iter().map(|g| g as &dyn Gate),
             output.iter().map(|g| g as &dyn Gate),
