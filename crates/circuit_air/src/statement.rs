@@ -1,10 +1,12 @@
+use std::collections::HashMap;
+
 use crate::circuit_eval_components::{
     blake_g, blake_gate, blake_output, blake_round, blake_round_sigma, range_check_15,
     range_check_16, triple_xor_32, verify_bitwise_xor_4, verify_bitwise_xor_7,
     verify_bitwise_xor_8, verify_bitwise_xor_9, verify_bitwise_xor_12,
 };
 use crate::components::{eq::CircuitEqComponent, qm31_ops::CircuitQm31OpsComponent};
-use crate::relations::{BLAKE_STATE_RELATION_ID, GATE_RELATION_ID};
+use crate::relations::{BLAKE_STATE_RELATION_ID, GATE_RELATION_ID, GATE_RELATION_NAME};
 use circuits::blake::HashValue;
 use circuits::context::{Context, Var};
 use circuits::eval;
@@ -73,7 +75,8 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
         &self,
         context: &mut Context<Value>,
         interaction_elements: [Var; 2],
-    ) -> Var {
+    ) -> (Var, HashMap<String, u64>) {
+        let mut use_counts = HashMap::new();
         let mut sum = context.zero();
 
         // Output gates public logup sum contribution.
@@ -97,6 +100,8 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
             );
             sum = eval!(context, (sum) + (term));
         }
+        *use_counts.entry(GATE_RELATION_NAME.to_string()).or_insert(0) +=
+            self.output_addresses.len() as u64;
 
         // Blake IV public logup sum contribution.
         if self.n_blake_gates > 0 {
@@ -122,7 +127,7 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
             sum = eval!(context, (sum) - (blake_iv_yield));
         }
 
-        sum
+        (sum, use_counts)
     }
 
     fn get_preprocessed_column_ids(&self) -> Vec<PreProcessedColumnId> {

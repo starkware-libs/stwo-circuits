@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use circuits::blake::HashValue;
 use itertools::zip_eq;
 use num_traits::One;
@@ -96,6 +98,7 @@ fn squared_fibonacci_public_logup_sum(
     context: &mut Context<impl IValue>,
     interaction_elements: [Var; 2],
     log_n_instances: u32,
+    use_counts: &mut HashMap<String, u64>,
 ) -> Var {
     let mut sum = context.zero();
     for j in 0..(1 << log_n_instances) {
@@ -118,6 +121,7 @@ fn squared_fibonacci_public_logup_sum(
         // the witness.
         sum = eval!(context, (sum) - (frac));
     }
+    *use_counts.entry("fib_relation".to_string()).or_insert(0) += 1 << log_n_instances;
     sum
 }
 
@@ -134,18 +138,24 @@ impl<Value: IValue> Statement<Value> for SimpleStatement<Value> {
         &self,
         context: &mut Context<Value>,
         interaction_elements: [Var; 2],
-    ) -> Var {
+    ) -> (Var, HashMap<String, u64>) {
         let mut sum = context.zero();
+        let mut use_counts = HashMap::new();
 
         for (component, log_n_instances) in zip_eq(&self.components, &COMPONENT_LOG_SIZES) {
             if component.trace_columns() == 0 {
                 continue;
             }
-            let fib_logup_sum =
-                squared_fibonacci_public_logup_sum(context, interaction_elements, *log_n_instances);
+            let fib_logup_sum = squared_fibonacci_public_logup_sum(
+                context,
+                interaction_elements,
+                *log_n_instances,
+                &mut use_counts,
+            );
             sum = eval!(context, (sum) + (fib_logup_sum));
+            *use_counts.entry("fib_relation".to_string()).or_insert(0) += 1 << log_n_instances;
         }
-        sum
+        (sum, use_counts)
     }
 
     fn get_preprocessed_column_ids(&self) -> Vec<PreProcessedColumnId> {
