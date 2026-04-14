@@ -121,18 +121,7 @@ fn add_qm31_ops_to_preprocessed_trace(
     multiplicities: &[usize],
     pp_trace: &mut PreProcessedTrace,
 ) -> Qm31OpsTraceGenerator {
-    let Circuit {
-        n_vars,
-        add,
-        sub,
-        mul,
-        pointwise_mul,
-        eq: _,
-        blake: _,
-        m31_to_u32: _,
-        permutation,
-        output: _,
-    } = circuit;
+    let Circuit { n_vars, add, sub, mul, pointwise_mul, permutation, .. } = circuit;
     let mut qm31_ops_columns: [_; N_QM31_OPS_PP_COLUMNS] = std::array::from_fn(|_| vec![]);
     fill_binary_op_columns(add, OpCode::Add, multiplicities, &mut qm31_ops_columns);
     fill_binary_op_columns(sub, OpCode::Sub, multiplicities, &mut qm31_ops_columns);
@@ -168,18 +157,7 @@ fn add_qm31_ops_to_preprocessed_trace(
 /// is empty, no columns are added. Preprocessed columns are in the following format:
 /// | in0_address | in1_address |
 fn add_eq_to_preprocessed_trace(circuit: &Circuit, pp_trace: &mut PreProcessedTrace) {
-    let Circuit {
-        n_vars: _,
-        add: _,
-        sub: _,
-        mul: _,
-        pointwise_mul: _,
-        eq,
-        blake: _,
-        m31_to_u32: _,
-        permutation: _,
-        output: _,
-    } = circuit;
+    let Circuit { eq, .. } = circuit;
     let mut eq_in0_address = vec![];
     let mut eq_in1_address = vec![];
     for gate in eq.iter() {
@@ -369,18 +347,7 @@ fn add_blake_to_preprocessed_trace(
     multiplicities: &[usize],
     pp_trace: &mut PreProcessedTrace,
 ) {
-    let Circuit {
-        n_vars: _,
-        add: _,
-        sub: _,
-        mul: _,
-        pointwise_mul: _,
-        eq: _,
-        blake,
-        m31_to_u32: _,
-        permutation: _,
-        output: _,
-    } = circuit;
+    let Circuit { blake, .. } = circuit;
     add_blake_columns(blake, multiplicities, pp_trace);
 
     // Add blake sigma columns (16 columns of 16 rows each).
@@ -388,6 +355,53 @@ fn add_blake_to_preprocessed_trace(
     for (i, column) in blake_sigma.into_iter().enumerate() {
         pp_trace.push_column(PreProcessedColumnId { id: format!("blake_sigma_{i}") }, column);
     }
+}
+
+/// Adds TripleXor gates to the preprocessed trace. Preprocessed columns are in the format:
+/// | input_addr_0 | input_addr_1 | input_addr_2 | output_addr | multiplicity |
+fn add_triple_xor_to_preprocessed_trace(
+    circuit: &Circuit,
+    multiplicities: &[usize],
+    pp_trace: &mut PreProcessedTrace,
+) {
+    let Circuit { triple_xor, .. } = circuit;
+    let mut triple_xor_input_addr_0 = vec![];
+    let mut triple_xor_input_addr_1 = vec![];
+    let mut triple_xor_input_addr_2 = vec![];
+    let mut triple_xor_output_addr = vec![];
+    let mut triple_xor_multiplicity = vec![];
+    for gate in triple_xor.iter() {
+        let [input_a, input_b, input_c] = gate.uses()[..] else {
+            panic!("Expected 3 uses for TripleXor")
+        };
+        let [out] = gate.yields()[..] else { panic!("Expected 1 yield for TripleXor") };
+        triple_xor_input_addr_0.push(input_a);
+        triple_xor_input_addr_1.push(input_b);
+        triple_xor_input_addr_2.push(input_c);
+        triple_xor_output_addr.push(out);
+        triple_xor_multiplicity.push(multiplicities[out]);
+    }
+
+    pp_trace.push_column(
+        PreProcessedColumnId { id: "triple_xor_input_addr_0".to_owned() },
+        triple_xor_input_addr_0,
+    );
+    pp_trace.push_column(
+        PreProcessedColumnId { id: "triple_xor_input_addr_1".to_owned() },
+        triple_xor_input_addr_1,
+    );
+    pp_trace.push_column(
+        PreProcessedColumnId { id: "triple_xor_input_addr_2".to_owned() },
+        triple_xor_input_addr_2,
+    );
+    pp_trace.push_column(
+        PreProcessedColumnId { id: "triple_xor_output_addr".to_owned() },
+        triple_xor_output_addr,
+    );
+    pp_trace.push_column(
+        PreProcessedColumnId { id: "triple_xor_multiplicity".to_owned() },
+        triple_xor_multiplicity,
+    );
 }
 
 const N_M31_TO_U32_PP_COLUMNS: usize = 3;
@@ -544,6 +558,8 @@ impl PreprocessedCircuit {
             .get_column(&PreProcessedColumnId { id: "finalize_flag".to_owned() })
             .len()
             .ilog2();
+        // Add TripleXor columns.
+        add_triple_xor_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
         // Add M31ToU32 columns.
         add_m31_to_u32_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
 
