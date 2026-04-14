@@ -148,6 +148,15 @@ pub fn all_components<Value: IValue>() -> IndexMap<&'static str, Box<dyn Circuit
             Box::new(components::range_check_builtin::Component {}) as Box<dyn CircuitEval<Value>>,
         ),
         (
+            "ec_op_builtin",
+            Box::new(components::ec_op_builtin::Component {}) as Box<dyn CircuitEval<Value>>,
+        ),
+        (
+            "partial_ec_mul_generic",
+            Box::new(components::partial_ec_mul_generic::Component {})
+                as Box<dyn CircuitEval<Value>>,
+        ),
+        (
             "pedersen_aggregator_window_bits_18",
             Box::new(components::pedersen_aggregator_window_bits_18::Component {})
                 as Box<dyn CircuitEval<Value>>,

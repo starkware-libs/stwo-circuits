@@ -22,3 +22,4 @@ stwo_cairo_dev_utils.workspace = true
 stwo_cairo_utils.workspace = true
 circuit-prover.workspace = true
 circuit-air.workspace = true
+cairo-vm.workspace = true
