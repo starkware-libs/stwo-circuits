@@ -3,7 +3,7 @@ use itertools::Itertools;
 use stwo::core::vcs::blake2_hash::Blake2sHash;
 use stwo::core::{fields::qm31::QM31, vcs::blake2_hash::reduce_to_m31};
 
-use crate::circuit::{Blake, M31ToU32};
+use crate::circuit::{Blake, M31ToU32, TripleXor};
 use crate::context::{Context, Var};
 use crate::ivalue::{IValue, qm31_from_u32s};
 use crate::ops::Guess;
@@ -125,6 +125,28 @@ pub fn blake<Value: IValue>(
     });
 
     HashValue(out_var0, out_var1)
+}
+
+/// Adds a TripleXor gate to the circuit: XOR three u32 values encoded as QM31 `(u16, u16, 0, 0)`
+/// and return the result in the same encoding.
+pub fn triple_xor<Value: IValue>(
+    ctx: &mut Context<Value>,
+    input_a: Var,
+    input_b: Var,
+    input_c: Var,
+) -> Var {
+    let a = ctx.get(input_a).unpack_u32();
+    let b = ctx.get(input_b).unpack_u32();
+    let c = ctx.get(input_c).unpack_u32();
+    let out = ctx.new_var(Value::pack_u32(a ^ b ^ c));
+    ctx.stats.triple_xor += 1;
+    ctx.circuit.triple_xor.push(TripleXor {
+        input_a: input_a.idx,
+        input_b: input_b.idx,
+        input_c: input_c.idx,
+        out: out.idx,
+    });
+    out
 }
 
 /// Adds an M31ToU32 gate to the circuit: convert an `M31` value into its `u32` representation, i.e

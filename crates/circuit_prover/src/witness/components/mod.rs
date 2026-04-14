@@ -10,6 +10,7 @@ pub mod prelude;
 pub mod qm31_ops;
 pub mod range_check_15;
 pub mod range_check_16;
+pub mod triple_xor;
 pub mod triple_xor_32;
 pub mod verify_bitwise_xor_12;
 pub mod verify_bitwise_xor_4;

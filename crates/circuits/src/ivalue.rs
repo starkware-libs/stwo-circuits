@@ -50,6 +50,12 @@ pub trait IValue:
 
     /// Converts an M31 value `(x, 0, 0, 0)` into limb representation `(low_u16, high_u15, 0, 0)`.
     fn m31_to_u32(&self) -> Self;
+
+    /// Packs a `u32` value into a QM31 limb representation `(low_u16, high_u16, 0, 0)`.
+    fn pack_u32(value: u32) -> Self;
+
+    /// Unpacks a QM31 limb representation `(low_u16, high_u16, 0, 0)` back into a `u32`.
+    fn unpack_u32(&self) -> u32;
 }
 
 impl IValue for QM31 {
@@ -85,6 +91,18 @@ impl IValue for QM31 {
         let x = self.0.0.0;
         qm31_from_u32s(x & 0xFFFF, x >> 16, 0, 0)
     }
+
+    fn pack_u32(value: u32) -> Self {
+        qm31_from_u32s(value & 0xFFFF, value >> 16, 0, 0)
+    }
+
+    fn unpack_u32(&self) -> u32 {
+        let [low, high, 0, 0] = self.to_m31_array().map(|m| m.0) else {
+            panic!("value does not have zeroes in the last two coordinates as expected");
+        };
+        assert!(low <= 0xFFFF && high <= 0xFFFF, "low and high coordinates must be u16 values");
+        low | (high << 16)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Ord, PartialOrd)]
@@ -109,6 +127,14 @@ impl IValue for NoValue {
 
     fn m31_to_u32(&self) -> Self {
         Self
+    }
+
+    fn pack_u32(_value: u32) -> Self {
+        Self
+    }
+
+    fn unpack_u32(&self) -> u32 {
+        0
     }
 
     fn blake(_: &[Self], _: usize) -> HashValue<Self> {
