@@ -9,6 +9,7 @@ use circuit_serialize::serialize::CircuitSerialize;
 use circuits::context::{Context, TraceContext};
 use circuits::ivalue::NoValue;
 use circuits::ops::Guess;
+use circuits_stark_verifier::fri_proof::compute_all_fold_steps;
 use circuits_stark_verifier::proof::{ProofConfig, ProofInfo, empty_proof};
 use circuits_stark_verifier::proof_from_stark_proof::proof_from_stark_proof;
 use circuits_stark_verifier::verify::verify;
@@ -20,15 +21,15 @@ enum ProofModifier {
     WrongTraceAuthPath,
     /// Modify an element of the first layer Merkle authentication path (decommitment).
     WrongFriAuthPath,
-    /// Modify the siblings in the last inner layer of FRI.
-    WrongFriSibling,
+    /// Modify the queried coset value at the last inner layer of FRI.
+    WrongFriWitness,
 }
 
 #[rstest]
 #[case::success(ProofModifier::None)]
 #[case::wrong_trace_auth_path(ProofModifier::WrongTraceAuthPath)]
 #[case::wrong_fri_auth_path(ProofModifier::WrongFriAuthPath)]
-#[case::wrong_fri_sibling(ProofModifier::WrongFriSibling)]
+#[case::wrong_fri_witness(ProofModifier::WrongFriWitness)]
 fn test_verify(#[case] proof_modifier: ProofModifier) {
     let (_components, claim, pcs_config, mut proof, interaction_pow_nonce, channel_salt) =
         create_proof();
@@ -62,13 +63,16 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
                 first_layer_values.get_mut(&((first_query >> 1) ^ 1)).unwrap();
             value.0[0] ^= 1;
         }
-        ProofModifier::WrongFriSibling => {
+        ProofModifier::WrongFriWitness => {
             let values = &mut proof.aux.fri.inner_layers.last_mut().unwrap().all_values[0];
             for (_, value) in values.iter_mut() {
                 *value += QM31::one();
             }
         }
     }
+
+    // Capture before `proof` is shadowed below; the `Proof<QM31>` has no `.aux` field.
+    let first_query = proof.aux.unsorted_query_locations[0];
 
     // Create a context with values from the proof.
     let mut context = TraceContext::default();
@@ -94,10 +98,21 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
             let expected_value = context.get(proof_vars.fri.commit.layer_commitments[0].0);
             assert!(err.contains(&expected_value.to_string()));
         }
-        ProofModifier::WrongFriSibling => {
+        ProofModifier::WrongFriWitness => {
             let err = result.unwrap_err();
-            // The error should be when validating the query position inside its witness coset.
-            let expected_value = context.get(proof_vars.fri.witness.0.last().unwrap()[0][1]);
+            // The error should be when validating the query position inside its witness
+            // coset. `validate_query_position_in_coset` selects the value at the query's
+            // local index (`queried_pos`'s low `last_step` bits) in the last-layer coset.
+            let fold_steps = compute_all_fold_steps(
+                config.fri.log_trace_size - config.fri.log_n_last_layer_coefs,
+                config.fri.fold_step,
+            );
+            let last_step = *fold_steps.last().unwrap();
+            let shift: usize = fold_steps.iter().sum::<usize>() - last_step;
+            let queried_pos = first_query >> shift;
+            let index_in_coset = queried_pos & ((1 << last_step) - 1);
+            let expected_value =
+                context.get(proof_vars.fri.witness.0.last().unwrap()[0][index_in_coset]);
             assert!(err.contains(&expected_value.to_string()));
         }
     }
