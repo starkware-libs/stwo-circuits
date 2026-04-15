@@ -3,6 +3,7 @@ pub mod component_utils;
 pub mod components;
 pub mod preprocessed_columns;
 pub mod privacy;
+pub mod relations;
 pub mod sample_evaluations;
 pub mod statement;
 pub mod utils;

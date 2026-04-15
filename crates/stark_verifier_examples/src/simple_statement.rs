@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use circuits::blake::HashValue;
 use itertools::zip_eq;
 use num_traits::One;
@@ -134,7 +136,7 @@ impl<Value: IValue> Statement<Value> for SimpleStatement<Value> {
         &self,
         context: &mut Context<Value>,
         interaction_elements: [Var; 2],
-    ) -> Var {
+    ) -> (Var, HashMap<String, u64>) {
         let mut sum = context.zero();
 
         for (component, log_n_instances) in zip_eq(&self.components, &COMPONENT_LOG_SIZES) {
@@ -145,7 +147,8 @@ impl<Value: IValue> Statement<Value> for SimpleStatement<Value> {
                 squared_fibonacci_public_logup_sum(context, interaction_elements, *log_n_instances);
             sum = eval!(context, (sum) + (fib_logup_sum));
         }
-        sum
+        // The sum contains only yields - no uses
+        (sum, HashMap::new())
     }
 
     fn get_preprocessed_column_ids(&self) -> Vec<PreProcessedColumnId> {

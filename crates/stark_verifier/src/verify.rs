@@ -113,7 +113,8 @@ pub fn verify<Value: IValue>(
     // Pick the interaction elements.
     let [interaction_z, interaction_alpha] = channel.draw_two_qm31s(context);
 
-    let public_logup_sum = statement.public_logup_sum(context, [interaction_z, interaction_alpha]);
+    let (public_logup_sum, public_logup_uses) =
+        statement.public_logup_sum(context, [interaction_z, interaction_alpha]);
     validate_logup_sum(context, &enable_bits, public_logup_sum, &proof.claim.claimed_sums);
 
     channel.mix_qm31s(context, proof.claim.claimed_sums.iter().cloned());
@@ -127,7 +128,8 @@ pub fn verify<Value: IValue>(
     // Draw a random point for the OODS.
     let oods_point = channel.draw_point(context);
 
-    let shifted_relation_uses = check_relation_uses(context, statement, &component_sizes_bits);
+    let shifted_relation_uses =
+        check_relation_uses(context, statement, &public_logup_uses, &component_sizes_bits);
     let unpacked_component_sizes = Simd::unpack(context, &component_sizes);
     statement.verify_claim(context, &unpacked_component_sizes, &shifted_relation_uses);
 
@@ -259,6 +261,7 @@ pub fn verify<Value: IValue>(
 fn check_relation_uses<Value: IValue>(
     context: &mut Context<impl IValue>,
     statement: &impl Statement<Value>,
+    extra_uses: &HashMap<String, u64>,
     component_sizes_bits: &[Simd],
 ) -> HashMap<String, Var> {
     let components = statement.get_components();
@@ -281,6 +284,10 @@ fn check_relation_uses<Value: IValue>(
                 entry.checked_add(relation_use.uses * shifted_component_size_upper_bound).unwrap();
         }
     }
+    for (relation, num_uses) in extra_uses {
+        let entry = max_shifted_uses_per_relation.entry(relation).or_insert(0);
+        *entry = entry.checked_add((num_uses >> RELATION_USES_NUM_ROWS_SHIFT) + 1).unwrap();
+    }
     assert!(
         max_shifted_uses_per_relation
             .values()
@@ -296,8 +303,16 @@ fn check_relation_uses<Value: IValue>(
     // components don't use any relations.
     Simd::mark_partly_used(context, &shifted_component_sizes);
 
-    // Sum uses_per_row * (floor(num_rows / DIV) + 1) for all relations
+    // Sum uses_per_row * (floor(num_rows / DIV) + 1) + extra_uses for all relations
     let mut shifted_relation_uses = HashMap::new();
+    for (relation, num_uses) in extra_uses {
+        shifted_relation_uses.insert(
+            relation.to_string(),
+            context.constant(
+                ((u32::try_from(*num_uses).unwrap() >> RELATION_USES_NUM_ROWS_SHIFT) + 1).into(),
+            ),
+        );
+    }
     for (i, component) in components.iter().enumerate() {
         let relation_uses = component.relation_uses_per_row();
         if relation_uses.is_empty() {

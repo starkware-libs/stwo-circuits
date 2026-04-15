@@ -46,9 +46,13 @@ pub trait Statement<Value: IValue> {
     /// Returns the expected preprocessed trace root as circuit variables.
     fn get_preprocessed_root(&self, context: &mut Context<Value>) -> HashValue<Var>;
 
-    /// Returns the part of the logup sum determined by the public statement.
-    fn public_logup_sum(&self, context: &mut Context<Value>, interaction_elements: [Var; 2])
-    -> Var;
+    /// Returns the part of the logup sum determined by the public statement, and
+    /// the number of uses it contains for each relation.
+    fn public_logup_sum(
+        &self,
+        context: &mut Context<Value>,
+        interaction_elements: [Var; 2],
+    ) -> (Var, HashMap<String, u64>);
 
     /// Returns statement-specific named parameters passed to component constraint evaluators.
     fn public_params(&self, _context: &mut Context<Value>) -> HashMap<String, Var> {
