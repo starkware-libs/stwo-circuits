@@ -254,36 +254,53 @@ pub fn verify<Value: IValue>(
 /// where the sum is over all the components that use the relation.
 ///
 /// To avoid overflows when computing the sum, we check
-/// sum(uses_per_row * (floor(num_rows / DIV) + 1)) < floor(P / DIV)
+/// sum(uses_per_row * (floor(num_rows / DIV) + 1)) <= floor(P / DIV)
 /// where DIV = 2 ** RELATION_USES_NUM_ROWS_SHIFT
 fn check_relation_uses<Value: IValue>(
     context: &mut Context<impl IValue>,
     statement: &impl Statement<Value>,
     component_sizes_bits: &[Simd],
-) -> HashMap<&'static str, Var> {
+) -> HashMap<String, Var> {
     let components = statement.get_components();
 
-    // Check that sum(uses_per_row * (floor(num_rows / DIV) + 1)) cannot overflow even for the
-    // maximal num_rows (num_rows = P).
+    let component_size_upper_bound = 1u64 << component_sizes_bits.len();
+    let shifted_component_size_upper_bound =
+        (component_size_upper_bound >> RELATION_USES_NUM_ROWS_SHIFT) + 1;
+    let shifted_use_count_upper_bound = P >> 1;
+
+    // Check that sum(uses_per_row * (floor(num_rows / DIV) + 1)) < shifted_use_count_upper_bound
+    // even for the maximal num_rows (num_rows = component_size_upper_bound). This fact is used
+    // later in this function when comparing the sum to floor(P / DIV).
     // This is a sanity check that `RELATION_USES_NUM_ROWS_SHIFT` is large enough for the given
     // statement, it does not depend on the specific assignment.
     let mut max_shifted_uses_per_relation = HashMap::<&str, u64>::new();
     for component in components.iter() {
         for relation_use in component.relation_uses_per_row() {
             let entry = max_shifted_uses_per_relation.entry(relation_use.relation_id).or_insert(0);
-            *entry += relation_use.uses * (((P >> RELATION_USES_NUM_ROWS_SHIFT) + 1) as u64);
+            *entry = entry
+                .checked_add(relation_use.uses * shifted_component_size_upper_bound)
+                .expect("Shifted num rows upper bound computation overflowed");
         }
     }
-    assert!(max_shifted_uses_per_relation.values().all(|count| *count < (P as u64)));
+    assert!(
+        max_shifted_uses_per_relation
+            .values()
+            .all(|count| *count < shifted_use_count_upper_bound.into())
+    );
 
-    // Compute floor(num_rows / DIV) for all components
-    let shifted_component_sizes = match component_sizes_bits.get(RELATION_USES_NUM_ROWS_SHIFT..) {
-        Some(high_bits) => Simd::combine_bits(context, high_bits),
-        None => Simd::zero(context, components.len()),
+    // Compute floor(num_rows / DIV) + 1 for all components
+    let shifted_component_sizes_p1 = match component_sizes_bits.get(RELATION_USES_NUM_ROWS_SHIFT..)
+    {
+        Some(high_bits) => {
+            let one = Simd::one(context, components.len());
+            let shifted_component_sizes = Simd::combine_bits(context, high_bits);
+            Simd::add(context, &shifted_component_sizes, &one)
+        }
+        None => Simd::one(context, components.len()),
     };
     // A variable in the Simd vector might be unused in the case where all the corresponding
     // components don't use any relations.
-    Simd::mark_partly_used(context, &shifted_component_sizes);
+    Simd::mark_partly_used(context, &shifted_component_sizes_p1);
 
     // Sum uses_per_row * (floor(num_rows / DIV) + 1) for all relations
     let mut shifted_relation_uses = HashMap::new();
@@ -292,25 +309,43 @@ fn check_relation_uses<Value: IValue>(
         if relation_uses.is_empty() {
             continue;
         }
-        let shifted_size = Simd::unpack_idx(context, &shifted_component_sizes, i);
+        let shifted_size_p1 = Simd::unpack_idx(context, &shifted_component_sizes_p1, i);
         for relation_use in relation_uses {
-            let entry =
-                shifted_relation_uses.entry(relation_use.relation_id).or_insert(context.zero());
-            let uses_per_row =
-                context.constant(TryInto::<u32>::try_into(relation_use.uses).unwrap().into());
-            *entry = eval!(context, (*entry) + (((shifted_size) + (1)) * (uses_per_row)));
+            let uses_per_row = context.constant(u32::try_from(relation_use.uses).unwrap().into());
+
+            let shifted_uses_upper_bound = eval!(context, (shifted_size_p1) * (uses_per_row));
+
+            shifted_relation_uses
+                .entry(relation_use.relation_id.to_string())
+                .and_modify(|entry| {
+                    *entry = eval!(context, (*entry) + (shifted_uses_upper_bound));
+                })
+                .or_insert(shifted_uses_upper_bound);
         }
     }
 
-    // Verify that the sum is less than floor(P / DIV) by expressing it as a
-    // floor(log2(P / DIV))-bit number
     let shifted_use_counts = shifted_relation_uses
         .iter()
         .sorted_by_key(|(k, _v)| *k)
         .map(|(_k, v)| M31Wrapper::new_unsafe(*v))
         .collect_vec();
     let shifted_use_counts = Simd::pack(context, &shifted_use_counts);
-    extract_bits(context, &shifted_use_counts, (P >> RELATION_USES_NUM_ROWS_SHIFT).ilog2());
+
+    // Verify that the sum is at most floor(P / DIV) by checking that floor(P / DIV) - sum is
+    // positive or zero.
+    let shifted_max_allowed_use_counts =
+        Simd::repeat(context, (P >> RELATION_USES_NUM_ROWS_SHIFT).into(), shifted_use_counts.len());
+    let diff = Simd::sub(context, &shifted_max_allowed_use_counts, &shifted_use_counts);
+
+    // If the difference is positive, it will fit in this many bits.
+    let positive_diff_bits = (P >> RELATION_USES_NUM_ROWS_SHIFT).ilog2() + 1;
+
+    // Make sure that if the difference is negative, it won't fit in positive_diff_bits bits. Use
+    // the check that sum < shifted_use_count_upper_bound from above.
+    assert!(P - shifted_use_count_upper_bound > (1 << positive_diff_bits));
+
+    // Verify that the diff fits in positive_diff_bits bits.
+    extract_bits(context, &diff, positive_diff_bits);
     shifted_relation_uses
 }
 
