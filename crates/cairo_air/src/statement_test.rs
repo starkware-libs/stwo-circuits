@@ -244,7 +244,7 @@ fn test_public_logup_sum() {
     let public_data = PublicData { initial_state, final_state, public_memory };
 
     // Call public_logup_sum
-    let result = public_logup_sum(
+    let (result, _use_counts) = public_logup_sum(
         &mut context,
         &public_data,
         &program[..],

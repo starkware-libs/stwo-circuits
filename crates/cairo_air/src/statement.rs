@@ -16,6 +16,7 @@ use circuits_stark_verifier::logup::logup_use_term;
 use circuits_stark_verifier::proof_from_stark_proof::pack_into_qm31s;
 use circuits_stark_verifier::verify::RELATION_USES_NUM_ROWS_SHIFT;
 use itertools::{Itertools, chain, izip, zip_eq};
+use num_traits::Zero;
 use stwo::core::fields::qm31::QM31;
 use stwo_cairo_common::builtins::{
     BITWISE_BUILTIN_MEMORY_CELLS, PEDERSEN_BUILTIN_MEMORY_CELLS, POSEIDON_BUILTIN_MEMORY_CELLS,
@@ -25,6 +26,9 @@ use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 use crate::all_components::all_components;
 use crate::preprocessed_columns::MAX_SEQUENCE_LOG_SIZE;
+use crate::relations::{
+    MEMORY_ADDRESS_TO_ID_RELATION_NAME, MEMORY_ID_TO_BIG_RELATION_NAME, OPCODES_RELATION_NAME,
+};
 use circuits::context::{Context, Var};
 use circuits::ivalue::{IValue, qm31_from_u32s};
 use circuits::simd::Simd;
@@ -49,6 +53,44 @@ pub const PUBLIC_DATA_LEN: usize =
 
 const LIMB_BITS: usize = 9;
 const SMALL_VALUE_BITS: u32 = 27;
+
+#[derive(Default)]
+struct LogupSum {
+    var: Option<Var>,
+    use_counts: HashMap<String, u64>,
+}
+
+impl LogupSum {
+    pub fn add_use_term(
+        &mut self,
+        context: &mut Context<impl IValue>,
+        relation_name: &str,
+        term: Var,
+    ) {
+        *self.use_counts.entry(relation_name.to_string()).or_insert(0) += 1;
+        self.var = self.var.map(|var| eval!(context, (var) + (term))).or(Some(term));
+    }
+
+    pub fn add_yield_term(&mut self, context: &mut Context<impl IValue>, term: Var) {
+        self.var = self.var.map(|var| eval!(context, (var) - (term))).or(Some(term));
+    }
+
+    pub fn add_sum(&mut self, context: &mut Context<impl IValue>, sum: &LogupSum) {
+        for (relation_name, count) in sum.use_counts.iter() {
+            *self.use_counts.entry(relation_name.clone()).or_insert(0) += count;
+        }
+        let sum_var = sum.sum(context);
+        self.var = self.var.map(|var| eval!(context, (var) + (sum_var))).or(Some(sum_var));
+    }
+
+    pub fn sum(&self, context: &mut Context<impl IValue>) -> Var {
+        self.var.unwrap_or(context.constant(QM31::zero()))
+    }
+
+    pub fn use_counts(&self) -> &HashMap<String, u64> {
+        &self.use_counts
+    }
+}
 
 pub struct CasmState<T> {
     pub pc: T,
@@ -337,7 +379,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         &self,
         context: &mut Context<Value>,
         interaction_elements: [Var; 2],
-    ) -> Var {
+    ) -> (Var, HashMap<String, u64>) {
         let program_as_constants = self
             .program
             .iter()
@@ -448,15 +490,15 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
     }
 }
 
-pub fn segment_ranges_logup_sum(
+fn segment_ranges_logup_sum(
     context: &mut Context<impl IValue>,
     interaction_elements: [Var; 2],
     segment_ranges: &[SegmentRange<Var>; N_SEGMENTS],
     mut argument_address: Var,
     mut return_value_address: Var,
-) -> Var {
+) -> LogupSum {
     let one = context.one();
-    let mut sum = context.zero();
+    let mut sum = LogupSum::default();
     for (i, segment_range) in segment_ranges.iter().enumerate() {
         if i != 0 {
             argument_address = eval!(context, (argument_address) + (one));
@@ -471,7 +513,8 @@ pub fn segment_ranges_logup_sum(
             segment_range.start.id,
             &start_value_limbs,
         );
-        sum = eval!(context, (sum) + (segment_start_logup_term));
+        sum.add_sum(context, &segment_start_logup_term);
+
         let end_value_limbs = split_27bit_to_9bit_limbs(context, segment_range.end.value);
         let segment_end_logup_term = public_memory_logup_terms(
             context,
@@ -480,7 +523,7 @@ pub fn segment_ranges_logup_sum(
             segment_range.end.id,
             &end_value_limbs,
         );
-        sum = eval!(context, (sum) + (segment_end_logup_term));
+        sum.add_sum(context, &segment_end_logup_term);
     }
 
     sum
@@ -494,7 +537,8 @@ fn public_memory_logup_terms<'a>(
     address: Var,
     id: Var,
     value_limbs: impl IntoIterator<Item = &'a Var>,
-) -> Var {
+) -> LogupSum {
+    let mut sum = LogupSum::default();
     let memory_address_to_id_relation_id =
         context.constant(MEMORY_ADDRESS_TO_ID_RELATION_ID.into());
     let address_to_id_logup_term = logup_use_term(
@@ -502,23 +546,25 @@ fn public_memory_logup_terms<'a>(
         &[memory_address_to_id_relation_id, address, id],
         interaction_elements,
     );
+    sum.add_use_term(context, MEMORY_ADDRESS_TO_ID_RELATION_NAME, address_to_id_logup_term);
 
     let memory_id_to_big_relation_id = context.constant(MEMORY_ID_TO_BIG_RELATION_ID.into());
     let elements =
         chain!([memory_id_to_big_relation_id, id], value_limbs.into_iter().cloned()).collect_vec();
     let id_to_value_logup_term = logup_use_term(context, &elements, interaction_elements);
-    eval!(context, (address_to_id_logup_term) + (id_to_value_logup_term))
+    sum.add_use_term(context, MEMORY_ID_TO_BIG_RELATION_NAME, id_to_value_logup_term);
+    sum
 }
 
-pub fn memory_segment_logup_sum(
+fn memory_segment_logup_sum(
     context: &mut Context<impl IValue>,
     interaction_elements: [Var; 2],
     start_address: Var,
     ids: &[Var],
     memory_values: &[[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]],
-) -> Var {
+) -> LogupSum {
     let one = context.one();
-    let mut sum = context.zero();
+    let mut sum = LogupSum::default();
 
     let mut address = start_address;
     for (i, (&id, value_limbs)) in zip_eq(ids, memory_values).enumerate() {
@@ -533,7 +579,7 @@ pub fn memory_segment_logup_sum(
             id,
             value_limbs.iter().map(|limb| limb.get()),
         );
-        sum = eval!(context, (sum) + (logup_term));
+        sum.add_sum(context, &logup_term);
     }
 
     sum
@@ -545,7 +591,7 @@ pub fn public_logup_sum(
     program: &[[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]],
     outputs: &[[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]],
     interaction_elements: [Var; 2],
-) -> Var {
+) -> (Var, HashMap<String, u64>) {
     let PublicData {
         initial_state,
         final_state,
@@ -556,7 +602,9 @@ pub fn public_logup_sum(
     let final_state_logup_term = public_data.final_state.logup_term(context, interaction_elements);
     let initial_state_logup_term =
         public_data.initial_state.logup_term(context, interaction_elements);
-    let mut sum = eval!(context, (final_state_logup_term) - (initial_state_logup_term));
+    let mut sum = LogupSum::default();
+    sum.add_use_term(context, OPCODES_RELATION_NAME, final_state_logup_term);
+    sum.add_yield_term(context, initial_state_logup_term);
 
     let one = context.one();
     let safe_call_addresses = vec![
@@ -575,7 +623,7 @@ pub fn public_logup_sum(
     for (address, id, value_limbs) in izip!(safe_call_addresses, safe_call_ids, safe_call_values) {
         let logup_term =
             public_memory_logup_terms(context, interaction_elements, address, *id, value_limbs);
-        sum = eval!(context, (sum) + (logup_term));
+        sum.add_sum(context, &logup_term);
     }
 
     let argument_address = initial_ap;
@@ -588,7 +636,7 @@ pub fn public_logup_sum(
         argument_address,
         return_value_address,
     );
-    sum = eval!(context, (sum) + (segment_ranges_logup_sum));
+    sum.add_sum(context, &segment_ranges_logup_sum);
 
     let output_logup_sum = memory_segment_logup_sum(
         context,
@@ -597,7 +645,7 @@ pub fn public_logup_sum(
         output_ids,
         outputs,
     );
-    sum = eval!(context, (sum) + (output_logup_sum));
+    sum.add_sum(context, &output_logup_sum);
 
     let program_logup_sum = memory_segment_logup_sum(
         context,
@@ -606,7 +654,7 @@ pub fn public_logup_sum(
         program_ids,
         program,
     );
-    sum = eval!(context, (sum) + (program_logup_sum));
+    sum.add_sum(context, &program_logup_sum);
 
-    sum
+    (sum.sum(context), sum.use_counts().clone())
 }
