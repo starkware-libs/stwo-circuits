@@ -4,7 +4,7 @@ use circuits::ivalue::NoValue;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
 use circuits_stark_verifier::empty_component::EmptyComponent;
 use circuits_stark_verifier::proof::ProofConfig;
-use itertools::Itertools;
+use indexmap::IndexMap;
 use std::collections::HashSet;
 use stwo::core::fri::FriConfig;
 use stwo::core::pcs::PcsConfig;
@@ -21,12 +21,18 @@ pub mod test;
 pub fn privacy_cairo_verifier_config(log_blowup_factor: u32) -> CairoVerifierConfig {
     let preprocessed_trace_variant = PreProcessedTraceVariant::CanonicalSmall;
     let privacy_set = privacy_components();
-    let components: Vec<Box<dyn CircuitEval<NoValue>>> = all_components::<NoValue>()
-        .into_iter()
-        .map(|(name, component)| -> Box<dyn CircuitEval<NoValue>> {
-            if privacy_set.contains(name) { component } else { Box::new(EmptyComponent {}) }
-        })
-        .collect_vec();
+    let components: IndexMap<&'static str, Box<dyn CircuitEval<NoValue>>> =
+        all_components::<NoValue>()
+            .into_iter()
+            .map(|(name, component)| {
+                let c: Box<dyn CircuitEval<NoValue>> = if privacy_set.contains(name) {
+                    component
+                } else {
+                    Box::new(EmptyComponent {})
+                };
+                (name, c)
+            })
+            .collect();
 
     // Derive proof config parameters from the log blowup factor, targeting 96-bit security.
     let (pow_bits, n_queries) = match log_blowup_factor {

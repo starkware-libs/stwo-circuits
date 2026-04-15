@@ -276,7 +276,7 @@ pub fn compute_composition_polynomial<Value: IValue>(
             &component_size,
         ),
     ) in izip!(
-        statement.get_components(),
+        statement.get_components().values(),
         &config.trace_columns_per_component,
         &config.interaction_columns_per_component,
         claimed_sums,

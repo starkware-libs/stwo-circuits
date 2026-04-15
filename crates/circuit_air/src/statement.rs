@@ -16,6 +16,7 @@ use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
 use circuits_stark_verifier::logup::{combine_term, logup_use_term};
 use circuits_stark_verifier::statement::Statement;
+use indexmap::IndexMap;
 use itertools::{Itertools, zip_eq};
 use stwo::core::fields::qm31::QM31;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
@@ -24,7 +25,7 @@ use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 pub const INTERACTION_POW_BITS: u32 = 20;
 
 pub struct CircuitStatement<Value: IValue> {
-    pub components: Vec<Box<dyn CircuitEval<Value>>>,
+    pub components: IndexMap<&'static str, Box<dyn CircuitEval<Value>>>,
     /// The variable indices (addresses) of the output gates.
     pub output_addresses: Vec<M31Wrapper<Var>>,
     /// The values of the output gates.
@@ -66,7 +67,7 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
         vec![self.output_values.clone()]
     }
 
-    fn get_components(&self) -> &[Box<dyn CircuitEval<Value>>] {
+    fn get_components(&self) -> &IndexMap<&'static str, Box<dyn CircuitEval<Value>>> {
         &self.components
     }
 
@@ -138,22 +139,41 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
     }
 }
 
-pub fn all_circuit_components<Value: IValue>() -> Vec<Box<dyn CircuitEval<Value>>> {
-    vec![
-        Box::new(CircuitEqComponent {}),
-        Box::new(CircuitQm31OpsComponent {}),
-        Box::new(blake_gate::Component {}),
-        Box::new(blake_round::Component {}),
-        Box::new(blake_round_sigma::Component {}),
-        Box::new(blake_g::Component {}),
-        Box::new(blake_output::Component {}),
-        Box::new(triple_xor_32::Component {}),
-        Box::new(verify_bitwise_xor_8::Component {}),
-        Box::new(verify_bitwise_xor_12::Component {}),
-        Box::new(verify_bitwise_xor_4::Component {}),
-        Box::new(verify_bitwise_xor_7::Component {}),
-        Box::new(verify_bitwise_xor_9::Component {}),
-        Box::new(range_check_15::Component {}),
-        Box::new(range_check_16::Component {}),
-    ]
+pub fn all_circuit_components<Value: IValue>() -> IndexMap<&'static str, Box<dyn CircuitEval<Value>>>
+{
+    IndexMap::from([
+        ("eq", Box::new(CircuitEqComponent {}) as Box<dyn CircuitEval<Value>>),
+        ("qm31_ops", Box::new(CircuitQm31OpsComponent {}) as Box<dyn CircuitEval<Value>>),
+        ("blake_gate", Box::new(blake_gate::Component {}) as Box<dyn CircuitEval<Value>>),
+        ("blake_round", Box::new(blake_round::Component {}) as Box<dyn CircuitEval<Value>>),
+        (
+            "blake_round_sigma",
+            Box::new(blake_round_sigma::Component {}) as Box<dyn CircuitEval<Value>>,
+        ),
+        ("blake_g", Box::new(blake_g::Component {}) as Box<dyn CircuitEval<Value>>),
+        ("blake_output", Box::new(blake_output::Component {}) as Box<dyn CircuitEval<Value>>),
+        ("triple_xor_32", Box::new(triple_xor_32::Component {}) as Box<dyn CircuitEval<Value>>),
+        (
+            "verify_bitwise_xor_8",
+            Box::new(verify_bitwise_xor_8::Component {}) as Box<dyn CircuitEval<Value>>,
+        ),
+        (
+            "verify_bitwise_xor_12",
+            Box::new(verify_bitwise_xor_12::Component {}) as Box<dyn CircuitEval<Value>>,
+        ),
+        (
+            "verify_bitwise_xor_4",
+            Box::new(verify_bitwise_xor_4::Component {}) as Box<dyn CircuitEval<Value>>,
+        ),
+        (
+            "verify_bitwise_xor_7",
+            Box::new(verify_bitwise_xor_7::Component {}) as Box<dyn CircuitEval<Value>>,
+        ),
+        (
+            "verify_bitwise_xor_9",
+            Box::new(verify_bitwise_xor_9::Component {}) as Box<dyn CircuitEval<Value>>,
+        ),
+        ("range_check_15", Box::new(range_check_15::Component {}) as Box<dyn CircuitEval<Value>>),
+        ("range_check_16", Box::new(range_check_16::Component {}) as Box<dyn CircuitEval<Value>>),
+    ])
 }
