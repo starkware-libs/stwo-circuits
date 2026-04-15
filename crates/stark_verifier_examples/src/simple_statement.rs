@@ -1,4 +1,5 @@
 use circuits::blake::HashValue;
+use indexmap::IndexMap;
 use itertools::zip_eq;
 use num_traits::One;
 use stwo::core::fields::m31::M31;
@@ -24,25 +25,31 @@ use circuits_stark_verifier::statement::Statement;
 pub const COMPONENT_LOG_SIZES: [u32; 3] = [LOG_SIZE_LONG, LOG_SIZE_SHORT, 0];
 
 pub struct SimpleStatement<Value: IValue> {
-    components: Vec<Box<dyn CircuitEval<Value>>>,
+    components: IndexMap<&'static str, Box<dyn CircuitEval<Value>>>,
 }
 
 impl<Value: IValue> Default for SimpleStatement<Value> {
     fn default() -> Self {
         Self {
-            components: vec![
-                Box::new(SquaredFibonacciComponent {
-                    preprocessed_column_id: PreProcessedColumnId {
-                        id: "row_const_long".to_string(),
-                    },
-                }),
-                Box::new(SquaredFibonacciComponent {
-                    preprocessed_column_id: PreProcessedColumnId {
-                        id: "row_const_short".to_string(),
-                    },
-                }),
-                Box::new(EmptyComponent {}),
-            ],
+            components: IndexMap::from([
+                (
+                    "squared_fibonacci_long",
+                    Box::new(SquaredFibonacciComponent {
+                        preprocessed_column_id: PreProcessedColumnId {
+                            id: "row_const_long".to_string(),
+                        },
+                    }) as Box<dyn CircuitEval<Value>>,
+                ),
+                (
+                    "squared_fibonacci_short",
+                    Box::new(SquaredFibonacciComponent {
+                        preprocessed_column_id: PreProcessedColumnId {
+                            id: "row_const_short".to_string(),
+                        },
+                    }) as Box<dyn CircuitEval<Value>>,
+                ),
+                ("empty", Box::new(EmptyComponent {}) as Box<dyn CircuitEval<Value>>),
+            ]),
         }
     }
 }
@@ -126,7 +133,7 @@ impl<Value: IValue> Statement<Value> for SimpleStatement<Value> {
         vec![vec![]]
     }
 
-    fn get_components(&self) -> &[Box<dyn CircuitEval<Value>>] {
+    fn get_components(&self) -> &IndexMap<&'static str, Box<dyn CircuitEval<Value>>> {
         &self.components
     }
 
@@ -137,7 +144,7 @@ impl<Value: IValue> Statement<Value> for SimpleStatement<Value> {
     ) -> Var {
         let mut sum = context.zero();
 
-        for (component, log_n_instances) in zip_eq(&self.components, &COMPONENT_LOG_SIZES) {
+        for (component, log_n_instances) in zip_eq(self.components.values(), &COMPONENT_LOG_SIZES) {
             if component.trace_columns() == 0 {
                 continue;
             }

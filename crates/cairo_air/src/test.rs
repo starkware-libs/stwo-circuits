@@ -57,7 +57,7 @@ pub fn verify_cairo_with_component_set(
 ) -> Result<Context<QM31>, String> {
     let FlatClaim { component_enable_bits, component_log_sizes: _, public_data: _ } =
         cairo_proof.claim.flatten_claim();
-    let components: Vec<Box<dyn CircuitEval<QM31>>> =
+    let components: indexmap::IndexMap<&'static str, Box<dyn CircuitEval<QM31>>> =
         zip_eq(all_components::<QM31>().into_iter(), &component_enable_bits)
             .map(|((component_name, component), &enable_bit)| {
                 let component_in_set = component_set.contains(component_name);
@@ -69,7 +69,9 @@ pub fn verify_cairo_with_component_set(
                         if enable_bit { "enabled" } else { "disabled" }
                     ));
                 }
-                Ok(if enable_bit { component } else { Box::new(EmptyComponent {}) })
+                let c: Box<dyn CircuitEval<QM31>> =
+                    if enable_bit { component } else { Box::new(EmptyComponent {}) };
+                Ok((component_name, c))
             })
             .try_collect()?;
 
@@ -117,7 +119,7 @@ fn test_verify() {
     let outputs = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; output_len];
     let program: Arc<[[M31; MEMORY_VALUES_LIMBS]]> =
         std::iter::repeat_n([M31::zero(); MEMORY_VALUES_LIMBS], program_len).collect();
-    let components = all_components().into_values().collect_vec();
+    let components = all_components();
     let mut statement = CairoStatement::new(
         &mut novalue_context,
         flat_claim,
@@ -129,9 +131,7 @@ fn test_verify() {
     );
     // Remove the pedersen points table component since it requires long preprocessed columns, which
     // are not supported.
-    let pedersen_points_index =
-        all_components::<NoValue>().get_full("pedersen_points_table_window_bits_18").unwrap().0;
-    statement.components[pedersen_points_index] = Box::new(EmptyComponent {});
+    statement.components["pedersen_points_table_window_bits_18"] = Box::new(EmptyComponent {});
 
     let config = ProofConfig::from_statement(&statement, &pcs_config, INTERACTION_POW_BITS);
 

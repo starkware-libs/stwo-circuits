@@ -97,13 +97,13 @@ pub fn build_fixed_cairo_circuit(
     outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
 ) -> Context<QM31> {
     let config = &verifier_config.proof_config;
-    let components = zip_eq(all_components().into_values(), config.enabled_components())
-        .map(
-            |(component, enable_bit)| {
-                if enable_bit { component } else { Box::new(EmptyComponent {}) }
-            },
-        )
-        .collect_vec();
+    let components = zip_eq(all_components(), config.enabled_components())
+        .map(|((name, component), enable_bit)| {
+            let component: Box<dyn circuits_stark_verifier::constraint_eval::CircuitEval<QM31>> =
+                if enable_bit { component } else { Box::new(EmptyComponent {}) };
+            (name, component)
+        })
+        .collect();
 
     let public_claim = public_claim.iter().map(|u32| M31::from(*u32)).collect_vec();
     let mut context = TraceContext::default();
@@ -130,13 +130,13 @@ pub fn build_fixed_cairo_circuit(
 /// [NoValue] and an [empty_proof].
 pub fn build_cairo_verifier_circuit(verifier_config: &CairoVerifierConfig) -> Context<NoValue> {
     let config = &verifier_config.proof_config;
-    let components = zip_eq(all_components::<NoValue>().into_values(), config.enabled_components())
-        .map(
-            |(component, enable_bit)| {
-                if enable_bit { component } else { Box::new(EmptyComponent {}) }
-            },
-        )
-        .collect_vec();
+    let components = zip_eq(all_components::<NoValue>(), config.enabled_components())
+        .map(|((name, component), enable_bit)| {
+            let component: Box<dyn circuits_stark_verifier::constraint_eval::CircuitEval<NoValue>> =
+                if enable_bit { component } else { Box::new(EmptyComponent {}) };
+            (name, component)
+        })
+        .collect();
 
     let n_outputs = verifier_config.n_outputs;
     let program_len = verifier_config.program.len();

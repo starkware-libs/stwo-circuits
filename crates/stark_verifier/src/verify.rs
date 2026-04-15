@@ -96,7 +96,7 @@ pub fn verify<Value: IValue>(
 
     // TODO(Gali): Don't mix the enable bits.
     let enable_bits =
-        statement.get_components().iter().map(|component| !component.is_disabled()).collect_vec();
+        statement.get_components().values().map(|component| !component.is_disabled()).collect_vec();
     let packed_enable_bits =
         pack_enable_bits(&enable_bits).into_iter().map(|qm31| context.constant(qm31)).collect_vec();
     channel.mix_qm31s(context, packed_enable_bits);
@@ -268,7 +268,7 @@ fn check_relation_uses<Value: IValue>(
     // This is a sanity check that `RELATION_USES_NUM_ROWS_SHIFT` is large enough for the given
     // statement, it does not depend on the specific assignment.
     let mut max_shifted_uses_per_relation = HashMap::<&str, u64>::new();
-    for component in components.iter() {
+    for component in components.values() {
         for relation_use in component.relation_uses_per_row() {
             let entry = max_shifted_uses_per_relation.entry(relation_use.relation_id).or_insert(0);
             *entry += relation_use.uses * (((P >> RELATION_USES_NUM_ROWS_SHIFT) + 1) as u64);
@@ -287,7 +287,7 @@ fn check_relation_uses<Value: IValue>(
 
     // Sum uses_per_row * (floor(num_rows / DIV) + 1) for all relations
     let mut shifted_relation_uses = HashMap::new();
-    for (i, component) in components.iter().enumerate() {
+    for (i, component) in components.values().enumerate() {
         let relation_uses = component.relation_uses_per_row();
         if relation_uses.is_empty() {
             continue;
