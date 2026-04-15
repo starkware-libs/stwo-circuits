@@ -196,7 +196,7 @@ impl ClaimGenerator {
             &mut blake_message_state,
         );
         for inputs in sub_component_inputs.verify_bitwise_xor_8 {
-            verify_bitwise_xor_8_state.add_packed_inputs(&inputs[..n_rows / N_LANES], 0);
+            verify_bitwise_xor_8_state.add_packed_inputs(&inputs, 0);
         }
         for inputs in sub_component_inputs.range_check_16 {
             range_check_16_state.add_packed_inputs(&inputs[..n_rows / N_LANES], 0);
@@ -1957,16 +1957,10 @@ impl InteractionClaimGenerator {
             &self.lookup_data.verify_bitwise_xor_8_1,
         )
             .into_par_iter()
-            .enumerate()
-            .for_each(|(i, (writer, values0, values1))| {
-                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
+            .for_each(|(writer, values0, values1)| {
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(
-                    (PackedQM31::from(blake_gate_enabler) * denom0)
-                        + (PackedQM31::from(blake_gate_enabler) * denom1),
-                    denom0 * denom1,
-                );
+                writer.write_frac(denom0 + denom1, denom0 * denom1);
             });
         col_gen.finalize_col();
 
@@ -1977,16 +1971,10 @@ impl InteractionClaimGenerator {
             &self.lookup_data.verify_bitwise_xor_8_3,
         )
             .into_par_iter()
-            .enumerate()
-            .for_each(|(i, (writer, values0, values1))| {
-                let blake_gate_enabler = blake_gate_enabler_col.packed_at(i);
+            .for_each(|(writer, values0, values1)| {
                 let denom0: PackedQM31 = common_lookup_elements.combine(values0);
                 let denom1: PackedQM31 = common_lookup_elements.combine(values1);
-                writer.write_frac(
-                    (PackedQM31::from(blake_gate_enabler) * denom0)
-                        + (PackedQM31::from(blake_gate_enabler) * denom1),
-                    denom0 * denom1,
-                );
+                writer.write_frac(denom0 + denom1, denom0 * denom1);
             });
 
         col_gen.finalize_col();

@@ -40,7 +40,6 @@ pub fn accumulate_constraints<Value: IValue>(
         xor_col19,
         enabler_col20,
     ] = input.try_into().unwrap();
-    let enabler = context.one();
 
     let [split_16_low_part_size_8_output_tmp_298db_1_limb_0] =
         split_16_low_part_size_8::accumulate_constraints(
@@ -110,7 +109,6 @@ pub fn accumulate_constraints<Value: IValue>(
         ],
         context,
         component_data,
-        enabler,
         acc,
     );
 
@@ -122,7 +120,6 @@ pub fn accumulate_constraints<Value: IValue>(
         ],
         context,
         component_data,
-        enabler,
         acc,
     );
 
@@ -134,7 +131,6 @@ pub fn accumulate_constraints<Value: IValue>(
         ],
         context,
         component_data,
-        enabler,
         acc,
     );
 
@@ -142,7 +138,6 @@ pub fn accumulate_constraints<Value: IValue>(
         &[eval!(context, xor_col14), eval!(context, ms_8_bits_col10), eval!(context, xor_col15)],
         context,
         component_data,
-        enabler,
         acc,
     );
 
@@ -154,7 +149,6 @@ pub fn accumulate_constraints<Value: IValue>(
         ],
         context,
         component_data,
-        enabler,
         acc,
     );
 
@@ -166,7 +160,6 @@ pub fn accumulate_constraints<Value: IValue>(
         ],
         context,
         component_data,
-        enabler,
         acc,
     );
 
@@ -178,7 +171,6 @@ pub fn accumulate_constraints<Value: IValue>(
         ],
         context,
         component_data,
-        enabler,
         acc,
     );
 
@@ -186,7 +178,6 @@ pub fn accumulate_constraints<Value: IValue>(
         &[eval!(context, xor_col18), eval!(context, ms_8_bits_col11), eval!(context, xor_col19)],
         context,
         component_data,
-        enabler,
         acc,
     );
 
