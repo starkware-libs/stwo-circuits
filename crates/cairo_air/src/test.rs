@@ -4,10 +4,10 @@ use std::fs::{File, OpenOptions};
 use std::sync::Arc;
 
 use cairo_air::CairoProof;
-use cairo_air::PreProcessedTraceVariant;
 use cairo_air::flat_claims::FlatClaim;
 use cairo_air::utils::{binary_deserialize_from_file, binary_serialize_to_file};
 use cairo_air::verifier::INTERACTION_POW_BITS;
+use cairo_vm::types::layout_name::LayoutName;
 use circuits::context::Context;
 use circuits::ivalue::NoValue;
 use circuits::ops::Guess;
@@ -23,6 +23,7 @@ use stwo::core::fields::qm31::QM31;
 use stwo::core::fri::FriConfig;
 use stwo::core::pcs::PcsConfig;
 use stwo::core::vcs_lifted::blake2_merkle::{Blake2sM31MerkleChannel, Blake2sM31MerkleHasher};
+use stwo_cairo_common::preprocessed_columns::preprocessed_trace::PreProcessedTraceVariant;
 use stwo_cairo_dev_utils::utils::get_compiled_cairo_program_path;
 use stwo_cairo_dev_utils::vm_utils::{ProgramType, run_and_adapt};
 use stwo_cairo_prover::prover::{ChannelHash, ProverParameters, prove_cairo};
@@ -156,7 +157,9 @@ fn test_verify_all_opcodes() {
     if std::env::var("FIX_PROOF").is_ok() {
         let compiled_program =
             get_compiled_cairo_program_path("test_prove_verify_all_opcode_components");
-        let input = run_and_adapt(&compiled_program, ProgramType::Json, None).unwrap();
+        let input =
+            run_and_adapt(&compiled_program, ProgramType::Json, LayoutName::all_cairo_stwo, None)
+                .unwrap();
         let prover_params = ProverParameters {
             channel_hash: ChannelHash::Blake2sM31,
             pcs_config: PcsConfig {

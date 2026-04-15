@@ -1,4 +1,3 @@
-use cairo_air::PreProcessedTraceVariant;
 use cairo_air::verifier::INTERACTION_POW_BITS;
 use circuits::ivalue::NoValue;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
@@ -8,6 +7,7 @@ use indexmap::IndexMap;
 use std::collections::HashSet;
 use stwo::core::fri::FriConfig;
 use stwo::core::pcs::PcsConfig;
+use stwo_cairo_common::preprocessed_columns::preprocessed_trace::PreProcessedTraceVariant;
 
 use crate::all_components::all_components;
 use crate::utils::{get_test_data_dir, load_program};

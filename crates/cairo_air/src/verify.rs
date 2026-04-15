@@ -3,7 +3,6 @@ use std::sync::Arc;
 use crate::all_components::all_components;
 use crate::statement::{CairoStatement, MEMORY_VALUES_LIMBS, PUBLIC_DATA_LEN};
 use cairo_air::CairoProof;
-use cairo_air::PreProcessedTraceVariant;
 use cairo_air::air::PublicData;
 use cairo_air::flat_claims::FlatClaim;
 use circuits::blake::HashValue;
@@ -21,6 +20,7 @@ use num_traits::Zero;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
+use stwo_cairo_common::preprocessed_columns::preprocessed_trace::PreProcessedTraceVariant;
 
 /// Logup security is defined by the `QM31` space (~124 bits) + `INTERACTION_POW_BITS` -
 /// log2(number of relation terms).
