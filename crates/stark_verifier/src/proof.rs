@@ -7,6 +7,7 @@ use circuits::blake::HashValue;
 use circuits::context::{Context, Var};
 use circuits::ivalue::{IValue, NoValue};
 use circuits::ops::Guess;
+use indexmap::IndexMap;
 use itertools::zip_eq;
 
 use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
@@ -250,14 +251,14 @@ impl ProofConfig {
     }
 
     pub fn from_components<Value: IValue>(
-        components: &[Box<dyn CircuitEval<Value>>],
+        components: &IndexMap<&'static str, Box<dyn CircuitEval<Value>>>,
         n_preprocessed_columns: usize,
         pcs_config: &PcsConfig,
         n_interaction_pow_bits: u32,
     ) -> Self {
         let mut trace_columns_per_component = Vec::with_capacity(components.len());
         let mut interaction_columns_per_component = Vec::with_capacity(components.len());
-        for component in components {
+        for component in components.values() {
             let trace_columns = component.trace_columns();
             let interaction_columns = component.interaction_columns();
             if component.is_disabled() {

@@ -2,35 +2,34 @@ use std::array;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crate::preprocessed_columns::MAX_SEQUENCE_LOG_SIZE;
 use cairo_air::PreProcessedTraceVariant;
 use cairo_air::components::memory_address_to_id::MEMORY_ADDRESS_TO_ID_SPLIT;
 use cairo_air::relations::{
     MEMORY_ADDRESS_TO_ID_RELATION_ID, MEMORY_ID_TO_BIG_RELATION_ID, OPCODES_RELATION_ID,
 };
 use circuits::blake::{HashValue, blake};
+use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::extract_bits::extract_bits;
+use circuits::ivalue::{IValue, qm31_from_u32s};
 use circuits::ops::{Guess, eq, output};
+use circuits::simd::Simd;
 use circuits::wrappers::M31Wrapper;
+use circuits_stark_verifier::constraint_eval::CircuitEval;
 use circuits_stark_verifier::logup::logup_use_term;
 use circuits_stark_verifier::proof_from_stark_proof::pack_into_qm31s;
+use circuits_stark_verifier::statement::Statement;
 use circuits_stark_verifier::verify::RELATION_USES_NUM_ROWS_SHIFT;
+use indexmap::IndexMap;
 use itertools::{Itertools, chain, izip, zip_eq};
+use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 use stwo_cairo_common::builtins::{
     BITWISE_BUILTIN_MEMORY_CELLS, PEDERSEN_BUILTIN_MEMORY_CELLS, POSEIDON_BUILTIN_MEMORY_CELLS,
     RANGE_CHECK_BUILTIN_MEMORY_CELLS,
 };
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
-
-use crate::all_components::all_components;
-use crate::preprocessed_columns::MAX_SEQUENCE_LOG_SIZE;
-use circuits::context::{Context, Var};
-use circuits::ivalue::{IValue, qm31_from_u32s};
-use circuits::simd::Simd;
-use circuits_stark_verifier::constraint_eval::CircuitEval;
-use circuits_stark_verifier::statement::Statement;
-use stwo::core::fields::m31::M31;
 
 #[cfg(test)]
 #[path = "statement_test.rs"]
@@ -137,7 +136,7 @@ impl PublicData<Var> {
 }
 
 pub struct CairoStatement<Value: IValue> {
-    pub components: Vec<Box<dyn CircuitEval<Value>>>,
+    pub components: IndexMap<&'static str, Box<dyn CircuitEval<Value>>>,
     pub packed_public_data: Simd,
     pub public_data: PublicData<Var>,
     pub program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
@@ -225,10 +224,9 @@ impl<Value: IValue> CairoStatement<Value> {
 
         let actual_uses_iter = Simd::unpack(context, &n_uses_simd).into_iter();
         let mut range_checks = vec![];
-        let all_components = all_components::<Value>();
 
         for ((name, _size), actual_uses) in zip_eq(builtin_instance_sizes, actual_uses_iter) {
-            let index = all_components.get_index_of(name).unwrap();
+            let index = self.components.get_index_of(name).unwrap();
             if self.components[index].is_disabled() {
                 // Component is disabled - actual_uses must be 0.
                 eq(context, actual_uses, context.zero());
@@ -265,7 +263,7 @@ impl<Value: IValue> CairoStatement<Value> {
         public_data: Vec<M31>,
         outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
         program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
-        components: Vec<Box<dyn CircuitEval<Value>>>,
+        components: IndexMap<&'static str, Box<dyn CircuitEval<Value>>>,
         preprocessed_root: HashValue<QM31>,
         preprocessed_trace_variant: PreProcessedTraceVariant,
     ) -> Self {
@@ -301,7 +299,7 @@ impl<Value: IValue> CairoStatement<Value> {
 }
 
 impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
-    fn get_components(&self) -> &[Box<dyn CircuitEval<Value>>] {
+    fn get_components(&self) -> &IndexMap<&'static str, Box<dyn CircuitEval<Value>>> {
         &self.components
     }
 
