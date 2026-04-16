@@ -2,9 +2,6 @@ use crate::preprocessed::PreprocessedCircuit;
 use circuits::circuit::{Add, Blake, Circuit, Eq, M31ToU32, Mul, PointwiseMul, Sub, TripleXor};
 use expect_test::expect;
 use itertools::Itertools;
-use stwo::prover::backend::Column;
-use stwo::prover::backend::simd::SimdBackend;
-
 #[test]
 fn test_preprocess_circuit() {
     let mut circuit = Circuit::default();
@@ -38,14 +35,23 @@ fn test_preprocess_circuit() {
     }
     circuit.n_vars = 88;
 
-    let preprocessed_trace = PreprocessedCircuit::from_finalized_circuit(&circuit)
-        .preprocessed_trace
-        .get_trace::<SimdBackend>();
+    let preprocessed = PreprocessedCircuit::from_finalized_circuit(&circuit).preprocessed_trace;
 
-    assert_eq!(preprocessed_trace.len(), 67);
-    let lengths = preprocessed_trace.iter().map(|column| column.values.len()).collect_vec();
+    assert_eq!(preprocessed.columns.len(), 78);
+    let lengths = preprocessed.columns.iter().map(|column| column.len()).collect_vec();
     expect![[r#"
         [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
             2,
             2,
             8,

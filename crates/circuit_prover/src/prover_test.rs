@@ -6,7 +6,7 @@ use circuit_air::statement::{INTERACTION_POW_BITS, all_circuit_components};
 use circuit_air::verify::{CircuitConfig, verify_circuit};
 use circuit_common::finalize::finalize_context;
 use circuit_common::preprocessed::PreprocessedCircuit;
-use circuits::blake::{blake, m31_to_u32, triple_xor};
+use circuits::blake::{blake, blake_g_gate, m31_to_u32, triple_xor};
 use circuits::context::Var;
 use circuits::eval;
 use circuits::ivalue::{IValue, qm31_from_u32s};
@@ -136,6 +136,40 @@ pub fn build_m31_to_u32_context() -> Context<QM31> {
         (33962 + 30i) + (0 + 0i)u
     "#]]
     .assert_debug_eq(&context.get(out_c));
+
+    context
+}
+
+pub fn build_blake_g_gate_context() -> Context<QM31> {
+    let mut context = Context::<QM31>::default();
+
+    // Inputs are u32 values packed as (low_16, high_16, 0, 0).
+    // G(305419896, 4294967295, 2147483647, 123456789, 987654321, 468798)
+    //   => (2827666065, 4146123195, 3407348176, 3638212488)
+    let a = guess(&mut context, qm31_from_u32s(22136, 4660, 0, 0));
+    let b = guess(&mut context, qm31_from_u32s(65535, 65535, 0, 0));
+    let c = guess(&mut context, qm31_from_u32s(65535, 32767, 0, 0));
+    let d = guess(&mut context, qm31_from_u32s(52501, 1883, 0, 0));
+    let f0 = guess(&mut context, qm31_from_u32s(26801, 15070, 0, 0));
+    let f1 = guess(&mut context, qm31_from_u32s(10046, 7, 0, 0));
+
+    let (out_a, out_b, out_c, out_d) = blake_g_gate(&mut context, a, b, c, d, f0, f1);
+    expect![[r#"
+        (49809 + 43146i) + (0 + 0i)u
+    "#]]
+    .assert_debug_eq(&context.get(out_a));
+    expect![[r#"
+        (53691 + 63264i) + (0 + 0i)u
+    "#]]
+    .assert_debug_eq(&context.get(out_b));
+    expect![[r#"
+        (464 + 51992i) + (0 + 0i)u
+    "#]]
+    .assert_debug_eq(&context.get(out_c));
+    expect![[r#"
+        (46984 + 55514i) + (0 + 0i)u
+    "#]]
+    .assert_debug_eq(&context.get(out_d));
 
     context
 }
@@ -281,6 +315,22 @@ fn test_prove_and_stark_verify_m31_to_u32_context() {
     stwo_verify(circuit_proof, &preprocessed_circuit);
 }
 
+#[test]
+fn test_prove_and_stark_verify_blake_g_gate_context() {
+    let mut blake_g_gate_context = build_blake_g_gate_context();
+    blake_g_gate_context.finalize_guessed_vars();
+    blake_g_gate_context.validate_circuit();
+
+    let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut blake_g_gate_context);
+    let circuit_proof = prove_circuit_assignment(
+        blake_g_gate_context.values(),
+        &preprocessed_circuit,
+        &BaseColumnPool::<SimdBackend>::new(),
+        PcsConfig::default(),
+    );
+    stwo_verify(circuit_proof, &preprocessed_circuit);
+}
+
 /// Verifies a [`CircuitProof`] using the circuit verifier. Requires the expected
 /// `preprocessed_root` of the preprocessed trace.
 fn circuit_verify(
@@ -308,7 +358,7 @@ fn circuit_verify(
 }
 
 const TRIPLE_XOR_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
-    [1918597330, 1040986714, 360077332, 1485499775, 1549107080, 909728936, 1387890396, 2113635639];
+    [139607421, 1303288471, 1074270687, 578064506, 243606361, 221202923, 838158527, 244838623];
 
 #[test]
 fn test_prove_and_circuit_verify_triple_xor_context() {
@@ -327,7 +377,7 @@ fn test_prove_and_circuit_verify_triple_xor_context() {
 }
 
 const FIBONACCI_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
-    [2050504744, 1758328976, 1161005513, 1578104878, 1968829549, 1146302888, 1864642496, 380985900];
+    [266705035, 913162196, 2131189888, 1406838196, 1226897204, 647104235, 1051378575, 1007878671];
 
 #[test]
 fn test_prove_and_circuit_verify_fibonacci_context() {
@@ -346,7 +396,7 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
 }
 
 const M31_TO_U32_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
-    [1472983959, 1757883832, 995311180, 1571550647, 1889033977, 1760976195, 1244386802, 352698719];
+    [1192325361, 463286002, 1409488811, 1091471969, 1358391838, 1286970109, 1858389698, 213376096];
 
 #[test]
 fn test_prove_and_circuit_verify_m31_to_u32_context() {
@@ -362,6 +412,25 @@ fn test_prove_and_circuit_verify_m31_to_u32_context() {
         PcsConfig::default(),
     );
     circuit_verify(circuit_proof, &preprocessed_circuit, M31_TO_U32_CIRCUIT_PREPROCESSED_ROOT);
+}
+
+const BLAKE_G_GATE_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
+    [1997458975, 386797262, 539959953, 1517657207, 202731183, 1710807042, 18707638, 2074483877];
+
+#[test]
+fn test_prove_and_circuit_verify_blake_g_gate_context() {
+    let mut blake_g_gate_context = build_blake_g_gate_context();
+    blake_g_gate_context.finalize_guessed_vars();
+    blake_g_gate_context.validate_circuit();
+
+    let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut blake_g_gate_context);
+    let circuit_proof = prove_circuit_assignment(
+        blake_g_gate_context.values(),
+        &preprocessed_circuit,
+        &BaseColumnPool::<SimdBackend>::new(),
+        PcsConfig::default(),
+    );
+    circuit_verify(circuit_proof, &preprocessed_circuit, BLAKE_G_GATE_CIRCUIT_PREPROCESSED_ROOT);
 }
 
 #[test]

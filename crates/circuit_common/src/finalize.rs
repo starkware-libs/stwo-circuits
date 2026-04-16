@@ -1,5 +1,5 @@
 use crate::N_LANES;
-use circuits::blake::{HashValue, blake};
+use circuits::blake::{HashValue, blake, blake_g_gate};
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::ivalue::{IValue, qm31_from_u32s};
@@ -71,6 +71,15 @@ fn pad_m31_to_u32(context: &mut Context<impl IValue>) {
     }
 }
 
+fn pad_blake_g_gate(context: &mut Context<impl IValue>) {
+    let n_rows = context.circuit.blake_g_gate.len();
+    let padded = std::cmp::max(n_rows.next_power_of_two(), N_LANES);
+    let zero = context.zero();
+    for _ in n_rows..padded {
+        blake_g_gate(context, zero, zero, zero, zero, zero, zero);
+    }
+}
+
 fn hash_constants(context: &mut Context<impl IValue>) -> HashValue<Var> {
     let constants: Vec<_> = context.constants().values().copied().collect();
     let n_bytes = constants.len() * 16;
@@ -96,6 +105,7 @@ pub fn finalize_context(context: &mut Context<impl IValue>) {
     pad_blake(context);
     pad_triple_xor(context);
     pad_m31_to_u32(context);
+    pad_blake_g_gate(context);
 }
 
 /// Adds ZK blinding to the circuit by adding random values to the qm31_ops and eq components.
