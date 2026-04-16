@@ -259,14 +259,3 @@ pub fn pack_into_qm31s<T: Into<M31>>(values: impl Iterator<Item = T>) -> Vec<QM3
         })
         .collect_vec()
 }
-
-/// Pads the disabled values with the given padding.
-pub fn pad_disabled<T: Clone>(values: &[T], enable_bits: &[bool], padding: T) -> Vec<T> {
-    let mut values_iter = values.iter();
-    let padded_values = enable_bits
-        .iter()
-        .map(|&enabled| if enabled { values_iter.next().unwrap().clone() } else { padding.clone() })
-        .collect();
-    assert!(values_iter.next().is_none());
-    padded_values
-}
