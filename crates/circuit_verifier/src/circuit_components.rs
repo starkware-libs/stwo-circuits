@@ -18,6 +18,7 @@ define_component_list! {
     TripleXor32,
     TripleXor,
     M31ToU32,
+    BlakeGGate,
     VerifyBitwiseXor8,
     VerifyBitwiseXor12,
     VerifyBitwiseXor4,
