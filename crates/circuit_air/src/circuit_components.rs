@@ -1,8 +1,9 @@
 use crate::circuit_claim::{CircuitClaim, CircuitInteractionClaim, CircuitInteractionElements};
 use crate::components::{
-    blake_g, blake_gate, blake_output, blake_round, blake_round_sigma, eq, m_31_to_u_32, qm31_ops,
-    range_check_15, range_check_16, triple_xor, triple_xor_32, verify_bitwise_xor_4,
-    verify_bitwise_xor_7, verify_bitwise_xor_8, verify_bitwise_xor_9, verify_bitwise_xor_12,
+    blake_g, blake_g_gate, blake_gate, blake_output, blake_round, blake_round_sigma, eq,
+    m_31_to_u_32, qm31_ops, range_check_15, range_check_16, triple_xor, triple_xor_32,
+    verify_bitwise_xor_4, verify_bitwise_xor_7, verify_bitwise_xor_8, verify_bitwise_xor_9,
+    verify_bitwise_xor_12,
 };
 use stwo::core::air::Component;
 use stwo_constraint_framework::TraceLocationAllocator;
@@ -28,6 +29,7 @@ define_component_list! {
     TripleXor32,
     TripleXor,
     M31ToU32,
+    BlakeGGate,
     VerifyBitwiseXor8,
     VerifyBitwiseXor12,
     VerifyBitwiseXor4,
@@ -48,6 +50,7 @@ pub struct CircuitComponents {
     pub triple_xor_32: triple_xor_32::Component,
     pub triple_xor: triple_xor::Component,
     pub m_31_to_u_32: m_31_to_u_32::Component,
+    pub blake_g_gate: blake_g_gate::Component,
     pub verify_bitwise_xor_8: verify_bitwise_xor_8::Component,
     pub verify_bitwise_xor_12: verify_bitwise_xor_12::Component,
     pub verify_bitwise_xor_4: verify_bitwise_xor_4::Component,
@@ -161,6 +164,16 @@ impl CircuitComponents {
             },
             interaction_claim.claimed_sums[ComponentList::M31ToU32 as usize],
         );
+        let blake_g_gate_component = blake_g_gate::Component::new(
+            tree_span_provider,
+            blake_g_gate::Eval {
+                claim: blake_g_gate::Claim {
+                    log_size: circuit_claim.log_sizes[ComponentList::BlakeGGate as usize],
+                },
+                common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
+            },
+            interaction_claim.claimed_sums[ComponentList::BlakeGGate as usize],
+        );
         let verify_bitwise_xor_8_component = verify_bitwise_xor_8::Component::new(
             tree_span_provider,
             verify_bitwise_xor_8::Eval {
@@ -228,6 +241,7 @@ impl CircuitComponents {
             triple_xor_32: triple_xor_32_component,
             triple_xor: triple_xor_component,
             m_31_to_u_32: m_31_to_u_32_component,
+            blake_g_gate: blake_g_gate_component,
             verify_bitwise_xor_8: verify_bitwise_xor_8_component,
             verify_bitwise_xor_12: verify_bitwise_xor_12_component,
             verify_bitwise_xor_4: verify_bitwise_xor_4_component,
@@ -250,6 +264,7 @@ impl CircuitComponents {
             Box::new(self.triple_xor_32) as Box<dyn Component>,
             Box::new(self.triple_xor) as Box<dyn Component>,
             Box::new(self.m_31_to_u_32) as Box<dyn Component>,
+            Box::new(self.blake_g_gate) as Box<dyn Component>,
             Box::new(self.verify_bitwise_xor_8) as Box<dyn Component>,
             Box::new(self.verify_bitwise_xor_12) as Box<dyn Component>,
             Box::new(self.verify_bitwise_xor_4) as Box<dyn Component>,
