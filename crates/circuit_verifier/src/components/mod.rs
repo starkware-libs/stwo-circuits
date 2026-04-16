@@ -1,4 +1,5 @@
 pub mod blake_g;
+pub mod blake_g_gate;
 pub mod blake_gate;
 pub mod blake_output;
 pub mod blake_round;
