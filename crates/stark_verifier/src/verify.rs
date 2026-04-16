@@ -2,7 +2,8 @@ use std::collections::HashMap;
 
 use itertools::{Itertools, chain, izip};
 use stwo::core::circle::CirclePoint;
-use stwo::core::fields::m31::P;
+use stwo::core::fields::m31::{M31, P};
+use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
 use stwo::core::verifier::COMPOSITION_LOG_SPLIT;
 
 use crate::channel::Channel;
@@ -75,14 +76,8 @@ pub fn verify<Value: IValue>(
 
     let component_log_sizes =
         Simd::from_packed(proof.claim.packed_component_log_sizes.clone(), config.n_components);
+    let component_sizes = validate_and_compute_component_sizes(context, &component_log_sizes);
 
-    // Range check the component log sizes.
-    let component_log_size_bits = extract_bits(context, &component_log_sizes, LOG_SIZE_BITS);
-    // Since LOG_SIZE_BITS is 5, and 2**31 - 1 = M31, we need to check that not all the bits in the
-    // component log sizes are ones.
-    Simd::assert_not_all_ones(context, &component_log_size_bits);
-
-    let component_sizes = Simd::pow2(context, &component_log_size_bits);
     // Check that the component sizes are at most 2^config.log_trace_size().
     // Note that we need k + 1 bits to represent 2^k.
     let component_sizes_bits =
@@ -358,4 +353,22 @@ fn column_periodicity_sample_points(
             .extend(vec![sample_point; *n_interaction_columns_in_component]);
     }
     periodicity_sample_points_per_column
+}
+
+fn validate_and_compute_component_sizes(
+    context: &mut Context<impl IValue>,
+    component_log_sizes: &Simd,
+) -> Simd {
+    // Range check the component log sizes to 5 bits.
+    let component_log_size_bits = extract_bits(context, component_log_sizes, LOG_SIZE_BITS);
+    const _: () = assert!(LOG_SIZE_BITS == 5, "LOG_SIZE_BITS must be 5 to avoid overflows in pow2");
+    // Since LOG_SIZE_BITS is 5, and 2**31 - 1 = M31::P, we need to make sure that the log size the
+    // components are not 31.
+    let packed = component_log_sizes.get_packed();
+    let with_padding = Simd::from_packed(packed.to_vec(), packed.len() * SECURE_EXTENSION_DEGREE);
+    let thirty_one = Simd::repeat(context, M31::from(31), with_padding.len());
+    // Assert the all the log sizes (including the zero padding) minus 31 are non-zero (invertable).
+    Simd::sub(context, &with_padding, &thirty_one).inv(context);
+
+    Simd::pow2(context, &component_log_size_bits)
 }
