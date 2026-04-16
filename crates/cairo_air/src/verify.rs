@@ -14,7 +14,7 @@ use circuits_stark_verifier::proof::{Claim, Proof, ProofConfig, empty_proof};
 use circuits_stark_verifier::proof_from_stark_proof::{pack_into_qm31s, proof_from_stark_proof};
 use circuits_stark_verifier::verify::verify;
 use indexmap::IndexMap;
-use itertools::{Itertools, izip, zip_eq};
+use itertools::{Itertools, zip_eq};
 use num_traits::Zero;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
@@ -173,16 +173,11 @@ pub fn prepare_cairo_proof_for_circuit_verifier(
 
     let FlatClaim { component_enable_bits, component_log_sizes, public_data } =
         claim.flatten_claim();
-    let component_claimed_sums = interaction_claim.flatten_interaction_claim();
+    let claimed_sums = interaction_claim.flatten_interaction_claim();
 
     debug_assert_eq!(component_enable_bits, proof_config.enabled_bits);
-    debug_assert_eq!(component_claimed_sums.len(), proof_config.enabled_bits.len());
-
-    // Keep only the log sizes and claimed sums of enabled components, in a single pass.
-    let (component_log_sizes, claimed_sums): (Vec<_>, Vec<_>) =
-        izip!(component_log_sizes, component_claimed_sums, &proof_config.enabled_bits)
-            .filter_map(|(log_size, sum, enabled)| enabled.then_some((log_size, sum)))
-            .unzip();
+    debug_assert_eq!(component_log_sizes.len(), proof_config.n_components);
+    debug_assert_eq!(claimed_sums.len(), proof_config.n_components);
 
     let claim = Claim {
         packed_component_log_sizes: pack_into_qm31s(component_log_sizes.into_iter()),
