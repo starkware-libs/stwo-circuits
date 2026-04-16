@@ -1,11 +1,11 @@
 use circuits::ivalue::qm31_from_u32s;
 use circuits_stark_verifier::proof::Claim;
 use circuits_stark_verifier::proof_from_stark_proof::{
-    pack_component_log_sizes, pack_enable_bits, pack_public_claim,
+    pack_component_log_sizes, pack_enable_bits, pack_into_qm31s, pack_public_claim, pad_disabled,
 };
 
 use itertools::{Itertools, zip_eq};
-use num_traits::One;
+use num_traits::{One, Zero};
 use stwo::core::ColumnVec;
 use stwo::core::air::Component;
 use stwo::core::channel::{Blake2sM31Channel, Channel};
@@ -247,6 +247,14 @@ pub fn create_proof_with_fold_step(
 
     // Mix the component log sizes into the channel.
     let packed_component_log_sizes = pack_component_log_sizes(&COMPONENT_LOG_SIZES);
+    // Note: in the simple AIR, `pad_disabled` does not change the resulting
+    // `packed_component_log_sizes`.
+    assert_eq!(
+        packed_component_log_sizes,
+        pack_into_qm31s(
+            pad_disabled(&COMPONENT_LOG_SIZES, &COMPONENT_ENABLE_BITS, 0u32).into_iter()
+        )
+    );
     prover_channel.mix_felts(&packed_component_log_sizes);
 
     // Mix the public claim into the channel.
@@ -272,7 +280,7 @@ pub fn create_proof_with_fold_step(
         generate_interaction_trace(&trace_2, &lookup_elements.0);
 
     let claimed_sums = vec![claimed_sum_1, claimed_sum_2];
-    prover_channel.mix_felts(&claimed_sums);
+    prover_channel.mix_felts(&pad_disabled(&claimed_sums, &COMPONENT_ENABLE_BITS, QM31::zero()));
     let mut tree_builder = commitment_scheme.tree_builder();
     tree_builder.extend_evals([interaction_trace_1, interaction_trace_2].concat());
     tree_builder.commit(prover_channel);
