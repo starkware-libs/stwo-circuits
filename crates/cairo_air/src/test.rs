@@ -12,7 +12,6 @@ use circuits::context::Context;
 use circuits::ivalue::NoValue;
 use circuits::ops::Guess;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
-use circuits_stark_verifier::empty_component::EmptyComponent;
 use circuits_stark_verifier::proof::{ProofConfig, empty_proof};
 use circuits_stark_verifier::verify::verify;
 use itertools::Itertools;
@@ -33,8 +32,8 @@ use crate::preprocessed_columns::MAX_SEQUENCE_LOG_SIZE;
 use crate::statement::{CairoStatement, MEMORY_VALUES_LIMBS, PUBLIC_DATA_LEN};
 use crate::utils::get_proof_file_path;
 use crate::verify::{
-    CairoVerifierConfig, get_preprocessed_root, prepare_cairo_proof_for_circuit_verifier,
-    verify_fixed_cairo_circuit,
+    CairoVerifierConfig, enabled_components, get_preprocessed_root,
+    prepare_cairo_proof_for_circuit_verifier, verify_fixed_cairo_circuit,
 };
 
 /// Circuit Verifies a [CairoProof].
@@ -42,11 +41,8 @@ pub fn verify_cairo(proof: &CairoProof<Blake2sM31MerkleHasher>) -> Result<Contex
     let FlatClaim { component_enable_bits, component_log_sizes: _, public_data: _ } =
         proof.claim.flatten_claim();
 
-    let components = HashSet::from_iter(
-        zip_eq(all_components::<QM31>().into_keys(), &component_enable_bits)
-            .filter(|(_, enable_bit)| **enable_bit)
-            .map(|(component_name, _)| component_name),
-    );
+    let components: HashSet<&str> =
+        enabled_components::<QM31>(&component_enable_bits).into_keys().collect();
 
     verify_cairo_with_component_set(proof, components)
 }
@@ -60,24 +56,23 @@ pub fn verify_cairo_with_component_set(
         cairo_proof.claim.flatten_claim();
     let components: indexmap::IndexMap<&'static str, Box<dyn CircuitEval<QM31>>> =
         zip_eq(all_components::<QM31>().into_iter(), &component_enable_bits)
-            .map(|((component_name, component), &enable_bit)| {
+            .filter_map(|((component_name, component), &enable_bit)| {
                 let component_in_set = component_set.contains(component_name);
                 if component_in_set != enable_bit {
-                    return Err(format!(
+                    return Some(Err(format!(
                         "Proof was produced with the wrong components set: expected the component '{}' to be {} according to the component set, but it is {} in the proof.",
                         component_name,
                         if component_in_set { "enabled" } else { "disabled" },
                         if enable_bit { "enabled" } else { "disabled" }
-                    ));
+                    )));
                 }
-                let c: Box<dyn CircuitEval<QM31>> =
-                    if enable_bit { component } else { Box::new(EmptyComponent {}) };
-                Ok((component_name, c))
+                if enable_bit { Some(Ok((component_name, component))) } else { None }
             })
             .try_collect()?;
 
     let proof_config = ProofConfig::from_components(
         &components,
+        component_enable_bits,
         cairo_proof.preprocessed_trace_variant.to_preprocessed_trace().ids().len(),
         &cairo_proof.extended_stark_proof.proof.config,
         INTERACTION_POW_BITS,
@@ -132,9 +127,14 @@ fn test_verify() {
     );
     // Remove the pedersen points table component since it requires long preprocessed columns, which
     // are not supported.
-    statement.components["pedersen_points_table_window_bits_18"] = Box::new(EmptyComponent {});
+    let pedersen_points_index =
+        all_components::<NoValue>().get_full("pedersen_points_table_window_bits_18").unwrap().0;
+    statement.components.shift_remove("pedersen_points_table_window_bits_18");
 
-    let config = ProofConfig::from_statement(&statement, &pcs_config, INTERACTION_POW_BITS);
+    let mut enabled_bits = vec![true; all_components::<NoValue>().len()];
+    enabled_bits[pedersen_points_index] = false;
+    let config =
+        ProofConfig::from_statement(&statement, enabled_bits, &pcs_config, INTERACTION_POW_BITS);
 
     let empty_proof = empty_proof(&config);
 
