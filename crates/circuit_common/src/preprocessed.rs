@@ -3,6 +3,7 @@ use crate::N_LANES;
 use crate::Qm31OpsTraceGenerator;
 use crate::finalize::finalize_context;
 use circuits::circuit::Blake;
+use circuits::circuit::BlakeGGate;
 use circuits::circuit::M31ToU32;
 use circuits::circuit::TripleXor;
 use circuits::circuit::{Circuit, Permutation};
@@ -143,6 +144,7 @@ fn add_qm31_ops_to_preprocessed_trace(
         blake: _,
         triple_xor: _,
         m31_to_u32: _,
+        blake_g_gate: _,
         permutation,
         output: _,
     } = circuit;
@@ -191,6 +193,7 @@ fn add_eq_to_preprocessed_trace(circuit: &Circuit, pp_trace: &mut PreProcessedTr
         blake: _,
         triple_xor: _,
         m31_to_u32: _,
+        blake_g_gate: _,
         permutation: _,
         output: _,
     } = circuit;
@@ -330,6 +333,7 @@ fn add_blake_to_preprocessed_trace(
         blake,
         triple_xor: _,
         m31_to_u32: _,
+        blake_g_gate: _,
         permutation: _,
         output: _,
     } = circuit;
@@ -433,6 +437,77 @@ fn add_m31_to_u32_to_preprocessed_trace(
     fill_m31_to_u32_columns(&circuit.m31_to_u32, multiplicities, &mut columns);
 
     let ids = ["m31_to_u32_input_addr", "m31_to_u32_output_addr", "m31_to_u32_multiplicity"];
+    for (id, column) in zip_eq(ids, columns) {
+        pp_trace.push_column(PreProcessedColumnId { id: id.to_owned() }, column);
+    }
+}
+
+const N_BLAKE_G_GATE_PP_COLUMNS: usize = 11;
+
+/// Adds BlakeGGate gates to preprocessed trace columns.
+/// | input_addr_a | input_addr_b | input_addr_c | input_addr_d | input_addr_f0 | input_addr_f1 |
+/// | output_addr_a | output_addr_b | output_addr_c | output_addr_d | multiplicity |
+fn fill_blake_g_gate_columns(
+    gates: &[BlakeGGate],
+    multiplicities: &[usize],
+    columns: &mut [Vec<usize>; N_BLAKE_G_GATE_PP_COLUMNS],
+) {
+    for gate in gates.iter() {
+        let [input_a, input_b, input_c, input_d, input_f0, input_f1]: [usize; 6] =
+            gate.uses().try_into().unwrap_or_else(|v: Vec<usize>| {
+                panic!("Expected 6 uses for BlakeGGate, got len {}", v.len())
+            });
+        let [out_a, out_b, out_c, out_d]: [usize; 4] =
+            gate.yields().try_into().unwrap_or_else(|v: Vec<usize>| {
+                panic!("Expected 4 yields for BlakeGGate, got len {}", v.len())
+            });
+        columns[0].push(input_a);
+        columns[1].push(input_b);
+        columns[2].push(input_c);
+        columns[3].push(input_d);
+        columns[4].push(input_f0);
+        columns[5].push(input_f1);
+        columns[6].push(out_a);
+        columns[7].push(out_b);
+        columns[8].push(out_c);
+        columns[9].push(out_d);
+
+        // All four outputs of a Blake G gate share one multiplicity column. In the Blake
+        // construction, each G output is consumed exactly once (by another G step or by the
+        // triple-XOR).
+        let yields = [out_a, out_b, out_c, out_d];
+        let mult = multiplicities[yields[0]];
+        for &y in &yields[1..] {
+            assert_eq!(
+                multiplicities[y], mult,
+                "BlakeGGate output multiplicities must be identical"
+            );
+        }
+        columns[10].push(mult);
+    }
+}
+
+fn add_blake_g_gate_to_preprocessed_trace(
+    circuit: &Circuit,
+    multiplicities: &[usize],
+    pp_trace: &mut PreProcessedTrace,
+) {
+    let mut columns: [_; N_BLAKE_G_GATE_PP_COLUMNS] = std::array::from_fn(|_| vec![]);
+    fill_blake_g_gate_columns(&circuit.blake_g_gate, multiplicities, &mut columns);
+
+    let ids = [
+        "blake_g_gate_input_addr_a",
+        "blake_g_gate_input_addr_b",
+        "blake_g_gate_input_addr_c",
+        "blake_g_gate_input_addr_d",
+        "blake_g_gate_input_addr_f0",
+        "blake_g_gate_input_addr_f1",
+        "blake_g_gate_output_addr_a",
+        "blake_g_gate_output_addr_b",
+        "blake_g_gate_output_addr_c",
+        "blake_g_gate_output_addr_d",
+        "blake_g_gate_multiplicity",
+    ];
     for (id, column) in zip_eq(ids, columns) {
         pp_trace.push_column(PreProcessedColumnId { id: id.to_owned() }, column);
     }
@@ -585,6 +660,8 @@ impl PreprocessedCircuit {
         add_triple_xor_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
         // Add M31ToU32 columns.
         add_m31_to_u32_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
+        // Add BlakeGGate columns.
+        add_blake_g_gate_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
 
         // Generate seq columns for sizes needed by circuit components:
         // - 15, 16: needed by range_check_15 and range_check_16.
