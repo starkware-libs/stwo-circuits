@@ -294,7 +294,7 @@ pub fn accumulate_constraints<Value: IValue>(
         res_x_id_col271,
         res_y_id_col272,
     ] = input.try_into().unwrap();
-    let seq = seq_of_component_size(context, component_data, acc);
+    let seq = seq_of_component_size(context, component_data, &acc.preprocessed_columns);
     let ec_op_builtin_segment_start =
         *acc.public_params.get("ec_op_builtin_segment_start").unwrap();
 
