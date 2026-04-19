@@ -391,7 +391,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         &self,
         context: &mut Context<Value>,
         component_sizes: &[Var],
-        shifted_relation_uses: &HashMap<&'static str, Var>,
+        shifted_relation_uses: &HashMap<String, Var>,
     ) {
         let PublicData { initial_state, final_state, public_memory: _ } = &self.public_data;
 
