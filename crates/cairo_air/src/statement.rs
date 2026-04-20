@@ -26,8 +26,10 @@ use stwo::core::fields::m31::M31;
 use stwo::core::fields::m31::P as M31_P;
 use stwo::core::fields::qm31::QM31;
 use stwo_cairo_common::builtins::{
-    BITWISE_BUILTIN_MEMORY_CELLS, PEDERSEN_BUILTIN_MEMORY_CELLS, POSEIDON_BUILTIN_MEMORY_CELLS,
-    RANGE_CHECK_BUILTIN_MEMORY_CELLS,
+    ADD_MOD_BUILTIN_MEMORY_CELLS, BITWISE_BUILTIN_MEMORY_CELLS, EC_OP_BUILTIN_MEMORY_CELLS,
+    ECDSA_MEMORY_CELLS, KECCAK_MEMORY_CELLS, MUL_MOD_BUILTIN_MEMORY_CELLS,
+    PEDERSEN_BUILTIN_MEMORY_CELLS, POSEIDON_BUILTIN_MEMORY_CELLS,
+    RANGE_CHECK_96_BUILTIN_MEMORY_CELLS, RANGE_CHECK_BUILTIN_MEMORY_CELLS,
 };
 use stwo_cairo_common::preprocessed_columns::preprocessed_trace::PreProcessedTraceVariant;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
@@ -173,34 +175,55 @@ impl<Value: IValue> CairoStatement<Value> {
         let n_outputs = context.constant((self.packed_outputs.len() / MEMORY_VALUES_LIMBS).into());
         eq(context, diff, n_outputs);
 
-        let supported_builtins = [
+        let builtin_segment_ranges = [
             pedersen_segment_range,
             range_check_128_segment_range,
             bitwise_segment_range,
             poseidon_segment_range,
+            ec_op_segment_range,
+            ecdsa_segment_range,
+            keccak_segment_range,
+            range_check96_segment_range,
+            add_mod_segment_range,
+            mul_mod_segment_range,
         ];
         let start_addresses = Simd::pack(
             context,
-            &supported_builtins
+            &builtin_segment_ranges
                 .iter()
                 .map(|segment_range| M31Wrapper::new_unsafe(segment_range.start.value))
                 .collect_vec(),
         );
         let end_addresses = Simd::pack(
             context,
-            &supported_builtins
+            &builtin_segment_ranges
                 .iter()
                 .map(|segment_range| M31Wrapper::new_unsafe(segment_range.end.value))
                 .collect_vec(),
         );
         let diff = Simd::sub(context, &end_addresses, &start_addresses);
 
+        // Select the pedersen builtin based on the trace variant, for `CanonicalWithoutPedersen`
+        // the builtin is can't be used so we can use either of the two.
+        let pedersen_builtin = match self.preprocessed_trace_variant {
+            PreProcessedTraceVariant::CanonicalSmall => "pedersen_builtin_narrow_windows",
+            PreProcessedTraceVariant::Canonical
+            | PreProcessedTraceVariant::CanonicalWithoutPedersen => "pedersen_builtin",
+        };
+
         let builtin_instance_sizes = [
-            ("pedersen_builtin_narrow_windows", PEDERSEN_BUILTIN_MEMORY_CELLS),
+            (pedersen_builtin, PEDERSEN_BUILTIN_MEMORY_CELLS),
             ("range_check_builtin", RANGE_CHECK_BUILTIN_MEMORY_CELLS),
             ("bitwise_builtin", BITWISE_BUILTIN_MEMORY_CELLS),
             ("poseidon_builtin", POSEIDON_BUILTIN_MEMORY_CELLS),
+            ("ec_op_builtin", EC_OP_BUILTIN_MEMORY_CELLS),
+            ("ecdsa_builtin", ECDSA_MEMORY_CELLS),
+            ("keccak_builtin", KECCAK_MEMORY_CELLS),
+            ("range_check96_builtin", RANGE_CHECK_96_BUILTIN_MEMORY_CELLS),
+            ("add_mod_builtin", ADD_MOD_BUILTIN_MEMORY_CELLS),
+            ("mul_mod_builtin", MUL_MOD_BUILTIN_MEMORY_CELLS),
         ];
+        assert_eq!(builtin_instance_sizes.len(), builtin_segment_ranges.len());
         let builtin_instance_size_inverses = pack_into_qm31s(
             builtin_instance_sizes.iter().map(|(_name, size)| M31::from(*size).inverse()),
         )
@@ -208,55 +231,46 @@ impl<Value: IValue> CairoStatement<Value> {
         .map(|qm31| context.constant(qm31))
         .collect();
         let packed_instance_size_inverses =
-            Simd::from_packed(builtin_instance_size_inverses, supported_builtins.len());
+            Simd::from_packed(builtin_instance_size_inverses, builtin_segment_ranges.len());
 
         let n_uses_simd = Simd::mul(context, &diff, &packed_instance_size_inverses);
 
         // Range-check the number of times each builtin is used.
         // n_uses = (end - start) / instance_size, which implies end = start + n_uses *
         // instance_size (mod M31_P). Since end and start are 29 bits and n_uses is 27 bits,
-        // start + n_uses * instance_size < 2^29 + 2^27 * 6 < M31_P, so this equality also
-        // holds over the integers. The assertion below guarantees this doesn't overflow.
+        // start + n_uses * instance_size < 2^29 + 2^27 * max_supported_builtin_instance_size <
+        // M31_P, so this equality also holds over the integers.
+        // Note that there is an assertion involving max_supported_builtin_instance_size that
+        // guarantees this doesn't overflow.
         extract_bits(context, &n_uses_simd, BUILTIN_USAGE_BITS);
-        let max_builtin_instance_size =
-            builtin_instance_sizes.iter().map(|(_name, size)| size).max().unwrap();
-        assert!(
-            (1 << SMALL_VALUE_BITS) + (1 << BUILTIN_USAGE_BITS) * max_builtin_instance_size
-                < usize::try_from(M31_P).unwrap(),
-        );
 
         let actual_uses_iter = Simd::unpack(context, &n_uses_simd).into_iter();
         let mut range_checks = vec![];
-
-        for ((name, _size), actual_uses) in zip_eq(builtin_instance_sizes, actual_uses_iter) {
+        let mut max_supported_builtin_instance_size = 0_usize;
+        for ((name, size), actual_uses) in zip_eq(builtin_instance_sizes, actual_uses_iter) {
             let Some(index) = self.components.get_index_of(name) else {
                 // The component is not supported by the circuit - actual_uses must be 0.
                 eq(context, actual_uses, context.zero());
                 continue;
             };
 
+            if size > max_supported_builtin_instance_size {
+                max_supported_builtin_instance_size = size;
+            }
+
             let component_size = component_sizes[index];
             // Check that 0 <= component_size - actual_uses < 2^27 => actual_uses <= component_size.
             let diff = eval!(context, (component_size) - (actual_uses));
             range_checks.push(M31Wrapper::new_unsafe(diff));
         }
+        assert!(
+            (1 << SMALL_VALUE_BITS)
+                + (1 << BUILTIN_USAGE_BITS) * max_supported_builtin_instance_size
+                < usize::try_from(M31_P).unwrap(),
+        );
 
         let rc_simd = Simd::pack(context, &range_checks);
         extract_bits(context, &rc_simd, BUILTIN_USAGE_BITS);
-
-        // Handle the builtins not supported by the circuit.
-        let zero = context.zero();
-        for segment_range in [
-            ec_op_segment_range,
-            ecdsa_segment_range,
-            keccak_segment_range,
-            range_check96_segment_range,
-            add_mod_segment_range,
-            mul_mod_segment_range,
-        ] {
-            let diff = eval!(context, (segment_range.end.value) - (segment_range.start.value));
-            eq(context, diff, zero);
-        }
     }
 }
 
