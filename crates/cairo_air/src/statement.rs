@@ -23,6 +23,7 @@ use circuits_stark_verifier::verify::RELATION_USES_NUM_ROWS_SHIFT;
 use indexmap::IndexMap;
 use itertools::{Itertools, chain, izip, zip_eq};
 use stwo::core::fields::m31::M31;
+use stwo::core::fields::m31::P as M31_P;
 use stwo::core::fields::qm31::QM31;
 use stwo_cairo_common::builtins::{
     BITWISE_BUILTIN_MEMORY_CELLS, PEDERSEN_BUILTIN_MEMORY_CELLS, POSEIDON_BUILTIN_MEMORY_CELLS,
@@ -220,8 +221,8 @@ impl<Value: IValue> CairoStatement<Value> {
         let max_builtin_instance_size =
             builtin_instance_sizes.iter().map(|(_name, size)| size).max().unwrap();
         assert!(
-            max_builtin_instance_size.ilog2() < (31 - BUILTIN_USAGE_BITS),
-            "max_builtin_memory_cell * n_uses might exceed M31_P"
+            (1 << SMALL_VALUE_BITS) + (1 << BUILTIN_USAGE_BITS) * max_builtin_instance_size
+                < usize::try_from(M31_P).unwrap(),
         );
 
         let actual_uses_iter = Simd::unpack(context, &n_uses_simd).into_iter();
