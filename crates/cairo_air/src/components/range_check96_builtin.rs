@@ -32,7 +32,7 @@ pub fn accumulate_constraints<Value: IValue>(
         value_limb_9_col10,
         value_limb_10_col11,
     ] = input.try_into().unwrap();
-    let seq = seq_of_component_size(context, component_data, &acc.preprocessed_columns);
+    let seq = component_data.seq_of_component_size(context, &acc.preprocessed_columns);
     let range_check96_builtin_segment_start =
         *acc.public_params.get("range_check96_builtin_segment_start").unwrap();
 
