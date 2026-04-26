@@ -1,5 +1,3 @@
-// This file was created by the AIR team.
-
 use super::prelude::*;
 
 pub const N_TRACE_COLUMNS: usize = 151;
@@ -175,7 +173,7 @@ pub fn accumulate_constraints<Value: IValue>(
         triple_xor_32_output_limb_0_col149,
         triple_xor_32_output_limb_1_col150,
     ] = input.try_into().unwrap();
-    let seq = seq_of_component_size(context, component_data, acc);
+    let seq = seq_of_component_size(context, component_data, &acc.preprocessed_columns);
     let compress_enabler =
         acc.get_preprocessed_column(&PreProcessedColumnId { id: "compress_enabler".to_owned() });
     let finalize_flag =
@@ -242,7 +240,6 @@ pub fn accumulate_constraints<Value: IValue>(
         ],
         context,
         component_data,
-        compress_enabler,
         acc,
     )
     .try_into()

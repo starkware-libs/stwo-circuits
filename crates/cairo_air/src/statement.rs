@@ -2,34 +2,35 @@ use std::array;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use crate::preprocessed_columns::MAX_SEQUENCE_LOG_SIZE;
 use cairo_air::components::memory_address_to_id::MEMORY_ADDRESS_TO_ID_SPLIT;
 use cairo_air::relations::{
     MEMORY_ADDRESS_TO_ID_RELATION_ID, MEMORY_ID_TO_BIG_RELATION_ID, OPCODES_RELATION_ID,
 };
 use circuits::blake::{HashValue, blake};
+use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::extract_bits::extract_bits;
+use circuits::ivalue::{IValue, qm31_from_u32s};
 use circuits::ops::{Guess, eq, output};
+use circuits::simd::Simd;
 use circuits::wrappers::M31Wrapper;
+use circuits_stark_verifier::constraint_eval::CircuitEval;
 use circuits_stark_verifier::logup::logup_use_term;
 use circuits_stark_verifier::proof_from_stark_proof::pack_into_qm31s;
+use circuits_stark_verifier::statement::Statement;
 use circuits_stark_verifier::verify::RELATION_USES_NUM_ROWS_SHIFT;
+use indexmap::IndexMap;
 use itertools::{Itertools, chain, izip, zip_eq};
+use stwo::core::fields::m31::M31;
+use stwo::core::fields::m31::P as M31_P;
 use stwo::core::fields::qm31::QM31;
 use stwo_cairo_common::builtins::{
     BITWISE_BUILTIN_MEMORY_CELLS, PEDERSEN_BUILTIN_MEMORY_CELLS, POSEIDON_BUILTIN_MEMORY_CELLS,
     RANGE_CHECK_BUILTIN_MEMORY_CELLS,
 };
+use stwo_cairo_common::preprocessed_columns::preprocessed_trace::PreProcessedTraceVariant;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
-
-use crate::all_components::all_components;
-use crate::preprocessed_columns::{CANONICAL_SMALL_PREPROCESSED_COLUMNS, MAX_SEQUENCE_LOG_SIZE};
-use circuits::context::{Context, Var};
-use circuits::ivalue::{IValue, qm31_from_u32s};
-use circuits::simd::Simd;
-use circuits_stark_verifier::constraint_eval::CircuitEval;
-use circuits_stark_verifier::statement::Statement;
-use stwo::core::fields::m31::M31;
 
 #[cfg(test)]
 #[path = "statement_test.rs"]
@@ -47,7 +48,8 @@ pub const PUBLIC_DATA_LEN: usize =
     2 * STATE_LEN + 2 * PUB_MEMORY_VALUE_M31_LEN * N_SEGMENTS + N_SAFE_CALL_IDS;
 
 const LIMB_BITS: usize = 9;
-const SMALL_VALUE_BITS: u32 = 27;
+const SMALL_VALUE_BITS: u32 = 29;
+const BUILTIN_USAGE_BITS: u32 = 27;
 
 pub struct CasmState<T> {
     pub pc: T,
@@ -66,13 +68,13 @@ impl CasmState<Var> {
     }
 }
 
-// A public memory value that fits in 27bits.
+// A public memory value that fits in 29 bits.
 pub struct PubMemoryM31Value<T> {
     pub id: T,
     pub value: T,
 }
 
-pub fn split_27bit_to_9bit_limbs(context: &mut Context<impl IValue>, value: Var) -> [Var; 3] {
+pub fn split_29bit_value_to_9bit_limbs(context: &mut Context<impl IValue>, value: Var) -> [Var; 4] {
     let simd = Simd::from_packed(vec![value], 1);
     let extracted_bits = extract_bits(context, &simd, SMALL_VALUE_BITS);
 
@@ -81,18 +83,6 @@ pub fn split_27bit_to_9bit_limbs(context: &mut Context<impl IValue>, value: Var)
         Simd::unpack(context, &limb)[0]
     });
     array::from_fn(|_| limbs_iter.next().unwrap())
-}
-
-impl PubMemoryM31Value<Var> {
-    /// Computes the address to id logup term for the public memory value.
-    pub fn logup_term(
-        &self,
-        context: &mut Context<impl IValue>,
-        interaction_elements: [Var; 2],
-    ) -> Var {
-        let limbs = split_27bit_to_9bit_limbs(context, self.value);
-        id_to_big_logup_term(context, self.id, limbs.into_iter(), interaction_elements)
-    }
 }
 
 pub struct SegmentRange<T> {
@@ -148,12 +138,13 @@ impl PublicData<Var> {
 }
 
 pub struct CairoStatement<Value: IValue> {
-    pub components: Vec<Box<dyn CircuitEval<Value>>>,
+    pub components: IndexMap<&'static str, Box<dyn CircuitEval<Value>>>,
     pub packed_public_data: Simd,
     pub public_data: PublicData<Var>,
     pub program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
     pub packed_outputs: Simd,
     pub preprocessed_root: HashValue<QM31>,
+    pub preprocessed_trace_variant: PreProcessedTraceVariant,
 }
 
 impl<Value: IValue> CairoStatement<Value> {
@@ -223,26 +214,26 @@ impl<Value: IValue> CairoStatement<Value> {
 
         // Range-check the number of times each builtin is used.
         // n_uses = (end - start) / instance_size, which implies end = start + n_uses *
-        // instance_size (mod M31_P). Since all values are less than 2^27, this equality
-        // also holds over the integers.
-        extract_bits(context, &n_uses_simd, SMALL_VALUE_BITS);
+        // instance_size (mod M31_P). Since end and start are 29 bits and n_uses is 27 bits,
+        // start + n_uses * instance_size < 2^29 + 2^27 * 6 < M31_P, so this equality also
+        // holds over the integers. The assertion below guarantees this doesn't overflow.
+        extract_bits(context, &n_uses_simd, BUILTIN_USAGE_BITS);
         let max_builtin_instance_size =
             builtin_instance_sizes.iter().map(|(_name, size)| size).max().unwrap();
         assert!(
-            max_builtin_instance_size.ilog2() < (31 - SMALL_VALUE_BITS),
-            "max_builtin_memory_cell * n_uses might exceed M31_P"
+            (1 << SMALL_VALUE_BITS) + (1 << BUILTIN_USAGE_BITS) * max_builtin_instance_size
+                < usize::try_from(M31_P).unwrap(),
         );
 
         let actual_uses_iter = Simd::unpack(context, &n_uses_simd).into_iter();
         let mut range_checks = vec![];
-        let all_components = all_components::<Value>();
 
         for ((name, _size), actual_uses) in zip_eq(builtin_instance_sizes, actual_uses_iter) {
-            let index = all_components.get_index_of(name).unwrap();
-            if self.components[index].is_disabled() {
-                // Component is disabled - actual_uses must be 0.
+            let Some(index) = self.components.get_index_of(name) else {
+                // The component is not supported by the circuit - actual_uses must be 0.
                 eq(context, actual_uses, context.zero());
-            }
+                continue;
+            };
 
             let component_size = component_sizes[index];
             // Check that 0 <= component_size - actual_uses < 2^27 => actual_uses <= component_size.
@@ -251,7 +242,7 @@ impl<Value: IValue> CairoStatement<Value> {
         }
 
         let rc_simd = Simd::pack(context, &range_checks);
-        extract_bits(context, &rc_simd, SMALL_VALUE_BITS);
+        extract_bits(context, &rc_simd, BUILTIN_USAGE_BITS);
 
         // Handle the builtins not supported by the circuit.
         let zero = context.zero();
@@ -275,19 +266,9 @@ impl<Value: IValue> CairoStatement<Value> {
         public_data: Vec<M31>,
         outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
         program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
+        components: IndexMap<&'static str, Box<dyn CircuitEval<Value>>>,
         preprocessed_root: HashValue<QM31>,
-    ) -> Self {
-        let components = all_components().into_values().collect_vec();
-        Self::new_ex(context, public_data, outputs, program, components, preprocessed_root)
-    }
-
-    pub fn new_ex(
-        context: &mut Context<Value>,
-        public_data: Vec<M31>,
-        outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
-        program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
-        components: Vec<Box<dyn CircuitEval<Value>>>,
-        preprocessed_root: HashValue<QM31>,
+        preprocessed_trace_variant: PreProcessedTraceVariant,
     ) -> Self {
         let packed_public_data = pack_into_qm31s(public_data.iter().cloned())
             .into_iter()
@@ -315,12 +296,13 @@ impl<Value: IValue> CairoStatement<Value> {
             packed_outputs,
             components,
             preprocessed_root,
+            preprocessed_trace_variant,
         }
     }
 }
 
 impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
-    fn get_components(&self) -> &[Box<dyn CircuitEval<Value>>] {
+    fn get_components(&self) -> &IndexMap<&'static str, Box<dyn CircuitEval<Value>>> {
         &self.components
     }
 
@@ -332,6 +314,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
             program,
             packed_outputs,
             preprocessed_root: _preprocessed_root,
+            preprocessed_trace_variant: _preprocessed_trace_variant,
         } = self;
         let program_len = context.constant(qm31_from_u32s(program.len() as u32, 0, 0, 0));
 
@@ -380,10 +363,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
     }
 
     fn get_preprocessed_column_ids(&self) -> Vec<PreProcessedColumnId> {
-        CANONICAL_SMALL_PREPROCESSED_COLUMNS
-            .iter()
-            .map(|id| PreProcessedColumnId { id: id.to_string() })
-            .collect()
+        self.preprocessed_trace_variant.to_preprocessed_trace().ids()
     }
 
     fn public_params(&self, _context: &mut Context<Value>) -> HashMap<String, Var> {
@@ -412,7 +392,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         &self,
         context: &mut Context<Value>,
         component_sizes: &[Var],
-        shifted_relation_uses: &HashMap<&'static str, Var>,
+        shifted_relation_uses: &HashMap<String, Var>,
     ) {
         let PublicData { initial_state, final_state, public_memory: _ } = &self.public_data;
 
@@ -444,7 +424,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
             context,
             &range_checks.iter().map(|value| M31Wrapper::new_unsafe(*value)).collect_vec(),
         );
-        extract_bits(context, &rc_simd, 29);
+        extract_bits(context, &rc_simd, SMALL_VALUE_BITS);
 
         // Sanity check: ensure that the maximum address in the address_to_id component fits within
         // a 29-bit address space (i.e., is less than 2**29).
@@ -469,31 +449,6 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
     }
 }
 
-pub fn address_to_id_logup_term(
-    context: &mut Context<impl IValue>,
-    address: Var,
-    id: Var,
-    interaction_elements: [Var; 2],
-) -> Var {
-    let memory_address_to_id_relation_id =
-        context.constant(MEMORY_ADDRESS_TO_ID_RELATION_ID.into());
-
-    logup_use_term(context, &[memory_address_to_id_relation_id, address, id], interaction_elements)
-}
-
-/// Calculates the logup term for a provided id and its associated value limbs.
-/// Each value limb is 9 bits wide, with the least significant limb appearing first.
-pub fn id_to_big_logup_term(
-    context: &mut Context<impl IValue>,
-    id: Var,
-    value_limbs: impl Iterator<Item = Var>,
-    interaction_elements: [Var; 2],
-) -> Var {
-    let memory_id_to_big_relation_id = context.constant(MEMORY_ID_TO_BIG_RELATION_ID.into());
-    let elements = chain!([memory_id_to_big_relation_id, id], value_limbs).collect_vec();
-    logup_use_term(context, &elements, interaction_elements)
-}
-
 pub fn segment_ranges_logup_sum(
     context: &mut Context<impl IValue>,
     interaction_elements: [Var; 2],
@@ -509,42 +464,50 @@ pub fn segment_ranges_logup_sum(
             return_value_address = eval!(context, (return_value_address) + (one));
         }
 
-        let arg_address_to_id_logup_term = address_to_id_logup_term(
+        let start_value_limbs = split_29bit_value_to_9bit_limbs(context, segment_range.start.value);
+        let segment_start_logup_term = public_memory_logup_terms(
             context,
+            interaction_elements,
             argument_address,
             segment_range.start.id,
-            interaction_elements,
+            &start_value_limbs,
         );
-        let return_value_to_id_logup_term = address_to_id_logup_term(
+        sum = eval!(context, (sum) + (segment_start_logup_term));
+        let end_value_limbs = split_29bit_value_to_9bit_limbs(context, segment_range.end.value);
+        let segment_end_logup_term = public_memory_logup_terms(
             context,
+            interaction_elements,
             return_value_address,
             segment_range.end.id,
-            interaction_elements,
+            &end_value_limbs,
         );
-
-        sum = eval!(context, (sum) + (arg_address_to_id_logup_term));
-        sum = eval!(context, (sum) + (return_value_to_id_logup_term));
-
-        sum =
-            eval!(context, (sum) + (segment_range.start.logup_term(context, interaction_elements)));
-        sum = eval!(context, (sum) + (segment_range.end.logup_term(context, interaction_elements)));
+        sum = eval!(context, (sum) + (segment_end_logup_term));
     }
 
     sum
 }
 
-fn safe_call_id_logup_term(
+/// Computes the address to id and id to value logup terms for a public memory value, returning the
+/// sum.
+fn public_memory_logup_terms<'a>(
     context: &mut Context<impl IValue>,
     interaction_elements: [Var; 2],
     address: Var,
     id: Var,
-    value_limbs: &[Var],
+    value_limbs: impl IntoIterator<Item = &'a Var>,
 ) -> Var {
-    let address_to_id_logup_term =
-        address_to_id_logup_term(context, address, id, interaction_elements);
+    let memory_address_to_id_relation_id =
+        context.constant(MEMORY_ADDRESS_TO_ID_RELATION_ID.into());
+    let address_to_id_logup_term = logup_use_term(
+        context,
+        &[memory_address_to_id_relation_id, address, id],
+        interaction_elements,
+    );
 
-    let id_to_value_logup_term =
-        id_to_big_logup_term(context, id, value_limbs.iter().cloned(), interaction_elements);
+    let memory_id_to_big_relation_id = context.constant(MEMORY_ID_TO_BIG_RELATION_ID.into());
+    let elements =
+        chain!([memory_id_to_big_relation_id, id], value_limbs.into_iter().cloned()).collect_vec();
+    let id_to_value_logup_term = logup_use_term(context, &elements, interaction_elements);
     eval!(context, (address_to_id_logup_term) + (id_to_value_logup_term))
 }
 
@@ -564,17 +527,14 @@ pub fn memory_segment_logup_sum(
             address = eval!(context, (address) + (one));
         }
 
-        let address_to_id_logup_term =
-            address_to_id_logup_term(context, address, id, interaction_elements);
-        sum = eval!(context, (sum) + (address_to_id_logup_term));
-
-        let id_to_value_logup_term = id_to_big_logup_term(
+        let logup_term = public_memory_logup_terms(
             context,
-            id,
-            value_limbs.iter().map(|limb| *limb.get()),
             interaction_elements,
+            address,
+            id,
+            value_limbs.iter().map(|limb| limb.get()),
         );
-        sum = eval!(context, (sum) + (id_to_value_logup_term));
+        sum = eval!(context, (sum) + (logup_term));
     }
 
     sum
@@ -608,14 +568,14 @@ pub fn public_logup_sum(
     // Enforce correct initialization of the safe call memory section:
     // memory[initial_ap - 2] = (safe_call_id0, initial_ap)
     // memory[initial_ap - 1] = (safe_call_id1, 0).
-    let split_initial_ap = split_27bit_to_9bit_limbs(context, initial_ap);
+    let split_initial_ap = split_29bit_value_to_9bit_limbs(context, initial_ap);
     // The value of memory[initial_ap - 1] is 0, so its 9-bit limbs are all zeros.
-    // Passing an empty slice to id_to_big_logup_term is equivalent to passing [0, 0, 0]
+    // Passing an empty slice to id_to_big_logup_term is equivalent to passing [0, 0, 0, 0]
     // because trailing zeros don't affect the polynomial combination in combine_term.
     let safe_call_values = [split_initial_ap.as_slice(), &[]];
     for (address, id, value_limbs) in izip!(safe_call_addresses, safe_call_ids, safe_call_values) {
         let logup_term =
-            safe_call_id_logup_term(context, interaction_elements, address, *id, value_limbs);
+            public_memory_logup_terms(context, interaction_elements, address, *id, value_limbs);
         sum = eval!(context, (sum) + (logup_term));
     }
 

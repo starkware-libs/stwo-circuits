@@ -48,15 +48,14 @@ fn test_fri_decommit_with_jumps(
     let mut context = TraceContext::default();
     // Make a dummy config.
     let config = ProofConfig {
+        enabled_bits: vec![],
         n_pow_bits: 0,
         n_interaction_pow_bits: 0,
         n_preprocessed_columns: 0,
         n_trace_columns: 0,
         n_interaction_columns: 0,
-        trace_columns_per_component: vec![],
-        interaction_columns_per_component: vec![],
+        component_shapes: vec![],
         cumulative_sum_columns: vec![],
-        n_components: 0,
         fri: circuits_stark_verifier::fri_proof::FriConfig {
             log_trace_size: log_trace_size as usize,
             log_blowup_factor: log_blowup_factor as usize,

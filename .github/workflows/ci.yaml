@@ -80,6 +80,7 @@ jobs:
       - doc
       - run-tests
       - typos
+      - cargo-lock
     steps:
       - name: Decide whether all the needed jobs succeeded or failed
         uses: re-actors/alls-green@v1.2.2
@@ -111,6 +112,17 @@ jobs:
         run: cargo install --locked cargo-machete
       - name: Run Machete (detect unused dependencies)
         run: cargo machete
+
+  cargo-lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.NIGHTLY_VERSION }}
+      - name: Check Cargo.lock is up-to-date
+        run: cargo fetch --locked
+
   typos:
     runs-on: ubuntu-latest
     steps:

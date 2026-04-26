@@ -8,19 +8,21 @@ use cairo_air::flat_claims::FlatClaim;
 use circuits::blake::HashValue;
 use circuits::context::{Context, TraceContext};
 use circuits::finalize_constants::finalize_constants;
-use circuits::ivalue::NoValue;
+use circuits::ivalue::{IValue, NoValue};
 use circuits::ops::Guess;
-use circuits_stark_verifier::empty_component::EmptyComponent;
+use circuits_stark_verifier::constraint_eval::CircuitEval;
 use circuits_stark_verifier::proof::{Claim, Proof, ProofConfig, empty_proof};
 use circuits_stark_verifier::proof_from_stark_proof::{
     pack_component_log_sizes, proof_from_stark_proof,
 };
 use circuits_stark_verifier::verify::verify;
+use indexmap::IndexMap;
 use itertools::{Itertools, zip_eq};
 use num_traits::Zero;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
+use stwo_cairo_common::preprocessed_columns::preprocessed_trace::PreProcessedTraceVariant;
 
 /// Logup security is defined by the `QM31` space (~124 bits) + `INTERACTION_POW_BITS` -
 /// log2(number of relation terms).
@@ -60,9 +62,10 @@ pub struct CairoVerifierConfig {
     pub program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
     pub n_outputs: usize,
     pub preprocessed_root: HashValue<QM31>,
+    pub preprocessed_trace_variant: PreProcessedTraceVariant,
 }
 
-/// Verifies a [CairoProof] for a fixed [CairoVerifierConfig].
+/// Verifies a [Proof] for a fixed [CairoVerifierConfig].
 pub fn verify_fixed_cairo_circuit(
     verifier_config: &CairoVerifierConfig,
     proof: Proof<QM31>,
@@ -86,6 +89,16 @@ pub fn verify_fixed_cairo_circuit(
     Ok(context)
 }
 
+/// Returns the entries of [`all_components`] whose corresponding bit in `enabled_bits` is set,
+/// preserving the order of [`all_components`].
+pub fn enabled_components<V: IValue>(
+    enabled_bits: &[bool],
+) -> IndexMap<&'static str, Box<dyn CircuitEval<V>>> {
+    zip_eq(all_components::<V>(), enabled_bits)
+        .filter_map(|((name, component), &enabled)| enabled.then_some((name, component)))
+        .collect()
+}
+
 /// Builds the Cairo verifier circuit context for a fixed circuit configuration.
 ///
 /// The context can be used for proof verification or recursive proving.
@@ -96,23 +109,18 @@ pub fn build_fixed_cairo_circuit(
     outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
 ) -> Context<QM31> {
     let config = &verifier_config.proof_config;
-    let components = zip_eq(all_components().into_values(), config.enabled_components())
-        .map(
-            |(component, enable_bit)| {
-                if enable_bit { component } else { Box::new(EmptyComponent {}) }
-            },
-        )
-        .collect_vec();
+    let components = enabled_components(&config.enabled_bits);
 
     let public_claim = public_claim.iter().map(|u32| M31::from(*u32)).collect_vec();
     let mut context = TraceContext::default();
-    let statement = CairoStatement::<QM31>::new_ex(
+    let statement = CairoStatement::<QM31>::new(
         &mut context,
         public_claim,
         outputs,
         verifier_config.program.clone(),
         components,
         verifier_config.preprocessed_root,
+        verifier_config.preprocessed_trace_variant,
     );
 
     let proof_vars = proof.guess(&mut context);
@@ -129,13 +137,7 @@ pub fn build_fixed_cairo_circuit(
 /// [NoValue] and an [empty_proof].
 pub fn build_cairo_verifier_circuit(verifier_config: &CairoVerifierConfig) -> Context<NoValue> {
     let config = &verifier_config.proof_config;
-    let components = zip_eq(all_components::<NoValue>().into_values(), config.enabled_components())
-        .map(
-            |(component, enable_bit)| {
-                if enable_bit { component } else { Box::new(EmptyComponent {}) }
-            },
-        )
-        .collect_vec();
+    let components = enabled_components::<NoValue>(&config.enabled_bits);
 
     let n_outputs = verifier_config.n_outputs;
     let program_len = verifier_config.program.len();
@@ -143,13 +145,14 @@ pub fn build_cairo_verifier_circuit(verifier_config: &CairoVerifierConfig) -> Co
     let outputs = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; n_outputs];
 
     let mut context = Context::<NoValue>::default();
-    let statement = CairoStatement::<NoValue>::new_ex(
+    let statement = CairoStatement::<NoValue>::new(
         &mut context,
         public_data,
         outputs,
         verifier_config.program.clone(),
         components,
         verifier_config.preprocessed_root,
+        verifier_config.preprocessed_trace_variant,
     );
 
     let proof_vars = empty_proof(config).guess(&mut context);
@@ -175,14 +178,15 @@ pub fn prepare_cairo_proof_for_circuit_verifier(
 
     let FlatClaim { component_enable_bits, component_log_sizes, public_data } =
         claim.flatten_claim();
-    let component_claimed_sums = interaction_claim.flatten_interaction_claim();
+    let claimed_sums = interaction_claim.flatten_interaction_claim();
 
-    debug_assert_eq!(component_enable_bits.len(), proof_config.n_components);
-    debug_assert_eq!(component_claimed_sums.len(), proof_config.n_components);
+    debug_assert_eq!(component_enable_bits, proof_config.enabled_bits);
+    debug_assert_eq!(component_log_sizes.len(), proof_config.n_components());
+    debug_assert_eq!(claimed_sums.len(), proof_config.n_components());
 
     let claim = Claim {
         packed_component_log_sizes: pack_component_log_sizes(&component_log_sizes),
-        claimed_sums: component_claimed_sums,
+        claimed_sums,
     };
 
     let proof = proof_from_stark_proof(

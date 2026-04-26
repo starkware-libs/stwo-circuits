@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use circuits::blake::HashValue;
+use indexmap::IndexMap;
 use stwo::core::circle::CirclePoint;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
@@ -23,7 +24,6 @@ pub struct EvaluateArgs<'a> {
     pub log_domain_size: usize,
     pub composition_polynomial_coeff: Var,
     pub interaction_elements: [Var; 2],
-    pub enable_bits: &'a [Var],
     pub claimed_sums: &'a [Var],
     pub component_sizes: &'a [Var],
     pub n_instances_bits: &'a [Simd],
@@ -39,7 +39,7 @@ pub trait Statement<Value: IValue> {
     fn claims_to_mix(&self, context: &mut Context<Value>) -> Vec<Vec<Var>>;
 
     /// Returns the AIR components that define the constraint system.
-    fn get_components(&self) -> &[Box<dyn CircuitEval<Value>>];
+    fn get_components(&self) -> &IndexMap<&'static str, Box<dyn CircuitEval<Value>>>;
 
     /// Returns the IDs of the preprocessed columns used by this statement's components.
     fn get_preprocessed_column_ids(&self) -> Vec<PreProcessedColumnId>;
@@ -61,7 +61,7 @@ pub trait Statement<Value: IValue> {
         &self,
         _context: &mut Context<Value>,
         _component_sizes: &[Var],
-        _shifted_relation_uses: &HashMap<&'static str, Var>,
+        _shifted_relation_uses: &HashMap<String, Var>,
     ) {
     }
 }

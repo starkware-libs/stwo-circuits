@@ -307,7 +307,6 @@ mod tests {
             &trace_columns,
             &interaction_columns,
             qm31_from_u32s(1115374022, 1127856551, 489657863, 643630026),
-            qm31_from_u32s(1398335417, 314974026, 1722107152, 821933968),
             32768,
         );
         let random_coeff =
@@ -555,10 +554,13 @@ mod tests {
             interaction_elements,
         );
         component.evaluate(&mut context, &component_data, &mut accumulator);
+        let claimed_sum =
+            context.new_var(qm31_from_u32s(1398335417, 314974026, 1722107152, 821933968));
         accumulator.finalize_logup_in_pairs(
             &mut context,
             <TestComponentData as ComponentDataTrait<QM31>>::interaction_columns(&component_data),
             &component_data,
+            claimed_sum,
         );
 
         let result = accumulator.finalize();

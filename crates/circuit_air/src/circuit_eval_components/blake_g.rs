@@ -76,7 +76,6 @@ pub fn accumulate_constraints<Value: IValue>(
         xor_col51,
         enabler_col52,
     ] = input.try_into().unwrap();
-    let enabler = context.one();
 
     triple_sum_32::accumulate_constraints(
         &[
@@ -91,7 +90,6 @@ pub fn accumulate_constraints<Value: IValue>(
         ],
         context,
         component_data,
-        enabler,
         acc,
     );
 
@@ -113,7 +111,6 @@ pub fn accumulate_constraints<Value: IValue>(
             ],
             context,
             component_data,
-            enabler,
             acc,
         )
         .try_into()
@@ -132,7 +129,6 @@ pub fn accumulate_constraints<Value: IValue>(
         ],
         context,
         component_data,
-        enabler,
         acc,
     );
 
@@ -154,7 +150,6 @@ pub fn accumulate_constraints<Value: IValue>(
             ],
             context,
             component_data,
-            enabler,
             acc,
         )
         .try_into()
@@ -173,7 +168,6 @@ pub fn accumulate_constraints<Value: IValue>(
         ],
         context,
         component_data,
-        enabler,
         acc,
     );
 
@@ -195,7 +189,6 @@ pub fn accumulate_constraints<Value: IValue>(
             ],
             context,
             component_data,
-            enabler,
             acc,
         )
         .try_into()
@@ -214,7 +207,6 @@ pub fn accumulate_constraints<Value: IValue>(
         ],
         context,
         component_data,
-        enabler,
         acc,
     );
 
@@ -236,7 +228,6 @@ pub fn accumulate_constraints<Value: IValue>(
             ],
             context,
             component_data,
-            enabler,
             acc,
         )
         .try_into()
@@ -392,7 +383,6 @@ mod tests {
             &trace_columns,
             &interaction_columns,
             qm31_from_u32s(1115374022, 1127856551, 489657863, 643630026),
-            qm31_from_u32s(1398335417, 314974026, 1722107152, 821933968),
             32768,
         );
         let random_coeff =
@@ -410,12 +400,14 @@ mod tests {
             random_coeff,
             interaction_elements,
         );
-        accumulator.set_enable_bit(context.one());
         component.evaluate(&mut context, &component_data, &mut accumulator);
+        let claimed_sum =
+            context.new_var(qm31_from_u32s(1398335417, 314974026, 1722107152, 821933968));
         accumulator.finalize_logup_in_pairs(
             &mut context,
             <TestComponentData as ComponentDataTrait<QM31>>::interaction_columns(&component_data),
             &component_data,
+            claimed_sum,
         );
 
         let result = accumulator.finalize();

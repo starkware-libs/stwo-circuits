@@ -7,6 +7,7 @@ use circuits::blake::HashValue;
 use circuits::context::{Context, Var};
 use circuits::ivalue::{IValue, NoValue};
 use circuits::ops::Guess;
+use indexmap::IndexMap;
 use itertools::zip_eq;
 
 use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
@@ -58,8 +59,8 @@ impl ProofInfo {
 
         let fixed = (1 + 3 * 2 + 1 + 1) * SECURE_EXTENSION_DEGREE * N_U8S_PER_U32;
 
-        let packed_log_sizes = config.n_components.next_multiple_of(4); // 1 log per u8.
-        let claimed_sums = config.n_components * SECURE_EXTENSION_DEGREE * N_U8S_PER_U32;
+        let packed_log_sizes = config.n_components().next_multiple_of(4); // 1 log per u8.
+        let claimed_sums = config.n_components() * SECURE_EXTENSION_DEGREE * N_U8S_PER_U32;
         let claim = packed_log_sizes + claimed_sums;
 
         let n_columns_per_trace = config.n_columns_per_trace();
@@ -208,6 +209,12 @@ impl std::fmt::Display for ProofInfo {
     }
 }
 
+#[derive(Debug, PartialEq)]
+pub struct ComponentShape {
+    pub trace_columns: usize,
+    pub interaction_columns: usize,
+}
+
 /// Represents the structure of a proof.
 #[derive(Debug, PartialEq)]
 pub struct ProofConfig {
@@ -220,22 +227,25 @@ pub struct ProofConfig {
     pub n_preprocessed_columns: usize,
     pub n_trace_columns: usize,
     pub n_interaction_columns: usize,
-    pub trace_columns_per_component: Vec<usize>,
-    pub interaction_columns_per_component: Vec<usize>,
+    pub component_shapes: Vec<ComponentShape>,
 
     // Per column in the interaction trace, an indicator of whether it is a cumulative sum column.
     // This is used to determine whether to include a sample point at the previous point in the
     // OODS response.
     pub cumulative_sum_columns: Vec<bool>,
 
-    // Number of components in the AIR.
-    pub n_components: usize,
+    // Per component in the full list of components, an indicator of whether it is enabled.
+    // This field is used for compatibility with the Cairo1 verifier where the set of components in
+    // the AIR can be set dynamically. In the Circuit verifier, the set of components is static
+    // and we always have enabled_bits.len() >= n_components.
+    pub enabled_bits: Vec<bool>,
 
     pub fri: FriConfig,
 }
 impl ProofConfig {
     pub fn from_statement<Value: IValue>(
         statement: &impl Statement<Value>,
+        enabled_bits: Vec<bool>,
         pcs_config: &PcsConfig,
         n_interaction_pow_bits: u32,
     ) -> Self {
@@ -243,6 +253,7 @@ impl ProofConfig {
         let n_preprocessed_columns = statement.get_preprocessed_column_ids().len();
         Self::from_components(
             components,
+            enabled_bits,
             n_preprocessed_columns,
             pcs_config,
             n_interaction_pow_bits,
@@ -250,30 +261,22 @@ impl ProofConfig {
     }
 
     pub fn from_components<Value: IValue>(
-        components: &[Box<dyn CircuitEval<Value>>],
+        components: &IndexMap<&'static str, Box<dyn CircuitEval<Value>>>,
+        enabled_bits: Vec<bool>,
         n_preprocessed_columns: usize,
         pcs_config: &PcsConfig,
         n_interaction_pow_bits: u32,
     ) -> Self {
-        let mut trace_columns_per_component = Vec::with_capacity(components.len());
-        let mut interaction_columns_per_component = Vec::with_capacity(components.len());
-        for component in components {
-            let trace_columns = component.trace_columns();
-            let interaction_columns = component.interaction_columns();
-            if component.is_disabled() {
-                assert!(trace_columns == 0, "disabled component must have no trace columns");
-                assert!(
-                    interaction_columns == 0,
-                    "disabled component must have no interaction columns"
-                );
-            }
-            trace_columns_per_component.push(trace_columns);
-            interaction_columns_per_component.push(interaction_columns);
+        let mut component_shapes = Vec::with_capacity(components.len());
+        for component in components.values() {
+            component_shapes.push(ComponentShape {
+                trace_columns: component.trace_columns(),
+                interaction_columns: component.interaction_columns(),
+            });
         }
         Self::new(
-            components.len(),
-            trace_columns_per_component,
-            interaction_columns_per_component,
+            component_shapes,
+            enabled_bits,
             n_preprocessed_columns,
             pcs_config,
             n_interaction_pow_bits,
@@ -281,30 +284,33 @@ impl ProofConfig {
     }
 
     pub fn new(
-        n_components: usize,
-        trace_columns_per_component: Vec<usize>,
-        interaction_columns_per_component: Vec<usize>,
+        component_shapes: Vec<ComponentShape>,
+        enabled_bits: Vec<bool>,
         n_preprocessed_columns: usize,
         pcs_config: &PcsConfig,
         n_interaction_pow_bits: u32,
     ) -> Self {
-        let n_interaction_columns = interaction_columns_per_component.iter().sum();
+        // Every component must have an enable bit.
+        assert!(component_shapes.len() <= enabled_bits.len());
+        assert_eq!(
+            component_shapes.len(),
+            enabled_bits.iter().filter(|b| **b).count(),
+            "Number of enabled bits must match the number of component shapes"
+        );
+
+        let n_trace_columns: usize = component_shapes.iter().map(|info| info.trace_columns).sum();
+        let n_interaction_columns: usize =
+            component_shapes.iter().map(|info| info.interaction_columns).sum();
         let mut cumulative_sum_columns = Vec::with_capacity(n_interaction_columns);
-        for n_interaction_columns_in_component in &interaction_columns_per_component {
-            if *n_interaction_columns_in_component == 0 {
-                continue;
-            }
+        for info in &component_shapes {
             // The last SECURE_EXTENSION_DEGREE interaction columns of every component are
             // cumulative sum columns.
             assert!(
-                *n_interaction_columns_in_component >= SECURE_EXTENSION_DEGREE,
+                info.interaction_columns >= SECURE_EXTENSION_DEGREE,
                 "Expected at least {SECURE_EXTENSION_DEGREE} interaction columns per component"
             );
-            cumulative_sum_columns.extend(vec![
-                false;
-                *n_interaction_columns_in_component
-                    - SECURE_EXTENSION_DEGREE
-            ]);
+            cumulative_sum_columns
+                .extend(vec![false; info.interaction_columns - SECURE_EXTENSION_DEGREE]);
             cumulative_sum_columns.extend(vec![true; SECURE_EXTENSION_DEGREE]);
         }
 
@@ -329,12 +335,11 @@ impl ProofConfig {
             n_pow_bits: *pow_bits,
             n_interaction_pow_bits,
             n_preprocessed_columns,
-            n_trace_columns: trace_columns_per_component.iter().sum(),
+            n_trace_columns,
             n_interaction_columns,
-            trace_columns_per_component,
-            interaction_columns_per_component,
-            n_components,
+            component_shapes,
             cumulative_sum_columns,
+            enabled_bits,
             fri: FriConfig {
                 log_trace_size,
                 log_blowup_factor: *log_blowup_factor as usize,
@@ -345,14 +350,9 @@ impl ProofConfig {
         }
     }
 
-    // TODO(ilya): Remove this once it is removed from the serializtion.
-    /// Returns an iterator over the enabled components.
-    pub fn enabled_components(&self) -> impl Iterator<Item = bool> {
-        // A real component need to interact with the other components or the public logup sum and
-        // therefore it must have some interaction columns.
-        self.interaction_columns_per_component
-            .iter()
-            .map(|interaction_columns| *interaction_columns > 0)
+    /// Returns the number of active components in the AIR.
+    pub fn n_components(&self) -> usize {
+        self.component_shapes.len()
     }
 
     /// Returns the log2 of the size of the trace.
@@ -486,6 +486,7 @@ pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
     let auth_path =
         AuthPath(vec![HashValue(NoValue, NoValue); config.log_evaluation_domain_size()]);
 
+    let n_components = config.n_components();
     Proof {
         trace_root: HashValue(NoValue, NoValue),
         interaction_root: HashValue(NoValue, NoValue),
@@ -504,8 +505,8 @@ pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
             })
             .collect(),
         claim: Claim {
-            packed_component_log_sizes: vec![NoValue; config.n_components.div_ceil(4)],
-            claimed_sums: vec![NoValue; config.n_components],
+            packed_component_log_sizes: vec![NoValue; n_components.div_ceil(4)],
+            claimed_sums: vec![NoValue; n_components],
         },
         composition_eval_at_oods: [NoValue; N_COMPOSITION_COLUMNS],
         eval_domain_samples: empty_eval_domain_samples(

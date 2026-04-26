@@ -5,7 +5,7 @@ use circuits_stark_verifier::proof_from_stark_proof::{
 };
 
 use itertools::{Itertools, zip_eq};
-use num_traits::{One, Zero};
+use num_traits::One;
 use stwo::core::ColumnVec;
 use stwo::core::air::Component;
 use stwo::core::channel::{Blake2sM31Channel, Channel};
@@ -33,7 +33,7 @@ use stwo_constraint_framework::{
     TraceLocationAllocator, relation,
 };
 
-use crate::simple_statement::COMPONENT_LOG_SIZES;
+use crate::simple_statement::{COMPONENT_ENABLE_BITS, COMPONENT_LOG_SIZES};
 
 pub const INTERACTION_POW_BITS: u32 = 8;
 
@@ -242,11 +242,10 @@ pub fn create_proof_with_fold_step(
     prover_channel.mix_felts(&[qm31_from_u32s(n_components, 0, 0, 0)]);
 
     // Mix the enable bits into the channel.
-    let packed_enable_bits = pack_enable_bits(&[true, true, false]);
+    let packed_enable_bits = pack_enable_bits(&COMPONENT_ENABLE_BITS);
     prover_channel.mix_felts(&packed_enable_bits);
 
     // Mix the component log sizes into the channel.
-    // Component_3 is disabled, so it has trace size 0.
     let packed_component_log_sizes = pack_component_log_sizes(&COMPONENT_LOG_SIZES);
     prover_channel.mix_felts(&packed_component_log_sizes);
 
@@ -272,7 +271,7 @@ pub fn create_proof_with_fold_step(
     let (interaction_trace_2, claimed_sum_2) =
         generate_interaction_trace(&trace_2, &lookup_elements.0);
 
-    let claimed_sums = vec![claimed_sum_1, claimed_sum_2, QM31::zero()];
+    let claimed_sums = vec![claimed_sum_1, claimed_sum_2];
     prover_channel.mix_felts(&claimed_sums);
     let mut tree_builder = commitment_scheme.tree_builder();
     tree_builder.extend_evals([interaction_trace_1, interaction_trace_2].concat());
@@ -318,7 +317,6 @@ pub fn create_proof_with_fold_step(
     .unwrap();
 
     let components: Vec<Box<dyn Component>> = vec![Box::new(component_1), Box::new(component_2)];
-
     (
         components,
         Claim { packed_component_log_sizes, claimed_sums },

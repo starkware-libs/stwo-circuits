@@ -2,9 +2,7 @@ use std::fs::File;
 
 use cairo_air::utils::binary_deserialize_from_file;
 use circuit_air::statement::{CircuitStatement, all_circuit_components};
-use circuit_air::verify::{
-    CircuitConfig, CircuitPublicData, build_verification_circuit, verify_circuit,
-};
+use circuit_air::verify::{CircuitConfig, CircuitPublicData, verify_circuit};
 use circuit_common::finalize::{add_zk_blinding, finalize_context};
 use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_prover::prover::{
@@ -15,24 +13,17 @@ use circuits::blake::HashValue;
 use circuits::context::Context;
 use circuits::ivalue::{IValue, NoValue};
 use circuits::stats::Stats;
-use circuits_stark_verifier::proof::{ProofConfig, ProofInfo, empty_proof};
+use circuits_stark_verifier::proof::{ProofConfig, ProofInfo};
 use itertools::Itertools;
 use num_traits::Zero;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::fri::FriConfig;
 use stwo::core::pcs::PcsConfig;
 
-use crate::privacy::{
-    PRIVACY_CAIRO_VERIFIER_CONSTS_HASH, PRIVACY_RECURSION_CIRCUIT_CONSTS_HASH,
-    PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT, privacy_cairo_verifier_config, privacy_components,
-};
+use crate::privacy::{privacy_cairo_verifier_config, privacy_components};
 use crate::test::verify_cairo_with_component_set;
 use crate::utils::get_proof_file_path;
 use crate::verify::build_cairo_verifier_circuit;
-
-fn privacy_circuit_preprocessed_root() -> HashValue<QM31> {
-    PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT.into()
-}
 
 /// Verifies with a circuit a proof of execution of another circuit.
 fn verify_circuit_proof(
@@ -41,8 +32,11 @@ fn verify_circuit_proof(
     preprocessed_root: HashValue<QM31>,
 ) -> Context<QM31> {
     let preprocessed_column_ids = preprocessed_circuit.preprocessed_trace.ids();
+    let components = all_circuit_components::<QM31>();
+    let enabled_bits = vec![true; components.len()];
     let proof_config = ProofConfig::from_components(
-        &all_circuit_components::<QM31>(),
+        &components,
+        enabled_bits,
         preprocessed_column_ids.len(),
         &circuit_proof.pcs_config,
         circuit_air::statement::INTERACTION_POW_BITS,
@@ -92,10 +86,14 @@ fn test_verify_privacy() {
     compare_contexts_topology(&context, &novalue_context);
 }
 
-// TODO(constants-infra): Update PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT and re-enable.
 #[test]
-#[ignore]
 fn test_verify_privacy_with_recursion() {
+    // The proof file was generated from the proving-utils repo using:
+    // cargo run -r --bin stwo-run-and-prove -- \
+    //     --prover_params_json ../stwo-circuits/test_data/privacy/prover_params.json \
+    //     --program ../stwo-circuits/test_data/privacy/privacy_simple_bootloader_compiled.json \
+    //     --program_input ../stwo-circuits/test_data/privacy/program_input.json \
+    //     --proof_path ../stwo-circuits/test_data/privacy/proof.bin --proof-format extended-binary
     let proof_path = get_proof_file_path("privacy");
     let proof_file = File::open(proof_path).unwrap();
     let cairo_proof = binary_deserialize_from_file(&proof_file).unwrap();
@@ -115,12 +113,14 @@ fn test_verify_privacy_with_recursion() {
         &BaseColumnPool::<SimdBackend>::new(),
         PcsConfig::default(),
     );
-    verify_circuit_proof(&preprocessed, circuit_proof, privacy_circuit_preprocessed_root());
+
+    let preprocessed_root: HashValue<QM31> =
+        circuit_proof.stark_proof.as_ref().unwrap().proof.commitments.0[0].into();
+
+    verify_circuit_proof(&preprocessed, circuit_proof, preprocessed_root);
 }
 
-// TODO(constants-infra): Update PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT and re-enable.
 #[test]
-#[ignore]
 fn test_privacy_recursion_with_preprocessed_context() {
     // Build the verifier circuit via NoValue and preprocess it.
     let cairo_proof_log_blowup_factor = 3;
@@ -160,7 +160,8 @@ fn test_privacy_recursion_with_preprocessed_context() {
 
     // Verify both circuit proofs and compare the resulting verifier contexts.
     // TODO(Gali): Add verify fixed circuit
-    let preprocessed_root = privacy_circuit_preprocessed_root();
+    let preprocessed_root =
+        assignment_proof.stark_proof.as_ref().unwrap().proof.commitments.0[0].into();
     let assignment_verifier_context =
         verify_circuit_proof(&preprocessed, assignment_proof, preprocessed_root);
 
@@ -170,63 +171,6 @@ fn test_privacy_recursion_with_preprocessed_context() {
     // Compare the verifier contexts.
     compare_contexts_topology(&assignment_verifier_context, &full_verifier_context);
     assert_eq!(assignment_verifier_context.values(), full_verifier_context.values());
-}
-
-#[test]
-fn test_privacy_consts() {
-    let cairo_proof_log_blowup_factor = 2;
-    let const_config = privacy_cairo_verifier_config(cairo_proof_log_blowup_factor);
-    let mut novalue_context = build_cairo_verifier_circuit(&const_config);
-    let constants = novalue_context.constants().keys().cloned().collect_vec();
-    let blake_value = QM31::blake(constants.as_slice(), constants.len() * 16);
-    assert_eq!(blake_value, PRIVACY_CAIRO_VERIFIER_CONSTS_HASH.into());
-
-    // Finalization should not add any new constants.
-    finalize_context(&mut novalue_context);
-    assert_eq!(novalue_context.constants().len(), constants.len());
-
-    let preprocessed_circuit =
-        PreprocessedCircuit::from_finalized_circuit(&novalue_context.circuit);
-
-    let log_blowup_factor = 2;
-    let lifting_log_size = preprocessed_circuit.params.trace_log_size + log_blowup_factor;
-    let pcs_config = PcsConfig {
-        pow_bits: 26,
-        fri_config: FriConfig {
-            log_blowup_factor,
-            log_last_layer_degree_bound: 0,
-            n_queries: 35,
-            fold_step: 4,
-        },
-        lifting_log_size: Some(lifting_log_size),
-    };
-    let preprocessed_column_ids = preprocessed_circuit.preprocessed_trace.ids();
-    let proof_config = ProofConfig::from_components(
-        &all_circuit_components::<QM31>(),
-        preprocessed_column_ids.len(),
-        &pcs_config,
-        circuit_air::statement::INTERACTION_POW_BITS,
-    );
-    let proof = empty_proof(&proof_config);
-    let circuit_config = CircuitConfig {
-        config: pcs_config,
-        output_addresses: preprocessed_circuit.params.output_addresses.clone(),
-        n_blake_gates: preprocessed_circuit.params.n_blake_gates,
-        preprocessed_column_ids,
-        preprocessed_root: PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT.into(),
-    };
-    let public_data = CircuitPublicData {
-        output_values: vec![QM31::zero(); preprocessed_circuit.params.output_addresses.len()],
-    };
-    let mut verifier_context =
-        build_verification_circuit(circuit_config, proof, public_data).unwrap();
-    let constants = verifier_context.constants().keys().cloned().collect_vec();
-    let blake_value = QM31::blake(constants.as_slice(), constants.len() * 16);
-    assert_eq!(blake_value, PRIVACY_RECURSION_CIRCUIT_CONSTS_HASH.into());
-
-    // Finalization should not add any new constants.
-    finalize_context(&mut verifier_context);
-    assert_eq!(verifier_context.constants().len(), constants.len());
 }
 
 #[test]
@@ -290,12 +234,13 @@ fn test_privacy_proof_info() {
         lifting_log_size: Some(lifting_log_size),
     };
     let preprocessed_column_ids = preprocessed_circuit.preprocessed_trace.ids();
+    let preprocessed_root = HashValue(QM31::zero(), QM31::zero());
     let circuit_config = CircuitConfig {
         config: pcs_config,
         output_addresses: preprocessed_circuit.params.output_addresses.clone(),
         n_blake_gates: preprocessed_circuit.params.n_blake_gates,
         preprocessed_column_ids,
-        preprocessed_root: PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT.into(),
+        preprocessed_root,
     };
     let public_data = CircuitPublicData {
         output_values: vec![QM31::zero(); preprocessed_circuit.params.output_addresses.len()],
@@ -310,13 +255,15 @@ fn test_privacy_proof_info() {
         circuit_config.preprocessed_root,
     );
 
+    let enabled_bits = vec![true; all_circuit_components::<NoValue>().len()];
     let proof_config = ProofConfig::from_statement(
         &statement,
+        enabled_bits,
         &circuit_config.config,
         circuit_air::statement::INTERACTION_POW_BITS,
     );
     let proof_info = ProofInfo::from_config(&proof_config);
     println!("{proof_info}");
     // Assert the total size in bytes.
-    assert_eq!(proof_info.total_bytes(), 344316);
+    assert_eq!(proof_info.total_bytes(), 347360);
 }

@@ -10,7 +10,6 @@ use crate::{constraint_eval::ComponentDataTrait, proof::InteractionAtOods};
 pub struct TestComponentData {
     trace: Vec<Var>,
     interaction_trace: Vec<InteractionAtOods<Var>>,
-    claimed_sum: Var,
     n_instances_var: Var,
     n_instances_bits: Vec<Var>,
 }
@@ -21,7 +20,6 @@ impl TestComponentData {
         trace_values: &[QM31],
         interaction_values: &[QM31],
         last_row_sum: QM31,
-        claimed_sum: QM31,
         n_instances: usize,
     ) -> Self {
         let trace = trace_values.iter().map(|v| context.new_var(*v)).collect_vec();
@@ -47,7 +45,6 @@ impl TestComponentData {
         Self {
             trace,
             interaction_trace,
-            claimed_sum: context.new_var(claimed_sum),
             n_instances_var: context.new_var(n_instances.into()),
             n_instances_bits,
         }
@@ -65,10 +62,6 @@ impl<Value: IValue> ComponentDataTrait<Value> for TestComponentData {
 
     fn n_instances(&self) -> Var {
         self.n_instances_var
-    }
-
-    fn claimed_sum(&self) -> Var {
-        self.claimed_sum
     }
 
     fn get_n_instances_bit(&self, _context: &mut Context<Value>, bit: usize) -> Var {

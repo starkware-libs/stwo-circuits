@@ -1,5 +1,5 @@
 use circuits::blake::HashValue;
-use itertools::zip_eq;
+use indexmap::IndexMap;
 use num_traits::One;
 use stwo::core::fields::m31::M31;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
@@ -14,35 +14,41 @@ use circuits_stark_verifier::constraint_eval::RelationUse;
 use circuits_stark_verifier::constraint_eval::{
     CircuitEval, ComponentDataTrait, CompositionConstraintAccumulator,
 };
-use circuits_stark_verifier::empty_component::EmptyComponent;
 use circuits_stark_verifier::logup::combine_term;
 use circuits_stark_verifier::statement::Statement;
 
-/// This is currently hardcoded in the simple air.
-/// Fixing it is not worth the effort since it doesn't happen in a real AIR.
-/// Component_3 is disabled, so it has trace size 0.
-pub const COMPONENT_LOG_SIZES: [u32; 3] = [LOG_SIZE_LONG, LOG_SIZE_SHORT, 0];
+/// Log sizes of the enabled components in [`SimpleStatement`].
+/// The stwo prover in `create_proof` runs with an additional disabled component (see
+/// [`COMPONENT_ENABLE_BITS`]); the disabled slot has log size `0` and is filled in by
+/// `pad_disabled` during channel mixing.
+pub const COMPONENT_LOG_SIZES: [u32; 2] = [LOG_SIZE_LONG, LOG_SIZE_SHORT];
+pub const COMPONENT_ENABLE_BITS: [bool; 3] = [true, true, false];
 
 pub struct SimpleStatement<Value: IValue> {
-    components: Vec<Box<dyn CircuitEval<Value>>>,
+    components: IndexMap<&'static str, Box<dyn CircuitEval<Value>>>,
 }
 
 impl<Value: IValue> Default for SimpleStatement<Value> {
     fn default() -> Self {
         Self {
-            components: vec![
-                Box::new(SquaredFibonacciComponent {
-                    preprocessed_column_id: PreProcessedColumnId {
-                        id: "row_const_long".to_string(),
-                    },
-                }),
-                Box::new(SquaredFibonacciComponent {
-                    preprocessed_column_id: PreProcessedColumnId {
-                        id: "row_const_short".to_string(),
-                    },
-                }),
-                Box::new(EmptyComponent {}),
-            ],
+            components: IndexMap::from([
+                (
+                    "squared_fibonacci_long",
+                    Box::new(SquaredFibonacciComponent {
+                        preprocessed_column_id: PreProcessedColumnId {
+                            id: "row_const_long".to_string(),
+                        },
+                    }) as Box<dyn CircuitEval<Value>>,
+                ),
+                (
+                    "squared_fibonacci_short",
+                    Box::new(SquaredFibonacciComponent {
+                        preprocessed_column_id: PreProcessedColumnId {
+                            id: "row_const_short".to_string(),
+                        },
+                    }) as Box<dyn CircuitEval<Value>>,
+                ),
+            ]),
         }
     }
 }
@@ -126,7 +132,7 @@ impl<Value: IValue> Statement<Value> for SimpleStatement<Value> {
         vec![vec![]]
     }
 
-    fn get_components(&self) -> &[Box<dyn CircuitEval<Value>>] {
+    fn get_components(&self) -> &IndexMap<&'static str, Box<dyn CircuitEval<Value>>> {
         &self.components
     }
 
@@ -137,12 +143,9 @@ impl<Value: IValue> Statement<Value> for SimpleStatement<Value> {
     ) -> Var {
         let mut sum = context.zero();
 
-        for (component, log_n_instances) in zip_eq(&self.components, &COMPONENT_LOG_SIZES) {
-            if component.trace_columns() == 0 {
-                continue;
-            }
+        for log_n_instances in COMPONENT_LOG_SIZES {
             let fib_logup_sum =
-                squared_fibonacci_public_logup_sum(context, interaction_elements, *log_n_instances);
+                squared_fibonacci_public_logup_sum(context, interaction_elements, log_n_instances);
             sum = eval!(context, (sum) + (fib_logup_sum));
         }
         sum

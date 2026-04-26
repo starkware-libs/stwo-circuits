@@ -52,6 +52,15 @@ fn pad_blake(context: &mut Context<impl IValue>) {
     }
 }
 
+fn pad_m31_to_u32(context: &mut Context<impl IValue>) {
+    let n_rows = context.circuit.m31_to_u32.len();
+    let padded = std::cmp::max(n_rows.next_power_of_two(), N_LANES);
+    let zero = context.zero();
+    for _ in n_rows..padded {
+        circuits::blake::m31_to_u32(context, zero);
+    }
+}
+
 /// Finalizes the context by padding the components to a power of two.
 ///
 /// Constants are now gate-constructed by `finalize_constants` — no Blake hashing needed.
@@ -62,6 +71,7 @@ pub fn finalize_context(context: &mut Context<impl IValue>) {
     pad_eq(context);
     pad_qm31_ops(context);
     pad_blake(context);
+    pad_m31_to_u32(context);
 }
 
 /// Adds ZK blinding to the circuit by adding random values to the qm31_ops and eq components.

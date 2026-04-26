@@ -36,7 +36,7 @@ pub fn accumulate_constraints<Value: IValue>(
         value_limb_14_col15,
         partial_limb_msb_col16,
     ] = input.try_into().unwrap();
-    let seq = seq_of_component_size(context, component_data, acc);
+    let seq = seq_of_component_size(context, component_data, &acc.preprocessed_columns);
     let range_check_builtin_segment_start =
         *acc.public_params.get("range_check_builtin_segment_start").unwrap();
 
@@ -139,7 +139,6 @@ mod tests {
             &trace_columns,
             &interaction_columns,
             qm31_from_u32s(1115374022, 1127856551, 489657863, 643630026),
-            qm31_from_u32s(1398335417, 314974026, 1722107152, 821933968),
             32768,
         );
         let random_coeff =
@@ -164,10 +163,13 @@ mod tests {
             interaction_elements,
         );
         component.evaluate(&mut context, &component_data, &mut accumulator);
+        let claimed_sum =
+            context.new_var(qm31_from_u32s(1398335417, 314974026, 1722107152, 821933968));
         accumulator.finalize_logup_in_pairs(
             &mut context,
             <TestComponentData as ComponentDataTrait<QM31>>::interaction_columns(&component_data),
             &component_data,
+            claimed_sum,
         );
 
         let result = accumulator.finalize();

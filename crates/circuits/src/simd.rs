@@ -247,8 +247,7 @@ impl Simd {
     pub fn pow2(context: &mut Context<impl IValue>, bits: &[Simd]) -> Simd {
         let len = bits[0].len();
         let mut res = Simd::one(context, len);
-        let one = context.one();
-        let mut pow2 = M31Wrapper::new_unsafe(eval!(context, (one) + (one)));
+        let mut pow2 = M31Wrapper::new_unsafe(context.constant(2.into()));
         for (bit_idx, bit) in bits.iter().enumerate() {
             let res_if_bit_is_one = Simd::scalar_mul(context, &res, &pow2);
             // Select between `res` and `res_if_bit_is_one` based on the value of the bit.
@@ -268,25 +267,12 @@ impl Simd {
     pub fn combine_bits(context: &mut Context<impl IValue>, bits: &[Simd]) -> Simd {
         let mut iter = bits.iter().rev();
         let mut res = iter.next().unwrap().clone();
-        let two = M31Wrapper::new_unsafe(eval!(context, context.constant(QM31::from(2))));
+        let two = M31Wrapper::new_unsafe(context.constant(2.into()));
         for bit in iter {
             res = Simd::scalar_mul(context, &res, &two);
             res = Simd::add(context, &res, bit);
         }
         res
-    }
-
-    /// Asserts that not all the bits in each [Simd] are ones.
-    ///
-    /// Note that this function assumes that `bits.is_empty()` is false.
-    pub fn assert_not_all_ones(context: &mut Context<impl IValue>, bits: &[Simd]) {
-        let mut iter = bits.iter();
-        let mut res = iter.next().unwrap().clone();
-        for bit in iter {
-            res = Simd::mul(context, &res, bit);
-        }
-        let zero = Simd::zero(context, res.len());
-        Simd::eq(context, &res, &zero);
     }
 
     /// Marks the variables in the Simd as "maybe unused". This is intended for cases

@@ -1,15 +1,14 @@
 use cairo_air::verifier::INTERACTION_POW_BITS;
 use circuits::ivalue::NoValue;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
-use circuits_stark_verifier::empty_component::EmptyComponent;
 use circuits_stark_verifier::proof::ProofConfig;
-use itertools::Itertools;
+use indexmap::IndexMap;
 use std::collections::HashSet;
 use stwo::core::fri::FriConfig;
 use stwo::core::pcs::PcsConfig;
+use stwo_cairo_common::preprocessed_columns::preprocessed_trace::PreProcessedTraceVariant;
 
 use crate::all_components::all_components;
-use crate::preprocessed_columns::CANONICAL_SMALL_PREPROCESSED_COLUMNS;
 use crate::utils::{get_test_data_dir, load_program};
 use crate::verify::{CairoVerifierConfig, get_preprocessed_root};
 
@@ -17,25 +16,21 @@ use crate::verify::{CairoVerifierConfig, get_preprocessed_root};
 #[path = "privacy_test.rs"]
 pub mod test;
 
-pub const PRIVACY_CAIRO_VERIFIER_CONSTS_HASH: [u32; 8] =
-    [1512880553, 525479473, 1585436940, 1475597139, 1800990449, 1975251348, 2001100946, 299744987];
-
-pub const PRIVACY_RECURSION_CIRCUIT_CONSTS_HASH: [u32; 8] =
-    [2022562963, 1603214417, 2039203382, 1731270385, 331501505, 1117559213, 1393505714, 1996309692];
-
-// TODO(constants-infra): Recompute after constants infrastructure change stabilizes.
-pub const PRIVACY_RECURSION_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
-    [508568022, 560796586, 23051264, 1581025607, 2142614309, 1977417935, 764169026, 1105472291];
-
 /// Returns a [CairoVerifierConfig] for the privacy proof setup with the given log blowup factor.
 pub fn privacy_cairo_verifier_config(log_blowup_factor: u32) -> CairoVerifierConfig {
+    let preprocessed_trace_variant = PreProcessedTraceVariant::CanonicalSmall;
     let privacy_set = privacy_components();
-    let components: Vec<Box<dyn CircuitEval<NoValue>>> = all_components::<NoValue>()
+    // Build `enabled_bits` (one flag per component in the full list) and `components` (only the
+    // enabled entries, as expected by `ProofConfig::from_components`) in a single pass.
+    let (enabled_bits, components): (Vec<bool>, Vec<_>) = all_components::<NoValue>()
         .into_iter()
-        .map(|(name, component)| -> Box<dyn CircuitEval<NoValue>> {
-            if privacy_set.contains(name) { component } else { Box::new(EmptyComponent {}) }
+        .map(|(name, component)| {
+            let enabled = privacy_set.contains(name);
+            (enabled, enabled.then_some((name, component)))
         })
-        .collect_vec();
+        .unzip();
+    let components: IndexMap<&'static str, Box<dyn CircuitEval<NoValue>>> =
+        components.into_iter().flatten().collect();
 
     // Derive proof config parameters from the log blowup factor, targeting 96-bit security.
     let (pow_bits, n_queries) = match log_blowup_factor {
@@ -57,7 +52,8 @@ pub fn privacy_cairo_verifier_config(log_blowup_factor: u32) -> CairoVerifierCon
 
     let proof_config = ProofConfig::from_components(
         &components,
-        CANONICAL_SMALL_PREPROCESSED_COLUMNS.len(),
+        enabled_bits,
+        preprocessed_trace_variant.to_preprocessed_trace().ids().len(),
         &pcs_config,
         INTERACTION_POW_BITS,
     );
@@ -70,6 +66,7 @@ pub fn privacy_cairo_verifier_config(log_blowup_factor: u32) -> CairoVerifierCon
         proof_config,
         program,
         n_outputs: 1,
+        preprocessed_trace_variant,
     }
 }
 

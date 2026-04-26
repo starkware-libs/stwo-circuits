@@ -246,7 +246,7 @@ fn decompose_m31_constants(
 }
 
 /// Decomposes a value into base-B limbs and builds it via repeated mul-add:
-/// val = (...((limbs[n] * B + limbs[n-1]) * B + limbs[n-2]) * B + ...) + limbs[0].
+/// `val = (...((limbs[n] * B + limbs[n-1]) * B + limbs[n-2]) * B + ...) + limbs[0]`.
 /// The final gate outputs to `out_idx`. Intermediates are cached in m31_cache for reuse.
 /// If an intermediate's value matches a reserved constant, the reserved Var idx is used as
 /// the gate output (ensuring it gets its yield gate).

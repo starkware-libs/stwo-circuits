@@ -49,7 +49,7 @@ pub struct Context<Value: IValue> {
     ///
     /// `None` if the set of guessed variables has already been finalized.
     ///
-    /// See [guess].
+    /// See [`guess`](crate::ops::guess).
     pub guessed_vars: Option<Vec<usize>>,
     /// Debug only. If true, equality is asserted when adding the `eq` gate; if false, no
     /// assertion is made during construction and equality can be checked later at validation.

@@ -4,15 +4,14 @@ use std::fs::{File, OpenOptions};
 use std::sync::Arc;
 
 use cairo_air::CairoProof;
-use cairo_air::PreProcessedTraceVariant;
 use cairo_air::flat_claims::FlatClaim;
 use cairo_air::utils::{binary_deserialize_from_file, binary_serialize_to_file};
 use cairo_air::verifier::INTERACTION_POW_BITS;
+use cairo_vm::types::layout_name::LayoutName;
 use circuits::context::Context;
 use circuits::ivalue::NoValue;
 use circuits::ops::Guess;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
-use circuits_stark_verifier::empty_component::EmptyComponent;
 use circuits_stark_verifier::proof::{ProofConfig, empty_proof};
 use circuits_stark_verifier::verify::verify;
 use itertools::Itertools;
@@ -23,17 +22,18 @@ use stwo::core::fields::qm31::QM31;
 use stwo::core::fri::FriConfig;
 use stwo::core::pcs::PcsConfig;
 use stwo::core::vcs_lifted::blake2_merkle::{Blake2sM31MerkleChannel, Blake2sM31MerkleHasher};
+use stwo_cairo_common::preprocessed_columns::preprocessed_trace::PreProcessedTraceVariant;
 use stwo_cairo_dev_utils::utils::get_compiled_cairo_program_path;
 use stwo_cairo_dev_utils::vm_utils::{ProgramType, run_and_adapt};
 use stwo_cairo_prover::prover::{ChannelHash, ProverParameters, prove_cairo};
 
 use crate::all_components::all_components;
-use crate::preprocessed_columns::{CANONICAL_SMALL_PREPROCESSED_COLUMNS, MAX_SEQUENCE_LOG_SIZE};
+use crate::preprocessed_columns::MAX_SEQUENCE_LOG_SIZE;
 use crate::statement::{CairoStatement, MEMORY_VALUES_LIMBS, PUBLIC_DATA_LEN};
 use crate::utils::get_proof_file_path;
 use crate::verify::{
-    CairoVerifierConfig, get_preprocessed_root, prepare_cairo_proof_for_circuit_verifier,
-    verify_fixed_cairo_circuit,
+    CairoVerifierConfig, enabled_components, get_preprocessed_root,
+    prepare_cairo_proof_for_circuit_verifier, verify_fixed_cairo_circuit,
 };
 
 /// Circuit Verifies a [CairoProof].
@@ -41,11 +41,8 @@ pub fn verify_cairo(proof: &CairoProof<Blake2sM31MerkleHasher>) -> Result<Contex
     let FlatClaim { component_enable_bits, component_log_sizes: _, public_data: _ } =
         proof.claim.flatten_claim();
 
-    let components = HashSet::from_iter(
-        zip_eq(all_components::<QM31>().into_keys(), &component_enable_bits)
-            .filter(|(_, enable_bit)| **enable_bit)
-            .map(|(component_name, _)| component_name),
-    );
+    let components: HashSet<&str> =
+        enabled_components::<QM31>(&component_enable_bits).into_keys().collect();
 
     verify_cairo_with_component_set(proof, components)
 }
@@ -57,25 +54,26 @@ pub fn verify_cairo_with_component_set(
 ) -> Result<Context<QM31>, String> {
     let FlatClaim { component_enable_bits, component_log_sizes: _, public_data: _ } =
         cairo_proof.claim.flatten_claim();
-    let components: Vec<Box<dyn CircuitEval<QM31>>> =
+    let components: indexmap::IndexMap<&'static str, Box<dyn CircuitEval<QM31>>> =
         zip_eq(all_components::<QM31>().into_iter(), &component_enable_bits)
-            .map(|((component_name, component), &enable_bit)| {
+            .filter_map(|((component_name, component), &enable_bit)| {
                 let component_in_set = component_set.contains(component_name);
                 if component_in_set != enable_bit {
-                    return Err(format!(
+                    return Some(Err(format!(
                         "Proof was produced with the wrong components set: expected the component '{}' to be {} according to the component set, but it is {} in the proof.",
                         component_name,
                         if component_in_set { "enabled" } else { "disabled" },
                         if enable_bit { "enabled" } else { "disabled" }
-                    ));
+                    )));
                 }
-                Ok(if enable_bit { component } else { Box::new(EmptyComponent {}) })
+                if enable_bit { Some(Ok((component_name, component))) } else { None }
             })
             .try_collect()?;
 
     let proof_config = ProofConfig::from_components(
         &components,
-        CANONICAL_SMALL_PREPROCESSED_COLUMNS.len(),
+        component_enable_bits,
+        cairo_proof.preprocessed_trace_variant.to_preprocessed_trace().ids().len(),
         &cairo_proof.extended_stark_proof.proof.config,
         INTERACTION_POW_BITS,
     );
@@ -91,13 +89,13 @@ pub fn verify_cairo_with_component_set(
         .map(|chunk| array::from_fn(|i| M31::from_u32_unchecked(chunk[i])))
         .collect();
 
+    let ppt_root = cairo_proof.extended_stark_proof.proof.commitments[0];
     let verifier_config = CairoVerifierConfig {
-        preprocessed_root: get_preprocessed_root(
-            proof_config.log_evaluation_domain_size().try_into().unwrap(),
-        ),
+        preprocessed_root: ppt_root.into(),
         proof_config,
         program,
         n_outputs: cairo_proof.claim.public_data.public_memory.output.len(),
+        preprocessed_trace_variant: cairo_proof.preprocessed_trace_variant,
     };
 
     verify_fixed_cairo_circuit(&verifier_config, proof, public_claim, outputs)
@@ -117,20 +115,26 @@ fn test_verify() {
     let outputs = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; output_len];
     let program: Arc<[[M31; MEMORY_VALUES_LIMBS]]> =
         std::iter::repeat_n([M31::zero(); MEMORY_VALUES_LIMBS], program_len).collect();
+    let components = all_components();
     let mut statement = CairoStatement::new(
         &mut novalue_context,
         flat_claim,
         outputs,
         program,
+        components,
         get_preprocessed_root(20 + pcs_config.fri_config.log_blowup_factor),
+        PreProcessedTraceVariant::CanonicalSmall,
     );
     // Remove the pedersen points table component since it requires long preprocessed columns, which
     // are not supported.
     let pedersen_points_index =
         all_components::<NoValue>().get_full("pedersen_points_table_window_bits_18").unwrap().0;
-    statement.components[pedersen_points_index] = Box::new(EmptyComponent {});
+    statement.components.shift_remove("pedersen_points_table_window_bits_18");
 
-    let config = ProofConfig::from_statement(&statement, &pcs_config, INTERACTION_POW_BITS);
+    let mut enabled_bits = vec![true; all_components::<NoValue>().len()];
+    enabled_bits[pedersen_points_index] = false;
+    let config =
+        ProofConfig::from_statement(&statement, enabled_bits, &pcs_config, INTERACTION_POW_BITS);
 
     let empty_proof = empty_proof(&config);
 
@@ -147,21 +151,25 @@ fn test_verify() {
 #[test]
 fn test_verify_all_opcodes() {
     let proof_path = get_proof_file_path("all_opcode_components");
-    let low_blowup_factor = 2;
+    let preprocessed_trace_variant = PreProcessedTraceVariant::Canonical;
+    let low_blowup_factor = 1;
+    let trace_log_size = 25;
 
     if std::env::var("FIX_PROOF").is_ok() {
         let compiled_program =
             get_compiled_cairo_program_path("test_prove_verify_all_opcode_components");
-        let input = run_and_adapt(&compiled_program, ProgramType::Json, None).unwrap();
+        let input =
+            run_and_adapt(&compiled_program, ProgramType::Json, LayoutName::all_cairo_stwo, None)
+                .unwrap();
         let prover_params = ProverParameters {
             channel_hash: ChannelHash::Blake2sM31,
             pcs_config: PcsConfig {
                 pow_bits: 26,
-                // Fold step = 3.
-                fri_config: FriConfig::new(0, low_blowup_factor, 70, 3),
-                lifting_log_size: Some(20 + low_blowup_factor),
+                // Fold step = 4.
+                fri_config: FriConfig::new(0, low_blowup_factor, 70, 4),
+                lifting_log_size: Some(trace_log_size + low_blowup_factor),
             },
-            preprocessed_trace: PreProcessedTraceVariant::CanonicalSmall,
+            preprocessed_trace: preprocessed_trace_variant,
             channel_salt: 0,
             store_polynomials_coefficients: true,
             include_all_preprocessed_columns: true,

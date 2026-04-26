@@ -27,8 +27,6 @@ pub struct ComponentData<'a> {
     pub interaction_columns: &'a [InteractionAtOods<Var>],
     /// The number of instances in the component.
     pub n_instances: Var,
-    /// The claimed sum of the component.
-    pub claimed_sum: Var,
 
     /// The index of the component.
     index: usize,
@@ -43,8 +41,6 @@ pub trait ComponentDataTrait<Value: IValue> {
     fn interaction_columns(&self) -> &[InteractionAtOods<Var>];
 
     fn n_instances(&self) -> Var;
-
-    fn claimed_sum(&self) -> Var;
 
     /// Returns one of the bits of the component number of rows (bit 0 is LSB).
     /// Because the number of rows is always a power of two, only one of the bits
@@ -70,10 +66,6 @@ impl<'a, Value: IValue> ComponentDataTrait<Value> for ComponentData<'a> {
         self.n_instances
     }
 
-    fn claimed_sum(&self) -> Var {
-        self.claimed_sum
-    }
-
     fn get_n_instances_bit(&self, context: &mut Context<Value>, bit: usize) -> Var {
         Simd::unpack_idx(context, &self.n_instances_bits[bit], self.index)
     }
@@ -91,8 +83,6 @@ impl<'a, Value: IValue> ComponentDataTrait<Value> for ComponentData<'a> {
 /// so that after N constraints:
 ///   accumulation = Σ_{i=0..N-1} composition_polynomial_coeff^{N-1-i} * c_i.
 pub struct CompositionConstraintAccumulator {
-    /// The enable bits of the current component.
-    enable_bit: Var,
     /// The OODS samples for the preprocessed columns.
     /// Each component will consume a subset of these samples.
     pub preprocessed_columns: HashMap<PreProcessedColumnId, Var>,
@@ -115,7 +105,6 @@ impl CompositionConstraintAccumulator {
         interaction_elements: [Var; 2],
     ) -> Self {
         Self {
-            enable_bit: context.one(),
             preprocessed_columns,
             public_params,
             composition_polynomial_coeff,
@@ -125,19 +114,11 @@ impl CompositionConstraintAccumulator {
         }
     }
 
-    /// Sets the enable bit for the current component.
-    pub fn set_enable_bit(&mut self, enable_bit: Var) {
-        self.enable_bit = enable_bit;
-    }
-
     /// Incorporate the next constraint evaluation at the OODS point.
     pub fn accumulate(&mut self, context: &mut Context<impl IValue>, constraint_eval_at_oods: Var) {
         let shifted_accumulation =
             eval!(context, (self.accumulation) * (self.composition_polynomial_coeff));
-        let zero_or_constraint_eval_at_oods =
-            eval!(context, (constraint_eval_at_oods) * (self.enable_bit));
-        self.accumulation =
-            eval!(context, (shifted_accumulation) + (zero_or_constraint_eval_at_oods));
+        self.accumulation = eval!(context, (shifted_accumulation) + (constraint_eval_at_oods));
     }
 
     /// Finish accumulation and return the combined value.
@@ -173,6 +154,7 @@ impl CompositionConstraintAccumulator {
         context: &mut Context<Value>,
         interaction_columns: &[InteractionAtOods<Var>],
         component_data: &dyn ComponentDataTrait<Value>,
+        claimed_sum: Var,
     ) {
         // TODO(Gali): Get the terms from the component instead of storing them in the accumulator.
         let n_batches = self.terms.len().div_ceil(2);
@@ -202,7 +184,7 @@ impl CompositionConstraintAccumulator {
         let cur_cumsum = from_partial_evals(context, last_chunk.each_ref().map(|x| x.at_oods));
 
         let diff = eval!(context, ((cur_cumsum) - (prev_row_cumsum)) - (prev_col_cumsum));
-        let cumsum_shift = div(context, component_data.claimed_sum(), component_data.n_instances());
+        let cumsum_shift = div(context, claimed_sum, component_data.n_instances());
         // Instead of checking diff = num / denom, check diff = num / denom - cumsum_shift.
         // This makes (num / denom - cumsum_shift) have sum zero, which makes the constraint
         // uniform - apply on all rows.
@@ -244,10 +226,6 @@ pub trait CircuitEval<Value: IValue> {
     fn interaction_columns(&self) -> usize;
 
     fn relation_uses_per_row(&self) -> &[RelationUse];
-
-    fn is_disabled(&self) -> bool {
-        self.interaction_columns() == 0
-    }
 }
 
 pub fn get_n_columns<'a, T>(columns: &mut &'a [T], n: usize) -> &'a [T] {
@@ -266,7 +244,6 @@ pub fn compute_composition_polynomial<Value: IValue>(
         log_domain_size,
         composition_polynomial_coeff,
         interaction_elements,
-        enable_bits,
         claimed_sums,
         component_sizes,
         n_instances_bits,
@@ -285,42 +262,21 @@ pub fn compute_composition_polynomial<Value: IValue>(
         interaction_elements,
     );
 
-    for (
-        component_index,
-        (
-            component,
-            n_trace_columns_in_component,
-            n_interaction_columns_in_component,
-            &enable_bit,
-            &claimed_sum,
-            &component_size,
-        ),
-    ) in izip!(
-        statement.get_components(),
-        &config.trace_columns_per_component,
-        &config.interaction_columns_per_component,
-        enable_bits,
+    for (component_index, (component, component_shape, &claimed_sum, &component_size)) in izip!(
+        statement.get_components().values(),
+        &config.component_shapes,
         claimed_sums,
         component_sizes,
     )
     .enumerate()
     {
-        if component.is_disabled() {
-            // Disabled components have no constraints to evaluate. Mark size as maybe
-            // unused since it might still be referenced elsewhere (e.g. verify_builtins).
-            context.mark_as_maybe_unused(&component_size);
-            continue;
-        }
-
-        evaluation_accumulator.set_enable_bit(enable_bit);
-        let trace_columns = get_n_columns(&mut oods_samples.trace, *n_trace_columns_in_component);
+        let trace_columns = get_n_columns(&mut oods_samples.trace, component_shape.trace_columns);
         let interaction_columns =
-            get_n_columns(&mut oods_samples.interaction, *n_interaction_columns_in_component);
+            get_n_columns(&mut oods_samples.interaction, component_shape.interaction_columns);
 
         let component_data = ComponentData {
             trace_columns,
             interaction_columns,
-            claimed_sum,
             n_instances: component_size,
             index: component_index,
             n_instances_bits,
@@ -332,6 +288,7 @@ pub fn compute_composition_polynomial<Value: IValue>(
             context,
             interaction_columns,
             &component_data,
+            claimed_sum,
         );
     }
 

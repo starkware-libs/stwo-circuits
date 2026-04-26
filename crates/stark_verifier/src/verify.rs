@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
-use itertools::{Itertools, chain, izip, zip_eq};
+use itertools::{Itertools, chain, izip};
 use stwo::core::circle::CirclePoint;
-use stwo::core::fields::m31::P;
+use stwo::core::fields::m31::{M31, P};
+use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
 use stwo::core::verifier::COMPOSITION_LOG_SPLIT;
 
 use crate::channel::Channel;
@@ -33,11 +34,10 @@ pub fn validate_logup_sum(
     context: &mut Context<impl IValue>,
     public_logup_sum: Var,
     claimed_sums: &[Var],
-    enable_bits: &[Var],
 ) {
     let mut log_up_sum = public_logup_sum;
-    for (claimed_sum, enable_bit) in zip_eq(claimed_sums, enable_bits) {
-        log_up_sum = eval!(context, (log_up_sum) + ((*claimed_sum) * (*enable_bit)));
+    for claimed_sum in claimed_sums {
+        log_up_sum = eval!(context, (log_up_sum) + (*claimed_sum));
     }
     eq(context, log_up_sum, context.zero());
 }
@@ -74,29 +74,23 @@ pub fn verify<Value: IValue>(
     let preprocessed_root = statement.get_preprocessed_root(context);
     channel.mix_commitment(context, preprocessed_root);
 
+    let n_components = config.n_components();
     let component_log_sizes =
-        Simd::from_packed(proof.claim.packed_component_log_sizes.clone(), config.n_components);
+        Simd::from_packed(proof.claim.packed_component_log_sizes.clone(), n_components);
+    let component_sizes = validate_and_compute_component_sizes(context, &component_log_sizes);
 
-    // Range check the component log sizes.
-    let component_log_size_bits = extract_bits(context, &component_log_sizes, LOG_SIZE_BITS);
-    // Since LOG_SIZE_BITS is 5, and 2**31 - 1 = M31, we need to check that not all the bits in the
-    // component log sizes are ones.
-    Simd::assert_not_all_ones(context, &component_log_size_bits);
-
-    let component_sizes = Simd::pow2(context, &component_log_size_bits);
     // Check that the component sizes are at most 2^config.log_trace_size().
     // Note that we need k + 1 bits to represent 2^k.
     let component_sizes_bits =
         extract_bits(context, &component_sizes, config.log_trace_size() as u32 + 1);
 
-    let n_components = context.constant(qm31_from_u32s(config.n_components as u32, 0, 0, 0));
-    channel.mix_qm31s(context, [n_components]);
+    // Mix the (hardcoded) enable bits into the channel for compatibility with the Cairo1 verifier.
+    let enable_bits = &config.enabled_bits;
+    let n_enable_bits = context.constant(qm31_from_u32s(enable_bits.len() as u32, 0, 0, 0));
+    channel.mix_qm31s(context, [n_enable_bits]);
 
-    // TODO(Gali): Don't mix the enable bits.
-    let enable_bits =
-        statement.get_components().iter().map(|component| !component.is_disabled()).collect_vec();
     let packed_enable_bits =
-        pack_enable_bits(&enable_bits).into_iter().map(|qm31| context.constant(qm31)).collect_vec();
+        pack_enable_bits(enable_bits).into_iter().map(|qm31| context.constant(qm31)).collect_vec();
     channel.mix_qm31s(context, packed_enable_bits);
 
     channel.mix_qm31s(context, proof.claim.packed_component_log_sizes.iter().cloned());
@@ -111,13 +105,8 @@ pub fn verify<Value: IValue>(
     // Pick the interaction elements.
     let [interaction_z, interaction_alpha] = channel.draw_two_qm31s(context);
 
-    let enable_bits: Vec<Var> = enable_bits
-        .into_iter()
-        .map(|enabled| if enabled { context.one() } else { context.zero() })
-        .collect_vec();
-
     let public_logup_sum = statement.public_logup_sum(context, [interaction_z, interaction_alpha]);
-    validate_logup_sum(context, public_logup_sum, &proof.claim.claimed_sums, &enable_bits);
+    validate_logup_sum(context, public_logup_sum, &proof.claim.claimed_sums);
 
     channel.mix_qm31s(context, proof.claim.claimed_sums.iter().cloned());
     channel.mix_commitment(context, proof.interaction_root);
@@ -151,7 +140,6 @@ pub fn verify<Value: IValue>(
             composition_polynomial_coeff,
             interaction_elements: [interaction_z, interaction_alpha],
             claimed_sums: &proof.claim.claimed_sums,
-            enable_bits: &enable_bits,
             component_sizes: &unpacked_component_sizes,
             n_instances_bits: &component_sizes_bits,
         },
@@ -218,7 +206,7 @@ pub fn verify<Value: IValue>(
 
     let column_log_sizes_by_trace = column_log_sizes_by_trace(context, config, component_log_sizes);
     let periodicity_sample_points_per_column =
-        column_periodicity_sample_points(context, config, &periodicity_sample_points_per_component);
+        column_periodicity_sample_points(config, &periodicity_sample_points_per_component);
 
     decommit_eval_domain_samples(
         context,
@@ -258,63 +246,102 @@ pub fn verify<Value: IValue>(
 /// where the sum is over all the components that use the relation.
 ///
 /// To avoid overflows when computing the sum, we check
-/// sum(uses_per_row * (floor(num_rows / DIV) + 1)) < floor(P / DIV)
+/// sum(uses_per_row * (floor(num_rows / DIV) + 1)) <= floor(P / DIV)
 /// where DIV = 2 ** RELATION_USES_NUM_ROWS_SHIFT
 fn check_relation_uses<Value: IValue>(
     context: &mut Context<impl IValue>,
     statement: &impl Statement<Value>,
     component_sizes_bits: &[Simd],
-) -> HashMap<&'static str, Var> {
+) -> HashMap<String, Var> {
     let components = statement.get_components();
 
-    // Check that sum(uses_per_row * (floor(num_rows / DIV) + 1)) cannot overflow even for the
-    // maximal num_rows (num_rows = P).
+    let component_size_upper_bound = 1u64 << component_sizes_bits.len();
+    let shifted_component_size_upper_bound =
+        (component_size_upper_bound >> RELATION_USES_NUM_ROWS_SHIFT) + 1;
+    let shifted_use_count_upper_bound = P >> 1;
+
+    // Check that sum(uses_per_row * (floor(num_rows / DIV) + 1)) < shifted_use_count_upper_bound
+    // even for the maximal num_rows (num_rows = component_size_upper_bound). This fact is used
+    // later in this function when comparing the sum to floor(P / DIV).
     // This is a sanity check that `RELATION_USES_NUM_ROWS_SHIFT` is large enough for the given
     // statement, it does not depend on the specific assignment.
     let mut max_shifted_uses_per_relation = HashMap::<&str, u64>::new();
-    for component in components.iter() {
+    for component in components.values() {
         for relation_use in component.relation_uses_per_row() {
             let entry = max_shifted_uses_per_relation.entry(relation_use.relation_id).or_insert(0);
-            *entry += relation_use.uses * (((P >> RELATION_USES_NUM_ROWS_SHIFT) + 1) as u64);
+            *entry = entry
+                .checked_add(relation_use.uses * shifted_component_size_upper_bound)
+                .expect("Shifted num rows upper bound computation overflowed");
         }
     }
-    assert!(max_shifted_uses_per_relation.values().all(|count| *count < (P as u64)));
+    assert!(
+        max_shifted_uses_per_relation
+            .values()
+            .all(|count| *count < shifted_use_count_upper_bound.into())
+    );
 
-    // Compute floor(num_rows / DIV) for all components
-    let shifted_component_sizes = match component_sizes_bits.get(RELATION_USES_NUM_ROWS_SHIFT..) {
-        Some(high_bits) => Simd::combine_bits(context, high_bits),
-        None => Simd::zero(context, components.len()),
+    // Compute floor(num_rows / DIV) + 1 for all components
+    let shifted_component_sizes_p1 = match component_sizes_bits.get(RELATION_USES_NUM_ROWS_SHIFT..)
+    {
+        Some(high_bits) => {
+            let one = Simd::one(context, components.len());
+            let shifted_component_sizes = Simd::combine_bits(context, high_bits);
+            Simd::add(context, &shifted_component_sizes, &one)
+        }
+        None => Simd::one(context, components.len()),
     };
     // A variable in the Simd vector might be unused in the case where all the corresponding
     // components don't use any relations.
-    Simd::mark_partly_used(context, &shifted_component_sizes);
+    Simd::mark_partly_used(context, &shifted_component_sizes_p1);
 
     // Sum uses_per_row * (floor(num_rows / DIV) + 1) for all relations
     let mut shifted_relation_uses = HashMap::new();
-    for (i, component) in components.iter().enumerate() {
+    for (i, component) in components.values().enumerate() {
         let relation_uses = component.relation_uses_per_row();
         if relation_uses.is_empty() {
             continue;
         }
-        let shifted_size = Simd::unpack_idx(context, &shifted_component_sizes, i);
+        let shifted_size_p1 = Simd::unpack_idx(context, &shifted_component_sizes_p1, i);
         for relation_use in relation_uses {
-            let entry =
-                shifted_relation_uses.entry(relation_use.relation_id).or_insert(context.zero());
-            let uses_per_row =
-                context.constant(TryInto::<u32>::try_into(relation_use.uses).unwrap().into());
-            *entry = eval!(context, (*entry) + (((shifted_size) + (1)) * (uses_per_row)));
+            let uses_per_row = context.constant(u32::try_from(relation_use.uses).unwrap().into());
+
+            let shifted_uses_upper_bound = eval!(context, (shifted_size_p1) * (uses_per_row));
+
+            shifted_relation_uses
+                .entry(relation_use.relation_id.to_string())
+                .and_modify(|entry| {
+                    *entry = eval!(context, (*entry) + (shifted_uses_upper_bound));
+                })
+                .or_insert(shifted_uses_upper_bound);
         }
     }
 
-    // Verify that the sum is less than floor(P / DIV) by expressing it as a
-    // floor(log2(P / DIV))-bit number
     let shifted_use_counts = shifted_relation_uses
         .iter()
         .sorted_by_key(|(k, _v)| *k)
         .map(|(_k, v)| M31Wrapper::new_unsafe(*v))
         .collect_vec();
     let shifted_use_counts = Simd::pack(context, &shifted_use_counts);
-    extract_bits(context, &shifted_use_counts, (P >> RELATION_USES_NUM_ROWS_SHIFT).ilog2());
+
+    // Verify that the sum is at most floor(P / DIV) by checking that floor(P / DIV) - sum is
+    // positive or zero.
+    let shifted_max_allowed_use_counts = P >> RELATION_USES_NUM_ROWS_SHIFT;
+    let shifted_max_allowed_use_counts_simd =
+        Simd::repeat(context, shifted_max_allowed_use_counts.into(), shifted_use_counts.len());
+    let diff = Simd::sub(context, &shifted_max_allowed_use_counts_simd, &shifted_use_counts);
+
+    // If the difference is positive, it will fit in this many bits.
+    let positive_diff_bits = shifted_max_allowed_use_counts.ilog2() + 1;
+
+    // Make sure that if the difference is negative, it won't fit in positive_diff_bits bits. Use
+    // the check that sum < shifted_use_count_upper_bound from above.
+    assert!(
+        P + shifted_max_allowed_use_counts - shifted_use_count_upper_bound
+            > (1 << positive_diff_bits)
+    );
+
+    // Verify that the diff fits in positive_diff_bits bits.
+    extract_bits(context, &diff, positive_diff_bits);
     shifted_relation_uses
 }
 
@@ -330,17 +357,11 @@ fn column_log_sizes_by_trace(
         Vec::with_capacity(config.n_interaction_columns),
     ];
 
-    for (n_trace_columns_in_component, n_interaction_columns_in_component, log_size) in izip!(
-        &config.trace_columns_per_component,
-        &config.interaction_columns_per_component,
-        Simd::unpack(context, &component_log_sizes)
-    ) {
-        if *n_trace_columns_in_component == 0 {
-            context.mark_as_unused(log_size);
-            continue;
-        }
-        column_log_sizes[0].extend(vec![log_size; *n_trace_columns_in_component]);
-        column_log_sizes[1].extend(vec![log_size; *n_interaction_columns_in_component]);
+    for (component_shape, log_size) in
+        izip!(&config.component_shapes, Simd::unpack(context, &component_log_sizes))
+    {
+        column_log_sizes[0].extend(vec![log_size; component_shape.trace_columns]);
+        column_log_sizes[1].extend(vec![log_size; component_shape.interaction_columns]);
     }
     column_log_sizes
 }
@@ -349,21 +370,33 @@ fn column_log_sizes_by_trace(
 /// for each column in the interaction trace.
 /// The periodicity sample points are the sample points used for the periodicity check.
 fn column_periodicity_sample_points(
-    context: &mut Context<impl IValue>,
     config: &ProofConfig,
     sample_points_per_component: &[CirclePoint<Var>],
 ) -> Vec<CirclePoint<Var>> {
     let mut periodicity_sample_points_per_column = Vec::with_capacity(config.n_interaction_columns);
-    for (n_interaction_columns_in_component, sample_point) in
-        izip!(&config.interaction_columns_per_component, sample_points_per_component)
+    for (component_shape, sample_point) in
+        izip!(&config.component_shapes, sample_points_per_component)
     {
-        if *n_interaction_columns_in_component == 0 {
-            context.mark_as_unused(sample_point.x);
-            context.mark_as_unused(sample_point.y);
-            continue;
-        }
         periodicity_sample_points_per_column
-            .extend(vec![sample_point; *n_interaction_columns_in_component]);
+            .extend(vec![sample_point; component_shape.interaction_columns]);
     }
     periodicity_sample_points_per_column
+}
+
+fn validate_and_compute_component_sizes(
+    context: &mut Context<impl IValue>,
+    component_log_sizes: &Simd,
+) -> Simd {
+    // Range check the component log sizes to 5 bits.
+    let component_log_size_bits = extract_bits(context, component_log_sizes, LOG_SIZE_BITS);
+    const _: () = assert!(LOG_SIZE_BITS == 5, "LOG_SIZE_BITS must be 5 to avoid overflows in pow2");
+    // Since LOG_SIZE_BITS is 5, and 2**31 - 1 = M31::P, we need to make sure that the log size the
+    // components are not 31.
+    let packed = component_log_sizes.get_packed();
+    let with_padding = Simd::from_packed(packed.to_vec(), packed.len() * SECURE_EXTENSION_DEGREE);
+    let thirty_one = Simd::repeat(context, M31::from(31), with_padding.len());
+    // Assert the all the log sizes (including the zero padding) minus 31 are non-zero (invertable).
+    Simd::sub(context, &with_padding, &thirty_one).inv(context);
+
+    Simd::pow2(context, &component_log_size_bits)
 }

@@ -1,12 +1,12 @@
 use crate::prover::prepare_circuit_proof_for_circuit_verifier;
 use crate::prover::{BaseColumnPool, CircuitProof, SimdBackend, prove_circuit_assignment};
-use circuit_air::CircuitInteractionElements;
-use circuit_air::lookup_sum;
+use circuit_air::circuit_claim::CircuitInteractionElements;
+use circuit_air::circuit_claim::lookup_sum;
 use circuit_air::statement::{INTERACTION_POW_BITS, all_circuit_components};
 use circuit_air::verify::{CircuitConfig, verify_circuit};
 use circuit_common::finalize::finalize_context;
 use circuit_common::preprocessed::PreprocessedCircuit;
-use circuits::blake::blake;
+use circuits::blake::{blake, m31_to_u32};
 use circuits::context::Var;
 use circuits::eval;
 use circuits::ivalue::{IValue, qm31_from_u32s};
@@ -76,14 +76,36 @@ pub fn build_blake_gate_context() -> Context<QM31> {
     context
 }
 
-#[test]
-fn test_prove_and_stark_verify_blake_gate_context() {
-    let mut blake_gate_context = build_blake_gate_context();
-    circuits::finalize_constants::finalize_constants(&mut blake_gate_context);
-    blake_gate_context.finalize_guessed_vars();
-    blake_gate_context.validate_circuit();
+pub fn build_m31_to_u32_context() -> Context<QM31> {
+    let mut context = Context::<QM31>::default();
 
-    let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut blake_gate_context);
+    let a = guess(&mut context, QM31::from(42));
+    let out_a = m31_to_u32(&mut context, a);
+    expect![[r#"
+        (42 + 0i) + (0 + 0i)u
+    "#]]
+    .assert_debug_eq(&context.get(out_a));
+
+    let b = guess(&mut context, QM31::from(100_000));
+    let out_b = m31_to_u32(&mut context, b);
+    expect![[r#"
+        (34464 + 1i) + (0 + 0i)u
+    "#]]
+    .assert_debug_eq(&context.get(out_b));
+
+    let c = guess(&mut context, QM31::from(2_000_042));
+    let out_c = m31_to_u32(&mut context, c);
+    expect![[r#"
+        (33962 + 30i) + (0 + 0i)u
+    "#]]
+    .assert_debug_eq(&context.get(out_c));
+
+    context
+}
+
+/// Verifies a [`CircuitProof`] using the stwo verifier. Asserts that the proof is valid
+/// and that the logup sum is zero.
+fn stwo_verify(circuit_proof: CircuitProof, preprocessed_circuit: &PreprocessedCircuit) {
     let CircuitProof {
         components,
         claim,
@@ -92,12 +114,7 @@ fn test_prove_and_stark_verify_blake_gate_context() {
         stark_proof,
         interaction_pow_nonce,
         channel_salt,
-    } = prove_circuit_assignment(
-        blake_gate_context.values(),
-        &preprocessed_circuit,
-        &BaseColumnPool::<SimdBackend>::new(),
-        PcsConfig::default(),
-    );
+    } = circuit_proof;
     assert!(stark_proof.is_ok(), "Got error: {}", stark_proof.err().unwrap());
     let proof = stark_proof.unwrap();
 
@@ -141,10 +158,27 @@ fn test_prove_and_stark_verify_blake_gate_context() {
             &interaction_claim,
             &interaction_elements,
             &preprocessed_circuit.params.output_addresses,
-            preprocessed_circuit.params.n_blake_gates
+            preprocessed_circuit.params.n_blake_gates,
         ),
         QM31::zero()
     );
+}
+
+#[test]
+fn test_prove_and_stark_verify_blake_gate_context() {
+    let mut blake_gate_context = build_blake_gate_context();
+    circuits::finalize_constants::finalize_constants(&mut blake_gate_context);
+    blake_gate_context.finalize_guessed_vars();
+    blake_gate_context.validate_circuit();
+
+    let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut blake_gate_context);
+    let circuit_proof = prove_circuit_assignment(
+        blake_gate_context.values(),
+        &preprocessed_circuit,
+        &BaseColumnPool::<SimdBackend>::new(),
+        PcsConfig::default(),
+    );
+    stwo_verify(circuit_proof, &preprocessed_circuit);
 }
 
 #[test]
@@ -155,64 +189,13 @@ fn test_prove_and_stark_verify_permutation_context() {
     permutation_context.validate_circuit();
 
     let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut permutation_context);
-    let CircuitProof {
-        pcs_config,
-        claim,
-        interaction_pow_nonce,
-        interaction_claim,
-        components,
-        stark_proof,
-        channel_salt,
-    } = prove_circuit_assignment(
+    let circuit_proof = prove_circuit_assignment(
         permutation_context.values(),
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
         PcsConfig::default(),
     );
-    assert!(stark_proof.is_ok());
-    let proof = stark_proof.unwrap();
-
-    // Verify.
-    let verifier_channel = &mut Blake2sM31Channel::default();
-    verifier_channel.mix_felts(&[channel_salt.into()]);
-    pcs_config.mix_into(verifier_channel);
-    let commitment_scheme =
-        &mut CommitmentSchemeVerifier::<Blake2sM31MerkleChannel>::new(pcs_config);
-
-    // Retrieve the expected column sizes in each commitment interaction, from the AIR.
-    let sizes = TreeVec::concat_cols(components.iter().map(|c| c.trace_log_degree_bounds()));
-
-    commitment_scheme.commit(
-        proof.proof.commitments[0],
-        &preprocessed_circuit.preprocessed_trace.log_sizes(),
-        verifier_channel,
-    );
-    claim.mix_into(verifier_channel);
-    commitment_scheme.commit(proof.proof.commitments[1], &sizes[1], verifier_channel);
-    verifier_channel.verify_pow_nonce(INTERACTION_POW_BITS, interaction_pow_nonce);
-    verifier_channel.mix_u64(interaction_pow_nonce);
-    let interaction_elements = CircuitInteractionElements::draw(verifier_channel);
-    interaction_claim.mix_into(verifier_channel);
-    commitment_scheme.commit(proof.proof.commitments[2], &sizes[2], verifier_channel);
-    stwo::core::verifier::verify_ex(
-        &components.iter().map(|c| c.as_ref()).collect::<Vec<&dyn Component>>(),
-        verifier_channel,
-        commitment_scheme,
-        proof.proof,
-        true,
-    )
-    .unwrap();
-
-    assert_eq!(
-        lookup_sum(
-            &claim,
-            &interaction_claim,
-            &interaction_elements,
-            &preprocessed_circuit.params.output_addresses,
-            preprocessed_circuit.params.n_blake_gates
-        ),
-        QM31::zero()
-    );
+    stwo_verify(circuit_proof, &preprocessed_circuit);
 }
 
 #[test]
@@ -223,68 +206,63 @@ fn test_prove_and_stark_verify_fibonacci_context() {
     fibonacci_context.validate_circuit();
 
     let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut fibonacci_context);
-    let CircuitProof {
-        pcs_config,
-        claim,
-        interaction_pow_nonce,
-        interaction_claim,
-        components,
-        stark_proof,
-        channel_salt,
-    } = prove_circuit_assignment(
+    let circuit_proof = prove_circuit_assignment(
         fibonacci_context.values(),
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
         PcsConfig::default(),
     );
-    assert!(stark_proof.is_ok());
-    let proof = stark_proof.unwrap();
+    stwo_verify(circuit_proof, &preprocessed_circuit);
+}
 
-    // Verify.
-    let verifier_channel = &mut Blake2sM31Channel::default();
-    verifier_channel.mix_felts(&[channel_salt.into()]);
-    pcs_config.mix_into(verifier_channel);
-    let commitment_scheme =
-        &mut CommitmentSchemeVerifier::<Blake2sM31MerkleChannel>::new(pcs_config);
+#[test]
+fn test_prove_and_stark_verify_m31_to_u32_context() {
+    let mut m31_to_u32_context = build_m31_to_u32_context();
+    circuits::finalize_constants::finalize_constants(&mut m31_to_u32_context);
+    m31_to_u32_context.finalize_guessed_vars();
+    m31_to_u32_context.validate_circuit();
 
-    // Retrieve the expected column sizes in each commitment interaction, from the AIR.
-    let sizes = TreeVec::concat_cols(components.iter().map(|c| c.trace_log_degree_bounds()));
-
-    commitment_scheme.commit(
-        proof.proof.commitments[0],
-        &preprocessed_circuit.preprocessed_trace.log_sizes(),
-        verifier_channel,
+    let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut m31_to_u32_context);
+    let circuit_proof = prove_circuit_assignment(
+        m31_to_u32_context.values(),
+        &preprocessed_circuit,
+        &BaseColumnPool::<SimdBackend>::new(),
+        PcsConfig::default(),
     );
-    claim.mix_into(verifier_channel);
-    commitment_scheme.commit(proof.proof.commitments[1], &sizes[1], verifier_channel);
-    verifier_channel.verify_pow_nonce(INTERACTION_POW_BITS, interaction_pow_nonce);
-    verifier_channel.mix_u64(interaction_pow_nonce);
-    let interaction_elements = CircuitInteractionElements::draw(verifier_channel);
-    interaction_claim.mix_into(verifier_channel);
-    commitment_scheme.commit(proof.proof.commitments[2], &sizes[2], verifier_channel);
-    stwo::core::verifier::verify_ex(
-        &components.iter().map(|c| c.as_ref()).collect::<Vec<&dyn Component>>(),
-        verifier_channel,
-        commitment_scheme,
-        proof.proof,
-        true,
-    )
-    .unwrap();
+    stwo_verify(circuit_proof, &preprocessed_circuit);
+}
 
-    assert_eq!(
-        lookup_sum(
-            &claim,
-            &interaction_claim,
-            &interaction_elements,
-            &preprocessed_circuit.params.output_addresses,
-            preprocessed_circuit.params.n_blake_gates
-        ),
-        QM31::zero()
+/// Verifies a [`CircuitProof`] using the circuit verifier. Requires the expected
+/// `preprocessed_root` of the preprocessed trace.
+fn circuit_verify(
+    circuit_proof: CircuitProof,
+    preprocessed_circuit: &PreprocessedCircuit,
+    preprocessed_root: [u32; 8],
+) {
+    let preprocessed_column_ids = preprocessed_circuit.preprocessed_trace.ids();
+    let all_components = all_circuit_components::<QM31>();
+    let enabled_bits: Vec<bool> = vec![true; all_components.len()];
+    let proof_config = ProofConfig::from_components(
+        &all_components,
+        enabled_bits,
+        preprocessed_column_ids.len(),
+        &circuit_proof.pcs_config,
+        INTERACTION_POW_BITS,
     );
+    let circuit_config = CircuitConfig {
+        config: circuit_proof.pcs_config,
+        output_addresses: preprocessed_circuit.params.output_addresses.clone(),
+        n_blake_gates: preprocessed_circuit.params.n_blake_gates,
+        preprocessed_column_ids,
+        preprocessed_root: preprocessed_root.into(),
+    };
+    let (proof, public_data) =
+        prepare_circuit_proof_for_circuit_verifier(circuit_proof, &proof_config);
+    verify_circuit(circuit_config, proof, public_data).unwrap();
 }
 
 const FIBONACCI_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
-    [1516680779, 1707131143, 546321957, 2052124516, 1923386778, 1095741350, 1500093873, 2067325542];
+    [235960222, 583831831, 1857802231, 175186271, 1455978461, 1840111781, 2031248533, 665256443];
 
 #[test]
 fn test_prove_and_circuit_verify_fibonacci_context() {
@@ -300,25 +278,27 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
         &BaseColumnPool::<SimdBackend>::new(),
         PcsConfig::default(),
     );
+    circuit_verify(circuit_proof, &preprocessed_circuit, FIBONACCI_CIRCUIT_PREPROCESSED_ROOT);
+}
 
-    let preprocessed_column_ids = preprocessed_circuit.preprocessed_trace.ids();
-    let proof_config = ProofConfig::from_components(
-        &all_circuit_components::<QM31>(),
-        preprocessed_column_ids.len(),
-        &circuit_proof.pcs_config,
-        INTERACTION_POW_BITS,
+const M31_TO_U32_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
+    [1227058420, 542830236, 519076156, 1534337654, 1998372142, 1519893818, 1404127894, 1141221737];
+
+#[test]
+fn test_prove_and_circuit_verify_m31_to_u32_context() {
+    let mut m31_to_u32_context = build_m31_to_u32_context();
+    circuits::finalize_constants::finalize_constants(&mut m31_to_u32_context);
+    m31_to_u32_context.finalize_guessed_vars();
+    m31_to_u32_context.validate_circuit();
+
+    let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut m31_to_u32_context);
+    let circuit_proof = prove_circuit_assignment(
+        m31_to_u32_context.values(),
+        &preprocessed_circuit,
+        &BaseColumnPool::<SimdBackend>::new(),
+        PcsConfig::default(),
     );
-    let preprocessed_root = FIBONACCI_CIRCUIT_PREPROCESSED_ROOT.into();
-    let circuit_config = CircuitConfig {
-        config: circuit_proof.pcs_config,
-        output_addresses: preprocessed_circuit.params.output_addresses.clone(),
-        n_blake_gates: preprocessed_circuit.params.n_blake_gates,
-        preprocessed_column_ids,
-        preprocessed_root,
-    };
-    let (proof, public_data) =
-        prepare_circuit_proof_for_circuit_verifier(circuit_proof, &proof_config);
-    verify_circuit(circuit_config, proof, public_data).unwrap();
+    circuit_verify(circuit_proof, &preprocessed_circuit, M31_TO_U32_CIRCUIT_PREPROCESSED_ROOT);
 }
 
 #[test]
