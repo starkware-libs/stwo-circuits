@@ -1,10 +1,10 @@
 pub use crate::witness::utils::pack_values;
-pub use circuit_air::blake2s_consts::{BLAKE2S_IV, blake2s_initial_state};
-pub use circuit_air::circuit_claim::ClaimedSum;
-pub use circuit_air::circuit_claim::ComponentLogSize;
-pub use circuit_air::relations;
 pub use circuit_common::Qm31OpsTraceGenerator;
 pub use circuit_common::preprocessed::PreProcessedTrace;
+pub use circuit_verifier::blake2s_consts::{BLAKE2S_IV, blake2s_initial_state};
+pub use circuit_verifier::circuit_claim::ClaimedSum;
+pub use circuit_verifier::circuit_claim::ComponentLogSize;
+pub use circuit_verifier::relations;
 pub use itertools::Itertools;
 pub use itertools::multizip;
 pub use num_traits::One;

@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 use std::simd::u32x16;
 
-use circuit_air::components::verify_bitwise_xor_12::{
+use crate::circuit_air::components::verify_bitwise_xor_12::{
     Claim, EXPAND_BITS, InteractionClaim, LIMB_BITS, LOG_SIZE, N_MULT_COLUMNS,
 };
 use itertools::{Itertools, chain};

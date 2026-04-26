@@ -1,11 +1,11 @@
 #![allow(unused_parens)]
 #![allow(clippy::too_many_arguments)]
+use crate::circuit_air::components::blake_gate::{InteractionClaim, N_TRACE_COLUMNS};
 use crate::witness::components::prelude::*;
 use crate::witness::components::{
     blake_message, blake_output, blake_round, range_check_15, range_check_16, triple_xor_32,
     verify_bitwise_xor_8,
 };
-use circuit_air::components::blake_gate::{InteractionClaim, N_TRACE_COLUMNS};
 use itertools::zip_eq;
 use stwo::core::fields::FieldExpOps;
 use stwo_cairo_prover::witness::prelude::EqExtend;

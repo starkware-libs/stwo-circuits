@@ -1,5 +1,5 @@
+use crate::circuit_air::components::eq::N_TRACE_COLUMNS;
 use crate::witness::components::prelude::*;
-use circuit_air::components::eq::N_TRACE_COLUMNS;
 
 pub type InputType = [M31; 4];
 pub type PackedInputType = [PackedM31; 4];

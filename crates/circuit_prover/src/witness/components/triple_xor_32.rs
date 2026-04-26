@@ -1,6 +1,6 @@
 #![allow(unused_parens)]
 #![allow(clippy::too_many_arguments)]
-use cairo_air::components::triple_xor_32::{Claim, InteractionClaim, N_TRACE_COLUMNS};
+use crate::circuit_air::components::triple_xor_32::{Claim, InteractionClaim, N_TRACE_COLUMNS};
 
 use crate::witness::components::prelude::*;
 use crate::witness::components::verify_bitwise_xor_8;
