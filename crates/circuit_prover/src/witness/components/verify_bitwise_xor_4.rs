@@ -1,5 +1,5 @@
 #![allow(unused_parens)]
-use circuit_air::components::verify_bitwise_xor_4::{
+use crate::circuit_air::components::verify_bitwise_xor_4::{
     Claim, InteractionClaim, LOG_SIZE, N_TRACE_COLUMNS,
 };
 

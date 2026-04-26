@@ -1,11 +1,11 @@
 use crate::prover::prepare_circuit_proof_for_circuit_verifier;
 use crate::prover::{BaseColumnPool, CircuitProof, SimdBackend, prove_circuit_assignment};
-use circuit_air::circuit_claim::CircuitInteractionElements;
-use circuit_air::circuit_claim::lookup_sum;
-use circuit_air::statement::{INTERACTION_POW_BITS, all_circuit_components};
-use circuit_air::verify::{CircuitConfig, verify_circuit};
 use circuit_common::finalize::finalize_context;
 use circuit_common::preprocessed::PreprocessedCircuit;
+use circuit_verifier::circuit_claim::CircuitInteractionElements;
+use circuit_verifier::circuit_claim::lookup_sum;
+use circuit_verifier::statement::{INTERACTION_POW_BITS, all_circuit_components};
+use circuit_verifier::verify::{CircuitConfig, verify_circuit};
 use circuits::blake::{blake, m31_to_u32};
 use circuits::context::Var;
 use circuits::eval;

@@ -17,11 +17,11 @@ use crate::witness::components::verify_bitwise_xor_7;
 use crate::witness::components::verify_bitwise_xor_8;
 use crate::witness::components::verify_bitwise_xor_9;
 use crate::witness::components::verify_bitwise_xor_12;
-use circuit_air::circuit_claim::CircuitClaim;
-use circuit_air::circuit_claim::CircuitInteractionClaim;
-use circuit_air::circuit_claim::CircuitInteractionElements;
 use circuit_common::Qm31OpsTraceGenerator;
 use circuit_common::preprocessed::PreProcessedTrace;
+use circuit_verifier::circuit_claim::CircuitClaim;
+use circuit_verifier::circuit_claim::CircuitInteractionClaim;
+use circuit_verifier::circuit_claim::CircuitInteractionElements;
 use itertools::Itertools;
 use num_traits::Zero;
 use rayon::scope;
@@ -390,18 +390,18 @@ pub fn write_trace(
                 qm31_ops_log_size,
                 blake_gate_interaction_claim_gen.log_size,
                 blake_round_log_size.log_size,
-                circuit_air::components::blake_round_sigma::LOG_SIZE,
+                crate::circuit_air::components::blake_round_sigma::LOG_SIZE,
                 blake_g_claim.log_size,
                 blake_output_claim.log_size,
                 triple_xor_32_claim.log_size,
                 m_31_to_u_32_claim.log_size,
-                circuit_air::components::verify_bitwise_xor_8::LOG_SIZE,
-                circuit_air::components::verify_bitwise_xor_12::LOG_SIZE,
-                circuit_air::components::verify_bitwise_xor_4::LOG_SIZE,
-                circuit_air::components::verify_bitwise_xor_7::LOG_SIZE,
-                circuit_air::components::verify_bitwise_xor_9::LOG_SIZE,
-                circuit_air::components::range_check_15::LOG_SIZE,
-                circuit_air::components::range_check_16::LOG_SIZE,
+                crate::circuit_air::components::verify_bitwise_xor_8::LOG_SIZE,
+                crate::circuit_air::components::verify_bitwise_xor_12::LOG_SIZE,
+                crate::circuit_air::components::verify_bitwise_xor_4::LOG_SIZE,
+                crate::circuit_air::components::verify_bitwise_xor_7::LOG_SIZE,
+                crate::circuit_air::components::verify_bitwise_xor_9::LOG_SIZE,
+                crate::circuit_air::components::range_check_15::LOG_SIZE,
+                crate::circuit_air::components::range_check_16::LOG_SIZE,
             ],
             output_values,
         },
