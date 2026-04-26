@@ -1,6 +1,6 @@
 #![allow(unused_parens)]
 #![allow(dead_code)]
-use circuit_air::components::blake_output::{Claim, InteractionClaim, N_TRACE_COLUMNS};
+use crate::circuit_air::components::blake_output::{Claim, InteractionClaim, N_TRACE_COLUMNS};
 
 use crate::witness::components::prelude::*;
 

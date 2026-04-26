@@ -1268,32 +1268,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
 
 [[package]]
-name = "circuit-air"
-version = "0.1.0"
-dependencies = [
- "circuits",
- "circuits-stark-verifier",
- "expect-test",
- "indexmap",
- "indoc",
- "itertools 0.12.1",
- "num-traits",
- "rstest",
- "serde",
- "stwo",
- "stwo-cairo-common",
- "stwo-constraint-framework",
-]
-
-[[package]]
-name = "circuit-cairo-air"
+name = "circuit-cairo-verifier"
 version = "0.1.0"
 dependencies = [
  "cairo-air",
  "cairo-vm",
- "circuit-air",
  "circuit-common",
  "circuit-prover",
+ "circuit-verifier",
  "circuits",
  "circuits-stark-verifier",
  "indexmap",
@@ -1325,15 +1307,15 @@ dependencies = [
 name = "circuit-prover"
 version = "0.1.0"
 dependencies = [
- "cairo-air",
- "circuit-air",
  "circuit-common",
+ "circuit-verifier",
  "circuits",
  "circuits-stark-verifier",
  "expect-test",
  "itertools 0.12.1",
  "num-traits",
  "rayon",
+ "serde",
  "stwo",
  "stwo-air-utils",
  "stwo-air-utils-derive",
@@ -1353,6 +1335,22 @@ dependencies = [
  "indoc",
  "rstest",
  "stwo",
+]
+
+[[package]]
+name = "circuit-verifier"
+version = "0.1.0"
+dependencies = [
+ "circuits",
+ "circuits-stark-verifier",
+ "expect-test",
+ "indexmap",
+ "indoc",
+ "itertools 0.12.1",
+ "num-traits",
+ "rstest",
+ "stwo",
+ "stwo-constraint-framework",
 ]
 
 [[package]]

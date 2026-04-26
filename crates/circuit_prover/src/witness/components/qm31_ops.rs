@@ -1,8 +1,8 @@
 use num_traits::Zero;
 use rayon::slice::{ParallelSlice, ParallelSliceMut};
 
+use crate::circuit_air::components::qm31_ops::N_TRACE_COLUMNS;
 use crate::witness::components::prelude::*;
-use circuit_air::components::qm31_ops::N_TRACE_COLUMNS;
 
 pub type InputType = [[M31; 4]; 3];
 pub type PackedInputType = [[PackedM31; 4]; 3];
