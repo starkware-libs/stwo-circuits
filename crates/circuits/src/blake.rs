@@ -1,12 +1,15 @@
 use blake2::{Blake2s256, Digest};
 use itertools::Itertools;
+use stwo::core::fields::m31::M31;
 use stwo::core::vcs::blake2_hash::Blake2sHash;
 use stwo::core::{fields::qm31::QM31, vcs::blake2_hash::reduce_to_m31};
 
 use crate::circuit::{Blake, BlakeGGate, M31ToU32, TripleXor};
 use crate::context::{Context, Var};
+use crate::eval;
 use crate::ivalue::{IValue, qm31_from_u32s};
-use crate::ops::Guess;
+use crate::ops::{Guess, from_partial_evals};
+use crate::simd::Simd;
 
 #[cfg(test)]
 #[path = "blake_test.rs"]
@@ -125,6 +128,150 @@ pub fn blake<Value: IValue>(
     });
 
     HashValue(out_var0, out_var1)
+}
+
+/// Blake2s IV.
+const BLAKE2S_IV: [u32; 8] = [
+    0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19,
+];
+
+/// Message permutations for Blake2s (10 rounds × 16 indices).
+const BLAKE_SIGMA: [[u8; 16]; 10] = [
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15],
+    [14, 10, 4, 8, 9, 15, 13, 6, 1, 12, 0, 2, 11, 7, 5, 3],
+    [11, 8, 12, 0, 5, 2, 15, 13, 10, 14, 3, 6, 7, 1, 9, 4],
+    [7, 9, 3, 1, 13, 12, 11, 14, 2, 6, 5, 10, 4, 0, 15, 8],
+    [9, 0, 5, 7, 2, 4, 10, 15, 14, 1, 11, 12, 6, 8, 3, 13],
+    [2, 12, 6, 10, 0, 11, 8, 3, 4, 13, 7, 5, 15, 14, 1, 9],
+    [12, 5, 1, 15, 14, 13, 4, 10, 0, 7, 6, 3, 9, 2, 8, 11],
+    [13, 11, 7, 14, 12, 1, 3, 9, 5, 0, 15, 4, 8, 6, 2, 10],
+    [6, 15, 14, 9, 11, 3, 0, 8, 12, 2, 13, 7, 1, 4, 10, 5],
+    [10, 2, 8, 4, 7, 6, 1, 5, 15, 11, 9, 14, 3, 12, 13, 0],
+];
+
+/// Column indices of the states send to the `G` in each Blake2s round.
+const G_STATE_INDICES: [(usize, usize, usize, usize); 8] = [
+    (0, 4, 8, 12),
+    (1, 5, 9, 13),
+    (2, 6, 10, 14),
+    (3, 7, 11, 15),
+    (0, 5, 10, 15),
+    (1, 6, 11, 12),
+    (2, 7, 8, 13),
+    (3, 4, 9, 14),
+];
+
+const N_G_CALLS_PER_ROUND: usize = 8;
+
+#[inline]
+fn u32_packed_constant<Value: IValue>(ctx: &mut Context<Value>, x: u32) -> Var {
+    ctx.constant(qm31_from_u32s(x & 0xffff, x >> 16, 0, 0))
+}
+
+/// Adds a Blake2s hash using decomposed gates (`m31_to_u32`, `blake_g_gate`, `triple_xor`) to the
+/// circuit, and returns the two output variables as [`HashValue`].
+///
+/// NOTE: If the number of bytes is not a multiple of 16, the caller must make sure that the
+/// remaining bytes are zero.
+/// For example, if `n_bytes` is 4, only the first coordinate of the [`QM31`] may be non-zero.
+/// If `n_bytes` is 1, that coordinate must be < 256.
+pub fn blake_from_gates<Value: IValue>(
+    ctx: &mut Context<Value>,
+    input: &[Var],
+    n_bytes: usize,
+) -> HashValue<Var> {
+    // Sanity check: check the number of bytes is consistent with the number of [QM31] values.
+    assert_eq!(input.len(), n_bytes.div_ceil(16));
+
+    const BLOCK_BYTES: usize = 64;
+    const WORDS_PER_BLOCK: usize = 16;
+
+    // Unpack each QM31 message chunk into four u32 limbs.
+    let mut message_u32s: Vec<Var> = Vec::new();
+    for &var in input {
+        let simd = Simd::from_packed(vec![var], 4);
+        for coord in 0..4 {
+            let comp = Simd::unpack_idx(ctx, &simd, coord);
+            message_u32s.push(m31_to_u32(ctx, comp));
+        }
+    }
+
+    let n_blocks = std::cmp::max(1, n_bytes.div_ceil(BLOCK_BYTES));
+    let total_words = n_blocks * WORDS_PER_BLOCK;
+    let zero_u32 = u32_packed_constant(ctx, 0);
+    while message_u32s.len() < total_words {
+        message_u32s.push(zero_u32);
+    }
+
+    // `h`: IV XORed with the parameter block (depth 1, fanout 1, digest length 32, key length 0).
+    let mut h: [Var; 8] = std::array::from_fn(|i| {
+        let iv_val = if i == 0 { BLAKE2S_IV[0] ^ 0x01010020 } else { BLAKE2S_IV[i] };
+        u32_packed_constant(ctx, iv_val)
+    });
+
+    for block_idx in 0..n_blocks {
+        let block: [Var; WORDS_PER_BLOCK] =
+            std::array::from_fn(|i| message_u32s[block_idx * WORDS_PER_BLOCK + i]);
+        let t0 = std::cmp::min(n_bytes, (block_idx + 1) * BLOCK_BYTES) as u32;
+        let t1 = 0u32;
+        let last = block_idx == n_blocks - 1;
+
+        let prev_h = h;
+
+        let mut v: [Var; 16] = std::array::from_fn(|i| {
+            if i < 8 {
+                h[i]
+            } else {
+                let mut iv = BLAKE2S_IV[i - 8];
+                if i == 12 {
+                    iv ^= t0;
+                }
+                if i == 13 {
+                    iv ^= t1;
+                }
+                if i == 14 && last {
+                    iv ^= 0xFFFF_FFFF;
+                }
+                u32_packed_constant(ctx, iv)
+            }
+        });
+
+        for permutation in &BLAKE_SIGMA {
+            for g_idx in 0..N_G_CALLS_PER_ROUND {
+                let (ai, bi, ci, di) = G_STATE_INDICES[g_idx];
+                let (new_a, new_b, new_c, new_d) = blake_g_gate(
+                    ctx,
+                    v[ai],
+                    v[bi],
+                    v[ci],
+                    v[di],
+                    block[permutation[g_idx * 2] as usize],
+                    block[permutation[g_idx * 2 + 1] as usize],
+                );
+                v[ai] = new_a;
+                v[bi] = new_b;
+                v[ci] = new_c;
+                v[di] = new_d;
+            }
+        }
+
+        for i in 0..8 {
+            h[i] = triple_xor(ctx, prev_h[i], v[i], v[i + 8]);
+        }
+    }
+
+    let c_2_pow_16 = ctx.constant(M31::from(1u32 << 16).into());
+    let reduced: [Var; 8] = std::array::from_fn(|i| {
+        let h_simd = Simd::from_packed(vec![h[i]], 2);
+        let low = Simd::unpack_idx(ctx, &h_simd, 0);
+        let high = Simd::unpack_idx(ctx, &h_simd, 1);
+        eval!(ctx, (low) + ((high) * (c_2_pow_16)))
+    });
+
+    let out0 = from_partial_evals(ctx, [reduced[0], reduced[1], reduced[2], reduced[3]]);
+    let out1 = from_partial_evals(ctx, [reduced[4], reduced[5], reduced[6], reduced[7]]);
+
+    HashValue(out0, out1)
 }
 
 /// Adds a TripleXor gate to the circuit: XOR three u32 values encoded as QM31 `(u16, u16, 0, 0)`
