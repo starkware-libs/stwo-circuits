@@ -79,15 +79,15 @@ SECURITY-ESCALATION:
 
 ### Math Reviewer Must Review
 
-- `crates/circuit_air/src/components/` — Circuit constraint definitions
-- `crates/circuit_air/src/circuit_eval_components/` — Constraint evaluators
+- `crates/circuit_prover/src/circuit_air/components/` — Circuit constraint definitions
+- `crates/circuit_verifier/src/components/` — Constraint evaluators
 - `crates/circuit_prover/src/prover.rs` — Core proving logic
 - `crates/circuit_prover/src/witness/` — Witness and interaction trace generation
 - `crates/stark_verifier/src/fri.rs` — FRI protocol verification
 - `crates/stark_verifier/src/oods.rs` — Out-of-domain sampling
 - `crates/stark_verifier/src/merkle.rs` — Merkle commitment verification
 - `crates/stark_verifier/src/statement.rs` — Statement verification trait
-- `crates/cairo_air/src/verify.rs` — Cairo AIR verification entry point
+- `crates/cairo_verifier/src/verify.rs` — Cairo AIR verification entry point
 
 ### Implementer Can Modify Autonomously
 

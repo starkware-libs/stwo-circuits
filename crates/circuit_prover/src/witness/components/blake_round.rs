@@ -1,6 +1,6 @@
 #![allow(unused_parens)]
 #![allow(clippy::too_many_arguments)]
-use circuit_air::components::blake_round::{Claim, InteractionClaim, N_TRACE_COLUMNS};
+use crate::circuit_air::components::blake_round::{Claim, InteractionClaim, N_TRACE_COLUMNS};
 
 use crate::witness::components::prelude::*;
 use crate::witness::components::{blake_g, blake_message, blake_round_sigma};
