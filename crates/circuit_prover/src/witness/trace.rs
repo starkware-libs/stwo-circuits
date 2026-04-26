@@ -25,9 +25,10 @@ use circuit_common::preprocessed::PreProcessedTrace;
 use itertools::Itertools;
 use num_traits::Zero;
 use rayon::scope;
+use stwo::core::channel::MerkleChannel;
 use stwo::core::fields::qm31::QM31;
-use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::prover::TreeBuilder;
+use stwo::prover::backend::BackendForChannel;
 use stwo::prover::backend::simd::SimdBackend;
 use stwo::prover::poly::circle::PolyOps;
 use stwo::prover::poly::twiddles::TwiddleTree;
@@ -36,14 +37,17 @@ pub struct TraceGenerator {
     pub qm31_ops_trace_generator: Qm31OpsTraceGenerator,
 }
 
-pub fn write_trace(
+pub fn write_trace<MC: MerkleChannel>(
     context_values: &[QM31],
     preprocessed_trace: Arc<PreProcessedTrace>,
     output_addresses: &[usize],
-    tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, Blake2sM31MerkleChannel>,
+    tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, MC>,
     trace_generator: &TraceGenerator,
     twiddles: &TwiddleTree<SimdBackend>,
-) -> (CircuitClaim, CircuitInteractionClaimGenerator) {
+) -> (CircuitClaim, CircuitInteractionClaimGenerator)
+where
+    SimdBackend: BackendForChannel<MC>,
+{
     let preprocessed_trace_ref = preprocessed_trace.as_ref();
 
     // Parent scope: eq/qm31_ops traces run as spawns alongside everything else.
@@ -445,13 +449,16 @@ pub struct CircuitInteractionClaimGenerator {
     pub range_check_16: range_check_16::InteractionClaimGenerator,
 }
 
-pub fn write_interaction_trace(
+pub fn write_interaction_trace<MC: MerkleChannel>(
     circuit_claim: &CircuitClaim,
     circuit_interaction_claim_generator: CircuitInteractionClaimGenerator,
-    tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, Blake2sM31MerkleChannel>,
+    tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, MC>,
     interaction_elements: &CircuitInteractionElements,
     twiddles: &TwiddleTree<SimdBackend>,
-) -> CircuitInteractionClaim {
+) -> CircuitInteractionClaim
+where
+    SimdBackend: BackendForChannel<MC>,
+{
     let CircuitClaim { log_sizes, output_values: _ } = circuit_claim;
     let mut component_log_size_iter = log_sizes.iter();
 

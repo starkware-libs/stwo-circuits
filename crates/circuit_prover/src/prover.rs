@@ -18,8 +18,7 @@ use circuits_stark_verifier::proof_from_stark_proof::{
 use itertools::chain;
 use num_traits::Zero;
 use stwo::core::air::Component;
-use stwo::core::channel::Blake2sM31Channel;
-use stwo::core::channel::Channel;
+use stwo::core::channel::{Channel, MerkleChannel};
 use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::PcsConfig;
 use stwo::core::poly::circle::CanonicCoset;
@@ -28,6 +27,7 @@ use stwo::core::proof_of_work::GrindOps;
 use stwo::core::utils::MaybeOwned;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
+use stwo::core::vcs_lifted::merkle_hasher::MerkleHasherLifted;
 use stwo::prover::CommitmentSchemeProver;
 use stwo::prover::CommitmentTreeProver;
 use stwo::prover::ComponentProver;
@@ -39,13 +39,13 @@ use stwo::prover::{ProvingError, prove_ex};
 
 const COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND: u32 = 1;
 
-pub struct CircuitProof {
+pub struct CircuitProof<H: MerkleHasherLifted = Blake2sM31MerkleHasher> {
     pub pcs_config: PcsConfig,
     pub claim: CircuitClaim,
     pub interaction_pow_nonce: u64,
     pub interaction_claim: CircuitInteractionClaim,
     pub components: Vec<Box<dyn Component>>,
-    pub stark_proof: Result<ExtendedStarkProof<Blake2sM31MerkleHasher>, ProvingError>,
+    pub stark_proof: Result<ExtendedStarkProof<H>, ProvingError>,
     pub channel_salt: u32,
 }
 
@@ -83,6 +83,24 @@ pub fn prove_circuit_assignment(
     base_column_pool: &BaseColumnPool<SimdBackend>,
     pcs_config: PcsConfig,
 ) -> CircuitProof {
+    prove_circuit_assignment_with_channel::<Blake2sM31MerkleChannel>(
+        values,
+        preprocessed_circuit,
+        base_column_pool,
+        pcs_config,
+    )
+}
+
+pub fn prove_circuit_assignment_with_channel<MC>(
+    values: &[QM31],
+    preprocessed_circuit: &PreprocessedCircuit,
+    base_column_pool: &BaseColumnPool<SimdBackend>,
+    pcs_config: PcsConfig,
+) -> CircuitProof<MC::H>
+where
+    MC: MerkleChannel,
+    SimdBackend: stwo::prover::backend::BackendForChannel<MC>,
+{
     let trace_log_size = preprocessed_circuit.params.trace_log_size;
     let lifting_log_size = trace_log_size + pcs_config.fri_config.log_blowup_factor;
     let pcs_config = PcsConfig { lifting_log_size: Some(lifting_log_size), ..pcs_config };
@@ -106,7 +124,7 @@ pub fn prove_circuit_assignment(
     let preprocessed_trace_polys = SimdBackend::interpolate_columns(preprocessed_trace, &twiddles);
 
     let store_polynomials_coefficients = true;
-    let preprocessed_tree = CommitmentTreeProver::<SimdBackend, Blake2sM31MerkleChannel>::new(
+    let preprocessed_tree = CommitmentTreeProver::<SimdBackend, MC>::new(
         preprocessed_trace_polys,
         pcs_config.fri_config.log_blowup_factor,
         &twiddles,
@@ -115,7 +133,7 @@ pub fn prove_circuit_assignment(
         base_column_pool,
     );
 
-    prove_circuit_with_precompute(
+    prove_circuit_with_precompute::<MC>(
         base_column_pool,
         &twiddles,
         preprocessed_circuit,
@@ -125,14 +143,18 @@ pub fn prove_circuit_assignment(
     )
 }
 
-pub fn prove_circuit_with_precompute<'a>(
+pub fn prove_circuit_with_precompute<'a, MC>(
     base_column_pool: &BaseColumnPool<SimdBackend>,
     twiddles: &TwiddleTree<SimdBackend>,
     preprocessed_circuit: &PreprocessedCircuit,
-    preprocessed_tree: MaybeOwned<'a, CommitmentTreeProver<SimdBackend, Blake2sM31MerkleChannel>>,
+    preprocessed_tree: MaybeOwned<'a, CommitmentTreeProver<SimdBackend, MC>>,
     values: &[QM31],
     pcs_config: PcsConfig,
-) -> CircuitProof {
+) -> CircuitProof<MC::H>
+where
+    MC: MerkleChannel,
+    SimdBackend: stwo::prover::backend::BackendForChannel<MC>,
+{
     let PreprocessedCircuit { preprocessed_trace, params } = preprocessed_circuit;
     let CircuitParams { first_permutation_row, n_blake_gates, output_addresses, .. } = params;
     let trace_generator = TraceGenerator {
@@ -142,18 +164,17 @@ pub fn prove_circuit_with_precompute<'a>(
     };
 
     // Setup protocol.
-    let channel = &mut Blake2sM31Channel::default();
+    let channel = &mut MC::C::default();
 
     // Mix channel salt. Note that we first reduce it modulo `M31::P`, then cast it as QM31.
     let channel_salt = 0_u32;
     channel.mix_felts(&[channel_salt.into()]);
     pcs_config.mix_into(channel);
-    let mut commitment_scheme =
-        CommitmentSchemeProver::<SimdBackend, Blake2sM31MerkleChannel>::with_memory_pool(
-            pcs_config,
-            twiddles,
-            base_column_pool,
-        );
+    let mut commitment_scheme = CommitmentSchemeProver::<SimdBackend, MC>::with_memory_pool(
+        pcs_config,
+        twiddles,
+        base_column_pool,
+    );
 
     commitment_scheme.set_store_polynomials_coefficients();
 
