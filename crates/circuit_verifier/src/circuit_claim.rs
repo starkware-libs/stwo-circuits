@@ -1,3 +1,5 @@
+use std::iter::repeat_n;
+
 use crate::blake2s_consts::blake2s_initial_state;
 use crate::circuit_components::N_COMPONENTS;
 use crate::relations::{BLAKE_STATE_RELATION_ID, CommonLookupElements, GATE_RELATION_ID};
@@ -39,13 +41,136 @@ impl CircuitClaim {
     /// in the order the prover commits columns. Each component contributes its
     /// `log_size` repeated by its number of trace and interaction columns respectively.
     pub fn column_log_sizes_per_tree(&self) -> [Vec<u32>; 2] {
-        let components = all_circuit_components::<NoValue>();
+        let Self {
+            log_sizes:
+                [
+                    eq_log_size,
+                    qm31_ops_log_size,
+                    blake_gate_log_size,
+                    blake_round_log_size,
+                    blake_round_sigma_log_size,
+                    blake_g_log_size,
+                    blake_output_log_size,
+                    triple_xor_32_log_size,
+                    m_31_to_u_32_log_size,
+                    verify_bitwise_xor_8_log_size,
+                    verify_bitwise_xor_12_log_size,
+                    verify_bitwise_xor_4_log_size,
+                    verify_bitwise_xor_7_log_size,
+                    verify_bitwise_xor_9_log_size,
+                    range_check_15_log_size,
+                    range_check_16_log_size,
+                ],
+            ..
+        } = self;
+        let components: Vec<_> = all_circuit_components::<NoValue>().into_values().collect();
+        let Ok(
+            [
+                eq_component,
+                qm31_ops_component,
+                blake_gate_component,
+                blake_round_component,
+                blake_round_sigma_component,
+                blake_g_component,
+                blake_output_component,
+                triple_xor_32_component,
+                m_31_to_u_32_component,
+                verify_bitwise_xor_8_component,
+                verify_bitwise_xor_12_component,
+                verify_bitwise_xor_4_component,
+                verify_bitwise_xor_7_component,
+                verify_bitwise_xor_9_component,
+                range_check_15_component,
+                range_check_16_component,
+            ],
+        ): Result<[_; N_COMPONENTS], _> = components.try_into()
+        else {
+            panic!("Failed to convert components to array");
+        };
+
         let mut trace = Vec::new();
         let mut interaction = Vec::new();
-        for (log_size, (_, component)) in zip_eq(self.log_sizes.iter(), components.iter()) {
-            trace.extend(std::iter::repeat_n(*log_size, component.trace_columns()));
-            interaction.extend(std::iter::repeat_n(*log_size, component.interaction_columns()));
-        }
+        trace.extend(repeat_n(*eq_log_size, eq_component.trace_columns()));
+        interaction.extend(repeat_n(*eq_log_size, eq_component.interaction_columns()));
+        trace.extend(repeat_n(*qm31_ops_log_size, qm31_ops_component.trace_columns()));
+        interaction.extend(repeat_n(*qm31_ops_log_size, qm31_ops_component.interaction_columns()));
+        trace.extend(repeat_n(*blake_gate_log_size, blake_gate_component.trace_columns()));
+        interaction
+            .extend(repeat_n(*blake_gate_log_size, blake_gate_component.interaction_columns()));
+        trace.extend(repeat_n(*blake_round_log_size, blake_round_component.trace_columns()));
+        interaction
+            .extend(repeat_n(*blake_round_log_size, blake_round_component.interaction_columns()));
+        trace.extend(repeat_n(
+            *blake_round_sigma_log_size,
+            blake_round_sigma_component.trace_columns(),
+        ));
+        interaction.extend(repeat_n(
+            *blake_round_sigma_log_size,
+            blake_round_sigma_component.interaction_columns(),
+        ));
+        trace.extend(repeat_n(*blake_g_log_size, blake_g_component.trace_columns()));
+        interaction.extend(repeat_n(*blake_g_log_size, blake_g_component.interaction_columns()));
+        trace.extend(repeat_n(*blake_output_log_size, blake_output_component.trace_columns()));
+        interaction
+            .extend(repeat_n(*blake_output_log_size, blake_output_component.interaction_columns()));
+        trace.extend(repeat_n(*triple_xor_32_log_size, triple_xor_32_component.trace_columns()));
+        interaction.extend(repeat_n(
+            *triple_xor_32_log_size,
+            triple_xor_32_component.interaction_columns(),
+        ));
+        trace.extend(repeat_n(*m_31_to_u_32_log_size, m_31_to_u_32_component.trace_columns()));
+        interaction
+            .extend(repeat_n(*m_31_to_u_32_log_size, m_31_to_u_32_component.interaction_columns()));
+        trace.extend(repeat_n(
+            *verify_bitwise_xor_8_log_size,
+            verify_bitwise_xor_8_component.trace_columns(),
+        ));
+        interaction.extend(repeat_n(
+            *verify_bitwise_xor_8_log_size,
+            verify_bitwise_xor_8_component.interaction_columns(),
+        ));
+        trace.extend(repeat_n(
+            *verify_bitwise_xor_12_log_size,
+            verify_bitwise_xor_12_component.trace_columns(),
+        ));
+        interaction.extend(repeat_n(
+            *verify_bitwise_xor_12_log_size,
+            verify_bitwise_xor_12_component.interaction_columns(),
+        ));
+        trace.extend(repeat_n(
+            *verify_bitwise_xor_4_log_size,
+            verify_bitwise_xor_4_component.trace_columns(),
+        ));
+        interaction.extend(repeat_n(
+            *verify_bitwise_xor_4_log_size,
+            verify_bitwise_xor_4_component.interaction_columns(),
+        ));
+        trace.extend(repeat_n(
+            *verify_bitwise_xor_7_log_size,
+            verify_bitwise_xor_7_component.trace_columns(),
+        ));
+        interaction.extend(repeat_n(
+            *verify_bitwise_xor_7_log_size,
+            verify_bitwise_xor_7_component.interaction_columns(),
+        ));
+        trace.extend(repeat_n(
+            *verify_bitwise_xor_9_log_size,
+            verify_bitwise_xor_9_component.trace_columns(),
+        ));
+        interaction.extend(repeat_n(
+            *verify_bitwise_xor_9_log_size,
+            verify_bitwise_xor_9_component.interaction_columns(),
+        ));
+        trace.extend(repeat_n(*range_check_15_log_size, range_check_15_component.trace_columns()));
+        interaction.extend(repeat_n(
+            *range_check_15_log_size,
+            range_check_15_component.interaction_columns(),
+        ));
+        trace.extend(repeat_n(*range_check_16_log_size, range_check_16_component.trace_columns()));
+        interaction.extend(repeat_n(
+            *range_check_16_log_size,
+            range_check_16_component.interaction_columns(),
+        ));
         [trace, interaction]
     }
 }
