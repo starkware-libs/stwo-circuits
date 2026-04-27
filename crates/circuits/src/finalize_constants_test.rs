@@ -56,3 +56,39 @@ fn test_plus_one_chain_topology() {
     context.circuit.check_yields();
     context.validate_circuit();
 }
+
+#[test]
+fn test_large_m31_decomposition() {
+    let mut context = TraceContext::default();
+    // Add `u`.
+    // TODO(Leo): remove this once `u` is added to the default constants.
+    context.constant(qm31_from_u32s(0, 0, 1, 0));
+    // 37 = (1*5 + 2)*5 + 2 in base `min_base = 5`, so it needs full base decomposition.
+    context.constant(M31::from(37u32).into());
+    finalize_constants_with_min_base(&mut context, 5);
+
+    // The plus-one chain is [5],...,[8] (= 2, ..., 5).
+    expect![[r#"
+        [0] = [0] + [0]
+        [2] = [2] + [0]
+        [1] = [1] + [0]
+        [5] = [1] + [1]
+        [6] = [5] + [1]
+        [7] = [6] + [1]
+        [8] = [7] + [1]
+        [9] = [8] + [5]
+        [3] = [10] + [5]
+        [4] = [2] * [1]
+        [10] = [9] * [8]
+        [4] = [2]
+        output [2]
+    "#]]
+    .assert_eq(&format!("{:?}", context.circuit));
+
+    // Decomposition intermediates carry the values they represent.
+    assert_eq!(context.get(Var { idx: 9 }), M31::from(7u32).into());
+    assert_eq!(context.get(Var { idx: 10 }), M31::from(35u32).into());
+    assert_eq!(context.get(Var { idx: 3 }), M31::from(37u32).into());
+    context.circuit.check_yields();
+    context.validate_circuit();
+}
