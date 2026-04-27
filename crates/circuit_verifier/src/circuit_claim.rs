@@ -1,3 +1,5 @@
+use std::iter::repeat_n;
+
 use crate::blake2s_consts::blake2s_initial_state;
 use crate::circuit_components::N_COMPONENTS;
 use crate::relations::{BLAKE_STATE_RELATION_ID, CommonLookupElements, GATE_RELATION_ID};
@@ -42,9 +44,9 @@ impl CircuitClaim {
         let components = all_circuit_components::<NoValue>();
         let mut trace = Vec::new();
         let mut interaction = Vec::new();
-        for (log_size, (_, component)) in zip_eq(self.log_sizes.iter(), components.iter()) {
-            trace.extend(std::iter::repeat_n(*log_size, component.trace_columns()));
-            interaction.extend(std::iter::repeat_n(*log_size, component.interaction_columns()));
+        for (&log_size, (_, component)) in zip_eq(self.log_sizes.iter(), components.iter()) {
+            trace.extend(repeat_n(log_size, component.trace_columns()));
+            interaction.extend(repeat_n(log_size, component.interaction_columns()));
         }
         [trace, interaction]
     }
