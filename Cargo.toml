@@ -3,6 +3,7 @@ members = [
     "crates/cairo_air",
     "crates/circuits",
     "crates/circuit_air",
+    "crates/circuit_cairo_serialize",
     "crates/circuit_common",
     "crates/circuit_serialize",
     "crates/circuit_prover",
@@ -48,6 +49,8 @@ stwo_cairo_prover = { package = "stwo-cairo-prover", git = "https://github.com/s
 stwo_cairo_common = { package = "stwo-cairo-common", git = "https://github.com/starkware-libs/stwo-cairo", rev = "0a5e70b7" }
 stwo_cairo_dev_utils = { package = "stwo-cairo-dev-utils", git = "https://github.com/starkware-libs/stwo-cairo", rev = "0a5e70b7" }
 stwo_cairo_utils = { package = "stwo-cairo-utils", git = "https://github.com/starkware-libs/stwo-cairo", rev = "0a5e70b7" }
+stwo-cairo-serialize = { git = "https://github.com/starkware-libs/stwo-cairo", rev = "0a5e70b7" }
+starknet-ff = "0.3"
 
 # local crates
 circuits = { path = "crates/circuits"}
