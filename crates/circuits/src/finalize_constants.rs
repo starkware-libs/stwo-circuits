@@ -1,11 +1,12 @@
 use std::collections::HashMap;
+use std::collections::hash_map::Entry;
 
 use indexmap::IndexMap;
 use itertools::Itertools;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 
-use crate::circuit::Add;
+use crate::circuit::{Add, Mul};
 use crate::context::{Context, Var};
 use crate::eval;
 use crate::ivalue::{IValue, qm31_from_u32s};
@@ -82,6 +83,11 @@ fn finalize_constants_with_min_base(context: &mut Context<impl IValue>, min_base
 
     // Build the +1 chain for consecutive M31 constants.
     build_plus_one_chain(context, &mut m31_constants, &mut m31_cache, target_consecutive);
+    let m31_base = *m31_cache.keys().max().unwrap();
+
+    // Decompose M31 constants not in the chain by expressing them in base `m31_base`.
+    decompose_m31_constants(context, &mut m31_constants, &mut m31_cache, m31_base);
+    assert!(m31_constants.is_empty());
 }
 
 /// Finds the largest integer N such that all values in [0, N] are present as constants.
@@ -124,4 +130,89 @@ fn build_plus_one_chain(
         m31_cache.insert(val.into(), next_var.idx);
         prev_var = next_var;
     }
+}
+
+/// Yields and constrains every remaining M31 constant in `m31_constants` by decomposing it into
+/// base `base` limbs and building it via Horner's evaluation.
+///
+/// All limb values must already be present in `m31_cache` (this is guaranteed when `base` is the
+/// length of the `+1` chain built by `build_plus_one_chain`, since limbs are then in `[0, base)`).
+/// Each constant yielded is removed from `m31_constants`; intermediate values produced during the
+/// reconstruction are added to `m31_cache` and may also be drawn from `m31_constants` if they
+/// happen to coincide with a pending constant. The loop terminates with `m31_constants` empty.
+fn decompose_m31_constants(
+    context: &mut Context<impl IValue>,
+    m31_constants: &mut IndexMap<M31, Var>,
+    m31_cache: &mut HashMap<M31, usize>,
+    base: M31,
+) {
+    while !m31_constants.is_empty() {
+        let m31_val = m31_constants.keys().next().unwrap();
+        build_m31_from_base(context, m31_cache, m31_constants, base, *m31_val);
+    }
+}
+
+/// Decomposes a value into base `base` limbs and builds it via Horner's evaluation:
+/// `val = (...((limbs[n] * base  + limbs[n-1]) * base + limbs[n-2]) * base + ...) + limbs[0]`.
+/// Intermediate values are cached in `m31_cache` for reuse.
+fn build_m31_from_base(
+    context: &mut Context<impl IValue>,
+    m31_cache: &mut HashMap<M31, usize>,
+    m31_constants: &mut IndexMap<M31, Var>,
+    base: M31,
+    val: M31,
+) {
+    // Decompose `val` into its base `base` limbs (least significant first).
+    let mut limbs = Vec::<M31>::new();
+    let mut remaining = val.0;
+    while remaining > 0 {
+        limbs.push((remaining % base.0).into());
+        remaining /= base.0;
+    }
+    assert!(!limbs.is_empty());
+
+    // Build from the most significant limb down: `acc = (...((limbs[n] * base + limbs[n-1]) *
+    // base)...).
+    let mut acc_val = limbs.pop().unwrap();
+    let mut acc_idx = *m31_cache.get(&acc_val).expect("Limb must be in cache.");
+    let base_idx = *m31_cache.get(&base).unwrap();
+
+    for &limb in limbs.iter().rev() {
+        let limb_idx = *m31_cache.get(&limb).expect("Limb must be in cache.");
+
+        // Build `acc_val * base`.
+        let mul_val = acc_val * base;
+        // If mul_val is not present in the cache, we add it.
+        if let Entry::Vacant(e) = m31_cache.entry(mul_val) {
+            // If it's one of the circuit constants, we take it.
+            let var = if let Some(const_var) = m31_constants.swap_remove(&mul_val) {
+                const_var
+            } else {
+                // Otherwise we build a brand new variable.
+                context.new_var(IValue::from_qm31(mul_val.into()))
+            };
+            // Add a gate to yield and constraint `var`.
+            context.circuit.mul.push(Mul { in0: acc_idx, in1: base_idx, out: var.idx });
+            e.insert(var.idx);
+        };
+        let mul_idx = *m31_cache.get(&mul_val).unwrap();
+
+        // Build `acc_val * base + limb`.
+        let add_val = mul_val + limb;
+        // If add_val is not present in the cache, we add it.
+        if let Entry::Vacant(e) = m31_cache.entry(add_val) {
+            let var = if let Some(const_var) = m31_constants.swap_remove(&add_val) {
+                const_var
+            } else {
+                context.new_var(IValue::from_qm31(add_val.into()))
+            };
+            context.circuit.add.push(Add { in0: mul_idx, in1: limb_idx, out: var.idx });
+            e.insert(var.idx);
+        };
+
+        acc_val = add_val;
+        acc_idx = *m31_cache.get(&add_val).unwrap();
+    }
+    assert!(m31_cache.contains_key(&val));
+    assert!(!m31_constants.contains_key(&val));
 }
