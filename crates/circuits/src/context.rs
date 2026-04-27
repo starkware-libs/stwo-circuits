@@ -73,6 +73,10 @@ impl<Value: IValue> Context<Value> {
         Var { idx: 1 }
     }
 
+    pub fn u(&self) -> Var {
+        Var { idx: 2 }
+    }
+
     /// Creates a new variable.
     pub fn new_var(&mut self, value: Value) -> Var {
         let idx = self.circuit.n_vars;
