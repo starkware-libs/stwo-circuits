@@ -8,6 +8,7 @@ use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_prover::prover::{BaseColumnPool, SimdBackend, prove_circuit_assignment};
 use circuit_verifier::circuit_components::ComponentList;
 use circuits::context::Context;
+use circuits::finalize_constants::finalize_constants;
 use circuits::ivalue::qm31_from_u32s;
 use circuits::ops::{guess, output};
 use num_traits::{One, Zero};
@@ -40,6 +41,7 @@ fn build_minimal_context() -> Context<QM31> {
 #[test]
 fn test_serialize_deserialize_cairo_proof() {
     let mut ctx = build_minimal_context();
+    finalize_constants(&mut ctx);
     ctx.finalize_guessed_vars();
     ctx.validate_circuit();
     let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut ctx);

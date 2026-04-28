@@ -7,6 +7,7 @@ use cairo_air::air::PublicData;
 use cairo_air::flat_claims::FlatClaim;
 use circuits::blake::HashValue;
 use circuits::context::{Context, TraceContext};
+use circuits::finalize_constants::finalize_constants;
 use circuits::ivalue::{IValue, NoValue};
 use circuits::ops::Guess;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
@@ -124,6 +125,7 @@ pub fn build_fixed_cairo_circuit(
 
     let proof_vars = proof.guess(&mut context);
     verify(&mut context, &proof_vars, config, &statement);
+    finalize_constants(&mut context);
     context.finalize_guessed_vars();
 
     context
@@ -155,6 +157,7 @@ pub fn build_cairo_verifier_circuit(verifier_config: &CairoVerifierConfig) -> Co
 
     let proof_vars = empty_proof(config).guess(&mut context);
     verify(&mut context, &proof_vars, config, &statement);
+    finalize_constants(&mut context);
     context.finalize_guessed_vars();
     context
 }

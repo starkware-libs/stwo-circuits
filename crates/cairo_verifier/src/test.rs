@@ -9,6 +9,7 @@ use cairo_air::utils::{binary_deserialize_from_file, binary_serialize_to_file};
 use cairo_air::verifier::INTERACTION_POW_BITS;
 use cairo_vm::types::layout_name::LayoutName;
 use circuits::context::Context;
+use circuits::finalize_constants::finalize_constants;
 use circuits::ivalue::NoValue;
 use circuits::ops::Guess;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
@@ -146,6 +147,7 @@ fn test_verify() {
 
     let proof_vars = empty_proof.guess(&mut novalue_context);
     verify(&mut novalue_context, &proof_vars, &config, &statement);
+    finalize_constants(&mut novalue_context);
     novalue_context.finalize_guessed_vars();
     novalue_context.check_vars_used();
     novalue_context.circuit.check_yields();
