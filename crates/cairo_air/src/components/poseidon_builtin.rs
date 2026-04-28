@@ -25,7 +25,7 @@ pub fn accumulate_constraints<Value: IValue>(
         output_state_1_id_col4,
         output_state_2_id_col5,
     ] = input.try_into().unwrap();
-    let seq = seq_of_component_size(context, component_data, &acc.preprocessed_columns);
+    let seq = component_data.seq_of_component_size(context, &acc.preprocessed_columns);
     let poseidon_builtin_segment_start =
         *acc.public_params.get("poseidon_builtin_segment_start").unwrap();
 

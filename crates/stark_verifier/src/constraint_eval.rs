@@ -51,6 +51,39 @@ pub trait ComponentDataTrait<Value: IValue> {
     // Note that this is one more than log2(max_component_size), because 2**n is a (n+1)-bit
     // number.
     fn max_component_size_bits(&self) -> usize;
+
+    // Create a variable with the evaluation of seq_k where k is the log-height of
+    // the component. The height is taken from get_n_instances_bit.
+    fn seq_of_component_size(
+        &self,
+        context: &mut Context<Value>,
+        preprocessed_columns: &HashMap<PreProcessedColumnId, Var>,
+    ) -> Var {
+        // Compute:
+        //      sum_bits = size_bits[0] + size_bits[1] + ... + size_bits[MAX_BITS]
+        //      result = sum_k size_bits[k] * seq_k  (for all seq_k columns in the preprocessed
+        // trace)
+        let mut sum_bits = context.zero();
+        let mut result = context.zero();
+
+        for log_size in 0..self.max_component_size_bits() {
+            let seq_name = PreProcessedColumnId { id: format!("seq_{log_size}") };
+            let Some(seq_value) = preprocessed_columns.get(&seq_name).copied() else {
+                // Our preprocessed trace doesn't contain a seq column of this size
+                continue;
+            };
+
+            let bit = self.get_n_instances_bit(context, log_size);
+
+            sum_bits = eval!(context, (sum_bits) + (bit));
+            result = eval!(context, (result) + ((bit) * (seq_value)))
+        }
+
+        // Assert that the component size was one of the supported sizes
+        circuits::ops::eq(context, sum_bits, context.one());
+
+        result
+    }
 }
 
 impl<'a, Value: IValue> ComponentDataTrait<Value> for ComponentData<'a> {
