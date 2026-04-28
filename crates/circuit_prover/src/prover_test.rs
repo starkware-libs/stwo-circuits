@@ -10,6 +10,7 @@ use circuit_verifier::verify::{CircuitConfig, verify_circuit};
 use circuits::blake::{blake, blake_g_gate, m31_to_u32, triple_xor};
 use circuits::context::Var;
 use circuits::eval;
+use circuits::finalize_constants::finalize_constants;
 use circuits::ivalue::{IValue, qm31_from_u32s};
 use circuits::ops::{output, permute};
 use circuits::{context::Context, ops::guess};
@@ -21,6 +22,7 @@ use stwo::core::channel::Blake2sM31Channel;
 use stwo::core::channel::Channel;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::{CommitmentSchemeVerifier, PcsConfig};
+use stwo::core::vcs::blake2_hash::Blake2sHash;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 // Not a power of 2 so that we can test component padding.
@@ -247,6 +249,7 @@ fn stwo_verify(
 #[test]
 fn test_prove_and_stark_verify_blake_gate_context() {
     let mut blake_gate_context = build_blake_gate_context();
+    finalize_constants(&mut blake_gate_context);
     blake_gate_context.finalize_guessed_vars();
     blake_gate_context.validate_circuit();
 
@@ -264,6 +267,7 @@ fn test_prove_and_stark_verify_blake_gate_context() {
 #[test]
 fn test_prove_and_stark_verify_permutation_context() {
     let mut permutation_context = build_permutation_context();
+    finalize_constants(&mut permutation_context);
     permutation_context.finalize_guessed_vars();
     permutation_context.validate_circuit();
 
@@ -281,6 +285,7 @@ fn test_prove_and_stark_verify_permutation_context() {
 #[test]
 fn test_prove_and_stark_verify_fibonacci_context() {
     let mut fibonacci_context = build_fibonacci_context();
+    finalize_constants(&mut fibonacci_context);
     fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
 
@@ -298,6 +303,7 @@ fn test_prove_and_stark_verify_fibonacci_context() {
 #[test]
 fn test_prove_and_stark_verify_triple_xor_context() {
     let mut triple_xor_context = build_triple_xor_context();
+    finalize_constants(&mut triple_xor_context);
     triple_xor_context.finalize_guessed_vars();
     triple_xor_context.validate_circuit();
 
@@ -315,6 +321,7 @@ fn test_prove_and_stark_verify_triple_xor_context() {
 #[test]
 fn test_prove_and_stark_verify_m31_to_u32_context() {
     let mut m31_to_u32_context = build_m31_to_u32_context();
+    finalize_constants(&mut m31_to_u32_context);
     m31_to_u32_context.finalize_guessed_vars();
     m31_to_u32_context.validate_circuit();
 
@@ -332,6 +339,7 @@ fn test_prove_and_stark_verify_m31_to_u32_context() {
 #[test]
 fn test_prove_and_stark_verify_blake_g_gate_context() {
     let mut blake_g_gate_context = build_blake_g_gate_context();
+    finalize_constants(&mut blake_g_gate_context);
     blake_g_gate_context.finalize_guessed_vars();
     blake_g_gate_context.validate_circuit();
 
@@ -374,12 +382,10 @@ fn circuit_verify(
     verify_circuit(circuit_config, proof, public_data).unwrap();
 }
 
-const TRIPLE_XOR_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
-    [383878560, 777803796, 83194896, 1011084203, 160550306, 637440927, 339198671, 1031359971];
-
 #[test]
 fn test_prove_and_circuit_verify_triple_xor_context() {
     let mut triple_xor_context = build_triple_xor_context();
+    finalize_constants(&mut triple_xor_context);
     triple_xor_context.finalize_guessed_vars();
     triple_xor_context.validate_circuit();
 
@@ -391,15 +397,23 @@ fn test_prove_and_circuit_verify_triple_xor_context() {
         PcsConfig::default(),
     )
     .unwrap();
-    circuit_verify(circuit_proof, &preprocessed_circuit, TRIPLE_XOR_CIRCUIT_PREPROCESSED_ROOT);
+    let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);
+    expect!["[954526065, 336931316, 1760870988, 1824008577, 780504680, 2135128807, 1773034539, 511889370]"]
+    .assert_eq(&format!("{preprocessed_root:?}"));
+    circuit_verify(circuit_proof, &preprocessed_circuit, preprocessed_root);
 }
 
-const FIBONACCI_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
-    [938280935, 1980664971, 866203874, 1147299749, 1683668505, 390015812, 137596665, 365486364];
+/// Extract the preprocessed-trace Merkle root (`commitments[0]`) from a `CircuitProof` as
+/// `[u32; 8]`, matching the layout `HashValue<QM31>` consumes via `From<[u32; 8]>`.
+fn preprocessed_root_from_proof(circuit_proof: &CircuitProof<Blake2sM31MerkleHasher>) -> [u32; 8] {
+    let hash: Blake2sHash = circuit_proof.stark_proof.proof.commitments[0];
+    std::array::from_fn(|i| u32::from_le_bytes(hash.0[i * 4..(i + 1) * 4].try_into().unwrap()))
+}
 
 #[test]
 fn test_prove_and_circuit_verify_fibonacci_context() {
     let mut fibonacci_context = build_fibonacci_context();
+    finalize_constants(&mut fibonacci_context);
     fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
 
@@ -409,17 +423,17 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
         PcsConfig::default(),
-    )
-    .unwrap();
-    circuit_verify(circuit_proof, &preprocessed_circuit, FIBONACCI_CIRCUIT_PREPROCESSED_ROOT);
+    ).unwrap();
+    let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);
+    expect!["[1889895051, 1562327546, 1000838004, 1191676597, 1003528511, 1332302331, 1074314295, 189673804]"]
+    .assert_eq(&format!("{preprocessed_root:?}"));
+    circuit_verify(circuit_proof, &preprocessed_circuit, preprocessed_root);
 }
-
-const M31_TO_U32_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
-    [119960690, 584326386, 331600676, 1678406228, 411117252, 2142234173, 1676458105, 924266087];
 
 #[test]
 fn test_prove_and_circuit_verify_m31_to_u32_context() {
     let mut m31_to_u32_context = build_m31_to_u32_context();
+    finalize_constants(&mut m31_to_u32_context);
     m31_to_u32_context.finalize_guessed_vars();
     m31_to_u32_context.validate_circuit();
 
@@ -429,17 +443,17 @@ fn test_prove_and_circuit_verify_m31_to_u32_context() {
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
         PcsConfig::default(),
-    )
-    .unwrap();
-    circuit_verify(circuit_proof, &preprocessed_circuit, M31_TO_U32_CIRCUIT_PREPROCESSED_ROOT);
+    ).unwrap();
+    let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);
+    expect!["[1129173776, 2021417449, 776318137, 607679914, 1082432314, 345851712, 352795111, 1276519042]"]
+    .assert_eq(&format!("{preprocessed_root:?}"));
+    circuit_verify(circuit_proof, &preprocessed_circuit, preprocessed_root);
 }
-
-const BLAKE_G_GATE_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
-    [1547637094, 1628188007, 1109367239, 1655363258, 1038162931, 368611637, 1915980358, 1225437881];
 
 #[test]
 fn test_prove_and_circuit_verify_blake_g_gate_context() {
     let mut blake_g_gate_context = build_blake_g_gate_context();
+    finalize_constants(&mut blake_g_gate_context);
     blake_g_gate_context.finalize_guessed_vars();
     blake_g_gate_context.validate_circuit();
 
@@ -451,7 +465,10 @@ fn test_prove_and_circuit_verify_blake_g_gate_context() {
         PcsConfig::default(),
     )
     .unwrap();
-    circuit_verify(circuit_proof, &preprocessed_circuit, BLAKE_G_GATE_CIRCUIT_PREPROCESSED_ROOT);
+    let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);
+    expect!["[691622996, 2056254584, 1264108816, 44676421, 296815939, 1937211268, 1044954412, 1779017231]"]
+    .assert_eq(&format!("{preprocessed_root:?}"));
+    circuit_verify(circuit_proof, &preprocessed_circuit, preprocessed_root);
 }
 
 #[test]
