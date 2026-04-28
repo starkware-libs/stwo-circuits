@@ -158,6 +158,10 @@ impl<Value: IValue> Statement<Value> for SimpleStatement<Value> {
             .collect()
     }
 
+    fn get_preprocessed_column_log_sizes(&self) -> Vec<u32> {
+        vec![LOG_SIZE_SHORT, LOG_SIZE_LONG]
+    }
+
     fn get_preprocessed_root(&self, context: &mut Context<Value>) -> HashValue<Var> {
         HashValue(
             context.constant(qm31_from_u32s(709984722, 1794174263, 414815104, 733903951)),

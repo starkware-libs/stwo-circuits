@@ -1,3 +1,6 @@
+use std::sync::Arc;
+
+use circuit_common::preprocessed::PreProcessedTrace;
 use circuits::{blake::HashValue, context::Context, ivalue::IValue, ops::Guess};
 use circuits_stark_verifier::{
     proof::{Proof, ProofConfig},
@@ -5,7 +8,6 @@ use circuits_stark_verifier::{
     verify::verify,
 };
 use stwo::core::{fields::qm31::QM31, pcs::PcsConfig};
-use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 use crate::statement::{CircuitStatement, INTERACTION_POW_BITS};
 
@@ -18,7 +20,7 @@ pub struct CircuitConfig {
     pub config: PcsConfig,
     pub output_addresses: Vec<usize>,
     pub n_blake_gates: usize,
-    pub preprocessed_column_ids: Vec<PreProcessedColumnId>,
+    pub preprocessed_trace: Arc<PreProcessedTrace>,
     pub preprocessed_root: HashValue<QM31>,
 }
 
@@ -33,7 +35,7 @@ pub fn build_verification_circuit<Value: IValue>(
         &circuit_config.output_addresses,
         &public_data.output_values,
         circuit_config.n_blake_gates,
-        circuit_config.preprocessed_column_ids.clone(),
+        &circuit_config.preprocessed_trace,
         circuit_config.preprocessed_root,
     );
 

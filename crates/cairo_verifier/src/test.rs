@@ -73,7 +73,7 @@ pub fn verify_cairo_with_component_set(
     let proof_config = ProofConfig::from_components(
         &components,
         component_enable_bits,
-        cairo_proof.preprocessed_trace_variant.to_preprocessed_trace().ids().len(),
+        cairo_proof.preprocessed_trace_variant.to_preprocessed_trace().log_sizes(),
         &cairo_proof.extended_stark_proof.proof.config,
         INTERACTION_POW_BITS,
     );

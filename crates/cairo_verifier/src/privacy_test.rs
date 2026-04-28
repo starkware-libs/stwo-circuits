@@ -32,13 +32,12 @@ fn verify_circuit_proof(
     circuit_proof: CircuitProof<Blake2sM31MerkleHasher>,
     preprocessed_root: HashValue<QM31>,
 ) -> Context<QM31> {
-    let preprocessed_column_ids = preprocessed_circuit.preprocessed_trace.ids();
     let components = all_circuit_components::<QM31>();
     let enabled_bits = vec![true; components.len()];
     let proof_config = ProofConfig::from_components(
         &components,
         enabled_bits,
-        preprocessed_column_ids.len(),
+        preprocessed_circuit.preprocessed_trace.log_sizes(),
         &circuit_proof.pcs_config,
         circuit_verifier::statement::INTERACTION_POW_BITS,
     );
@@ -46,7 +45,7 @@ fn verify_circuit_proof(
         config: circuit_proof.pcs_config,
         output_addresses: preprocessed_circuit.params.output_addresses.clone(),
         n_blake_gates: preprocessed_circuit.params.n_blake_gates,
-        preprocessed_column_ids,
+        preprocessed_trace: preprocessed_circuit.preprocessed_trace.clone(),
         preprocessed_root,
     };
     let (proof, public_data) =
@@ -234,13 +233,12 @@ fn test_privacy_proof_info() {
         },
         lifting_log_size: Some(lifting_log_size),
     };
-    let preprocessed_column_ids = preprocessed_circuit.preprocessed_trace.ids();
     let preprocessed_root = HashValue(QM31::zero(), QM31::zero());
     let circuit_config = CircuitConfig {
         config: pcs_config,
         output_addresses: preprocessed_circuit.params.output_addresses.clone(),
         n_blake_gates: preprocessed_circuit.params.n_blake_gates,
-        preprocessed_column_ids,
+        preprocessed_trace: preprocessed_circuit.preprocessed_trace.clone(),
         preprocessed_root,
     };
     let public_data = CircuitPublicData {
@@ -252,7 +250,7 @@ fn test_privacy_proof_info() {
         &circuit_config.output_addresses,
         &public_data.output_values,
         circuit_config.n_blake_gates,
-        circuit_config.preprocessed_column_ids.clone(),
+        &circuit_config.preprocessed_trace,
         circuit_config.preprocessed_root,
     );
 
