@@ -44,6 +44,7 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
         let proof_vars = empty_proof.guess(&mut novalue_context);
         let statement = SimpleStatement::default();
         verify(&mut novalue_context, &proof_vars, &config, &statement);
+        circuits::finalize_constants::finalize_constants(&mut novalue_context);
         novalue_context.finalize_guessed_vars();
         novalue_context.circuit
     };
@@ -82,7 +83,17 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
     let statement = SimpleStatement::default();
     verify(&mut context, &proof_vars, &config, &statement);
 
-    let result = novalue_circuit.check(context.values());
+    context.check_vars_used();
+
+    circuits::finalize_constants::finalize_constants(&mut context);
+    context.finalize_guessed_vars();
+
+    // Make sure we got the same circuit.
+    assert_eq!(context.circuit, novalue_circuit);
+
+    novalue_circuit.check_yields();
+
+    let result = context.circuit.check(context.values());
     match proof_modifier {
         ProofModifier::None => {
             result.unwrap();
@@ -117,15 +128,6 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
             assert!(err.contains(&expected_value.to_string()));
         }
     }
-
-    context.check_vars_used();
-
-    context.finalize_guessed_vars();
-
-    // Make sure we got the same circuit.
-    assert_eq!(context.circuit, novalue_circuit);
-
-    novalue_circuit.check_yields();
     println!("Stats: {:?}", context.stats);
 }
 

@@ -170,6 +170,7 @@ fn stwo_verify(
 #[test]
 fn test_prove_and_stark_verify_blake_gate_context() {
     let mut blake_gate_context = build_blake_gate_context();
+    circuits::finalize_constants::finalize_constants(&mut blake_gate_context);
     blake_gate_context.finalize_guessed_vars();
     blake_gate_context.validate_circuit();
 
@@ -186,6 +187,7 @@ fn test_prove_and_stark_verify_blake_gate_context() {
 #[test]
 fn test_prove_and_stark_verify_permutation_context() {
     let mut permutation_context = build_permutation_context();
+    circuits::finalize_constants::finalize_constants(&mut permutation_context);
     permutation_context.finalize_guessed_vars();
     permutation_context.validate_circuit();
 
@@ -202,6 +204,7 @@ fn test_prove_and_stark_verify_permutation_context() {
 #[test]
 fn test_prove_and_stark_verify_fibonacci_context() {
     let mut fibonacci_context = build_fibonacci_context();
+    circuits::finalize_constants::finalize_constants(&mut fibonacci_context);
     fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
 
@@ -218,6 +221,7 @@ fn test_prove_and_stark_verify_fibonacci_context() {
 #[test]
 fn test_prove_and_stark_verify_m31_to_u32_context() {
     let mut m31_to_u32_context = build_m31_to_u32_context();
+    circuits::finalize_constants::finalize_constants(&mut m31_to_u32_context);
     m31_to_u32_context.finalize_guessed_vars();
     m31_to_u32_context.validate_circuit();
 
@@ -261,11 +265,12 @@ fn circuit_verify(
 }
 
 const FIBONACCI_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
-    [579827647, 460015323, 2072233139, 709693420, 371952288, 1355707807, 1645091261, 2144587918];
+    [235960222, 583831831, 1857802231, 175186271, 1455978461, 1840111781, 2031248533, 665256443];
 
 #[test]
 fn test_prove_and_circuit_verify_fibonacci_context() {
     let mut fibonacci_context = build_fibonacci_context();
+    circuits::finalize_constants::finalize_constants(&mut fibonacci_context);
     fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
 
@@ -280,11 +285,12 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
 }
 
 const M31_TO_U32_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
-    [270075619, 790063164, 183255611, 43064901, 229280056, 1717043326, 341216832, 2011011748];
+    [1227058420, 542830236, 519076156, 1534337654, 1998372142, 1519893818, 1404127894, 1141221737];
 
 #[test]
 fn test_prove_and_circuit_verify_m31_to_u32_context() {
     let mut m31_to_u32_context = build_m31_to_u32_context();
+    circuits::finalize_constants::finalize_constants(&mut m31_to_u32_context);
     m31_to_u32_context.finalize_guessed_vars();
     m31_to_u32_context.validate_circuit();
 

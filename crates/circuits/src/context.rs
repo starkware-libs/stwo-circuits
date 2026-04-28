@@ -4,8 +4,7 @@ use num_traits::{One, Zero};
 use stwo::core::fields::qm31::QM31;
 
 use crate::circuit::{Add, Circuit};
-use crate::ivalue::IValue;
-use crate::ops::guess;
+use crate::ivalue::{IValue, qm31_from_u32s};
 use crate::stats::Stats;
 
 #[cfg(test)]
@@ -50,7 +49,7 @@ pub struct Context<Value: IValue> {
     ///
     /// `None` if the set of guessed variables has already been finalized.
     ///
-    /// See [guess].
+    /// See [`guess`](crate::ops::guess).
     pub guessed_vars: Option<Vec<usize>>,
     /// Debug only. If true, equality is asserted when adding the `eq` gate; if false, no
     /// assertion is made during construction and equality can be checked later at validation.
@@ -73,6 +72,10 @@ impl<Value: IValue> Context<Value> {
         Var { idx: 1 }
     }
 
+    pub fn u(&self) -> Var {
+        Var { idx: 2 }
+    }
+
     /// Creates a new variable.
     pub fn new_var(&mut self, value: Value) -> Var {
         let idx = self.circuit.n_vars;
@@ -90,7 +93,7 @@ impl<Value: IValue> Context<Value> {
         if let Some(var) = self.constants.get(&value) {
             *var
         } else {
-            let var = guess(self, Value::from_qm31(value));
+            let var = self.new_var(Value::from_qm31(value));
             self.constants.insert(value, var);
             var
         }
@@ -157,9 +160,10 @@ impl<Value: IValue> Default for Context<Value> {
             guessed_vars: Some(vec![]),
             assert_eq_on_eval: false,
         };
-        // Register zero and one as the first constants.
+        // Register zero, one, and u as the first constants.
         res.constant(QM31::zero());
         res.constant(QM31::one());
+        res.constant(qm31_from_u32s(0, 0, 1, 0)); // u at idx 2
         res
     }
 }
