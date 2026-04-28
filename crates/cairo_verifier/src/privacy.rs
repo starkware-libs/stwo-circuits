@@ -53,7 +53,7 @@ pub fn privacy_cairo_verifier_config(log_blowup_factor: u32) -> CairoVerifierCon
     let proof_config = ProofConfig::from_components(
         &components,
         enabled_bits,
-        preprocessed_trace_variant.to_preprocessed_trace().ids().len(),
+        preprocessed_trace_variant.to_preprocessed_trace().log_sizes(),
         &pcs_config,
         INTERACTION_POW_BITS,
     );

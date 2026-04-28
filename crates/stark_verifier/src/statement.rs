@@ -44,6 +44,10 @@ pub trait Statement<Value: IValue> {
     /// Returns the IDs of the preprocessed columns used by this statement's components.
     fn get_preprocessed_column_ids(&self) -> Vec<PreProcessedColumnId>;
 
+    /// Returns the log size of each preprocessed column, in the same order as
+    /// `get_preprocessed_column_ids`.
+    fn get_preprocessed_column_log_sizes(&self) -> Vec<u32>;
+
     /// Returns the expected preprocessed trace root as circuit variables.
     fn get_preprocessed_root(&self, context: &mut Context<Value>) -> HashValue<Var>;
 

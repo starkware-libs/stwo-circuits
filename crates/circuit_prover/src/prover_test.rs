@@ -238,13 +238,12 @@ fn circuit_verify(
     preprocessed_circuit: &PreprocessedCircuit,
     preprocessed_root: [u32; 8],
 ) {
-    let preprocessed_column_ids = preprocessed_circuit.preprocessed_trace.ids();
     let all_components = all_circuit_components::<QM31>();
     let enabled_bits: Vec<bool> = vec![true; all_components.len()];
     let proof_config = ProofConfig::from_components(
         &all_components,
         enabled_bits,
-        preprocessed_column_ids.len(),
+        preprocessed_circuit.preprocessed_trace.log_sizes(),
         &circuit_proof.pcs_config,
         INTERACTION_POW_BITS,
     );
@@ -252,7 +251,8 @@ fn circuit_verify(
         config: circuit_proof.pcs_config,
         output_addresses: preprocessed_circuit.params.output_addresses.clone(),
         n_blake_gates: preprocessed_circuit.params.n_blake_gates,
-        preprocessed_column_ids,
+        preprocessed_column_ids: preprocessed_circuit.preprocessed_trace.ids(),
+        preprocessed_column_log_sizes: preprocessed_circuit.preprocessed_trace.log_sizes(),
         preprocessed_root: preprocessed_root.into(),
     };
     let (proof, public_data) =
