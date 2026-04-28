@@ -7,6 +7,7 @@ use stwo::core::fields::qm31::QM31;
 
 use crate::circuit::{Add, Mul};
 use crate::context::{Context, Var};
+use crate::eval;
 use crate::ivalue::{IValue, qm31_from_u32s};
 use crate::ops::{add, output};
 
@@ -83,6 +84,23 @@ fn finalize_constants_with_min_base(context: &mut Context<impl IValue>, min_base
     // Decompose M31 constants not in the chain by expressing them in base `m31_base`.
     decompose_m31_constants(context, &mut m31_constants, &mut m31_cache, m31_base);
     assert!(m31_constants.is_empty());
+
+    // Deal with the QM31 constants.
+    // Build `i` and `i * u` to get the qm31_basis [i, u, iu].
+    // We know `2` is already produced because `min_base >= 2`.
+    let two = Var { idx: *m31_cache.get(&2.into()).unwrap() };
+    // `u * u = 2 + i`.
+    let i_var = eval!(context, ((u_var) * (u_var)) - (two));
+    let iu_var = eval!(context, (i_var) * (u_var));
+    let qm31_basis: [Var; 3] = [i_var, u_var, iu_var];
+    // Build the broadcast QM31 constants, i.e. constants of the form (x, x, x, x), x != 0.
+    decompose_broadcast_constants(
+        context,
+        &mut qm31_constants,
+        &mut m31_cache,
+        m31_base,
+        qm31_basis,
+    );
 }
 
 /// Finds the largest integer N such that all values in [0, N] are present as constants.
@@ -209,4 +227,51 @@ fn build_m31_from_base(
     }
     assert!(m31_cache.contains_key(&val));
     assert!(!m31_constants.contains_key(&val));
+}
+
+/// Yields and constrains every "broadcast" QM31 constant in `qm31_constants` (i.e. constants of
+/// the form `(x, x, x, x)` with `x != 0`) by expressing them as `x * (1, 1, 1, 1)`.
+///
+/// For each broadcast constant, the M31 scalar `x` is retrieved from `m31_cache` (and built via
+/// `build_m31_from_base` if missing), and a single Mul gate `x * (1,1,1,1) = (x,x,x,x)` yields and
+/// constrains the constant's wire.
+///
+/// Non-broadcast entries of `qm31_constants` are left untouched; broadcast entries are removed
+/// once yielded.
+fn decompose_broadcast_constants(
+    context: &mut Context<impl IValue>,
+    qm31_constants: &mut IndexMap<QM31, Var>,
+    m31_cache: &mut HashMap<M31, usize>,
+    base: M31,
+    qm31_basis: [Var; 3],
+) {
+    let one = context.one();
+    let [i_var, u_var, iu_var] = qm31_basis;
+    // Build and constrain the wire corresponding to (1, 1, 1, 1).
+    let ones_value = qm31_from_u32s(1, 1, 1, 1);
+    let ones_var = if let Some(var) = qm31_constants.swap_remove(&ones_value) {
+        var
+    } else {
+        context.new_var(IValue::from_qm31(ones_value))
+    };
+    let one_plus_i = add(context, one, i_var);
+    let u_plus_iu = add(context, u_var, iu_var);
+    context.circuit.add.push(Add { in0: one_plus_i.idx, in1: u_plus_iu.idx, out: ones_var.idx });
+
+    qm31_constants.retain(|qm31_value, qm31_var| {
+        let is_broadcast = qm31_value.to_m31_array().iter().tuple_windows().all(|(x, y)| x == y);
+        if !is_broadcast {
+            return true;
+        }
+        let m31_value = qm31_value.0.0;
+        // If m31_value is not in the cache, add it.
+        if !m31_cache.contains_key(&m31_value) {
+            build_m31_from_base(context, m31_cache, &mut IndexMap::new(), base, m31_value);
+        }
+        let m31_idx = *m31_cache.get(&m31_value).unwrap();
+        // Add a gate m31_val * (1, 1, 1, 1) = qm31_var.
+        context.circuit.mul.push(Mul { in0: m31_idx, in1: ones_var.idx, out: qm31_var.idx });
+        // Remove the element from qm31_constants.
+        false
+    });
 }
