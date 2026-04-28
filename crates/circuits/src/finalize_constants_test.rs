@@ -146,3 +146,76 @@ fn test_broadcast_decomposition() {
     context.circuit.check_yields();
     context.validate_circuit();
 }
+
+#[test]
+fn test_mixed_m31_and_qm31_constants_small() {
+    let mut context = TraceContext::default();
+    // Add `u`.
+    // TODO(Leo): remove this once `u` is added to the default constants.
+    context.constant(qm31_from_u32s(0, 0, 1, 0));
+    // General (non-broadcast, non-base-field) QM31 constant. All limbs (1, 2, 3, 4) live in the
+    // chain, so no base decomposition is triggered.
+    context.constant(qm31_from_u32s(1, 2, 3, 4));
+    finalize_constants_with_min_base(&mut context, 5);
+
+    // The plus-one chain populates [4]..=[7] for values 2..=5. The QM31 basis allocates
+    // [8] = u*u, [9] = u² - 2 = i, [10] = i*u = iu. The ones vector (1, 1, 1, 1) is assembled
+    // as ([1] + [9]) + ([2] + [10]): partial sums [12] = 1 + i and [13] = u + iu, with the
+    // result in [11] (unused here, since there are no broadcast qm31 constants). The general QM31
+    // constant is then assembled as a + b*i + c*u + d*iu:
+    //   [14] = [4] * [9]  (2 * i),   [15] = [1] + [14]      (1 + 2*i)
+    //   [16] = [5] * [2]  (3 * u),   [17] = [6] * [10]      (4 * iu),   [18] = [16] + [17]
+    //   [3]  = [15] + [18]           (finally constrain the constant).
+    expect![[r#"
+        [0] = [0] + [0]
+        [1] = [1] + [0]
+        [4] = [1] + [1]
+        [5] = [4] + [1]
+        [6] = [5] + [1]
+        [7] = [6] + [1]
+        [12] = [1] + [9]
+        [13] = [2] + [10]
+        [11] = [12] + [13]
+        [15] = [1] + [14]
+        [18] = [16] + [17]
+        [3] = [15] + [18]
+        [9] = [8] - [4]
+        [2] = [2] * [1]
+        [8] = [2] * [2]
+        [10] = [9] * [2]
+        [14] = [4] * [9]
+        [16] = [5] * [2]
+        [17] = [6] * [10]
+        output [2]
+    "#]]
+    .assert_eq(&format!("{:?}", context.circuit));
+
+    // The reserved Var carries the assembled QM31 value; the partial sums hold the two halves.
+    assert_eq!(context.get(Var { idx: 3 }), qm31_from_u32s(1, 2, 3, 4));
+    assert_eq!(context.get(Var { idx: 15 }), qm31_from_u32s(1, 2, 0, 0));
+    assert_eq!(context.get(Var { idx: 18 }), qm31_from_u32s(0, 0, 3, 4));
+    context.circuit.check_yields();
+    context.validate_circuit();
+}
+
+#[test]
+fn test_mixed_m31_and_qm31_constants_large() {
+    let mut context = TraceContext::default();
+    // Add `u`.
+    // TODO(Leo): remove this once `u` is added to the default constants.
+    context.constant(qm31_from_u32s(0, 0, 1, 0));
+    // Add constants of various types.
+    context.constant(qm31_from_u32s(1000, 2000, 3000, 4000));
+    context.constant(qm31_from_u32s(1, 1, 1, 1));
+    context.constant(qm31_from_u32s(2, 2, 2, 2));
+    context.constant(qm31_from_u32s(666, 666, 666, 666));
+    context.constant(qm31_from_u32s(3456, 0, 0, 0));
+    context.constant(qm31_from_u32s(7890, 0, 0, 0));
+    context.constant(qm31_from_u32s(1234, 2, 3, 4));
+    context.constant(qm31_from_u32s(0, 1234, 0, 0));
+    context.constant(qm31_from_u32s(0, 0, 1234, 0));
+    context.constant(qm31_from_u32s(0, 0, 0, 1234));
+    finalize_constants(&mut context);
+    context.circuit.check_yields();
+    context.validate_circuit();
+}
