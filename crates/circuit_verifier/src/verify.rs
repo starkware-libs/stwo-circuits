@@ -1,5 +1,8 @@
 use circuit_common::order_hash_map::OrderedHashMap;
-use circuits::{blake::HashValue, context::Context, ivalue::IValue, ops::Guess};
+use circuits::{
+    blake::HashValue, context::Context, finalize_constants::finalize_constants, ivalue::IValue,
+    ops::Guess,
+};
 use circuits_stark_verifier::{
     proof::{Proof, ProofConfig},
     statement::Statement,
@@ -48,6 +51,7 @@ pub fn build_verification_circuit<Value: IValue>(
     let proof_vars = proof.guess(&mut context);
 
     verify(&mut context, &proof_vars, &proof_config, &statement);
+    finalize_constants(&mut context);
     context.finalize_guessed_vars();
     #[cfg(test)]
     context.circuit.check_yields();

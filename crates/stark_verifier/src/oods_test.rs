@@ -17,18 +17,19 @@ use circuits::wrappers::M31Wrapper;
 fn test_eval_domain_samples_guess_circuit() {
     let mut context = Context::<NoValue>::default();
     let res = empty_eval_domain_samples(&[2], 1).guess(&mut context);
-    expect!["EvalDomainSamples { data: [[[M31([3])], [M31([5])]]] }"]
+    expect!["EvalDomainSamples { data: [[[M31([4])], [M31([6])]]] }"]
         .assert_eq(&format!("{res:?}"));
     expect![[r#"
         {
             (0 + 0i) + (0 + 0i)u: [0],
             (1 + 0i) + (0 + 0i)u: [1],
+            (0 + 0i) + (1 + 0i)u: [2],
         }
     "#]]
     .assert_debug_eq(&context.constants());
     expect![[r#"
-        [3] = [2] x [1]
-        [5] = [4] x [1]
+        [4] = [3] x [1]
+        [6] = [5] x [1]
 
     "#]]
     .assert_debug_eq(&context.circuit);
