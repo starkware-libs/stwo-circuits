@@ -9,6 +9,7 @@ use circuit_verifier::verify::{CircuitConfig, verify_circuit};
 use circuits::blake::{blake, m31_to_u32};
 use circuits::context::Var;
 use circuits::eval;
+use circuits::finalize_constants::finalize_constants;
 use circuits::ivalue::{IValue, qm31_from_u32s};
 use circuits::ops::{output, permute};
 use circuits::{context::Context, ops::guess};
@@ -20,6 +21,7 @@ use stwo::core::channel::Blake2sM31Channel;
 use stwo::core::channel::Channel;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::{CommitmentSchemeVerifier, PcsConfig, TreeVec};
+use stwo::core::vcs::blake2_hash::Blake2sHash;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 // Not a power of 2 so that we can test component padding.
@@ -170,6 +172,7 @@ fn stwo_verify(
 #[test]
 fn test_prove_and_stark_verify_blake_gate_context() {
     let mut blake_gate_context = build_blake_gate_context();
+    finalize_constants(&mut blake_gate_context);
     blake_gate_context.finalize_guessed_vars();
     blake_gate_context.validate_circuit();
 
@@ -186,6 +189,7 @@ fn test_prove_and_stark_verify_blake_gate_context() {
 #[test]
 fn test_prove_and_stark_verify_permutation_context() {
     let mut permutation_context = build_permutation_context();
+    finalize_constants(&mut permutation_context);
     permutation_context.finalize_guessed_vars();
     permutation_context.validate_circuit();
 
@@ -202,6 +206,7 @@ fn test_prove_and_stark_verify_permutation_context() {
 #[test]
 fn test_prove_and_stark_verify_fibonacci_context() {
     let mut fibonacci_context = build_fibonacci_context();
+    finalize_constants(&mut fibonacci_context);
     fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
 
@@ -218,6 +223,7 @@ fn test_prove_and_stark_verify_fibonacci_context() {
 #[test]
 fn test_prove_and_stark_verify_m31_to_u32_context() {
     let mut m31_to_u32_context = build_m31_to_u32_context();
+    finalize_constants(&mut m31_to_u32_context);
     m31_to_u32_context.finalize_guessed_vars();
     m31_to_u32_context.validate_circuit();
 
@@ -260,12 +266,17 @@ fn circuit_verify(
     verify_circuit(circuit_config, proof, public_data).unwrap();
 }
 
-const FIBONACCI_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
-    [579827647, 460015323, 2072233139, 709693420, 371952288, 1355707807, 1645091261, 2144587918];
+/// Extract the preprocessed-trace Merkle root (`commitments[0]`) from a `CircuitProof` as
+/// `[u32; 8]`, matching the layout `HashValue<QM31>` consumes via `From<[u32; 8]>`.
+fn preprocessed_root_from_proof(circuit_proof: &CircuitProof<Blake2sM31MerkleHasher>) -> [u32; 8] {
+    let hash: Blake2sHash = circuit_proof.stark_proof.as_ref().unwrap().proof.commitments[0];
+    std::array::from_fn(|i| u32::from_le_bytes(hash.0[i * 4..(i + 1) * 4].try_into().unwrap()))
+}
 
 #[test]
 fn test_prove_and_circuit_verify_fibonacci_context() {
     let mut fibonacci_context = build_fibonacci_context();
+    finalize_constants(&mut fibonacci_context);
     fibonacci_context.finalize_guessed_vars();
     fibonacci_context.validate_circuit();
 
@@ -276,15 +287,18 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
         &BaseColumnPool::<SimdBackend>::new(),
         PcsConfig::default(),
     );
-    circuit_verify(circuit_proof, &preprocessed_circuit, FIBONACCI_CIRCUIT_PREPROCESSED_ROOT);
+    let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);
+    expect![[
+        "[451440488, 1990188066, 122576350, 2049359355, 1266506596, 1823230472, 1939298587, 64415230]"
+    ]]
+    .assert_eq(&format!("{preprocessed_root:?}"));
+    circuit_verify(circuit_proof, &preprocessed_circuit, preprocessed_root);
 }
-
-const M31_TO_U32_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
-    [270075619, 790063164, 183255611, 43064901, 229280056, 1717043326, 341216832, 2011011748];
 
 #[test]
 fn test_prove_and_circuit_verify_m31_to_u32_context() {
     let mut m31_to_u32_context = build_m31_to_u32_context();
+    finalize_constants(&mut m31_to_u32_context);
     m31_to_u32_context.finalize_guessed_vars();
     m31_to_u32_context.validate_circuit();
 
@@ -295,7 +309,12 @@ fn test_prove_and_circuit_verify_m31_to_u32_context() {
         &BaseColumnPool::<SimdBackend>::new(),
         PcsConfig::default(),
     );
-    circuit_verify(circuit_proof, &preprocessed_circuit, M31_TO_U32_CIRCUIT_PREPROCESSED_ROOT);
+    let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);
+    expect![[
+        "[1764184975, 2066928180, 84836311, 157009188, 1010109231, 974238188, 1264070573, 190542654]"
+    ]]
+    .assert_eq(&format!("{preprocessed_root:?}"));
+    circuit_verify(circuit_proof, &preprocessed_circuit, preprocessed_root);
 }
 
 #[test]
