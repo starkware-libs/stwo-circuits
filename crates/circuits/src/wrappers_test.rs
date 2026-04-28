@@ -9,16 +9,17 @@ use crate::wrappers::M31Wrapper;
 fn test_m31_wrapper_guess_circuit() {
     let mut context = Context::<NoValue>::default();
     let res = M31Wrapper::from(NoValue).guess(&mut context);
-    expect!["M31([3])"].assert_eq(&format!("{res:?}"));
+    expect!["M31([4])"].assert_eq(&format!("{res:?}"));
     expect![[r#"
         {
             (0 + 0i) + (0 + 0i)u: [0],
             (1 + 0i) + (0 + 0i)u: [1],
+            (0 + 0i) + (1 + 0i)u: [2],
         }
     "#]]
     .assert_debug_eq(&context.constants());
     expect![[r#"
-        [3] = [2] x [1]
+        [4] = [3] x [1]
 
     "#]]
     .assert_debug_eq(&context.circuit);

@@ -7,6 +7,7 @@ use crate::simple_air::{create_proof, create_proof_with_fold_step};
 use crate::simple_statement::{COMPONENT_ENABLE_BITS, SimpleStatement};
 use circuit_serialize::serialize::CircuitSerialize;
 use circuits::context::{Context, TraceContext};
+use circuits::finalize_constants::finalize_constants;
 use circuits::ivalue::NoValue;
 use circuits::ops::Guess;
 use circuits_stark_verifier::fri_proof::compute_all_fold_steps;
@@ -44,6 +45,7 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
         let proof_vars = empty_proof.guess(&mut novalue_context);
         let statement = SimpleStatement::default();
         verify(&mut novalue_context, &proof_vars, &config, &statement);
+        finalize_constants(&mut novalue_context);
         novalue_context.finalize_guessed_vars();
         novalue_context.circuit
     };
@@ -81,6 +83,7 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
     let proof_vars = proof.guess(&mut context);
     let statement = SimpleStatement::default();
     verify(&mut context, &proof_vars, &config, &statement);
+    finalize_constants(&mut context);
 
     let result = novalue_circuit.check(context.values());
     match proof_modifier {
