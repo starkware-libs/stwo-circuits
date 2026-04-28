@@ -19,6 +19,7 @@ use num_traits::Zero;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::fri::FriConfig;
 use stwo::core::pcs::PcsConfig;
+use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 
 use crate::privacy::{privacy_cairo_verifier_config, privacy_components};
 use crate::test::verify_cairo_with_component_set;
@@ -28,7 +29,7 @@ use crate::verify::build_cairo_verifier_circuit;
 /// Verifies with a circuit a proof of execution of another circuit.
 fn verify_circuit_proof(
     preprocessed_circuit: &PreprocessedCircuit,
-    circuit_proof: CircuitProof,
+    circuit_proof: CircuitProof<Blake2sM31MerkleHasher>,
     preprocessed_root: HashValue<QM31>,
 ) -> Context<QM31> {
     let preprocessed_column_ids = preprocessed_circuit.preprocessed_trace.ids();

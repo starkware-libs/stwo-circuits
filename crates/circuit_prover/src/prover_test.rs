@@ -21,7 +21,7 @@ use stwo::core::channel::Channel;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::{CommitmentSchemeVerifier, PcsConfig, TreeVec};
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
-
+use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 // Not a power of 2 so that we can test component padding.
 const N: usize = 1030;
 
@@ -105,7 +105,10 @@ pub fn build_m31_to_u32_context() -> Context<QM31> {
 
 /// Verifies a [`CircuitProof`] using the stwo verifier. Asserts that the proof is valid
 /// and that the logup sum is zero.
-fn stwo_verify(circuit_proof: CircuitProof, preprocessed_circuit: &PreprocessedCircuit) {
+fn stwo_verify(
+    circuit_proof: CircuitProof<Blake2sM31MerkleHasher>,
+    preprocessed_circuit: &PreprocessedCircuit,
+) {
     let CircuitProof {
         components,
         claim,
@@ -231,7 +234,7 @@ fn test_prove_and_stark_verify_m31_to_u32_context() {
 /// Verifies a [`CircuitProof`] using the circuit verifier. Requires the expected
 /// `preprocessed_root` of the preprocessed trace.
 fn circuit_verify(
-    circuit_proof: CircuitProof,
+    circuit_proof: CircuitProof<Blake2sM31MerkleHasher>,
     preprocessed_circuit: &PreprocessedCircuit,
     preprocessed_root: [u32; 8],
 ) {
