@@ -1,6 +1,6 @@
 [files]
 extend-exclude = [
-    "crates/cairo_air/src/components/",
+    "crates/cairo_verifier/src/components/",
     "test_data/privacy/privacy_simple_bootloader_compiled.json",
 ]
 [default.extend-words]
