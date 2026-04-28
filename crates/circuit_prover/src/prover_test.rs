@@ -6,7 +6,7 @@ use circuit_air::statement::{INTERACTION_POW_BITS, all_circuit_components};
 use circuit_air::verify::{CircuitConfig, verify_circuit};
 use circuit_common::finalize::finalize_context;
 use circuit_common::preprocessed::PreprocessedCircuit;
-use circuits::blake::{blake, m31_to_u32};
+use circuits::blake::{blake, m31_to_u32, triple_xor};
 use circuits::context::Var;
 use circuits::eval;
 use circuits::ivalue::{IValue, qm31_from_u32s};
@@ -72,6 +72,43 @@ pub fn build_blake_gate_context() -> Context<QM31> {
         let output = blake(&mut context, &inputs, n_bytes as usize);
         eval!(&mut context, (output.0) + (output.1));
     }
+
+    context
+}
+
+pub fn build_triple_xor_context() -> Context<QM31> {
+    let mut context = Context::<QM31>::default();
+
+    // Inputs are u32 values packed as (low_16, high_16, 0, 0).
+    // 42 ^ 17 ^ 55 = 12
+    let a = guess(&mut context, qm31_from_u32s(42, 0, 0, 0));
+    let b = guess(&mut context, qm31_from_u32s(17, 0, 0, 0));
+    let c = guess(&mut context, qm31_from_u32s(55, 0, 0, 0));
+    let out = triple_xor(&mut context, a, b, c);
+    expect![[r#"
+        (12 + 0i) + (0 + 0i)u
+    "#]]
+    .assert_debug_eq(&context.get(out));
+
+    // 0x10000 ^ 0x20000 ^ 0x30001 = 1
+    let a = guess(&mut context, qm31_from_u32s(0, 1, 0, 0));
+    let b = guess(&mut context, qm31_from_u32s(0, 2, 0, 0));
+    let c = guess(&mut context, qm31_from_u32s(1, 3, 0, 0));
+    let out = triple_xor(&mut context, a, b, c);
+    expect![[r#"
+        (1 + 0i) + (0 + 0i)u
+    "#]]
+    .assert_debug_eq(&context.get(out));
+
+    // 0x30005 ^ 0x10007 ^ 0x4000b = 0x60009
+    let a = guess(&mut context, qm31_from_u32s(5, 3, 0, 0));
+    let b = guess(&mut context, qm31_from_u32s(7, 1, 0, 0));
+    let c = guess(&mut context, qm31_from_u32s(11, 4, 0, 0));
+    let out = triple_xor(&mut context, a, b, c);
+    expect![[r#"
+        (9 + 6i) + (0 + 0i)u
+    "#]]
+    .assert_debug_eq(&context.get(out));
 
     context
 }
@@ -216,6 +253,22 @@ fn test_prove_and_stark_verify_fibonacci_context() {
 }
 
 #[test]
+fn test_prove_and_stark_verify_triple_xor_context() {
+    let mut triple_xor_context = build_triple_xor_context();
+    triple_xor_context.finalize_guessed_vars();
+    triple_xor_context.validate_circuit();
+
+    let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut triple_xor_context);
+    let circuit_proof = prove_circuit_assignment(
+        triple_xor_context.values(),
+        &preprocessed_circuit,
+        &BaseColumnPool::<SimdBackend>::new(),
+        PcsConfig::default(),
+    );
+    stwo_verify(circuit_proof, &preprocessed_circuit);
+}
+
+#[test]
 fn test_prove_and_stark_verify_m31_to_u32_context() {
     let mut m31_to_u32_context = build_m31_to_u32_context();
     m31_to_u32_context.finalize_guessed_vars();
@@ -260,8 +313,27 @@ fn circuit_verify(
     verify_circuit(circuit_config, proof, public_data).unwrap();
 }
 
+const TRIPLE_XOR_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
+    [1918597330, 1040986714, 360077332, 1485499775, 1549107080, 909728936, 1387890396, 2113635639];
+
+#[test]
+fn test_prove_and_circuit_verify_triple_xor_context() {
+    let mut triple_xor_context = build_triple_xor_context();
+    triple_xor_context.finalize_guessed_vars();
+    triple_xor_context.validate_circuit();
+
+    let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut triple_xor_context);
+    let circuit_proof = prove_circuit_assignment(
+        triple_xor_context.values(),
+        &preprocessed_circuit,
+        &BaseColumnPool::<SimdBackend>::new(),
+        PcsConfig::default(),
+    );
+    circuit_verify(circuit_proof, &preprocessed_circuit, TRIPLE_XOR_CIRCUIT_PREPROCESSED_ROOT);
+}
+
 const FIBONACCI_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
-    [579827647, 460015323, 2072233139, 709693420, 371952288, 1355707807, 1645091261, 2144587918];
+    [2050504744, 1758328976, 1161005513, 1578104878, 1968829549, 1146302888, 1864642496, 380985900];
 
 #[test]
 fn test_prove_and_circuit_verify_fibonacci_context() {
@@ -280,7 +352,7 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
 }
 
 const M31_TO_U32_CIRCUIT_PREPROCESSED_ROOT: [u32; 8] =
-    [270075619, 790063164, 183255611, 43064901, 229280056, 1717043326, 341216832, 2011011748];
+    [1472983959, 1757883832, 995311180, 1571550647, 1889033977, 1760976195, 1244386802, 352698719];
 
 #[test]
 fn test_prove_and_circuit_verify_m31_to_u32_context() {
