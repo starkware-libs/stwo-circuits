@@ -240,7 +240,7 @@ fn circuit_verify(
 ) {
     let all_components = all_circuit_components::<QM31>();
     let enabled_bits: Vec<bool> = vec![true; all_components.len()];
-    let proof_config = ProofConfig::from_components(
+    let proof_config = ProofConfig::new(
         &all_components,
         enabled_bits,
         preprocessed_circuit.preprocessed_trace.log_sizes(),

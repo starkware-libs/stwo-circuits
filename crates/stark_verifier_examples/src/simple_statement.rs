@@ -23,6 +23,7 @@ use circuits_stark_verifier::statement::Statement;
 /// `pad_disabled` during channel mixing.
 pub const COMPONENT_LOG_SIZES: [u32; 2] = [LOG_SIZE_LONG, LOG_SIZE_SHORT];
 pub const COMPONENT_ENABLE_BITS: [bool; 3] = [true, true, false];
+pub const PREPROCESSED_COLUMN_LOG_SIZES: [u32; 2] = [LOG_SIZE_SHORT, LOG_SIZE_LONG];
 
 pub struct SimpleStatement<Value: IValue> {
     components: IndexMap<&'static str, Box<dyn CircuitEval<Value>>>,
@@ -156,10 +157,6 @@ impl<Value: IValue> Statement<Value> for SimpleStatement<Value> {
             .iter()
             .map(|id| PreProcessedColumnId { id: id.to_string() })
             .collect()
-    }
-
-    fn get_preprocessed_column_log_sizes(&self) -> Vec<u32> {
-        vec![LOG_SIZE_SHORT, LOG_SIZE_LONG]
     }
 
     fn get_preprocessed_root(&self, context: &mut Context<Value>) -> HashValue<Var> {

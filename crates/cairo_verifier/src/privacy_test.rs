@@ -14,6 +14,7 @@ use circuits::context::Context;
 use circuits::ivalue::{IValue, NoValue};
 use circuits::stats::Stats;
 use circuits_stark_verifier::proof::{ProofConfig, ProofInfo};
+use circuits_stark_verifier::statement::Statement;
 use itertools::Itertools;
 use num_traits::Zero;
 use stwo::core::fields::qm31::QM31;
@@ -34,7 +35,7 @@ fn verify_circuit_proof(
 ) -> Context<QM31> {
     let components = all_circuit_components::<QM31>();
     let enabled_bits = vec![true; components.len()];
-    let proof_config = ProofConfig::from_components(
+    let proof_config = ProofConfig::new(
         &components,
         enabled_bits,
         preprocessed_circuit.preprocessed_trace.log_sizes(),
@@ -258,9 +259,10 @@ fn test_privacy_proof_info() {
     );
 
     let enabled_bits = vec![true; all_circuit_components::<NoValue>().len()];
-    let proof_config = ProofConfig::from_statement(
-        &statement,
+    let proof_config = ProofConfig::new(
+        statement.get_components(),
         enabled_bits,
+        circuit_config.preprocessed_column_log_sizes.clone(),
         &circuit_config.config,
         circuit_verifier::statement::INTERACTION_POW_BITS,
     );
