@@ -1309,6 +1309,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "circuit-cairo-serialize"
+version = "0.1.0"
+dependencies = [
+ "cairo-air",
+ "circuit-air",
+ "circuit-common",
+ "circuit-prover",
+ "circuits",
+ "num-traits",
+ "starknet-ff",
+ "stwo",
+ "stwo-cairo-serialize",
+]
+
+[[package]]
 name = "circuit-common"
 version = "0.1.0"
 dependencies = [
