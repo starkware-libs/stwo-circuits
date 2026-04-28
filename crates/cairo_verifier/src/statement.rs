@@ -366,6 +366,10 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         self.preprocessed_trace_variant.to_preprocessed_trace().ids()
     }
 
+    fn get_preprocessed_column_log_sizes(&self) -> Vec<u32> {
+        self.preprocessed_trace_variant.to_preprocessed_trace().log_sizes()
+    }
+
     fn public_params(&self, _context: &mut Context<Value>) -> HashMap<String, Var> {
         let segment_ranges = &self.public_data.public_memory.segment_ranges;
         let public_params: HashMap<String, Var> = HashMap::from_iter(

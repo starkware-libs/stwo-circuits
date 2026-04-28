@@ -34,6 +34,8 @@ pub struct CircuitStatement<Value: IValue> {
     pub n_blake_gates: usize,
     /// Preprocessed column ids in the exact order used by the prover's preprocessed trace.
     pub preprocessed_column_ids: Vec<PreProcessedColumnId>,
+    /// Log size of each preprocessed column, in the same order as `preprocessed_column_ids`.
+    pub preprocessed_column_log_sizes: Vec<u32>,
     /// The preprocessed trace root.
     pub preprocessed_root: HashValue<QM31>,
 }
@@ -44,6 +46,7 @@ impl<Value: IValue> CircuitStatement<Value> {
         output_values: &[QM31],
         n_blake_gates: usize,
         preprocessed_column_ids: Vec<PreProcessedColumnId>,
+        preprocessed_column_log_sizes: Vec<u32>,
         preprocessed_root: HashValue<QM31>,
     ) -> Self {
         let output_addresses = output_addresses
@@ -58,6 +61,7 @@ impl<Value: IValue> CircuitStatement<Value> {
             output_values,
             n_blake_gates,
             preprocessed_column_ids,
+            preprocessed_column_log_sizes,
             preprocessed_root,
         }
     }
@@ -129,6 +133,10 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
 
     fn get_preprocessed_column_ids(&self) -> Vec<PreProcessedColumnId> {
         self.preprocessed_column_ids.clone()
+    }
+
+    fn get_preprocessed_column_log_sizes(&self) -> Vec<u32> {
+        self.preprocessed_column_log_sizes.clone()
     }
 
     fn get_preprocessed_root(&self, context: &mut Context<Value>) -> HashValue<Var> {
