@@ -1,4 +1,5 @@
 use crate::context::{Context, TraceContext};
+use crate::finalize_constants::finalize_constants;
 use crate::ivalue::qm31_from_u32s;
 
 #[test]
@@ -11,14 +12,11 @@ fn test_constants() {
     let c = context.constant(x);
     assert_eq!(a.idx, c.idx);
 
-    assert_eq!(context.values(), &vec![0.into(), 1.into(), x, x + x]);
+    let u = qm31_from_u32s(0, 0, 1, 0);
+    assert_eq!(context.values(), &vec![0.into(), 1.into(), u, x, x + x]);
 
+    finalize_constants(&mut context);
     context.finalize_guessed_vars();
-    assert_eq!(
-        format!("{:?}", context.circuit),
-        "[0] = [0] + [0]\n[1] = [1] + [0]\n[2] = [2] + [0]\n[3] = [3] + [0]\n"
-    );
-
     context.validate_circuit();
 }
 

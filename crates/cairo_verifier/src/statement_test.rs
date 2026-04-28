@@ -2,6 +2,7 @@ use crate::statement::{
     CasmState, PubMemoryM31Value, PublicData, PublicMemory, SegmentRange, public_logup_sum,
 };
 use circuits::context::{TraceContext, Var};
+use circuits::finalize_constants::finalize_constants;
 use circuits::ivalue::qm31_from_u32s;
 use circuits::wrappers::M31Wrapper;
 
@@ -261,6 +262,7 @@ fn test_public_logup_sum() {
     assert_eq!(result_value, expected);
 
     // Validate the circuit
+    finalize_constants(&mut context);
     context.check_vars_used();
     context.finalize_guessed_vars();
     context.circuit.check_yields();
