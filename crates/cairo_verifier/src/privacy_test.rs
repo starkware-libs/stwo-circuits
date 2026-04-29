@@ -244,13 +244,8 @@ fn test_privacy_proof_info() {
         output_values: vec![QM31::zero(); preprocessed_circuit.params.output_addresses.len()],
     };
     let mut context = Context::<NoValue>::default();
-    let statement = CircuitStatement::new(
-        &mut context,
-        &circuit_config.output_addresses,
-        &public_data.output_values,
-        circuit_config.preprocessed_column_log_sizes.clone(),
-        circuit_config.preprocessed_root,
-    );
+    let statement =
+        CircuitStatement::new(&mut context, &circuit_config, &public_data.output_values);
 
     let enabled_bits = vec![true; all_circuit_components::<NoValue>().len()];
     let proof_config = ProofConfig::new(
@@ -263,5 +258,5 @@ fn test_privacy_proof_info() {
     let proof_info = ProofInfo::from_config(&proof_config);
     println!("{proof_info}");
     // Assert the total size in bytes.
-    assert_eq!(proof_info.total_bytes(), 263808);
+    assert_eq!(proof_info.total_bytes(), 263796);
 }

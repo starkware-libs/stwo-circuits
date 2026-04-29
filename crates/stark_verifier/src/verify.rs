@@ -74,9 +74,7 @@ pub fn verify<Value: IValue>(
     let preprocessed_root = statement.get_preprocessed_root(context);
     channel.mix_commitment(context, preprocessed_root);
 
-    let n_components = config.n_components();
-    let component_log_sizes =
-        Simd::from_packed(proof.claim.packed_component_log_sizes.clone(), n_components);
+    let component_log_sizes = statement.get_component_log_sizes().clone();
     let component_sizes = validate_and_compute_component_sizes(context, &component_log_sizes);
 
     // Check that the component sizes are at most 2^config.log_trace_size().
@@ -93,7 +91,7 @@ pub fn verify<Value: IValue>(
         pack_enable_bits(enable_bits).into_iter().map(|qm31| context.constant(qm31)).collect_vec();
     channel.mix_qm31s(context, packed_enable_bits);
 
-    channel.mix_qm31s(context, proof.claim.packed_component_log_sizes.iter().cloned());
+    channel.mix_qm31s(context, component_log_sizes.get_packed().iter().cloned());
     for claim_to_mix in statement.claims_to_mix(context) {
         channel.mix_qm31s(context, claim_to_mix.iter().cloned());
     }
@@ -106,9 +104,9 @@ pub fn verify<Value: IValue>(
     let [interaction_z, interaction_alpha] = channel.draw_two_qm31s(context);
 
     let public_logup_sum = statement.public_logup_sum(context, [interaction_z, interaction_alpha]);
-    validate_logup_sum(context, public_logup_sum, &proof.claim.claimed_sums);
+    validate_logup_sum(context, public_logup_sum, &proof.claimed_sums);
 
-    channel.mix_qm31s(context, proof.claim.claimed_sums.iter().cloned());
+    channel.mix_qm31s(context, proof.claimed_sums.iter().cloned());
     channel.mix_commitment(context, proof.interaction_root);
 
     // Draw a random QM31 coefficient for the composition polynomial.
@@ -139,7 +137,7 @@ pub fn verify<Value: IValue>(
             log_domain_size: config.log_trace_size(),
             composition_polynomial_coeff,
             interaction_elements: [interaction_z, interaction_alpha],
-            claimed_sums: &proof.claim.claimed_sums,
+            claimed_sums: &proof.claimed_sums,
             component_sizes: &unpacked_component_sizes,
             n_instances_bits: &component_sizes_bits,
         },
