@@ -205,9 +205,14 @@ where
     let interaction_elements = CircuitInteractionElements::draw(channel);
 
     // Interaction trace.
+    let component_log_sizes = circuit_verifier::statement::component_log_sizes(
+        *n_blake_compress,
+        &preprocessed_trace.ids(),
+        &preprocessed_trace.log_sizes(),
+    );
     let mut tree_builder = commitment_scheme.tree_builder();
     let interaction_claim = write_interaction_trace(
-        &claim,
+        &component_log_sizes,
         interaction_generator,
         &mut tree_builder,
         &interaction_elements,
@@ -230,9 +235,9 @@ where
     tree_builder.commit(channel);
     // Component provers.
     let circuit_components = CircuitComponents::new(
-        &claim,
         &interaction_elements,
         &interaction_claim,
+        &component_log_sizes,
         &preprocessed_trace.ids(),
     );
     let components = to_component_provers(&circuit_components);

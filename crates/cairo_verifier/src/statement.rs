@@ -348,6 +348,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         let flat_program = pack_into_qm31s(program.iter().flatten().cloned());
         let program_hash = IValue::blake(&flat_program, flat_program.len() * 16);
         vec![
+            self.component_log_sizes.get_packed().to_vec(),
             vec![program_len],
             packed_public_data.get_packed().to_vec(),
             vec![output_hash.0, output_hash.1],

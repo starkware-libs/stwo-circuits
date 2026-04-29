@@ -2,7 +2,7 @@ use crate::blake2s_consts::blake2s_initial_state;
 use crate::circuit_components::N_COMPONENTS;
 use crate::relations::{BLAKE_STATE_RELATION_ID, CommonLookupElements, GATE_RELATION_ID};
 use circuits::ivalue::qm31_from_u32s;
-use circuits_stark_verifier::proof_from_stark_proof::{pack_component_log_sizes, pack_enable_bits};
+use circuits_stark_verifier::proof_from_stark_proof::pack_enable_bits;
 use itertools::zip_eq;
 use num_traits::Zero;
 use stwo::core::channel::Channel;
@@ -16,21 +16,17 @@ pub type ClaimedSum = QM31;
 
 #[derive(Debug, PartialEq)]
 pub struct CircuitClaim {
-    // TODO(ilya): Remove `log_sizes` they are fixed given a CircuitConfig.
-    pub log_sizes: [ComponentLogSize; N_COMPONENTS],
     pub output_values: Vec<QM31>,
 }
 impl CircuitClaim {
     pub fn mix_into(&self, channel: &mut impl Channel) {
-        let Self { log_sizes, output_values } = self;
+        let Self { output_values } = self;
 
         // mix the number of components.
-        let n_components = log_sizes.len();
-        channel.mix_felts(&[qm31_from_u32s(n_components as u32, 0, 0, 0)]);
+        channel.mix_felts(&[qm31_from_u32s(N_COMPONENTS.try_into().unwrap(), 0, 0, 0)]);
 
         // mix the enable bits into the channel.
         channel.mix_felts(&pack_enable_bits(&[true; N_COMPONENTS]));
-        channel.mix_felts(&pack_component_log_sizes(log_sizes));
         // mix the output values into the channel.
         channel.mix_felts(output_values);
     }
