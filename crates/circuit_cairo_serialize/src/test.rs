@@ -6,11 +6,13 @@
 
 use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_prover::prover::{BaseColumnPool, SimdBackend, prove_circuit_assignment};
-use circuit_verifier::circuit_components::ComponentList;
+use circuit_verifier::circuit_components::{ComponentList, N_COMPONENTS};
+use circuit_verifier::statement::all_circuit_components;
 use circuits::context::Context;
 use circuits::finalize_constants::finalize_constants;
-use circuits::ivalue::qm31_from_u32s;
+use circuits::ivalue::{NoValue, qm31_from_u32s};
 use circuits::ops::{guess, output};
+use itertools::Itertools;
 use num_traits::{One, Zero};
 use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::PcsConfig;
@@ -58,7 +60,17 @@ fn test_serialize_deserialize_cairo_proof() {
     // (FriProof / MerkleDecommitmentLifted don't implement `PartialEq`), so we compare
     // re-serialized felts — if the deserializer is the inverse of the serializer, the
     // two byte streams must match.
-    let felts = prepare_circuit_proof_for_cairo_verifier(circuit_proof);
+    let preprocessed_column_log_sizes = preprocessed_circuit.preprocessed_trace.log_sizes();
+    let component_log_sizes: [u32; N_COMPONENTS] = all_circuit_components::<NoValue>()
+        .values()
+        .map(|c| {
+            c.log_size(&preprocessed_column_log_sizes)
+                .expect("The circuit components can't have a dynamic log_size.")
+        })
+        .collect_vec()
+        .try_into()
+        .unwrap();
+    let felts = prepare_circuit_proof_for_cairo_verifier(circuit_proof, &component_log_sizes);
     let mut iter = felts.iter();
     let deserialized: CairoCircuitProof<Blake2sM31MerkleHasher> =
         CairoCircuitProof::deserialize(&mut iter);
@@ -123,8 +135,8 @@ fn test_claim_field_order_matches_component_list() {
     log_sizes[ComponentList::M31ToU32 as usize] = 109;
     log_sizes[ComponentList::BlakeGGate as usize] = 110;
 
-    let rust_claim = CircuitClaim { log_sizes, output_values: vec![qm31(9, 9, 9, 9)] };
-    let cairo_claim = CairoCircuitClaim::from(&rust_claim);
+    let rust_claim = CircuitClaim { output_values: vec![qm31(9, 9, 9, 9)] };
+    let cairo_claim = CairoCircuitClaim::new(&rust_claim, &log_sizes);
     assert_eq!(cairo_claim.eq_log_size, 100);
     assert_eq!(cairo_claim.qm31_ops_log_size, 101);
     assert_eq!(cairo_claim.triple_xor_log_size, 108);

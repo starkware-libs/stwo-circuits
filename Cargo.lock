@@ -1276,6 +1276,7 @@ dependencies = [
  "circuit-prover",
  "circuit-verifier",
  "circuits",
+ "itertools 0.12.1",
  "num-traits",
  "starknet-ff",
  "stwo",

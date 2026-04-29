@@ -10,6 +10,7 @@
 //! these types can round-trip in tests.
 
 use circuit_verifier::circuit_claim::{CircuitClaim, CircuitInteractionClaim};
+use circuit_verifier::circuit_components::N_COMPONENTS;
 use stwo::core::fields::qm31::QM31;
 use stwo_cairo_serialize::{CairoDeserialize, CairoSerialize};
 
@@ -29,12 +30,12 @@ pub struct CairoCircuitClaim {
     pub blake_g_gate_log_size: u32,
 }
 
-impl From<&CircuitClaim> for CairoCircuitClaim {
-    fn from(c: &CircuitClaim) -> Self {
+impl CairoCircuitClaim {
+    pub fn new(claim: &CircuitClaim, component_log_sizes: &[u32; N_COMPONENTS]) -> Self {
         // Destructure positionally — order must match `ComponentList` in
         // `circuit_verifier::circuit_components`. Fixed-size components contribute no log_size
         // and are bound to `_`.
-        let CircuitClaim { log_sizes, output_values } = c;
+        let CircuitClaim { output_values } = claim;
         let &[
             eq_log_size,
             qm31_ops_log_size,
@@ -47,7 +48,7 @@ impl From<&CircuitClaim> for CairoCircuitClaim {
             _verify_bitwise_xor_7_log_size,
             _verify_bitwise_xor_9_log_size,
             _range_check_16_log_size,
-        ] = log_sizes;
+        ] = component_log_sizes;
         Self {
             output_values: output_values.clone(),
             eq_log_size,
