@@ -91,7 +91,6 @@ pub fn verify<Value: IValue>(
         pack_enable_bits(enable_bits).into_iter().map(|qm31| context.constant(qm31)).collect_vec();
     channel.mix_qm31s(context, packed_enable_bits);
 
-    channel.mix_qm31s(context, component_log_sizes.get_packed().iter().cloned());
     for claim_to_mix in statement.claims_to_mix(context) {
         channel.mix_qm31s(context, claim_to_mix.iter().cloned());
     }

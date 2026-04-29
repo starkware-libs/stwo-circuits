@@ -11,6 +11,8 @@
 //! felts.
 
 use cairo_air::utils::sort_and_transpose_queried_values;
+use circuit_verifier::circuit_claim::column_log_sizes_per_tree;
+use circuit_verifier::circuit_components::N_COMPONENTS;
 use circuit_verifier::circuit_proof::CircuitProof;
 use starknet_ff::FieldElement;
 use stwo::core::ColumnVec;
@@ -64,14 +66,15 @@ pub struct CairoStarkProof<H: MerkleHasherLifted<Hash = Blake2sHash>> {
 /// are hardcoded inside the Cairo verifier binary for a specific circuit topology.
 pub fn prepare_circuit_proof_for_cairo_verifier<H: MerkleHasherLifted<Hash = Blake2sHash>>(
     circuit_proof: CircuitProof<H>,
+    component_log_sizes: &[u32; N_COMPONENTS],
 ) -> Vec<FieldElement> {
-    let [trace_log_sizes, interaction_log_sizes] = circuit_proof.claim.column_log_sizes_per_tree();
+    let [trace_log_sizes, interaction_log_sizes] = column_log_sizes_per_tree(component_log_sizes);
     let stark_proof = CairoStarkProof::<H>::from_stark_proof(
         circuit_proof.stark_proof.proof,
         &[trace_log_sizes.as_slice(), interaction_log_sizes.as_slice()],
     );
     let circuit_proof_for_cairo = CairoCircuitProof::<H> {
-        claim: CairoCircuitClaim::from(&circuit_proof.claim),
+        claim: CairoCircuitClaim::new(&circuit_proof.claim),
         interaction_pow: circuit_proof.interaction_pow_nonce,
         interaction_claim: CairoCircuitInteractionClaim::from(&circuit_proof.interaction_claim),
         stark_proof,

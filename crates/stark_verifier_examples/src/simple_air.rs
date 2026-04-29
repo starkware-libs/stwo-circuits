@@ -1,7 +1,5 @@
 use circuits::ivalue::qm31_from_u32s;
-use circuits_stark_verifier::proof_from_stark_proof::{
-    pack_component_log_sizes, pack_enable_bits, pack_public_claim,
-};
+use circuits_stark_verifier::proof_from_stark_proof::{pack_enable_bits, pack_public_claim};
 
 use itertools::{Itertools, zip_eq};
 use num_traits::One;
@@ -32,7 +30,7 @@ use stwo_constraint_framework::{
     TraceLocationAllocator, relation,
 };
 
-use crate::simple_statement::{COMPONENT_ENABLE_BITS, COMPONENT_LOG_SIZES};
+use crate::simple_statement::COMPONENT_ENABLE_BITS;
 
 pub const INTERACTION_POW_BITS: u32 = 8;
 
@@ -243,10 +241,6 @@ pub fn create_proof_with_fold_step(
     // Mix the enable bits into the channel.
     let packed_enable_bits = pack_enable_bits(&COMPONENT_ENABLE_BITS);
     prover_channel.mix_felts(&packed_enable_bits);
-
-    // Mix the component log sizes into the channel.
-    let packed_component_log_sizes = pack_component_log_sizes(&COMPONENT_LOG_SIZES);
-    prover_channel.mix_felts(&packed_component_log_sizes);
 
     // Mix the public claim into the channel.
     // Public claim is empty.
