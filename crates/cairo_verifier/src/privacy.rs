@@ -21,7 +21,7 @@ pub fn privacy_cairo_verifier_config(log_blowup_factor: u32) -> CairoVerifierCon
     let preprocessed_trace_variant = PreProcessedTraceVariant::CanonicalSmall;
     let privacy_set = privacy_components();
     // Build `enabled_bits` (one flag per component in the full list) and `components` (only the
-    // enabled entries, as expected by `ProofConfig::from_components`) in a single pass.
+    // enabled entries, as expected by `ProofConfig::new`) in a single pass.
     let (enabled_bits, components): (Vec<bool>, Vec<_>) = all_components::<NoValue>()
         .into_iter()
         .map(|(name, component)| {
@@ -50,7 +50,7 @@ pub fn privacy_cairo_verifier_config(log_blowup_factor: u32) -> CairoVerifierCon
         lifting_log_size: Some(lifting_log_size),
     };
 
-    let proof_config = ProofConfig::from_components(
+    let proof_config = ProofConfig::new(
         &components,
         enabled_bits,
         preprocessed_trace_variant.to_preprocessed_trace().log_sizes(),

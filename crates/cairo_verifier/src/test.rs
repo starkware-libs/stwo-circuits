@@ -13,6 +13,7 @@ use circuits::ivalue::NoValue;
 use circuits::ops::Guess;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
 use circuits_stark_verifier::proof::{ProofConfig, empty_proof};
+use circuits_stark_verifier::statement::Statement;
 use circuits_stark_verifier::verify::verify;
 use itertools::Itertools;
 use itertools::zip_eq;
@@ -70,7 +71,7 @@ pub fn verify_cairo_with_component_set(
             })
             .try_collect()?;
 
-    let proof_config = ProofConfig::from_components(
+    let proof_config = ProofConfig::new(
         &components,
         component_enable_bits,
         cairo_proof.preprocessed_trace_variant.to_preprocessed_trace().log_sizes(),
@@ -133,8 +134,13 @@ fn test_verify() {
 
     let mut enabled_bits = vec![true; all_components::<NoValue>().len()];
     enabled_bits[pedersen_points_index] = false;
-    let config =
-        ProofConfig::from_statement(&statement, enabled_bits, &pcs_config, INTERACTION_POW_BITS);
+    let config = ProofConfig::new(
+        statement.get_components(),
+        enabled_bits,
+        statement.preprocessed_trace_variant.to_preprocessed_trace().log_sizes(),
+        &pcs_config,
+        INTERACTION_POW_BITS,
+    );
 
     let empty_proof = empty_proof(&config);
 

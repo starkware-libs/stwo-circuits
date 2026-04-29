@@ -39,9 +39,10 @@ pub fn build_verification_circuit<Value: IValue>(
         circuit_config.preprocessed_root,
     );
 
-    let proof_config = ProofConfig::from_statement(
-        &statement,
+    let proof_config = ProofConfig::new(
+        statement.get_components(),
         vec![true; statement.get_components().len()],
+        circuit_config.preprocessed_column_log_sizes.clone(),
         &circuit_config.config,
         INTERACTION_POW_BITS,
     );

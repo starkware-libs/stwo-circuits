@@ -2,7 +2,6 @@ use crate::constraint_eval::CircuitEval;
 use crate::fri_proof::{FriConfig, FriProof, compute_all_fold_steps, empty_fri_proof};
 use crate::merkle::{AuthPath, AuthPaths};
 use crate::oods::{EvalDomainSamples, N_COMPOSITION_COLUMNS, empty_eval_domain_samples};
-use crate::statement::Statement;
 use circuits::blake::HashValue;
 use circuits::context::{Context, Var};
 use circuits::ivalue::{IValue, NoValue};
@@ -243,24 +242,7 @@ pub struct ProofConfig {
     pub fri: FriConfig,
 }
 impl ProofConfig {
-    pub fn from_statement<Value: IValue>(
-        statement: &impl Statement<Value>,
-        enabled_bits: Vec<bool>,
-        pcs_config: &PcsConfig,
-        n_interaction_pow_bits: u32,
-    ) -> Self {
-        let components = statement.get_components();
-        let preprocessed_column_log_sizes = statement.get_preprocessed_column_log_sizes();
-        Self::from_components(
-            components,
-            enabled_bits,
-            preprocessed_column_log_sizes,
-            pcs_config,
-            n_interaction_pow_bits,
-        )
-    }
-
-    pub fn from_components<Value: IValue>(
+    pub fn new<Value: IValue>(
         components: &IndexMap<&'static str, Box<dyn CircuitEval<Value>>>,
         enabled_bits: Vec<bool>,
         preprocessed_column_log_sizes: Vec<u32>,
@@ -274,22 +256,7 @@ impl ProofConfig {
                 interaction_columns: component.interaction_columns(),
             });
         }
-        Self::new(
-            component_shapes,
-            enabled_bits,
-            preprocessed_column_log_sizes,
-            pcs_config,
-            n_interaction_pow_bits,
-        )
-    }
 
-    pub fn new(
-        component_shapes: Vec<ComponentShape>,
-        enabled_bits: Vec<bool>,
-        preprocessed_column_log_sizes: Vec<u32>,
-        pcs_config: &PcsConfig,
-        n_interaction_pow_bits: u32,
-    ) -> Self {
         // Every component must have an enable bit.
         assert!(component_shapes.len() <= enabled_bits.len());
         assert_eq!(

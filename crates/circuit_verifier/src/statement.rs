@@ -135,10 +135,6 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
         self.preprocessed_column_ids.clone()
     }
 
-    fn get_preprocessed_column_log_sizes(&self) -> Vec<u32> {
-        self.preprocessed_column_log_sizes.clone()
-    }
-
     fn get_preprocessed_root(&self, context: &mut Context<Value>) -> HashValue<Var> {
         HashValue(
             context.constant(self.preprocessed_root.0),
