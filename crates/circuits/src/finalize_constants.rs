@@ -18,9 +18,7 @@ mod test;
 
 /// Wraps `finalize_constants_with_min_base` and calls it with a default value. The main reason
 /// is to make testing easier by choosing a smaller minimum base.
-// TODO(Leo): remove allow once integrated in the main flow.
-#[allow(unused)]
-fn finalize_constants(context: &mut Context<impl IValue>) {
+pub fn finalize_constants(context: &mut Context<impl IValue>) {
     const DEFAULT_MIN_BASE: usize = 256;
     finalize_constants_with_min_base(context, DEFAULT_MIN_BASE);
 }
@@ -45,7 +43,10 @@ fn finalize_constants(context: &mut Context<impl IValue>) {
 /// rebuilding them, so each distinct M31 value gets at most one yield gate.
 ///
 /// `IndexMap` is used (rather than `HashMap`) so that iteration order is deterministic.
-fn finalize_constants_with_min_base(context: &mut Context<impl IValue>, min_base: usize) {
+pub(crate) fn finalize_constants_with_min_base(
+    context: &mut Context<impl IValue>,
+    min_base: usize,
+) {
     assert!(min_base >= 2);
     let mut m31_constants = IndexMap::<M31, Var>::new();
     let mut qm31_constants = IndexMap::<QM31, Var>::new();

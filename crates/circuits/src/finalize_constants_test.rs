@@ -7,9 +7,6 @@ use crate::context::TraceContext;
 #[test]
 fn test_no_constants_beyond_defaults() {
     let mut context = TraceContext::default();
-    // Add `u`.
-    // TODO(Leo): remove this once `u` is added to the default constants.
-    context.constant(qm31_from_u32s(0, 0, 1, 0));
     finalize_constants(&mut context);
     context.circuit.check_yields();
     context.validate_circuit();
@@ -18,9 +15,6 @@ fn test_no_constants_beyond_defaults() {
 #[test]
 fn test_plus_one_chain_topology() {
     let mut context = TraceContext::default();
-    // Add `u`.
-    // TODO(Leo): remove this once `u` is added to the default constants.
-    context.constant(qm31_from_u32s(0, 0, 1, 0));
     context.constant(M31::from(2u32).into());
     context.constant(M31::from(4u32).into());
     let m31_constants = IndexMap::from([
@@ -66,9 +60,6 @@ fn test_plus_one_chain_topology() {
 #[test]
 fn test_large_m31_decomposition() {
     let mut context = TraceContext::default();
-    // Add `u`.
-    // TODO(Leo): remove this once `u` is added to the default constants.
-    context.constant(qm31_from_u32s(0, 0, 1, 0));
     // 37 = (1*5 + 2)*5 + 2 in base `min_base = 5`, so it needs full base decomposition.
     context.constant(M31::from(37u32).into());
     finalize_constants_with_min_base(&mut context, 5);
@@ -108,9 +99,6 @@ fn test_large_m31_decomposition() {
 #[test]
 fn test_broadcast_decomposition() {
     let mut context = TraceContext::default();
-    // Add `u`.
-    // TODO(Leo): remove this once `u` is added to the default constants.
-    context.constant(qm31_from_u32s(0, 0, 1, 0));
     // Broadcast constant (11, 11, 11, 11) — should be yielded as 11 * (1, 1, 1, 1). Since 11 is
     // outside the chain (`min_base = 5`), the M31 factor 11 is itself built via base
     // decomposition: 11 = 2 * 5 + 1.
@@ -155,9 +143,6 @@ fn test_broadcast_decomposition() {
 #[test]
 fn test_mixed_m31_and_qm31_constants_small() {
     let mut context = TraceContext::default();
-    // Add `u`.
-    // TODO(Leo): remove this once `u` is added to the default constants.
-    context.constant(qm31_from_u32s(0, 0, 1, 0));
     // General (non-broadcast, non-base-field) QM31 constant. All limbs (1, 2, 3, 4) live in the
     // chain, so no base decomposition is triggered.
     context.constant(qm31_from_u32s(1, 2, 3, 4));
@@ -207,9 +192,6 @@ fn test_mixed_m31_and_qm31_constants_small() {
 #[test]
 fn test_mixed_m31_and_qm31_constants_large() {
     let mut context = TraceContext::default();
-    // Add `u`.
-    // TODO(Leo): remove this once `u` is added to the default constants.
-    context.constant(qm31_from_u32s(0, 0, 1, 0));
     // Add constants of various types.
     context.constant(qm31_from_u32s(1000, 2000, 3000, 4000));
     context.constant(qm31_from_u32s(1, 1, 1, 1));
