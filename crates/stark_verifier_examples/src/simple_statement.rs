@@ -9,12 +9,14 @@ use crate::simple_air::{FIB_PREPROCESSED_COLUMNS, LOG_SIZE_LONG, LOG_SIZE_SHORT}
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::ivalue::{IValue, qm31_from_u32s};
-use circuits::ops::div;
+use circuits::ops::{Guess, div};
+use circuits::simd::Simd;
 use circuits_stark_verifier::constraint_eval::RelationUse;
 use circuits_stark_verifier::constraint_eval::{
     CircuitEval, ComponentDataTrait, CompositionConstraintAccumulator,
 };
 use circuits_stark_verifier::logup::combine_term;
+use circuits_stark_verifier::proof_from_stark_proof::pack_into_qm31s;
 use circuits_stark_verifier::statement::Statement;
 
 /// Log sizes of the enabled components in [`SimpleStatement`].
@@ -27,30 +29,37 @@ pub const PREPROCESSED_COLUMN_LOG_SIZES: [u32; 2] = [LOG_SIZE_SHORT, LOG_SIZE_LO
 
 pub struct SimpleStatement<Value: IValue> {
     components: IndexMap<&'static str, Box<dyn CircuitEval<Value>>>,
+    component_log_sizes: Simd,
 }
 
-impl<Value: IValue> Default for SimpleStatement<Value> {
-    fn default() -> Self {
-        Self {
-            components: IndexMap::from([
-                (
-                    "squared_fibonacci_long",
-                    Box::new(SquaredFibonacciComponent {
-                        preprocessed_column_id: PreProcessedColumnId {
-                            id: "row_const_long".to_string(),
-                        },
-                    }) as Box<dyn CircuitEval<Value>>,
-                ),
-                (
-                    "squared_fibonacci_short",
-                    Box::new(SquaredFibonacciComponent {
-                        preprocessed_column_id: PreProcessedColumnId {
-                            id: "row_const_short".to_string(),
-                        },
-                    }) as Box<dyn CircuitEval<Value>>,
-                ),
-            ]),
-        }
+pub fn simple_statement_components<Value: IValue>()
+-> IndexMap<&'static str, Box<dyn CircuitEval<Value>>> {
+    IndexMap::from([
+        (
+            "squared_fibonacci_long",
+            Box::new(SquaredFibonacciComponent {
+                preprocessed_column_id: PreProcessedColumnId { id: "row_const_long".to_string() },
+            }) as Box<dyn CircuitEval<Value>>,
+        ),
+        (
+            "squared_fibonacci_short",
+            Box::new(SquaredFibonacciComponent {
+                preprocessed_column_id: PreProcessedColumnId { id: "row_const_short".to_string() },
+            }) as Box<dyn CircuitEval<Value>>,
+        ),
+    ])
+}
+
+impl<Value: IValue> SimpleStatement<Value> {
+    pub fn new(context: &mut Context<Value>) -> Self {
+        let n_components = COMPONENT_LOG_SIZES.len();
+        let packed_log_sizes = pack_into_qm31s(COMPONENT_LOG_SIZES.iter().cloned())
+            .into_iter()
+            .map(|qm31| Value::from_qm31(qm31).guess(context))
+            .collect::<Vec<_>>();
+        let component_log_sizes = Simd::from_packed(packed_log_sizes, n_components);
+
+        Self { components: simple_statement_components(), component_log_sizes }
     }
 }
 
@@ -135,6 +144,10 @@ impl<Value: IValue> Statement<Value> for SimpleStatement<Value> {
 
     fn get_components(&self) -> &IndexMap<&'static str, Box<dyn CircuitEval<Value>>> {
         &self.components
+    }
+
+    fn get_component_log_sizes(&self) -> &Simd {
+        &self.component_log_sizes
     }
 
     fn public_logup_sum(

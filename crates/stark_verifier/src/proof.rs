@@ -58,9 +58,7 @@ impl ProofInfo {
 
         let fixed = (1 + 3 * 2 + 1 + 1) * SECURE_EXTENSION_DEGREE * N_U8S_PER_U32;
 
-        let packed_log_sizes = config.n_components().next_multiple_of(4); // 1 log per u8.
-        let claimed_sums = config.n_components() * SECURE_EXTENSION_DEGREE * N_U8S_PER_U32;
-        let claim = packed_log_sizes + claimed_sums;
+        let claim = config.n_components() * SECURE_EXTENSION_DEGREE * N_U8S_PER_U32;
 
         let n_columns_per_trace = config.n_columns_per_trace();
         let total_columns: usize = n_columns_per_trace.iter().sum();
@@ -378,26 +376,6 @@ impl<Value: IValue> Guess<Value> for InteractionAtOods<Value> {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Claim<T> {
-    // The log sizes of the components in the AIR.
-    // Every QM31 hold up to 4 component log sizes.
-    pub packed_component_log_sizes: Vec<T>,
-
-    // Claimed sum for each component in the AIR.
-    pub claimed_sums: Vec<T>,
-}
-impl<Value: IValue> Guess<Value> for Claim<Value> {
-    type Target = Claim<Var>;
-
-    fn guess(&self, context: &mut Context<Value>) -> Self::Target {
-        Claim {
-            packed_component_log_sizes: self.packed_component_log_sizes.guess(context),
-            claimed_sums: self.claimed_sums.guess(context),
-        }
-    }
-}
-
-#[derive(Debug, PartialEq)]
 pub struct Proof<T> {
     pub channel_salt: T,
 
@@ -406,8 +384,8 @@ pub struct Proof<T> {
     pub interaction_root: HashValue<T>,
     pub composition_polynomial_root: HashValue<T>,
 
-    // Claim.
-    pub claim: Claim<T>,
+    // Claimed sum for each component in the AIR.
+    pub claimed_sums: Vec<T>,
 
     // Evaluations at the OODS point and the previous point.
     pub preprocessed_columns_at_oods: Vec<T>,
@@ -480,10 +458,7 @@ pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
                 }
             })
             .collect(),
-        claim: Claim {
-            packed_component_log_sizes: vec![NoValue; n_components.div_ceil(4)],
-            claimed_sums: vec![NoValue; n_components],
-        },
+        claimed_sums: vec![NoValue; n_components],
         composition_eval_at_oods: [NoValue; N_COMPOSITION_COLUMNS],
         eval_domain_samples: empty_eval_domain_samples(
             &config.n_columns_per_trace(),
@@ -507,7 +482,7 @@ impl<Value: IValue> Guess<Value> for Proof<Value> {
             trace_root: self.trace_root.guess(context),
             interaction_root: self.interaction_root.guess(context),
             composition_polynomial_root: self.composition_polynomial_root.guess(context),
-            claim: self.claim.guess(context),
+            claimed_sums: self.claimed_sums.guess(context),
             preprocessed_columns_at_oods: self.preprocessed_columns_at_oods.guess(context),
             trace_at_oods: self.trace_at_oods.guess(context),
             interaction_at_oods: self.interaction_at_oods.guess(context),

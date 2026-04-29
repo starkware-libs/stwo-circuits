@@ -556,10 +556,12 @@ impl PreprocessedCircuit {
         let blake_g_log_size = log_n_blake_updates + 7;
         let trace_log_size = std::cmp::max(max_pp_trace_log_size, blake_g_log_size);
 
+        let n_blake_compress: usize = circuit.blake.iter().map(|gate| gate.input.len()).sum();
         let params = CircuitParams {
             trace_log_size,
             first_permutation_row: qm31_ops_trace_generator.first_permutation_row,
             n_blake_gates: circuit.blake.len(),
+            n_blake_compress,
             output_addresses: circuit.output.iter().map(|out| out.in0).collect(),
         };
 

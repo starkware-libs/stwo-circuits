@@ -53,7 +53,7 @@ pub fn verify_cairo_with_component_set(
     cairo_proof: &CairoProof<Blake2sM31MerkleHasher>,
     component_set: HashSet<&str>,
 ) -> Result<Context<QM31>, String> {
-    let FlatClaim { component_enable_bits, component_log_sizes: _, public_data: _ } =
+    let FlatClaim { component_enable_bits, component_log_sizes, public_data: _ } =
         cairo_proof.claim.flatten_claim();
     let components: indexmap::IndexMap<&'static str, Box<dyn CircuitEval<QM31>>> =
         zip_eq(all_components::<QM31>().into_iter(), &component_enable_bits)
@@ -80,7 +80,8 @@ pub fn verify_cairo_with_component_set(
     );
 
     let (proof, public_data) = prepare_cairo_proof_for_circuit_verifier(cairo_proof, &proof_config);
-    let (public_claim, outputs, program) = public_data.pack_into_u32s();
+    let (mut public_claim, outputs, program) = public_data.pack_into_u32s();
+    public_claim.extend(component_log_sizes);
     let outputs = outputs
         .chunks_exact(MEMORY_VALUES_LIMBS)
         .map(|chunk| array::from_fn(|i| M31::from_u32_unchecked(chunk[i])))
@@ -112,25 +113,27 @@ fn test_verify() {
     let mut novalue_context = Context::<NoValue>::default();
     let output_len = 1;
     let program_len = 128;
-    let flat_claim = vec![M31::zero(); PUBLIC_DATA_LEN + output_len + program_len];
     let outputs = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; output_len];
     let program: Arc<[[M31; MEMORY_VALUES_LIMBS]]> =
         std::iter::repeat_n([M31::zero(); MEMORY_VALUES_LIMBS], program_len).collect();
-    let components = all_components();
-    let mut statement = CairoStatement::new(
+    // Remove the pedersen points table component since it requires long preprocessed columns, which
+    // are not supported.
+    let pedersen_points_index =
+        all_components::<NoValue>().get_full("pedersen_points_table_window_bits_18").unwrap().0;
+    let mut components = all_components();
+    components.shift_remove("pedersen_points_table_window_bits_18");
+
+    let public_claim =
+        vec![M31::zero(); PUBLIC_DATA_LEN + output_len + program_len + components.len()];
+    let statement = CairoStatement::new(
         &mut novalue_context,
-        flat_claim,
+        public_claim,
         outputs,
         program,
         components,
         get_preprocessed_root(20 + pcs_config.fri_config.log_blowup_factor),
         PreProcessedTraceVariant::CanonicalSmall,
     );
-    // Remove the pedersen points table component since it requires long preprocessed columns, which
-    // are not supported.
-    let pedersen_points_index =
-        all_components::<NoValue>().get_full("pedersen_points_table_window_bits_18").unwrap().0;
-    statement.components.shift_remove("pedersen_points_table_window_bits_18");
 
     let mut enabled_bits = vec![true; all_components::<NoValue>().len()];
     enabled_bits[pedersen_points_index] = false;

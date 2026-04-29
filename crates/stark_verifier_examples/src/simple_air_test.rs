@@ -5,21 +5,15 @@ use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::core::verifier::verify;
 
 use crate::simple_air::{INTERACTION_POW_BITS, LOG_SIZE_LONG, LOG_SIZE_SHORT, create_proof};
-use crate::simple_statement::COMPONENT_ENABLE_BITS;
+use crate::simple_statement::{COMPONENT_ENABLE_BITS, COMPONENT_LOG_SIZES};
 use circuits::ivalue::qm31_from_u32s;
-use circuits_stark_verifier::proof::Claim;
-use circuits_stark_verifier::proof_from_stark_proof::pack_enable_bits;
+use circuits_stark_verifier::proof_from_stark_proof::{pack_component_log_sizes, pack_enable_bits};
 
 #[test]
 fn verify_simple_proof() {
-    let (
-        components,
-        Claim { packed_component_log_sizes, claimed_sums },
-        config,
-        proof,
-        interaction_pow_nonce,
-        channel_salt,
-    ) = create_proof();
+    let (components, claimed_sums, config, proof, interaction_pow_nonce, channel_salt) =
+        create_proof();
+    let packed_component_log_sizes = pack_component_log_sizes(&COMPONENT_LOG_SIZES);
 
     // Verify.
     let verifier_channel = &mut Blake2sM31Channel::default();

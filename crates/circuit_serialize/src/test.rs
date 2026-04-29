@@ -4,10 +4,9 @@ use crate::deserialize::deserialize_proof_with_config;
 use crate::serialize::CircuitSerialize;
 use circuits_stark_verifier::proof::{ProofConfig, ProofInfo};
 use circuits_stark_verifier::proof_from_stark_proof::proof_from_stark_proof;
-use circuits_stark_verifier::statement::Statement;
 use circuits_stark_verifier_examples::simple_air::create_proof;
 use circuits_stark_verifier_examples::simple_statement::{
-    COMPONENT_ENABLE_BITS, PREPROCESSED_COLUMN_LOG_SIZES, SimpleStatement,
+    COMPONENT_ENABLE_BITS, PREPROCESSED_COLUMN_LOG_SIZES, simple_statement_components,
 };
 
 #[test]
@@ -15,9 +14,9 @@ fn test_serialize_deserialize() {
     let (_components, claim, pcs_config, proof, interaction_pow_nonce, channel_salt) =
         create_proof();
 
-    let statement = &SimpleStatement::<QM31>::default();
+    let components = simple_statement_components::<QM31>();
     let config = ProofConfig::new(
-        statement.get_components(),
+        &components,
         COMPONENT_ENABLE_BITS.to_vec(),
         PREPROCESSED_COLUMN_LOG_SIZES.to_vec(),
         &pcs_config,
