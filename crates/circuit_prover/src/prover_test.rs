@@ -251,6 +251,7 @@ fn circuit_verify(
         config: circuit_proof.pcs_config,
         output_addresses: preprocessed_circuit.params.output_addresses.clone(),
         n_blake_gates: preprocessed_circuit.params.n_blake_gates,
+        n_blake_compress: preprocessed_circuit.params.n_blake_compress,
         preprocessed_column_ids: preprocessed_circuit.preprocessed_trace.ids(),
         preprocessed_column_log_sizes: preprocessed_circuit.preprocessed_trace.log_sizes(),
         preprocessed_root: preprocessed_root.into(),
