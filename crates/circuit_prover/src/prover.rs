@@ -162,7 +162,7 @@ where
 
     // Base trace.
     let mut tree_builder = commitment_scheme.tree_builder();
-    let (claim, interaction_generator) = write_trace(
+    let (claim, component_log_sizes, interaction_generator) = write_trace(
         values,
         preprocessed_trace.clone(),
         output_addresses,
@@ -182,7 +182,7 @@ where
     // Interaction trace.
     let mut tree_builder = commitment_scheme.tree_builder();
     let interaction_claim = write_interaction_trace(
-        &claim,
+        &component_log_sizes,
         interaction_generator,
         &mut tree_builder,
         &interaction_elements,
@@ -199,9 +199,9 @@ where
     tree_builder.commit(channel);
     // Component provers.
     let circuit_components = CircuitComponents::new(
-        &claim,
         &interaction_elements,
         &interaction_claim,
+        &component_log_sizes,
         &preprocessed_trace.ids(),
     );
     let components = to_component_provers(&circuit_components);

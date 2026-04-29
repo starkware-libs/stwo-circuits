@@ -22,40 +22,16 @@ use stwo_cairo_serialize::{CairoDeserialize, CairoSerialize};
 #[derive(Clone, Debug, PartialEq, Eq, CairoSerialize, CairoDeserialize)]
 pub struct CairoCircuitClaim {
     pub output_values: Vec<QM31>,
-    pub eq_log_size: u32,
-    pub qm31_ops_log_size: u32,
-    pub triple_xor_log_size: u32,
-    pub m_31_to_u_32_log_size: u32,
-    pub blake_g_gate_log_size: u32,
 }
 
-impl From<&CircuitClaim> for CairoCircuitClaim {
-    fn from(c: &CircuitClaim) -> Self {
+impl CairoCircuitClaim {
+    pub fn new(claim: &CircuitClaim) -> Self {
         // Destructure positionally — order must match `ComponentList` in
         // `circuit_verifier::circuit_components`. Fixed-size components contribute no log_size
         // and are bound to `_`.
-        let CircuitClaim { log_sizes, output_values } = c;
-        let &[
-            eq_log_size,
-            qm31_ops_log_size,
-            triple_xor_log_size,
-            m_31_to_u_32_log_size,
-            blake_g_gate_log_size,
-            _verify_bitwise_xor_8_log_size,
-            _verify_bitwise_xor_12_log_size,
-            _verify_bitwise_xor_4_log_size,
-            _verify_bitwise_xor_7_log_size,
-            _verify_bitwise_xor_9_log_size,
-            _range_check_16_log_size,
-        ] = log_sizes;
-        Self {
-            output_values: output_values.clone(),
-            eq_log_size,
-            qm31_ops_log_size,
-            triple_xor_log_size,
-            m_31_to_u_32_log_size,
-            blake_g_gate_log_size,
-        }
+        let CircuitClaim { output_values } = claim;
+
+        Self { output_values: output_values.clone() }
     }
 }
 
