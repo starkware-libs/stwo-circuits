@@ -46,13 +46,8 @@ pub fn build_verification_circuit<Value: IValue>(
     public_data: CircuitPublicData,
 ) -> Result<Context<Value>, String> {
     let mut context = Context::new(N_RESERVED);
-    let statement = CircuitStatement::new(
-        &mut context,
-        &circuit_config.output_addresses,
-        &public_data.output_values,
-        circuit_config.preprocessed_column_log_sizes.clone(),
-        circuit_config.preprocessed_root,
-    );
+    let statement =
+        CircuitStatement::new(&mut context, &circuit_config, &public_data.output_values);
 
     let proof_config = ProofConfig::new(
         statement.get_components(),

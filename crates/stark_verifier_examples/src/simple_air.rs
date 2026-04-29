@@ -1,5 +1,4 @@
 use circuits::ivalue::qm31_from_u32s;
-use circuits_stark_verifier::proof::Claim;
 use circuits_stark_verifier::proof_from_stark_proof::{
     pack_component_log_sizes, pack_enable_bits, pack_public_claim,
 };
@@ -187,7 +186,7 @@ fn generate_seq_column(
 /// Creates a proof for the simple AIR. See documentation in [Eval].
 pub fn create_proof() -> (
     Vec<Box<dyn Component>>,
-    Claim<QM31>,
+    Vec<QM31>,
     PcsConfig,
     ExtendedStarkProof<Blake2sM31MerkleHasher>,
     u64,
@@ -202,7 +201,7 @@ pub fn create_proof_with_fold_step(
     fold_step: u32,
 ) -> (
     Vec<Box<dyn Component>>,
-    Claim<QM31>,
+    Vec<QM31>,
     PcsConfig,
     ExtendedStarkProof<Blake2sM31MerkleHasher>,
     u64,
@@ -317,12 +316,5 @@ pub fn create_proof_with_fold_step(
     .unwrap();
 
     let components: Vec<Box<dyn Component>> = vec![Box::new(component_1), Box::new(component_2)];
-    (
-        components,
-        Claim { packed_component_log_sizes, claimed_sums },
-        config,
-        proof,
-        interaction_pow_nonce,
-        channel_salt,
-    )
+    (components, claimed_sums, config, proof, interaction_pow_nonce, channel_salt)
 }

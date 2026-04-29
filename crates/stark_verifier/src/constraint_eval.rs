@@ -228,6 +228,7 @@ pub trait CircuitEval<Value: IValue> {
 
     fn relation_uses_per_row(&self) -> &[RelationUse];
 
+    /// Returns the log size of the component, or `None` if the component's log size is dynamic.
     fn log_size(
         &self,
         preprocessed_column_log_sizes: &OrderedHashMap<PreProcessedColumnId, u32>,

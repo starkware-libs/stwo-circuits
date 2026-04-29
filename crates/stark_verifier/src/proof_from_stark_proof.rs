@@ -16,14 +16,14 @@ use crate::fri_proof::compute_all_fold_steps;
 use crate::fri_proof::{FriCommitProof, FriProof};
 use crate::merkle::{AuthPath, AuthPaths};
 use crate::oods::EvalDomainSamples;
-use crate::proof::{Claim, InteractionAtOods, N_TRACES, Proof, ProofConfig};
+use crate::proof::{InteractionAtOods, N_TRACES, Proof, ProofConfig};
 use circuits::ivalue::qm31_from_u32s;
 
 /// Constructs [Proof] with the values from the given proof ([ExtendedStarkProof]).
 pub fn proof_from_stark_proof(
     proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
     config: &ProofConfig,
-    claim: Claim<QM31>,
+    claimed_sums: Vec<QM31>,
     interaction_pow_nonce: u64,
     channel_salt: u32,
 ) -> Proof<QM31> {
@@ -57,7 +57,7 @@ pub fn proof_from_stark_proof(
                 _ => panic!("Unexpected interaction at OODS values"),
             })
             .collect_vec(),
-        claim,
+        claimed_sums,
         composition_eval_at_oods: as_single_row(&sampled_values[3]).try_into().unwrap(),
         eval_domain_samples: construct_eval_domain_samples(proof, config),
         eval_domain_auth_paths: construct_eval_domain_auth_paths(proof, config),
