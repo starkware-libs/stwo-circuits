@@ -22,6 +22,7 @@ use circuit_common::preprocessed::PreProcessedTrace;
 use circuit_verifier::circuit_claim::CircuitClaim;
 use circuit_verifier::circuit_claim::CircuitInteractionClaim;
 use circuit_verifier::circuit_claim::CircuitInteractionElements;
+use circuit_verifier::circuit_components::N_COMPONENTS;
 use itertools::Itertools;
 use num_traits::Zero;
 use rayon::scope;
@@ -44,7 +45,7 @@ pub fn write_trace<MC: MerkleChannel>(
     tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, MC>,
     trace_generator: &TraceGenerator,
     twiddles: &TwiddleTree<SimdBackend>,
-) -> (CircuitClaim, CircuitInteractionClaimGenerator)
+) -> (CircuitClaim, [u32; N_COMPONENTS], CircuitInteractionClaimGenerator)
 where
     SimdBackend: BackendForChannel<MC>,
 {
@@ -407,7 +408,8 @@ where
     ];
 
     (
-        CircuitClaim { log_sizes, output_values },
+        CircuitClaim { output_values },
+        log_sizes,
         CircuitInteractionClaimGenerator {
             eq_lookup_data,
             qm31_ops_lookup_data,
@@ -449,7 +451,7 @@ pub struct CircuitInteractionClaimGenerator {
 }
 
 pub fn write_interaction_trace<MC: MerkleChannel>(
-    circuit_claim: &CircuitClaim,
+    component_log_sizes: &[u32; N_COMPONENTS],
     circuit_interaction_claim_generator: CircuitInteractionClaimGenerator,
     tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, MC>,
     interaction_elements: &CircuitInteractionElements,
@@ -458,8 +460,7 @@ pub fn write_interaction_trace<MC: MerkleChannel>(
 where
     SimdBackend: BackendForChannel<MC>,
 {
-    let CircuitClaim { log_sizes, output_values: _ } = circuit_claim;
-    let mut component_log_size_iter = log_sizes.iter();
+    let mut component_log_size_iter = component_log_sizes.iter();
 
     // Extract log sizes before parallel section.
     let eq_log_size = *component_log_size_iter.next().unwrap();
