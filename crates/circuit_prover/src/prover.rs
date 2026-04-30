@@ -8,7 +8,7 @@ use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_verifier::circuit_claim::{
     CircuitClaim, CircuitInteractionClaim, CircuitInteractionElements, lookup_sum,
 };
-use circuit_verifier::statement::{INTERACTION_POW_BITS, component_log_sizes};
+use circuit_verifier::statement::INTERACTION_POW_BITS;
 use circuit_verifier::verify::CircuitPublicData;
 use circuits_stark_verifier::proof::Proof;
 use circuits_stark_verifier::proof::ProofConfig;
@@ -187,7 +187,7 @@ where
 
     // Base trace.
     let mut tree_builder = commitment_scheme.tree_builder();
-    let (claim, interaction_generator) = write_trace(
+    let (claim, component_log_sizes, interaction_generator) = write_trace(
         values,
         preprocessed_trace.clone(),
         output_addresses,
@@ -196,12 +196,12 @@ where
         twiddles,
     );
 
-    let expected_log_sizes = component_log_sizes(
+    let expected_log_sizes = circuit_verifier::statement::component_log_sizes(
         *n_blake_compress,
         &preprocessed_trace.ids(),
         &preprocessed_trace.log_sizes(),
     );
-    assert_eq!(claim.log_sizes, expected_log_sizes);
+    assert_eq!(component_log_sizes, expected_log_sizes);
     claim.mix_into(channel);
     tree_builder.commit(channel);
 
@@ -213,7 +213,7 @@ where
     // Interaction trace.
     let mut tree_builder = commitment_scheme.tree_builder();
     let interaction_claim = write_interaction_trace(
-        &claim,
+        &component_log_sizes,
         interaction_generator,
         &mut tree_builder,
         &interaction_elements,
@@ -236,9 +236,9 @@ where
     tree_builder.commit(channel);
     // Component provers.
     let circuit_components = CircuitComponents::new(
-        &claim,
         &interaction_elements,
         &interaction_claim,
+        &component_log_sizes,
         &preprocessed_trace.ids(),
     );
     let components = to_component_provers(&circuit_components);
