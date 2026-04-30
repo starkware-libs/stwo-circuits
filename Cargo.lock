@@ -1307,6 +1307,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "circuit-multiverifier"
+version = "0.1.0"
+dependencies = [
+ "circuit-verifier",
+ "circuits",
+ "circuits-stark-verifier",
+ "expect-test",
+ "indexmap",
+ "indoc",
+ "itertools 0.12.1",
+ "num-traits",
+ "rstest",
+ "stwo",
+ "stwo-constraint-framework",
+]
+
+[[package]]
 name = "circuit-prover"
 version = "0.1.0"
 dependencies = [

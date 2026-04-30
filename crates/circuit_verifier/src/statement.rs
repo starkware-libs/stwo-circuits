@@ -65,6 +65,13 @@ impl<Value: IValue> CircuitStatement<Value> {
         }
     }
 }
+
+pub struct MultiCircuitStatement<Value: IValue> {
+    pub first_statement: CircuitStatement<Value>,
+    pub second_statement: CircuitStatement<Value>,
+    pub n_blake_gates: usize,    
+}
+
 impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
     fn claims_to_mix(&self, _context: &mut Context<Value>) -> Vec<Vec<Var>> {
         vec![self.output_values.clone()]

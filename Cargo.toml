@@ -7,7 +7,7 @@ members = [
     "crates/circuit_serialize",
     "crates/circuit_prover",
     "crates/stark_verifier",
-    "crates/stark_verifier_examples",
+    "crates/stark_verifier_examples", "crates/circuit_multiverifier",
 ]
 resolver = "2"
 
