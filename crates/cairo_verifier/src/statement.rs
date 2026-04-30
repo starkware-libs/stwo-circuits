@@ -145,6 +145,7 @@ pub struct CairoStatement<Value: IValue> {
     pub packed_outputs: Simd,
     pub preprocessed_root: HashValue<QM31>,
     pub preprocessed_trace_variant: PreProcessedTraceVariant,
+    pub component_log_sizes: Simd,
 }
 
 impl<Value: IValue> CairoStatement<Value> {
@@ -261,21 +262,29 @@ impl<Value: IValue> CairoStatement<Value> {
 }
 
 impl<Value: IValue> CairoStatement<Value> {
+    /// `public_claim` is the flat public claim laid out as:
+    /// `[public_data (PUBLIC_DATA_LEN + outputs.len() + program.len() M31s) | component_log_sizes
+    /// (components.len() M31s)]`.
     pub fn new(
         context: &mut Context<Value>,
-        public_data: Vec<M31>,
+        public_claim: Vec<M31>,
         outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
         program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
         components: IndexMap<&'static str, Box<dyn CircuitEval<Value>>>,
         preprocessed_root: HashValue<QM31>,
         preprocessed_trace_variant: PreProcessedTraceVariant,
     ) -> Self {
-        let packed_public_data = pack_into_qm31s(public_data.iter().cloned())
+        let n_components = components.len();
+        let public_data_len = PUBLIC_DATA_LEN + outputs.len() + program.len();
+        assert_eq!(public_claim.len(), public_data_len + n_components);
+        let (public_data_m31s, log_sizes_m31s) = public_claim.split_at(public_data_len);
+
+        let packed_public_data = pack_into_qm31s(public_data_m31s.iter().cloned())
             .into_iter()
             .map(|qm31| Value::from_qm31(qm31).guess(context))
             .collect_vec();
 
-        let packed_public_data = Simd::from_packed(packed_public_data, public_data.len());
+        let packed_public_data = Simd::from_packed(packed_public_data, public_data_m31s.len());
         // Note that we don't enforce anything on the padding M31 in packed_public_data.
         let unpacked_simd = Simd::unpack(context, &packed_public_data);
 
@@ -289,12 +298,19 @@ impl<Value: IValue> CairoStatement<Value> {
             .collect_vec();
         let packed_outputs = Simd::from_packed(packed_outputs, n_outputs * MEMORY_VALUES_LIMBS);
 
+        let packed_log_sizes = pack_into_qm31s(log_sizes_m31s.iter().cloned())
+            .into_iter()
+            .map(|qm31| Value::from_qm31(qm31).guess(context))
+            .collect_vec();
+        let component_log_sizes = Simd::from_packed(packed_log_sizes, n_components);
+
         Self {
             packed_public_data,
             public_data,
             program,
             packed_outputs,
             components,
+            component_log_sizes,
             preprocessed_root,
             preprocessed_trace_variant,
         }
@@ -306,6 +322,10 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         &self.components
     }
 
+    fn get_component_log_sizes(&self) -> &Simd {
+        &self.component_log_sizes
+    }
+
     fn claims_to_mix(&self, context: &mut Context<Value>) -> Vec<Vec<Var>> {
         let Self {
             components: _components,
@@ -313,6 +333,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
             public_data: _public_data,
             program,
             packed_outputs,
+            component_log_sizes: _component_log_sizes,
             preprocessed_root: _preprocessed_root,
             preprocessed_trace_variant: _preprocessed_trace_variant,
         } = self;

@@ -5,7 +5,19 @@ use crate::components::{
     verify_bitwise_xor_4, verify_bitwise_xor_7, verify_bitwise_xor_8, verify_bitwise_xor_9,
     verify_bitwise_xor_12,
 };
+
+mod component_log_size {
+    pub const BLAKE_ROUND_SIGMA: u32 = 4;
+    pub const VERIFY_BITWISE_XOR_8: u32 = 16;
+    pub const VERIFY_BITWISE_XOR_12: u32 = super::verify_bitwise_xor_12::LOG_SIZE;
+    pub const VERIFY_BITWISE_XOR_4: u32 = 8;
+    pub const VERIFY_BITWISE_XOR_7: u32 = 14;
+    pub const VERIFY_BITWISE_XOR_9: u32 = 18;
+    pub const RANGE_CHECK_15: u32 = 15;
+    pub const RANGE_CHECK_16: u32 = 16;
+}
 use crate::relations::{BLAKE_STATE_RELATION_ID, GATE_RELATION_ID};
+use crate::verify::CircuitConfig;
 use circuits::blake::HashValue;
 use circuits::context::{Context, Var};
 use circuits::eval;
@@ -15,6 +27,7 @@ use circuits::simd::Simd;
 use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
 use circuits_stark_verifier::logup::{combine_term, logup_use_term};
+use circuits_stark_verifier::proof_from_stark_proof::pack_into_qm31s;
 use circuits_stark_verifier::statement::Statement;
 use indexmap::IndexMap;
 use itertools::{Itertools, zip_eq};
@@ -24,6 +37,8 @@ use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 // TODO(ilya): Update this to the correct values.
 pub const INTERACTION_POW_BITS: u32 = 20;
 
+const N_LANES: usize = 16;
+
 pub struct CircuitStatement<Value: IValue> {
     pub components: IndexMap<&'static str, Box<dyn CircuitEval<Value>>>,
     /// The variable indices (addresses) of the output gates.
@@ -32,6 +47,8 @@ pub struct CircuitStatement<Value: IValue> {
     pub output_values: Vec<Var>,
     /// The number of blake gates in the circuit.
     pub n_blake_gates: usize,
+    /// Per-component trace log sizes packed as a [`Simd`].
+    pub component_log_sizes: Simd,
     /// Preprocessed column ids in the exact order used by the prover's preprocessed trace.
     pub preprocessed_column_ids: Vec<PreProcessedColumnId>,
     /// Log size of each preprocessed column, in the same order as `preprocessed_column_ids`.
@@ -42,30 +59,97 @@ pub struct CircuitStatement<Value: IValue> {
 impl<Value: IValue> CircuitStatement<Value> {
     pub fn new(
         context: &mut Context<Value>,
-        output_addresses: &[usize],
+        circuit_config: &CircuitConfig,
         output_values: &[QM31],
-        n_blake_gates: usize,
-        preprocessed_column_ids: Vec<PreProcessedColumnId>,
-        preprocessed_column_log_sizes: Vec<u32>,
-        preprocessed_root: HashValue<QM31>,
     ) -> Self {
+        let CircuitConfig {
+            config: _,
+            output_addresses,
+            n_blake_gates,
+            n_blake_compress,
+            preprocessed_column_ids,
+            preprocessed_column_log_sizes,
+            preprocessed_root,
+        } = circuit_config;
+
         let output_addresses = output_addresses
             .iter()
             .map(|&addr| M31Wrapper::new_unsafe(context.constant(addr.into())))
             .collect_vec();
         let output_values =
             output_values.iter().map(|value| Value::from_qm31(*value).guess(context)).collect_vec();
+
+        let component_log_sizes_u32 = component_log_sizes(
+            *n_blake_compress,
+            preprocessed_column_ids,
+            preprocessed_column_log_sizes,
+        );
+
+        let n_components = component_log_sizes_u32.len();
+        let packed_log_sizes = pack_into_qm31s(component_log_sizes_u32.iter().cloned())
+            .into_iter()
+            .map(|qm31| Value::from_qm31(qm31).guess(context))
+            .collect_vec();
+        let component_log_sizes = Simd::from_packed(packed_log_sizes, n_components);
+
         Self {
             components: all_circuit_components(),
             output_addresses,
             output_values,
-            n_blake_gates,
-            preprocessed_column_ids,
-            preprocessed_column_log_sizes,
-            preprocessed_root,
+            n_blake_gates: *n_blake_gates,
+            component_log_sizes,
+            preprocessed_column_ids: preprocessed_column_ids.clone(),
+            preprocessed_column_log_sizes: preprocessed_column_log_sizes.clone(),
+            preprocessed_root: *preprocessed_root,
         }
     }
 }
+/// Computes the per-component trace log sizes in the order expected by the prover.
+pub fn component_log_sizes(
+    n_blake_compress: usize,
+    preprocessed_column_ids: &[PreProcessedColumnId],
+    preprocessed_column_log_sizes: &[u32],
+) -> [u32; 16] {
+    let get_preprocessed_column_log_size = |column_name: &str| -> u32 {
+        let column_id = PreProcessedColumnId { id: column_name.to_owned() };
+        let idx = preprocessed_column_ids
+            .iter()
+            .position(|id| id == &column_id)
+            .unwrap_or_else(|| panic!("Preprocessed column '{column_name}' not found"));
+        preprocessed_column_log_sizes[idx]
+    };
+
+    // Trace size of the blake_gate component, in M31 rows. blake_gate is sized by the number of
+    // blake compression blocks, padded up to the next power of two (and at least N_LANES).
+    let blake_gate_n_rows = std::cmp::max(n_blake_compress.next_power_of_two(), N_LANES) as u32;
+    let blake_gate_log_size = blake_gate_n_rows.ilog2();
+    // blake_round receives 10 sub-component inputs per blake_gate (unpadded) row.
+    let blake_round_log_size = ((10 * n_blake_compress) as u32).next_power_of_two().ilog2();
+    // blake_g receives 8 sub-component inputs per (resized) blake_round row.
+    let blake_g_log_size = blake_round_log_size + 3;
+    // triple_xor_32 receives 8 sub-component inputs per blake_gate (unpadded) row.
+    let triple_xor_32_log_size = ((8 * n_blake_compress) as u32).next_power_of_two().ilog2();
+
+    [
+        get_preprocessed_column_log_size("eq_in0_address"), // eq
+        get_preprocessed_column_log_size("qm31_ops_in0_address"), // qm31_ops
+        blake_gate_log_size,                                // blake_gate
+        blake_round_log_size,                               // blake_round
+        component_log_size::BLAKE_ROUND_SIGMA,              // blake_round_sigma
+        blake_g_log_size,                                   // blake_g
+        get_preprocessed_column_log_size("final_state_addr"), // blake_output
+        triple_xor_32_log_size,                             // triple_xor_32
+        get_preprocessed_column_log_size("m31_to_u32_input_addr"), // m_31_to_u_32
+        component_log_size::VERIFY_BITWISE_XOR_8,           // verify_bitwise_xor_8
+        component_log_size::VERIFY_BITWISE_XOR_12,          // verify_bitwise_xor_12
+        component_log_size::VERIFY_BITWISE_XOR_4,           // verify_bitwise_xor_4
+        component_log_size::VERIFY_BITWISE_XOR_7,           // verify_bitwise_xor_7
+        component_log_size::VERIFY_BITWISE_XOR_9,           // verify_bitwise_xor_9
+        component_log_size::RANGE_CHECK_15,                 // range_check_15
+        component_log_size::RANGE_CHECK_16,                 // range_check_16
+    ]
+}
+
 impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
     fn claims_to_mix(&self, _context: &mut Context<Value>) -> Vec<Vec<Var>> {
         vec![self.output_values.clone()]
@@ -73,6 +157,10 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
 
     fn get_components(&self) -> &IndexMap<&'static str, Box<dyn CircuitEval<Value>>> {
         &self.components
+    }
+
+    fn get_component_log_sizes(&self) -> &Simd {
+        &self.component_log_sizes
     }
 
     fn public_logup_sum(

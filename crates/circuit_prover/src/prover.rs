@@ -8,13 +8,11 @@ use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_verifier::circuit_claim::{
     CircuitClaim, CircuitInteractionClaim, CircuitInteractionElements, lookup_sum,
 };
-use circuit_verifier::statement::INTERACTION_POW_BITS;
+use circuit_verifier::statement::{INTERACTION_POW_BITS, component_log_sizes};
 use circuit_verifier::verify::CircuitPublicData;
 use circuits_stark_verifier::proof::Proof;
-use circuits_stark_verifier::proof::{Claim, ProofConfig};
-use circuits_stark_verifier::proof_from_stark_proof::{
-    pack_component_log_sizes, proof_from_stark_proof,
-};
+use circuits_stark_verifier::proof::ProofConfig;
+use circuits_stark_verifier::proof_from_stark_proof::proof_from_stark_proof;
 use itertools::chain;
 use num_traits::Zero;
 use stwo::core::air::Component;
@@ -156,7 +154,13 @@ where
     SimdBackend: stwo::prover::backend::BackendForChannel<MC>,
 {
     let PreprocessedCircuit { preprocessed_trace, params } = preprocessed_circuit;
-    let CircuitParams { first_permutation_row, n_blake_gates, output_addresses, .. } = params;
+    let CircuitParams {
+        first_permutation_row,
+        n_blake_gates,
+        n_blake_compress,
+        output_addresses,
+        ..
+    } = params;
     let trace_generator = TraceGenerator {
         qm31_ops_trace_generator: Qm31OpsTraceGenerator {
             first_permutation_row: *first_permutation_row,
@@ -191,6 +195,13 @@ where
         &trace_generator,
         twiddles,
     );
+
+    let expected_log_sizes = component_log_sizes(
+        *n_blake_compress,
+        &preprocessed_trace.ids(),
+        &preprocessed_trace.log_sizes(),
+    );
+    assert_eq!(claim.log_sizes, expected_log_sizes);
     claim.mix_into(channel);
     tree_builder.commit(channel);
 
@@ -263,15 +274,12 @@ pub fn prepare_circuit_proof_for_circuit_verifier(
 
     let public_data = CircuitPublicData { output_values: claim.output_values.clone() };
 
-    let claim = Claim {
-        packed_component_log_sizes: pack_component_log_sizes(&claim.log_sizes),
-        claimed_sums: interaction_claim.claimed_sums.to_vec(),
-    };
+    let claimed_sums = interaction_claim.claimed_sums.to_vec();
 
     let proof = proof_from_stark_proof(
         &stark_proof,
         proof_config,
-        claim,
+        claimed_sums,
         interaction_pow_nonce,
         channel_salt,
     );

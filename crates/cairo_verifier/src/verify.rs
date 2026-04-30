@@ -10,10 +10,8 @@ use circuits::context::{Context, TraceContext};
 use circuits::ivalue::{IValue, NoValue};
 use circuits::ops::Guess;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
-use circuits_stark_verifier::proof::{Claim, Proof, ProofConfig, empty_proof};
-use circuits_stark_verifier::proof_from_stark_proof::{
-    pack_component_log_sizes, proof_from_stark_proof,
-};
+use circuits_stark_verifier::proof::{Proof, ProofConfig, empty_proof};
+use circuits_stark_verifier::proof_from_stark_proof::proof_from_stark_proof;
 use circuits_stark_verifier::verify::verify;
 use indexmap::IndexMap;
 use itertools::{Itertools, zip_eq};
@@ -139,13 +137,14 @@ pub fn build_cairo_verifier_circuit(verifier_config: &CairoVerifierConfig) -> Co
 
     let n_outputs = verifier_config.n_outputs;
     let program_len = verifier_config.program.len();
-    let public_data = vec![M31::zero(); PUBLIC_DATA_LEN + n_outputs + program_len];
+    let n_components = components.len();
+    let public_claim = vec![M31::zero(); PUBLIC_DATA_LEN + n_outputs + program_len + n_components];
     let outputs = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; n_outputs];
 
     let mut context = Context::<NoValue>::default();
     let statement = CairoStatement::<NoValue>::new(
         &mut context,
-        public_data,
+        public_claim,
         outputs,
         verifier_config.program.clone(),
         components,
@@ -181,15 +180,10 @@ pub fn prepare_cairo_proof_for_circuit_verifier(
     debug_assert_eq!(component_log_sizes.len(), proof_config.n_components());
     debug_assert_eq!(claimed_sums.len(), proof_config.n_components());
 
-    let claim = Claim {
-        packed_component_log_sizes: pack_component_log_sizes(&component_log_sizes),
-        claimed_sums,
-    };
-
     let proof = proof_from_stark_proof(
         extended_stark_proof,
         proof_config,
-        claim,
+        claimed_sums,
         *interaction_pow,
         *channel_salt,
     );

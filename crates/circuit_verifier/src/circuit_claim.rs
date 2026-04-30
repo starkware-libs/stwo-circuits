@@ -16,6 +16,7 @@ pub type ClaimedSum = QM31;
 
 #[derive(Debug, PartialEq)]
 pub struct CircuitClaim {
+    // TODO(ilya): Remove `log_sizes` they are fixed given a CircuitConfig.
     pub log_sizes: [ComponentLogSize; N_COMPONENTS],
     pub output_values: Vec<QM31>,
 }
