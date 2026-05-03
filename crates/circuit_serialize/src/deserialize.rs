@@ -10,8 +10,7 @@ use circuits_stark_verifier::fri_proof::{
 };
 use circuits_stark_verifier::merkle::{AuthPath, AuthPaths};
 use circuits_stark_verifier::oods::{EvalDomainSamples, N_COMPOSITION_COLUMNS};
-use circuits_stark_verifier::proof::{Claim, InteractionAtOods, N_TRACES, Proof, ProofConfig};
-use circuits_stark_verifier::proof_from_stark_proof::pack_component_log_sizes;
+use circuits_stark_verifier::proof::{InteractionAtOods, N_TRACES, Proof, ProofConfig};
 
 #[derive(Debug)]
 pub enum DeserializeError {
@@ -105,7 +104,7 @@ pub fn deserialize_proof_with_config(
     let trace_root = HashValue::<QM31>::deserialize(data)?;
     let interaction_root = HashValue::<QM31>::deserialize(data)?;
     let composition_polynomial_root = HashValue::<QM31>::deserialize(data)?;
-    let claim = deserialize_claim(data, config)?;
+    let claimed_sums = deserialize_vec(data, config.n_components())?;
     let preprocessed_columns_at_oods = deserialize_vec(data, config.n_preprocessed_columns())?;
     let trace_at_oods = deserialize_vec(data, config.n_trace_columns)?;
     let interaction_at_oods = deserialize_interaction_at_oods(data, config)?;
@@ -124,7 +123,7 @@ pub fn deserialize_proof_with_config(
         preprocessed_columns_at_oods,
         trace_at_oods,
         composition_eval_at_oods,
-        claim,
+        claimed_sums,
         interaction_at_oods,
         eval_domain_samples,
         eval_domain_auth_paths,
@@ -132,19 +131,6 @@ pub fn deserialize_proof_with_config(
         interaction_pow_nonce,
         fri,
     })
-}
-
-fn deserialize_claim(data: &mut &[u8], config: &ProofConfig) -> DeserializeResult<Claim<QM31>> {
-    let n_components = config.n_components();
-
-    // Unpack log sizes from packed u8s (1 per u8, 8 bits each).
-    let log_sizes: Vec<u32> =
-        take_bytes(data, n_components.next_multiple_of(4))?.iter().map(|&b| b as u32).collect();
-    let packed_component_log_sizes = pack_component_log_sizes(&log_sizes);
-
-    let claimed_sums = deserialize_vec(data, n_components)?;
-
-    Ok(Claim { packed_component_log_sizes, claimed_sums })
 }
 
 fn deserialize_interaction_at_oods(

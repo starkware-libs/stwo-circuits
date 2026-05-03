@@ -387,28 +387,27 @@ where
 
     let output_values = output_addresses.iter().map(|addr| context_values[*addr]).collect_vec();
 
+    let log_sizes = [
+        eq_log_size,
+        qm31_ops_log_size,
+        blake_gate_interaction_claim_gen.log_size,
+        blake_round_log_size.log_size,
+        crate::circuit_air::components::blake_round_sigma::LOG_SIZE,
+        blake_g_claim.log_size,
+        blake_output_claim.log_size,
+        triple_xor_32_claim.log_size,
+        m_31_to_u_32_claim.log_size,
+        crate::circuit_air::components::verify_bitwise_xor_8::LOG_SIZE,
+        crate::circuit_air::components::verify_bitwise_xor_12::LOG_SIZE,
+        crate::circuit_air::components::verify_bitwise_xor_4::LOG_SIZE,
+        crate::circuit_air::components::verify_bitwise_xor_7::LOG_SIZE,
+        crate::circuit_air::components::verify_bitwise_xor_9::LOG_SIZE,
+        crate::circuit_air::components::range_check_15::LOG_SIZE,
+        crate::circuit_air::components::range_check_16::LOG_SIZE,
+    ];
+
     (
-        CircuitClaim {
-            log_sizes: [
-                eq_log_size,
-                qm31_ops_log_size,
-                blake_gate_interaction_claim_gen.log_size,
-                blake_round_log_size.log_size,
-                crate::circuit_air::components::blake_round_sigma::LOG_SIZE,
-                blake_g_claim.log_size,
-                blake_output_claim.log_size,
-                triple_xor_32_claim.log_size,
-                m_31_to_u_32_claim.log_size,
-                crate::circuit_air::components::verify_bitwise_xor_8::LOG_SIZE,
-                crate::circuit_air::components::verify_bitwise_xor_12::LOG_SIZE,
-                crate::circuit_air::components::verify_bitwise_xor_4::LOG_SIZE,
-                crate::circuit_air::components::verify_bitwise_xor_7::LOG_SIZE,
-                crate::circuit_air::components::verify_bitwise_xor_9::LOG_SIZE,
-                crate::circuit_air::components::range_check_15::LOG_SIZE,
-                crate::circuit_air::components::range_check_16::LOG_SIZE,
-            ],
-            output_values,
-        },
+        CircuitClaim { log_sizes, output_values },
         CircuitInteractionClaimGenerator {
             eq_lookup_data,
             qm31_ops_lookup_data,

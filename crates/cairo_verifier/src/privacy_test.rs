@@ -46,6 +46,7 @@ fn verify_circuit_proof(
         config: circuit_proof.pcs_config,
         output_addresses: preprocessed_circuit.params.output_addresses.clone(),
         n_blake_gates: preprocessed_circuit.params.n_blake_gates,
+        n_blake_compress: preprocessed_circuit.params.n_blake_compress,
         preprocessed_column_ids: preprocessed_circuit.preprocessed_trace.ids(),
         preprocessed_column_log_sizes: preprocessed_circuit.preprocessed_trace.log_sizes(),
         preprocessed_root,
@@ -240,6 +241,7 @@ fn test_privacy_proof_info() {
         config: pcs_config,
         output_addresses: preprocessed_circuit.params.output_addresses.clone(),
         n_blake_gates: preprocessed_circuit.params.n_blake_gates,
+        n_blake_compress: preprocessed_circuit.params.n_blake_compress,
         preprocessed_column_ids: preprocessed_circuit.preprocessed_trace.ids(),
         preprocessed_column_log_sizes: preprocessed_circuit.preprocessed_trace.log_sizes(),
         preprocessed_root,
@@ -248,15 +250,8 @@ fn test_privacy_proof_info() {
         output_values: vec![QM31::zero(); preprocessed_circuit.params.output_addresses.len()],
     };
     let mut context = Context::<NoValue>::default();
-    let statement = CircuitStatement::new(
-        &mut context,
-        &circuit_config.output_addresses,
-        &public_data.output_values,
-        circuit_config.n_blake_gates,
-        circuit_config.preprocessed_column_ids.clone(),
-        circuit_config.preprocessed_column_log_sizes.clone(),
-        circuit_config.preprocessed_root,
-    );
+    let statement =
+        CircuitStatement::new(&mut context, &circuit_config, &public_data.output_values);
 
     let enabled_bits = vec![true; all_circuit_components::<NoValue>().len()];
     let proof_config = ProofConfig::new(
@@ -269,5 +264,5 @@ fn test_privacy_proof_info() {
     let proof_info = ProofInfo::from_config(&proof_config);
     println!("{proof_info}");
     // Assert the total size in bytes.
-    assert_eq!(proof_info.total_bytes(), 347360);
+    assert_eq!(proof_info.total_bytes(), 347344);
 }
