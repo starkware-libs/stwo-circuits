@@ -1,7 +1,8 @@
 use crate::blake2s_consts::blake2s_initial_state;
 use crate::circuit_components::N_COMPONENTS;
 use crate::relations::{BLAKE_STATE_RELATION_ID, CommonLookupElements, GATE_RELATION_ID};
-use circuits::ivalue::qm31_from_u32s;
+use crate::statement::all_circuit_components;
+use circuits::ivalue::{NoValue, qm31_from_u32s};
 use circuits_stark_verifier::proof_from_stark_proof::{pack_component_log_sizes, pack_enable_bits};
 use itertools::zip_eq;
 use num_traits::Zero;
@@ -32,6 +33,20 @@ impl CircuitClaim {
         channel.mix_felts(&pack_component_log_sizes(log_sizes));
         // mix the output values into the channel.
         channel.mix_felts(output_values);
+    }
+
+    /// Returns `[trace_log_sizes, interaction_log_sizes]` for `tree[1]` and `tree[2]`,
+    /// in the order the prover commits columns. Each component contributes its
+    /// `log_size` repeated by its number of trace and interaction columns respectively.
+    pub fn column_log_sizes_per_tree(&self) -> [Vec<u32>; 2] {
+        let components = all_circuit_components::<NoValue>();
+        let mut trace = Vec::new();
+        let mut interaction = Vec::new();
+        for (log_size, (_, component)) in zip_eq(self.log_sizes.iter(), components.iter()) {
+            trace.extend(std::iter::repeat_n(*log_size, component.trace_columns()));
+            interaction.extend(std::iter::repeat_n(*log_size, component.interaction_columns()));
+        }
+        [trace, interaction]
     }
 }
 
