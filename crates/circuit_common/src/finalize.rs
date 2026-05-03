@@ -80,6 +80,9 @@ fn pad_blake_g_gate(context: &mut Context<impl IValue>) {
     }
 }
 
+/// Finalizes the context by appending gates to the context for:
+/// - Hashing the constants.
+/// - Hashing the outputs.
 /// - Padding the components to a power of two.
 /// Appends gates to the context so that the resulting AIR components have length equal to a power
 /// of two.

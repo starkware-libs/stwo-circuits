@@ -1311,6 +1311,7 @@ name = "circuit-multiverifier"
 version = "0.1.0"
 dependencies = [
  "circuit-common",
+ "circuit-prover",
  "circuit-verifier",
  "circuits",
  "circuits-stark-verifier",

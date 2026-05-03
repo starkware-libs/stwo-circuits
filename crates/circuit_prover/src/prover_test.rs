@@ -30,6 +30,12 @@ const N: usize = 1030;
 
 pub fn build_fibonacci_context() -> Context<QM31> {
     let mut context = Context::<QM31>::default();
+    
+    // Add dummy outputs
+    let dummy0 = context.new_var(QM31::from(0));
+    let dummy1 = context.new_var(QM31::from(0));
+    output(&mut context, dummy0);
+    output(&mut context, dummy1);
 
     let (mut a, mut b) = (guess(&mut context, QM31::zero()), guess(&mut context, QM31::one()));
     for _ in 2..N {
@@ -40,6 +46,7 @@ pub fn build_fibonacci_context() -> Context<QM31> {
         (809871181 + 0i) + (0 + 0i)u
     "#]]
     .assert_debug_eq(&context.get(b));
+    output(&mut context, a);
     output(&mut context, b);
 
     context

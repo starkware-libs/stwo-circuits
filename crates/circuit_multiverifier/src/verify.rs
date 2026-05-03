@@ -33,6 +33,7 @@ mod verify_test;
 const VALID_METADATA_ROOT: HashValue<QM31> =
     HashValue(QM31::from_u32_unchecked(0, 0, 0, 0), QM31::from_u32_unchecked(0, 0, 0, 0));
 
+// TODO: remove this struct
 pub struct Input<Value: IValue> {
     proof: Proof<Value>,
     circuit_public_data: CircuitPublicData,
@@ -40,6 +41,7 @@ pub struct Input<Value: IValue> {
 }
 // Multiverifier config?
 
+// TODO: find better name.
 pub struct Metadata<T> {
     n_blake_gates_pow_two: M31Wrapper<T>,
     output_addresses: Vec<M31Wrapper<T>>,
@@ -69,6 +71,7 @@ impl<Value: IValue> Metadata<Value> {
             .iter()
             .map(|x| M31Wrapper::new_unsafe(Value::from_qm31(QM31::from(*x))))
             .collect();
+        
         Metadata {
             n_blake_gates_pow_two,
             output_addresses,
@@ -119,20 +122,20 @@ fn merkleize_metadata(m1: Metadata<QM31>, m2: Metadata<QM31>) -> HashValue<QM31>
 pub fn build_multiverifier_circuit<Value: IValue>(
     p1: Input<Value>,
     p2: Input<Value>,
+    pcs_config: PcsConfig,
+    metadata_root: HashValue<QM31>,
     // TODO: return a result.
 ) -> Context<Value> {
     assert_eq!(p1.config.preprocessed_column_ids, p2.config.preprocessed_column_ids);
+    assert_eq!(p1.config.output_addresses.len(), 5);
+    assert_eq!(p2.config.output_addresses.len(), 5);
 
     let mut context: Context<Value> = Context::default();
     let metadata_root =
-        HashValue(Value::from_qm31(VALID_METADATA_ROOT.0), Value::from_qm31(VALID_METADATA_ROOT.1));
+        HashValue(Value::from_qm31(metadata_root.0), Value::from_qm31(metadata_root.1));
     let metadata_root_var = metadata_root.guess(&mut context);
     output(&mut context, metadata_root_var.0);
     output(&mut context, metadata_root_var.1);
-
-    // Define the pcs config which MUST be the same for the two proofs.
-    let mut pcs_config = PcsConfig::default();
-    pcs_config.lifting_log_size = Some(23);
 
     let mut inner_outputs = vec![];
     for input in [p1, p2] {
