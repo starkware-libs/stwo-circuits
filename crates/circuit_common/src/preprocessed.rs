@@ -8,8 +8,8 @@ use circuits::circuit::{Circuit, Permutation};
 use circuits::circuit::{Eq, Gate};
 use circuits::context::Context;
 use circuits::ivalue::IValue;
-use itertools::{Itertools, zip_eq};
-use std::collections::HashMap;
+use indexmap::IndexMap;
+use itertools::zip_eq;
 use std::sync::Arc;
 #[cfg(feature = "prover")]
 use stwo::core::fields::m31::BaseField;
@@ -394,37 +394,31 @@ fn add_m31_to_u32_to_preprocessed_trace(
 
 /// A collection of preprocessed columns, whose values are publicly acknowledged, and independent of
 /// the proof.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Default)]
 pub struct PreProcessedTrace {
-    pub columns: Vec<Vec<usize>>,
-    column_ids: Vec<PreProcessedColumnId>,
-    column_indices: HashMap<PreProcessedColumnId, usize>,
+    columns: IndexMap<PreProcessedColumnId, Vec<usize>>,
+}
+
+// Manual order-dependent `PartialEq` since `IndexMap`'s derived `PartialEq` is order-independent
+// (matching `HashMap` semantics), but column order is meaningful here — see `sort_by_size`.
+impl PartialEq for PreProcessedTrace {
+    fn eq(&self, other: &Self) -> bool {
+        self.columns.iter().eq(other.columns.iter())
+    }
 }
 
 impl PreProcessedTrace {
     fn push_column(&mut self, id: PreProcessedColumnId, column: Vec<usize>) {
-        let idx = self.columns.len();
         assert!(
-            self.column_indices.insert(id.clone(), idx).is_none(),
+            self.columns.insert(id.clone(), column).is_none(),
             "Duplicate preprocessed column id: {id:?}"
         );
-        self.column_ids.push(id);
-        self.columns.push(column);
     }
 
     /// Sorts preprocessed columns by size (ascending), preserving original order for ties.
     fn sort_by_size(&mut self) {
-        let mut entries = std::mem::take(&mut self.columns)
-            .into_iter()
-            .zip(std::mem::take(&mut self.column_ids))
-            .collect_vec();
-        // Stable sort keeps original insertion order for equal-length columns.
-        entries.sort_by_key(|(column, _)| column.len());
-
-        self.columns = entries.iter_mut().map(|(column, _)| std::mem::take(column)).collect();
-        self.column_ids = entries.into_iter().map(|(_, id)| id).collect();
-        self.column_indices =
-            self.column_ids.iter().cloned().enumerate().map(|(idx, id)| (id, idx)).collect();
+        // `IndexMap::sort_by` is a stable sort, so ties keep insertion order.
+        self.columns.sort_by(|_, c1, _, c2| c1.len().cmp(&c2.len()));
     }
     fn add_non_circuit_preprocessed_columns(
         pp_trace: &mut PreProcessedTrace,
@@ -462,11 +456,11 @@ impl PreProcessedTrace {
     }
 
     pub fn log_sizes(&self) -> Vec<u32> {
-        self.columns.iter().map(|c| c.len().ilog2()).collect()
+        self.columns.values().map(|c| c.len().ilog2()).collect()
     }
 
     pub fn ids(&self) -> Vec<PreProcessedColumnId> {
-        self.column_ids.clone()
+        self.columns.keys().cloned().collect()
     }
 
     #[cfg(feature = "prover")]
@@ -476,14 +470,11 @@ impl PreProcessedTrace {
             CircleEvaluation::new(CanonicCoset::new(col.len().ilog2()).circle_domain(), col)
         };
 
-        self.columns.iter().map(|c| to_evaluation(c)).collect()
+        self.columns.values().map(|c| to_evaluation(c)).collect()
     }
 
     pub fn get_column(&self, id: &PreProcessedColumnId) -> &Vec<usize> {
-        &self.columns[*self
-            .column_indices
-            .get(id)
-            .unwrap_or_else(|| panic!("Missing preprocessed column {id:?}"))]
+        self.columns.get(id).unwrap_or_else(|| panic!("Missing preprocessed column {id:?}"))
     }
 
     #[cfg(feature = "prover")]
@@ -511,11 +502,7 @@ impl PreprocessedCircuit {
 
     /// Builds the preprocessed circuit data (trace + params) from a finalized circuit.
     pub fn from_finalized_circuit(circuit: &Circuit) -> Self {
-        let mut pp_trace = PreProcessedTrace {
-            columns: vec![],
-            column_ids: vec![],
-            column_indices: HashMap::new(),
-        };
+        let mut pp_trace = PreProcessedTrace::default();
 
         // Adjust multiplicities to account for the use of the constant 0 in the permutation gate
         // implementation. See `fill_permutation_columns` for details.
