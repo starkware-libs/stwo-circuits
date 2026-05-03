@@ -1,3 +1,4 @@
+use crate::circuit_air::circuit_components::CircuitComponents;
 use crate::prover::prepare_circuit_proof_for_circuit_verifier;
 use crate::prover::{BaseColumnPool, CircuitProof, SimdBackend, prove_circuit_assignment};
 use circuit_common::finalize::finalize_context;
@@ -19,7 +20,7 @@ use stwo::core::air::Component;
 use stwo::core::channel::Blake2sM31Channel;
 use stwo::core::channel::Channel;
 use stwo::core::fields::qm31::QM31;
-use stwo::core::pcs::{CommitmentSchemeVerifier, PcsConfig, TreeVec};
+use stwo::core::pcs::{CommitmentSchemeVerifier, PcsConfig};
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 // Not a power of 2 so that we can test component padding.
@@ -110,7 +111,6 @@ fn stwo_verify(
     preprocessed_circuit: &PreprocessedCircuit,
 ) {
     let CircuitProof {
-        components,
         claim,
         interaction_claim,
         pcs_config,
@@ -125,8 +125,7 @@ fn stwo_verify(
     let commitment_scheme =
         &mut CommitmentSchemeVerifier::<Blake2sM31MerkleChannel>::new(pcs_config);
 
-    // Retrieve the expected column sizes in each commitment interaction, from the AIR.
-    let sizes = TreeVec::concat_cols(components.iter().map(|c| c.trace_log_degree_bounds()));
+    let [trace_log_sizes, interaction_log_sizes] = claim.column_log_sizes_per_tree();
 
     commitment_scheme.commit(
         proof.proof.commitments[0],
@@ -134,7 +133,7 @@ fn stwo_verify(
         verifier_channel,
     );
     claim.mix_into(verifier_channel);
-    commitment_scheme.commit(proof.proof.commitments[1], &sizes[1], verifier_channel);
+    commitment_scheme.commit(proof.proof.commitments[1], &trace_log_sizes, verifier_channel);
 
     verifier_channel.verify_pow_nonce(INTERACTION_POW_BITS, interaction_pow_nonce);
 
@@ -143,7 +142,16 @@ fn stwo_verify(
 
     interaction_claim.mix_into(verifier_channel);
 
-    commitment_scheme.commit(proof.proof.commitments[2], &sizes[2], verifier_channel);
+    commitment_scheme.commit(proof.proof.commitments[2], &interaction_log_sizes, verifier_channel);
+
+    // Build components for constraint verification.
+    let components = CircuitComponents::new(
+        &claim,
+        &interaction_elements,
+        &interaction_claim,
+        &preprocessed_circuit.preprocessed_trace.ids(),
+    )
+    .components();
     stwo::core::verifier::verify_ex(
         &components.iter().map(|c| c.as_ref()).collect::<Vec<&dyn Component>>(),
         verifier_channel,
