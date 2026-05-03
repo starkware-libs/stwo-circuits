@@ -114,12 +114,10 @@ fn stwo_verify(
         claim,
         interaction_claim,
         pcs_config,
-        stark_proof,
+        stark_proof: proof,
         interaction_pow_nonce,
         channel_salt,
     } = circuit_proof;
-    assert!(stark_proof.is_ok(), "Got error: {}", stark_proof.err().unwrap());
-    let proof = stark_proof.unwrap();
 
     let verifier_channel = &mut Blake2sM31Channel::default();
     verifier_channel.mix_felts(&[channel_salt.into()]);
@@ -179,7 +177,8 @@ fn test_prove_and_stark_verify_blake_gate_context() {
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
         PcsConfig::default(),
-    );
+    )
+    .unwrap();
     stwo_verify(circuit_proof, &preprocessed_circuit);
 }
 
@@ -195,7 +194,8 @@ fn test_prove_and_stark_verify_permutation_context() {
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
         PcsConfig::default(),
-    );
+    )
+    .unwrap();
     stwo_verify(circuit_proof, &preprocessed_circuit);
 }
 
@@ -211,7 +211,8 @@ fn test_prove_and_stark_verify_fibonacci_context() {
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
         PcsConfig::default(),
-    );
+    )
+    .unwrap();
     stwo_verify(circuit_proof, &preprocessed_circuit);
 }
 
@@ -227,7 +228,8 @@ fn test_prove_and_stark_verify_m31_to_u32_context() {
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
         PcsConfig::default(),
-    );
+    )
+    .unwrap();
     stwo_verify(circuit_proof, &preprocessed_circuit);
 }
 
@@ -275,7 +277,8 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
         PcsConfig::default(),
-    );
+    )
+    .unwrap();
     circuit_verify(circuit_proof, &preprocessed_circuit, FIBONACCI_CIRCUIT_PREPROCESSED_ROOT);
 }
 
@@ -294,7 +297,8 @@ fn test_prove_and_circuit_verify_m31_to_u32_context() {
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
         PcsConfig::default(),
-    );
+    )
+    .unwrap();
     circuit_verify(circuit_proof, &preprocessed_circuit, M31_TO_U32_CIRCUIT_PREPROCESSED_ROOT);
 }
 

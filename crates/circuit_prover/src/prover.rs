@@ -45,7 +45,7 @@ pub struct CircuitProof<H: MerkleHasherLifted> {
     pub interaction_pow_nonce: u64,
     pub interaction_claim: CircuitInteractionClaim,
     pub components: Vec<Box<dyn Component>>,
-    pub stark_proof: Result<ExtendedStarkProof<H>, ProvingError>,
+    pub stark_proof: ExtendedStarkProof<H>,
     pub channel_salt: u32,
 }
 
@@ -82,7 +82,7 @@ pub fn prove_circuit_assignment(
     preprocessed_circuit: &PreprocessedCircuit,
     base_column_pool: &BaseColumnPool<SimdBackend>,
     pcs_config: PcsConfig,
-) -> CircuitProof<Blake2sM31MerkleHasher> {
+) -> Result<CircuitProof<Blake2sM31MerkleHasher>, ProvingError> {
     prove_circuit_assignment_with_channel::<Blake2sM31MerkleChannel>(
         values,
         preprocessed_circuit,
@@ -96,7 +96,7 @@ pub fn prove_circuit_assignment_with_channel<MC>(
     preprocessed_circuit: &PreprocessedCircuit,
     base_column_pool: &BaseColumnPool<SimdBackend>,
     pcs_config: PcsConfig,
-) -> CircuitProof<MC::H>
+) -> Result<CircuitProof<MC::H>, ProvingError>
 where
     MC: MerkleChannel,
     SimdBackend: stwo::prover::backend::BackendForChannel<MC>,
@@ -150,7 +150,7 @@ pub fn prove_circuit_with_precompute<'a, MC>(
     preprocessed_tree: MaybeOwned<'a, CommitmentTreeProver<SimdBackend, MC>>,
     values: &[QM31],
     pcs_config: PcsConfig,
-) -> CircuitProof<MC::H>
+) -> Result<CircuitProof<MC::H>, ProvingError>
 where
     MC: MerkleChannel,
     SimdBackend: stwo::prover::backend::BackendForChannel<MC>,
@@ -233,16 +233,16 @@ where
     let components = to_component_provers(&circuit_components);
 
     // Prove stark.
-    let proof = prove_ex::<SimdBackend, _>(&components, channel, commitment_scheme, true);
-    CircuitProof {
+    let stark_proof = prove_ex::<SimdBackend, _>(&components, channel, commitment_scheme, true)?;
+    Ok(CircuitProof {
         pcs_config,
         claim,
         interaction_pow_nonce,
         interaction_claim,
         components: circuit_components.components(),
-        stark_proof: proof,
+        stark_proof,
         channel_salt,
-    }
+    })
 }
 
 pub fn prepare_circuit_proof_for_circuit_verifier(
@@ -258,8 +258,6 @@ pub fn prepare_circuit_proof_for_circuit_verifier(
         stark_proof,
         channel_salt,
     } = circuit_proof;
-    assert!(stark_proof.is_ok());
-    let stark_proof = stark_proof.unwrap();
 
     let public_data = CircuitPublicData { output_values: claim.output_values.clone() };
 

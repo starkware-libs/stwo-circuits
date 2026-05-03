@@ -114,10 +114,11 @@ fn test_verify_privacy_with_recursion() {
         &preprocessed,
         &BaseColumnPool::<SimdBackend>::new(),
         PcsConfig::default(),
-    );
+    )
+    .unwrap();
 
     let preprocessed_root: HashValue<QM31> =
-        circuit_proof.stark_proof.as_ref().unwrap().proof.commitments.0[0].into();
+        circuit_proof.stark_proof.proof.commitments.0[0].into();
 
     verify_circuit_proof(&preprocessed, circuit_proof, preprocessed_root);
 }
@@ -145,8 +146,8 @@ fn test_privacy_recursion_with_preprocessed_context() {
         &preprocessed,
         &BaseColumnPool::<SimdBackend>::new(),
         PcsConfig::default(),
-    );
-    assert!(assignment_proof.stark_proof.is_ok());
+    )
+    .unwrap();
 
     // Prove via the full flow for comparison.
     let mut full_prove_context =
@@ -157,13 +158,12 @@ fn test_privacy_recursion_with_preprocessed_context() {
         &full_preprocessed,
         &BaseColumnPool::<SimdBackend>::new(),
         PcsConfig::default(),
-    );
-    assert!(full_proof.stark_proof.is_ok());
+    )
+    .unwrap();
 
     // Verify both circuit proofs and compare the resulting verifier contexts.
     // TODO(Gali): Add verify fixed circuit
-    let preprocessed_root =
-        assignment_proof.stark_proof.as_ref().unwrap().proof.commitments.0[0].into();
+    let preprocessed_root = assignment_proof.stark_proof.proof.commitments.0[0].into();
     let assignment_verifier_context =
         verify_circuit_proof(&preprocessed, assignment_proof, preprocessed_root);
 
