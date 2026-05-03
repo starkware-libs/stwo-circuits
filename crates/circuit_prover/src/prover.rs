@@ -5,9 +5,8 @@ use crate::witness::trace::write_trace;
 use circuit_common::CircuitParams;
 use circuit_common::Qm31OpsTraceGenerator;
 use circuit_common::preprocessed::PreprocessedCircuit;
-use circuit_verifier::circuit_claim::{
-    CircuitClaim, CircuitInteractionClaim, CircuitInteractionElements, lookup_sum,
-};
+use circuit_verifier::circuit_claim::{CircuitInteractionElements, lookup_sum};
+pub use circuit_verifier::circuit_proof::CircuitProof;
 use circuit_verifier::statement::INTERACTION_POW_BITS;
 use circuit_verifier::verify::CircuitPublicData;
 use circuits_stark_verifier::proof::Proof;
@@ -17,17 +16,14 @@ use circuits_stark_verifier::proof_from_stark_proof::{
 };
 use itertools::chain;
 use num_traits::Zero;
-use stwo::core::air::Component;
 use stwo::core::channel::{Channel, MerkleChannel};
 use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::PcsConfig;
 use stwo::core::poly::circle::CanonicCoset;
-use stwo::core::proof::ExtendedStarkProof;
 use stwo::core::proof_of_work::GrindOps;
 use stwo::core::utils::MaybeOwned;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
-use stwo::core::vcs_lifted::merkle_hasher::MerkleHasherLifted;
 use stwo::prover::CommitmentSchemeProver;
 use stwo::prover::CommitmentTreeProver;
 use stwo::prover::ComponentProver;
@@ -38,16 +34,6 @@ use stwo::prover::poly::twiddles::TwiddleTree;
 use stwo::prover::{ProvingError, prove_ex};
 
 const COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND: u32 = 1;
-
-pub struct CircuitProof<H: MerkleHasherLifted> {
-    pub pcs_config: PcsConfig,
-    pub claim: CircuitClaim,
-    pub interaction_pow_nonce: u64,
-    pub interaction_claim: CircuitInteractionClaim,
-    pub components: Vec<Box<dyn Component>>,
-    pub stark_proof: ExtendedStarkProof<H>,
-    pub channel_salt: u32,
-}
 
 #[cfg(test)]
 #[path = "prover_test.rs"]
