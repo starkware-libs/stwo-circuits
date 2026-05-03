@@ -16,6 +16,7 @@ circuit-verifier.workspace = true
 [dev-dependencies]
 circuit-common.workspace = true
 circuit-prover.workspace = true
+circuit-serialize.workspace = true
 indoc.workspace = true
 num-traits.workspace = true
 rstest.workspace = true

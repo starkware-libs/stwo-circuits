@@ -15,7 +15,13 @@ use circuits::{
     ivalue::IValue,
     ops::{Guess, output},
 };
-use circuits::{context::Context, eval, ivalue::qm31_from_u32s, ops::sub, wrappers::M31Wrapper};
+use circuits::{
+    context::Context,
+    eval,
+    ivalue::qm31_from_u32s,
+    ops::{eq, sub},
+    wrappers::M31Wrapper,
+};
 use circuits_stark_verifier::{
     merkle::{AuthPath, verify_merkle_path},
     proof::{Proof, ProofConfig},
@@ -35,24 +41,41 @@ const VALID_METADATA_ROOT: HashValue<QM31> =
 
 // TODO: remove this struct
 pub struct Input<Value: IValue> {
-    proof: Proof<Value>,
-    circuit_public_data: CircuitPublicData,
-    config: CircuitConfig,
+    pub(crate) proof: Proof<Value>,
+    pub(crate) circuit_public_data: CircuitPublicData,
+    pub(crate) config: CircuitConfig,
+    /// `true` if this proof is a proof of the multiverifier circuit itself
+    /// (variant B in the recursion); `false` for a leaf circuit such as the
+    /// Fibonacci/`circuit_verifier` proof (variant A). Encoded as the `bit`
+    /// field in [`Metadata`] and used to:
+    ///  - select the leaf position (and Merkle path direction) in the
+    ///    `metadata_root` commitment,
+    ///  - select between `0` and `metadata_root` as the expected output value
+    ///    at slots 0,1 of the proof being verified.
+    pub(crate) is_multiverifier: bool,
+    /// The other leaf in the 2-leaf metadata Merkle tree — the sibling
+    /// against which this proof's metadata hash is paired to recompute the
+    /// root. The prover provides it as a witness; the Merkle equation
+    /// constrains its value.
+    pub(crate) other_hash: HashValue<QM31>,
 }
-// Multiverifier config?
 
 // TODO: find better name.
 pub struct Metadata<T> {
-    n_blake_gates_pow_two: M31Wrapper<T>,
-    output_addresses: Vec<M31Wrapper<T>>,
-    preprocessed_root: HashValue<T>,
+    /// `0` for a leaf-circuit descriptor (variant A), `1` for the
+    /// multiverifier descriptor (variant B). Hashed into the descriptor so
+    /// that `bit` is bound to the leaf type via the Merkle path.
+    pub(crate) bit: M31Wrapper<T>,
+    pub(crate) n_blake_gates_pow_two: M31Wrapper<T>,
+    pub(crate) output_addresses: Vec<M31Wrapper<T>>,
+    pub(crate) preprocessed_root: HashValue<T>,
 }
 
 impl Metadata<QM31> {
     pub fn serialize_to_qm31(self) -> Vec<QM31> {
-        let Metadata { n_blake_gates_pow_two, output_addresses, preprocessed_root } = self;
+        let Metadata { bit, n_blake_gates_pow_two, output_addresses, preprocessed_root } = self;
 
-        let mut res = vec![*n_blake_gates_pow_two.get()];
+        let mut res = vec![*bit.get(), *n_blake_gates_pow_two.get()];
         // Add domain separation for length.
         res.extend(output_addresses.iter().map(|x| *x.get()));
         res.extend([preprocessed_root.0, preprocessed_root.1]);
@@ -61,7 +84,8 @@ impl Metadata<QM31> {
 }
 
 impl<Value: IValue> Metadata<Value> {
-    pub fn from_config(config: CircuitConfig) -> Self {
+    pub fn from_config(config: CircuitConfig, is_multiverifier: bool) -> Self {
+        let bit = M31Wrapper::new_unsafe(Value::from_qm31(QM31::from(is_multiverifier as u32)));
         let n_blake_gates_pow_two = M31Wrapper::new_unsafe(Value::from_qm31(QM31::from(
             config.n_blake_gates.next_power_of_two(),
         )));
@@ -71,8 +95,9 @@ impl<Value: IValue> Metadata<Value> {
             .iter()
             .map(|x| M31Wrapper::new_unsafe(Value::from_qm31(QM31::from(*x))))
             .collect();
-        
+
         Metadata {
+            bit,
             n_blake_gates_pow_two,
             output_addresses,
             preprocessed_root: HashValue(
@@ -87,6 +112,7 @@ impl<Value: IValue> Guess<Value> for Metadata<Value> {
     type Target = Metadata<Var>;
     fn guess(&self, context: &mut Context<Value>) -> Self::Target {
         Metadata {
+            bit: self.bit.guess(context),
             n_blake_gates_pow_two: self.n_blake_gates_pow_two.guess(context),
             output_addresses: self.output_addresses.guess(context),
             preprocessed_root: self.preprocessed_root.guess(context),
@@ -96,9 +122,9 @@ impl<Value: IValue> Guess<Value> for Metadata<Value> {
 
 impl Metadata<Var> {
     fn serialize_to_qm31(&self) -> Vec<Var> {
-        let Metadata { n_blake_gates_pow_two, output_addresses, preprocessed_root } = self;
+        let Metadata { bit, n_blake_gates_pow_two, output_addresses, preprocessed_root } = self;
 
-        let mut res = vec![*n_blake_gates_pow_two.get()];
+        let mut res = vec![*bit.get(), *n_blake_gates_pow_two.get()];
         // TODO: Add domain separation for length.
         res.extend(output_addresses.iter().map(|x| x.get()).copied());
         res.extend([preprocessed_root.0, preprocessed_root.1]);
@@ -111,7 +137,11 @@ impl Metadata<Var> {
     }
 }
 
-fn merkleize_metadata(m1: Metadata<QM31>, m2: Metadata<QM31>) -> HashValue<QM31> {
+/// Computes the metadata Merkle root over the two valid descriptors.
+/// `m1` (the leaf at index 0) should be the leaf-circuit descriptor with
+/// `bit = 0`; `m2` (the leaf at index 1) the multiverifier descriptor with
+/// `bit = 1`.
+pub fn merkleize_metadata(m1: Metadata<QM31>, m2: Metadata<QM31>) -> HashValue<QM31> {
     let m1_qm31s = m1.serialize_to_qm31();
     let m2_qm31s = m2.serialize_to_qm31();
     let hash_1 = blake_qm31(&m1_qm31s, 16 * m1_qm31s.len());
@@ -139,37 +169,48 @@ pub fn build_multiverifier_circuit<Value: IValue>(
 
     let mut inner_outputs = vec![];
     for input in [p1, p2] {
-        let Input { proof, circuit_public_data, config } = input;
+        let Input { proof, circuit_public_data, config, is_multiverifier, other_hash } = input;
 
-        // Build metadata out of config.
-        // Save log n blake gates for later.
+        // Build metadata out of config (carrying the variant `bit`).
         // TODO: the pp cols ids need to be unchanged. -> Move out of the loop
         let preprocessed_column_ids = config.preprocessed_column_ids.clone();
-        let metadata_1 = Metadata::from_config(config).guess(&mut context);
+        let metadata_1 = Metadata::from_config(config, is_multiverifier).guess(&mut context);
 
         // Hash it.
         let hashed_metadata = metadata_1.hash(&mut context);
-        // TODO: need to build it properly.
-        let other_hash = HashValue::<Value>(Value::from_qm31(0.into()), Value::from_qm31(0.into()))
-            .guess(&mut context);
-        let bit = context.zero();
-        // Verify merkle path.
+        // The sibling hash in the 2-leaf metadata Merkle tree.
+        let other_hash_var = HashValue::<Value>(
+            Value::from_qm31(other_hash.0),
+            Value::from_qm31(other_hash.1),
+        )
+        .guess(&mut context);
+
+        // The variant bit also serves as the Merkle leaf index. Constrain it
+        // to be boolean so `cond_flip` (and the output-value selection below)
+        // are sound — without `bit*bit == bit` an adversary could choose any
+        // QM31 here.
+        let bit = *metadata_1.bit.get();
+        let bit_squared = eval!(&mut context, (bit) * (bit));
+        eq(&mut context, bit_squared, bit);
+
         verify_merkle_path(
             &mut context,
             hashed_metadata,
             &[bit],
             metadata_root_var,
-            &AuthPath(vec![other_hash]),
+            &AuthPath(vec![other_hash_var]),
         );
+
         // Build statement (p1 and p2 must have the same # of outputs: here we assume 5).
 
         // Build the output values that need to be yielded.
         // Constrained outputs.
         let one = context.one();
         let one_minus_bit = sub(&mut context, one, bit);
-        // If the circuit being verified now is a multiverifier, we need to verify its first two
-        // outputs against our own metadata root. Otherwise, the outputs are junk (we verify that
-        // they are just padding zeros).
+        // If the circuit being verified is a multiverifier (bit = 1), we
+        // require its first two outputs to equal *our own* metadata_root —
+        // that's how `H` is propagated up the recursion. For a leaf circuit
+        // (bit = 0) the corresponding outputs are padding zeros.
         // TODO: do the obvious optimization.
         let output0 = eval!(
             &mut context,

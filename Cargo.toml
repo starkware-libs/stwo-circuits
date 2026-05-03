@@ -54,6 +54,7 @@ circuits = { path = "crates/circuits"}
 circuit-verifier = { path = "crates/circuit_verifier"}
 circuit-common = { path = "crates/circuit_common" }
 circuit-prover = { path = "crates/circuit_prover"}
+circuit-serialize = { path = "crates/circuit_serialize" }
 circuits-stark-verifier = { path = "crates/stark_verifier"}
 circuits-stark-verifier-examples = { path = "crates/stark_verifier_examples"}
 
