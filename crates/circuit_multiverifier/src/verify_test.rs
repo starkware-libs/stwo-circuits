@@ -15,7 +15,7 @@ use circuits_stark_verifier::proof::{ProofConfig, empty_proof};
 use num_traits::{One, Zero};
 use stwo::core::{fields::qm31::QM31, pcs::PcsConfig};
 
-use super::{Input, build_multiverifier_circuit};
+use super::{Input, SubCircuitConfig, build_multiverifier_circuit};
 
 /// Builds the same Fibonacci-shaped [`CircuitConfig`] used by the real test, but
 /// without running the prover. Driving topology checks through the *real* trace
@@ -29,7 +29,8 @@ fn synthetic_circuit_config() -> CircuitConfig {
 
     // Use the same lifting choice as `prove_circuit_assignment` would pick.
     let mut pcs_config = PcsConfig::default();
-    let lifting_log_size = preprocessed_circuit.params.trace_log_size as u32 + pcs_config.fri_config.log_blowup_factor;
+    let lifting_log_size =
+        preprocessed_circuit.params.trace_log_size as u32 + pcs_config.fri_config.log_blowup_factor;
     pcs_config.lifting_log_size = Some(lifting_log_size);
 
     CircuitConfig {
@@ -70,37 +71,36 @@ fn build_novalue_input() -> Input<NoValue> {
 /// the structural invariants.
 #[test]
 fn test_novalue_multiverifier_circuit() {
+    let config = synthetic_circuit_config();
+    let subcircuit_config = SubCircuitConfig {
+        pcs_config: config.config,
+        n_outputs: config.output_addresses.len(),
+        preprocessed_column_ids: config.preprocessed_column_ids.clone(),
+    };
     let p1 = build_novalue_input();
     let p2 = build_novalue_input();
 
-    let pcs_config = synthetic_circuit_config().config;
     // Dummy metadata root.
     let metadata_root = HashValue(QM31::zero(), QM31::zero());
 
-    let context = build_multiverifier_circuit::<NoValue>(p1, p2, pcs_config, metadata_root);
+    let context = build_multiverifier_circuit::<NoValue>(p1, p2, subcircuit_config, metadata_root);
 
     context.check_vars_used();
     context.circuit.check_yields();
 }
 
 /// Number of Fibonacci iterations. Mirrors the constant in `circuit_prover::prover_test`.
-/// Not a power of two so component padding is exercised.
 const FIB_N: usize = 1030;
 
 /// Replica of `build_fibonacci_context` from `circuit_prover::prover_test`,
 /// shaped so that after `finalize_constants` the outputs match the multiverifier's
 /// `[H_lo, H_hi, payload_lo, payload_hi, u]` 5-slot convention:
 ///
-/// 1. `output(dummy_h0 = 0)` — H slot, padding zero (since this leaf isn't a
-///    multiverifier and has no `H` to forward).
+/// 1. `output(dummy_h0 = 0)` — H slot, padding zero.
 /// 2. `output(dummy_h1 = 0)` — H slot, padding zero.
 /// 3. `output(fib_a)`        — payload slot.
 /// 4. `output(fib_b)`        — payload slot.
 /// 5. `output(u)`            — appended by `finalize_constants` (last slot).
-///
-/// The dummies use `guess(0)` rather than `new_var(0)` so `finalize_guessed_vars`
-/// emits a trivial `Add { var, 0, var }` yield — without that the `Output` gates
-/// (which `use` their input) would leave the logup unbalanced.
 pub(super) fn build_fibonacci_context_with_5_outputs<Value: IValue>() -> Context<Value> {
     let mut context = Context::<Value>::default();
 
@@ -119,12 +119,11 @@ pub(super) fn build_fibonacci_context_with_5_outputs<Value: IValue>() -> Context
     output(&mut context, a);
     output(&mut context, b);
 
-    // For the multiverifier circuit to be the *same* circuit when verifying a
-    // fib proof and a multi proof, both proofs must have been committed with
-    // the same `preprocessed_column_ids` order. After
-    // `PreProcessedTrace::sort_by_size`, that order is determined by each
+    // The two proof variants submitted to the multiverifier must
+    // the same `preprocessed_column_ids` vector. The order of this vector
+    // order is determined by each
     // component column's `next_power_of_two` size. So fib must land in the
-    // same size bracket as multi for every component:
+    // same size bracket as the multiverifier for every component:
     //   - eq            : multi has ~11k gates → 2^14 = 16384.
     //   - qm31_ops      : multi has ~120k rows → 2^17 = 131072.
     //   - blake_compress: multi pads to 2^12 = 4096.

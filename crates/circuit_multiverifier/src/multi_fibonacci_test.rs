@@ -14,24 +14,23 @@ use circuits::{
     ivalue::NoValue,
     wrappers::M31Wrapper,
 };
-use circuits_stark_verifier::proof::{ProofConfig, empty_proof};
+use circuits_stark_verifier::proof::{Proof, ProofConfig, empty_proof};
 use num_traits::{One, Zero};
 use stwo::core::{fields::qm31::QM31, pcs::PcsConfig};
 
 use super::verify_test::build_fibonacci_context_with_5_outputs;
-use super::{Input, Metadata, build_multiverifier_circuit};
+use super::{Input, Metadata, SubCircuitConfig, build_multiverifier_circuit};
 
 /// Result of proving a single Fibonacci circuit, bundled so the caller can derive
 /// both the per-proof [`Input`] data and the structural metadata needed to compute
 /// the recursion-tree-wide `metadata_root`.
-struct FibProofBundle {
-    proof: circuits_stark_verifier::proof::Proof<QM31>,
+struct ProofBundle {
+    proof: Proof<QM31>,
     public_data: CircuitPublicData,
     config: CircuitConfig,
-    pcs_config: PcsConfig,
 }
 
-fn prove_fibonacci_and_prepare() -> FibProofBundle {
+fn prove_fibonacci_and_prepare() -> ProofBundle {
     // Build the witnessed Fibonacci context.
     let mut context = build_fibonacci_context_with_5_outputs::<QM31>();
     finalize_constants(&mut context);
@@ -40,6 +39,7 @@ fn prove_fibonacci_and_prepare() -> FibProofBundle {
 
     let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut context);
     let pcs_config = PcsConfig::default();
+    // note that pcs config is changed in `prove_circuit_assignment`
     let circuit_proof = prove_circuit_assignment(
         context.values(),
         &preprocessed_circuit,
@@ -50,28 +50,20 @@ fn prove_fibonacci_and_prepare() -> FibProofBundle {
     // The actual preprocessed root that was committed during proving — read it back
     // from `commitments[0]` rather than relying on a stale hardcoded constant, since
     // the modified Fibonacci context (5 outputs) changes the trace shape.
-    let preprocessed_root: HashValue<QM31> = circuit_proof
-        .stark_proof
-        .as_ref()
-        .expect("proving failed")
-        .proof
-        .commitments[0]
-        .into();
-    // pcs_config inside `circuit_proof` has had `lifting_log_size` set by
-    // `prove_circuit_assignment`; that's the size the multiverifier must expect.
-    let resolved_pcs_config = circuit_proof.pcs_config;
+    let preprocessed_root: HashValue<QM31> =
+        circuit_proof.stark_proof.as_ref().expect("proving failed").proof.commitments[0].into();
 
     let preprocessed_column_ids = preprocessed_circuit.preprocessed_trace.ids();
     let proof_config = ProofConfig::from_components(
         &all_circuit_components::<QM31>(),
         vec![true; all_circuit_components::<QM31>().len()],
         preprocessed_column_ids.len(),
-        &resolved_pcs_config,
+        &circuit_proof.pcs_config,
         INTERACTION_POW_BITS,
     );
 
     let config = CircuitConfig {
-        config: resolved_pcs_config,
+        config: circuit_proof.pcs_config,
         output_addresses: preprocessed_circuit.params.output_addresses.clone(),
         n_blake_gates: preprocessed_circuit.params.n_blake_gates,
         preprocessed_column_ids,
@@ -81,31 +73,12 @@ fn prove_fibonacci_and_prepare() -> FibProofBundle {
     let (proof, public_data) =
         prepare_circuit_proof_for_circuit_verifier(circuit_proof, &proof_config);
 
-    FibProofBundle { proof, public_data, config, pcs_config: resolved_pcs_config }
-}
-
-// ---------- Helpers for metadata hashing ----------
-
-/// Builds a `Metadata<QM31>` for a leaf circuit from its [`CircuitConfig`]
-/// (variant A: `bit = 0`).
-fn leaf_metadata(config: &CircuitConfig) -> Metadata<QM31> {
-    Metadata {
-        bit: M31Wrapper::new_unsafe(QM31::zero()),
-        n_blake_gates_pow_two: M31Wrapper::new_unsafe(QM31::from(
-            config.n_blake_gates.next_power_of_two(),
-        )),
-        output_addresses: config
-            .output_addresses
-            .iter()
-            .map(|x| M31Wrapper::new_unsafe(QM31::from(*x)))
-            .collect(),
-        preprocessed_root: config.preprocessed_root,
-    }
+    ProofBundle { proof, public_data, config }
 }
 
 /// Builds a `Metadata<QM31>` for the multiverifier circuit (variant B:
 /// `bit = 1`) given its preprocessed shape and root.
-fn multi_metadata(
+fn multiverifier_metadata(
     output_addresses: &[usize],
     n_blake_gates: usize,
     preprocessed_root: HashValue<QM31>,
@@ -143,7 +116,8 @@ struct MultiCircuitMetadata {
     preprocessed_root: HashValue<QM31>,
     output_addresses: Vec<usize>,
     n_blake_gates: usize,
-    preprocessed_column_ids: Vec<stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId>,
+    preprocessed_column_ids:
+        Vec<stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId>,
     /// `pcs_config` at which the multi proof itself is/was generated. The
     /// `lifting_log_size` here is the auto-lift used by `prove_circuit_assignment`,
     /// i.e. `multi_trace_log_size + log_blowup_factor`.
@@ -162,34 +136,35 @@ fn extract_multi_metadata(
     use stwo::prover::poly::circle::PolyOps;
 
     let placeholder_root = HashValue(QM31::zero(), QM31::zero());
-    let make_novalue_input = || {
-        let proof_config = ProofConfig::from_components(
-            &all_circuit_components::<NoValue>(),
-            vec![true; all_circuit_components::<NoValue>().len()],
-            fib_config.preprocessed_column_ids.len(),
-            &inner_pcs_config,
-            INTERACTION_POW_BITS,
-        );
-        Input {
-            proof: empty_proof(&proof_config),
-            circuit_public_data: CircuitPublicData {
-                output_values: vec![QM31::zero(); 4],
-            },
-            config: CircuitConfig {
-                config: fib_config.config,
-                output_addresses: fib_config.output_addresses.clone(),
-                n_blake_gates: fib_config.n_blake_gates,
-                preprocessed_column_ids: fib_config.preprocessed_column_ids.clone(),
-                preprocessed_root: fib_config.preprocessed_root,
-            },
-            is_multiverifier: false,
-            other_hash: placeholder_root,
-        }
+    let proof_config = ProofConfig::from_components(
+        &all_circuit_components::<NoValue>(),
+        vec![true; all_circuit_components::<NoValue>().len()],
+        fib_config.preprocessed_column_ids.len(),
+        &inner_pcs_config,
+        INTERACTION_POW_BITS,
+    );
+    let subcircuit_config = SubCircuitConfig {
+        pcs_config: inner_pcs_config,
+        n_outputs: fib_config.output_addresses.len(),
+        preprocessed_column_ids: fib_config.preprocessed_column_ids.clone(),
+    };
+    let make_novalue_input = || Input {
+        proof: empty_proof(&proof_config),
+        circuit_public_data: CircuitPublicData { output_values: vec![QM31::zero(); 4] },
+        config: CircuitConfig {
+            config: fib_config.config,
+            output_addresses: fib_config.output_addresses.clone(),
+            n_blake_gates: fib_config.n_blake_gates,
+            preprocessed_column_ids: fib_config.preprocessed_column_ids.clone(),
+            preprocessed_root: fib_config.preprocessed_root,
+        },
+        is_multiverifier: false,
+        other_hash: placeholder_root,
     };
     let mut multi_ctx = build_multiverifier_circuit::<NoValue>(
         make_novalue_input(),
         make_novalue_input(),
-        inner_pcs_config,
+        subcircuit_config,
         placeholder_root,
     );
     let pp_multi = PreprocessedCircuit::preprocess_circuit(&mut multi_ctx);
@@ -207,22 +182,22 @@ fn extract_multi_metadata(
     // (same code path the prover would take, but without the rest of proving).
     let twiddles = SimdBackend::precompute_twiddles(
         CanonicCoset::new(
-            trace_log_size + std::cmp::max(log_blowup, /* COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND */ 1),
+            trace_log_size
+                + std::cmp::max(log_blowup, /* COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND */ 1),
         )
         .circle_domain()
         .half_coset,
     );
     let preprocessed_trace = pp_multi.preprocessed_trace.get_trace::<SimdBackend>();
     let preprocessed_trace_polys = SimdBackend::interpolate_columns(preprocessed_trace, &twiddles);
-    let preprocessed_tree =
-        CommitmentTreeProver::<SimdBackend, Blake2sM31MerkleChannel>::new(
-            preprocessed_trace_polys,
-            log_blowup,
-            &twiddles,
-            true,
-            Some(lifting_log_size),
-            &BaseColumnPool::<SimdBackend>::new(),
-        );
+    let preprocessed_tree = CommitmentTreeProver::<SimdBackend, Blake2sM31MerkleChannel>::new(
+        preprocessed_trace_polys,
+        log_blowup,
+        &twiddles,
+        true,
+        Some(lifting_log_size),
+        &BaseColumnPool::<SimdBackend>::new(),
+    );
     let preprocessed_root: HashValue<QM31> = preprocessed_tree.commitment.root().into();
 
     MultiCircuitMetadata {
@@ -246,10 +221,8 @@ fn measure_multi_trace_log_size_at_inner_lifting(inner_lifting_log_size: u32) ->
     finalize_constants(&mut fib_ctx);
     let pp_fib = PreprocessedCircuit::preprocess_circuit(&mut fib_ctx);
     let log_blowup = PcsConfig::default().fri_config.log_blowup_factor;
-    let inner_pcs_config = PcsConfig {
-        lifting_log_size: Some(inner_lifting_log_size),
-        ..PcsConfig::default()
-    };
+    let inner_pcs_config =
+        PcsConfig { lifting_log_size: Some(inner_lifting_log_size), ..PcsConfig::default() };
     let fib_config = CircuitConfig {
         config: inner_pcs_config,
         output_addresses: pp_fib.params.output_addresses.clone(),
@@ -258,34 +231,36 @@ fn measure_multi_trace_log_size_at_inner_lifting(inner_lifting_log_size: u32) ->
         preprocessed_root: HashValue(QM31::zero(), QM31::zero()),
     };
 
-    let make_input = || {
-        let proof_config = ProofConfig::from_components(
-            &all_circuit_components::<NoValue>(),
-            vec![true; all_circuit_components::<NoValue>().len()],
-            fib_config.preprocessed_column_ids.len(),
-            &inner_pcs_config,
-            INTERACTION_POW_BITS,
-        );
-        Input {
-            proof: empty_proof(&proof_config),
-            circuit_public_data: CircuitPublicData {
-                output_values: vec![QM31::zero(); 4],
-            },
-            config: CircuitConfig {
-                config: fib_config.config,
-                output_addresses: fib_config.output_addresses.clone(),
-                n_blake_gates: fib_config.n_blake_gates,
-                preprocessed_column_ids: fib_config.preprocessed_column_ids.clone(),
-                preprocessed_root: fib_config.preprocessed_root,
-            },
-            is_multiverifier: false,
-            other_hash: HashValue(QM31::zero(), QM31::zero()),
-        }
+    let proof_config = ProofConfig::from_components(
+        &all_circuit_components::<NoValue>(),
+        vec![true; all_circuit_components::<NoValue>().len()],
+        fib_config.preprocessed_column_ids.len(),
+        &inner_pcs_config,
+        INTERACTION_POW_BITS,
+    );
+
+    let make_input = || Input {
+        proof: empty_proof(&proof_config),
+        circuit_public_data: CircuitPublicData { output_values: vec![QM31::zero(); 4] },
+        config: CircuitConfig {
+            config: fib_config.config,
+            output_addresses: fib_config.output_addresses.clone(),
+            n_blake_gates: fib_config.n_blake_gates,
+            preprocessed_column_ids: fib_config.preprocessed_column_ids.clone(),
+            preprocessed_root: fib_config.preprocessed_root,
+        },
+        is_multiverifier: false,
+        other_hash: HashValue(QM31::zero(), QM31::zero()),
+    };
+    let subcircuit_config = SubCircuitConfig {
+        pcs_config: inner_pcs_config,
+        n_outputs: fib_config.output_addresses.len(),
+        preprocessed_column_ids: fib_config.preprocessed_column_ids.clone(),
     };
     let mut multi_ctx = build_multiverifier_circuit::<NoValue>(
         make_input(),
         make_input(),
-        inner_pcs_config,
+        subcircuit_config,
         HashValue(QM31::zero(), QM31::zero()),
     );
     let pp_multi = PreprocessedCircuit::preprocess_circuit(&mut multi_ctx);
@@ -320,10 +295,7 @@ fn explore_cairo_vs_multi_preprocessed_column_ids() {
     let mut fib_ctx = build_fibonacci_context_with_5_outputs::<NoValue>();
     finalize_constants(&mut fib_ctx);
     let pp_fib = PreprocessedCircuit::preprocess_circuit(&mut fib_ctx);
-    let inner_pcs_config = PcsConfig {
-        lifting_log_size: Some(21),
-        ..PcsConfig::default()
-    };
+    let inner_pcs_config = PcsConfig { lifting_log_size: Some(21), ..PcsConfig::default() };
     let fib_config = CircuitConfig {
         config: inner_pcs_config,
         output_addresses: pp_fib.params.output_addresses.clone(),
@@ -355,10 +327,7 @@ fn explore_cairo_vs_multi_preprocessed_column_ids() {
         }
         println!("{:>3}  {:<35}  {:<35}  {}", i, c, m, if same { "✓" } else { "✗" });
     }
-    println!(
-        "\n{n_match}/{max_len} positions match. First mismatch at index {:?}.",
-        first_diff,
-    );
+    println!("\n{n_match}/{max_len} positions match. First mismatch at index {:?}.", first_diff,);
 }
 
 #[test]
@@ -367,12 +336,12 @@ fn explore_blake_gate_counts() {
     let mut fib_ctx = build_fibonacci_context_with_5_outputs::<NoValue>();
     finalize_constants(&mut fib_ctx);
     let pp_fib = PreprocessedCircuit::preprocess_circuit(&mut fib_ctx);
-    println!("fib: n_blake_gates = {}, trace_log_size = {}", pp_fib.params.n_blake_gates, pp_fib.params.trace_log_size);
+    println!(
+        "fib: n_blake_gates = {}, trace_log_size = {}",
+        pp_fib.params.n_blake_gates, pp_fib.params.trace_log_size
+    );
 
-    let inner_pcs_config = PcsConfig {
-        lifting_log_size: Some(21),
-        ..PcsConfig::default()
-    };
+    let inner_pcs_config = PcsConfig { lifting_log_size: Some(21), ..PcsConfig::default() };
     let fib_config = CircuitConfig {
         config: inner_pcs_config,
         output_addresses: pp_fib.params.output_addresses.clone(),
@@ -425,14 +394,14 @@ fn test_a_prove_multiverifier_of_fibs_and_save() {
     // 1. Prove two Fibonacci circuits (each at fib's natural lifting = 21).
     let bundle1 = prove_fibonacci_and_prepare();
     let bundle2 = prove_fibonacci_and_prepare();
-    let pcs_config = bundle1.pcs_config; // inner pcs_config (lifting=21)
+    let pcs_config = bundle1.config.config; // inner pcs_config (lifting=21)
 
     // 2. h_fib (variant A descriptor hash).
-    let h_fib = hash_metadata(leaf_metadata(&bundle1.config));
+    let h_fib = hash_metadata(Metadata::<QM31>::from_config(&bundle1.config, false));
 
     // 3. Multi structural metadata + h_multi.
     let multi_meta = extract_multi_metadata(&bundle1.config, pcs_config);
-    let h_multi = hash_metadata(multi_metadata(
+    let h_multi = hash_metadata(multiverifier_metadata(
         &multi_meta.output_addresses,
         multi_meta.n_blake_gates,
         multi_meta.preprocessed_root,
@@ -441,8 +410,8 @@ fn test_a_prove_multiverifier_of_fibs_and_save() {
     // 4. Recursion-tree-wide metadata root: H = hash_node(h_fib, h_multi).
     let metadata_root = hash_node(h_fib, h_multi);
 
-    // 5. Build the multi (QM31) verifying both Fib proofs at the correct H,
-    //    each with sibling `h_multi`.
+    // 5. Build the multi (QM31) verifying both Fib proofs at the correct H, each with sibling
+    //    `h_multi`.
     let p1 = Input {
         proof: bundle1.proof,
         circuit_public_data: bundle1.public_data,
@@ -457,11 +426,18 @@ fn test_a_prove_multiverifier_of_fibs_and_save() {
         is_multiverifier: false,
         other_hash: h_multi,
     };
-    let mut multi_ctx = build_multiverifier_circuit::<QM31>(p1, p2, pcs_config, metadata_root);
+
+    let subcircuit_config = SubCircuitConfig {
+        pcs_config,
+        n_outputs: p1.config.output_addresses.len(),
+        preprocessed_column_ids: p1.config.preprocessed_column_ids.clone(),
+    };
+    let mut multi_ctx =
+        build_multiverifier_circuit::<QM31>(p1, p2, subcircuit_config, metadata_root);
     multi_ctx.validate_circuit();
 
-    // 6. Prove the multiverifier circuit itself. `prove_circuit_assignment`
-    //    auto-lifts to multi_trace_log_size + log_blowup; that should match
+    // 6. Prove the multiverifier circuit itself. `prove_circuit_assignment` auto-lifts to
+    //    multi_trace_log_size + log_blowup; that should match
     //    `multi_meta.outer_pcs_config.lifting_log_size`.
     let pp_multi = PreprocessedCircuit::preprocess_circuit(&mut multi_ctx);
     let multi_circuit_proof = prove_circuit_assignment(
@@ -495,10 +471,7 @@ fn test_a_prove_multiverifier_of_fibs_and_save() {
     multi_proof.serialize(&mut serialized);
     std::fs::write(MULTI_PROOF_PATH, &serialized).expect("write multi proof");
 
-    println!(
-        "Saved multi proof ({} bytes) to {MULTI_PROOF_PATH}",
-        serialized.len()
-    );
+    println!("Saved multi proof ({} bytes) to {MULTI_PROOF_PATH}", serialized.len());
     println!("multi trace_log_size: {}", pp_multi.params.trace_log_size);
     println!("resolved outer pcs_config: {:?}", resolved_outer_pcs_config);
 }
@@ -516,33 +489,29 @@ fn test_a_prove_multiverifier_of_fibs_and_save() {
 fn test_b_verify_multi_proof_and_fibonacci_proof_with_multiverifier() {
     use circuit_serialize::deserialize::deserialize_proof_with_config;
 
-    // 1. Prove a fresh Fibonacci. We need its bundle for the second-level
-    //    multi's fib Input *and* for deriving fib's CircuitConfig (the same
-    //    shape Test A used to compute h_multi).
+    // 1. Prove a fresh Fibonacci. We need its bundle for the second-level multi's fib Input *and*
+    //    for deriving fib's CircuitConfig (the same shape Test A used to compute h_multi).
     let fib_bundle = prove_fibonacci_and_prepare();
-    let inner_pcs_config = fib_bundle.pcs_config; // lifting=21
+    let inner_pcs_config = fib_bundle.config.config; // lifting=21
 
     // 2. Re-derive h_fib, h_multi, H deterministically.
-    let h_fib = hash_metadata(leaf_metadata(&fib_bundle.config));
+    let h_fib = hash_metadata(Metadata::<QM31>::from_config(&fib_bundle.config, false));
     let multi_meta = extract_multi_metadata(&fib_bundle.config, inner_pcs_config);
-    let h_multi = hash_metadata(multi_metadata(
+    let h_multi = hash_metadata(multiverifier_metadata(
         &multi_meta.output_addresses,
         multi_meta.n_blake_gates,
         multi_meta.preprocessed_root,
     ));
     let metadata_root = hash_node(h_fib, h_multi);
 
-    // 3. Reconstruct the multi's `CircuitPublicData`. The multi's outputs are
-    //    `[H_lo, H_hi, hash_of_payloads_lo, hash_of_payloads_hi, u]`, where
-    //    `hash_of_payloads = blake([fib_a, fib_b, fib_a, fib_b], 64)` over the
-    //    two Fibonacci payload pairs (Test A's two fibs are identical, since
-    //    Fibonacci is deterministic — so so are this Test's).
+    // 3. Reconstruct the multi's `CircuitPublicData`. The multi's outputs are `[H_lo, H_hi,
+    //    hash_of_payloads_lo, hash_of_payloads_hi, u]`, where `hash_of_payloads = blake([fib_a,
+    //    fib_b, fib_a, fib_b], 64)` over the two Fibonacci payload pairs (Test A's two fibs are
+    //    identical, since Fibonacci is deterministic — so so are this Test's).
     let fib_payload_lo = fib_bundle.public_data.output_values[2];
     let fib_payload_hi = fib_bundle.public_data.output_values[3];
-    let hash_of_payloads = blake_qm31(
-        &[fib_payload_lo, fib_payload_hi, fib_payload_lo, fib_payload_hi],
-        64,
-    );
+    let hash_of_payloads =
+        blake_qm31(&[fib_payload_lo, fib_payload_hi, fib_payload_lo, fib_payload_hi], 64);
     let u_value = circuits::ivalue::qm31_from_u32s(0, 0, 1, 0);
     let multi_public_data = CircuitPublicData {
         output_values: vec![
@@ -580,8 +549,8 @@ fn test_b_verify_multi_proof_and_fibonacci_proof_with_multiverifier() {
         .expect("deserialize multi proof");
 
     // 7. Build the second-level multi:
-    //    - The multi proof sits at leaf index 1 of the H-tree (`bit = 1`),
-    //      so its sibling is `h_fib`.
+    //    - The multi proof sits at leaf index 1 of the H-tree (`bit = 1`), so its sibling is
+    //      `h_fib`.
     //    - The fib proof sits at leaf index 0 (`bit = 0`), sibling is `h_multi`.
     //    The same `inner_pcs_config` (lifting=21) verifies both proofs — the
     //    pcs-config-must-be-the-same constraint is satisfied because both the
@@ -605,10 +574,15 @@ fn test_b_verify_multi_proof_and_fibonacci_proof_with_multiverifier() {
     // second-level multi's verify() calls — same as the first-level multi.
     // This is what makes the two circuits identical (the recursion fixed
     // point). `metadata_root` is the same H as Test A used.
+    let subcircuit_config = SubCircuitConfig {
+        pcs_config: multi_meta.outer_pcs_config,
+        n_outputs: multi_meta.output_addresses.len(),
+        preprocessed_column_ids: multi_meta.preprocessed_column_ids.clone(),
+    };
     let context = build_multiverifier_circuit::<QM31>(
         multi_input,
         fib_input,
-        inner_pcs_config,
+        subcircuit_config,
         metadata_root,
     );
 
@@ -662,12 +636,14 @@ fn test_multiverifier_verifies_two_fibonacci_proofs() {
     // `other_hash = HashValue(0, 0)` expects:
     //   root == hash_node(metadata_hash, HashValue(0, 0))
     //         == blake([metadata_hash.0, metadata_hash.1, 0, 0], 64).
-    let metadata_root = blake_qm31(
-        &[metadata_hash.0, metadata_hash.1, QM31::zero(), QM31::zero()],
-        64,
-    );
+    let metadata_root =
+        blake_qm31(&[metadata_hash.0, metadata_hash.1, QM31::zero(), QM31::zero()], 64);
 
-    let pcs_config = bundle1.pcs_config;
+    let subcircuit_config = SubCircuitConfig {
+        pcs_config: bundle1.config.config,
+        n_outputs: bundle1.config.output_addresses.len(),
+        preprocessed_column_ids: bundle1.config.preprocessed_column_ids.clone(),
+    };
     let zero_sibling = HashValue(QM31::zero(), QM31::zero());
     let p1 = Input {
         proof: bundle1.proof,
@@ -684,7 +660,7 @@ fn test_multiverifier_verifies_two_fibonacci_proofs() {
         other_hash: zero_sibling,
     };
 
-    let context = build_multiverifier_circuit::<QM31>(p1, p2, pcs_config, metadata_root);
+    let context = build_multiverifier_circuit::<QM31>(p1, p2, subcircuit_config, metadata_root);
 
     context.check_vars_used();
     context.circuit.check_yields();
