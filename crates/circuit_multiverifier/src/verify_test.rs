@@ -436,6 +436,74 @@ fn measure_multi_trace_log_size_at_inner_lifting(inner_lifting_log_size: u32) ->
     pp_multi.params.trace_log_size
 }
 
+/// Diagnostic: print the `preprocessed_column_ids` (post-`sort_by_size`) for
+/// the Cairo verifier circuit and the multiverifier circuit, side by side, so
+/// we can see whether they agree on order — which is the precondition for a
+/// single multiverifier circuit body to verify both Cairo-verifier proofs and
+/// multiverifier proofs.
+#[test]
+fn explore_cairo_vs_multi_preprocessed_column_ids() {
+    use circuit_cairo_verifier::privacy::privacy_cairo_verifier_config;
+    use circuit_cairo_verifier::verify::build_cairo_verifier_circuit;
+
+    // --- Cairo verifier circuit ---
+    let cairo_proof_log_blowup_factor = 3;
+    let cairo_verifier_config = privacy_cairo_verifier_config(cairo_proof_log_blowup_factor);
+    let mut cairo_ctx = build_cairo_verifier_circuit(&cairo_verifier_config);
+    let pp_cairo = PreprocessedCircuit::preprocess_circuit(&mut cairo_ctx);
+    let cairo_ids = pp_cairo.preprocessed_trace.ids();
+
+    println!("Cairo verifier:");
+    println!("  trace_log_size: {}", pp_cairo.params.trace_log_size);
+    println!("  n_blake_gates:  {}", pp_cairo.params.n_blake_gates);
+    println!("  n columns:      {}", cairo_ids.len());
+
+    // --- Multiverifier circuit (built using the existing helper that uses fib's config) ---
+    // Re-derive a fib config so we can build the NoValue multi.
+    let mut fib_ctx = build_fibonacci_context_with_5_outputs::<NoValue>();
+    finalize_constants(&mut fib_ctx);
+    let pp_fib = PreprocessedCircuit::preprocess_circuit(&mut fib_ctx);
+    let inner_pcs_config = PcsConfig {
+        lifting_log_size: Some(21),
+        ..PcsConfig::default()
+    };
+    let fib_config = CircuitConfig {
+        config: inner_pcs_config,
+        output_addresses: pp_fib.params.output_addresses.clone(),
+        n_blake_gates: pp_fib.params.n_blake_gates,
+        preprocessed_column_ids: pp_fib.preprocessed_trace.ids(),
+        preprocessed_root: HashValue(QM31::zero(), QM31::zero()),
+    };
+    let multi_meta = extract_multi_metadata(&fib_config, inner_pcs_config);
+    let multi_ids = &multi_meta.preprocessed_column_ids;
+
+    println!("Multiverifier:");
+    println!("  n_blake_gates:  {}", multi_meta.n_blake_gates);
+    println!("  n columns:      {}", multi_ids.len());
+
+    // --- Side-by-side diff ---
+    let max_len = std::cmp::max(cairo_ids.len(), multi_ids.len());
+    println!("\n{:>3}  {:<35}  {:<35}  match", "i", "cairo verifier", "multiverifier");
+    println!("{}", "-".repeat(90));
+    let mut n_match = 0;
+    let mut first_diff = None;
+    for i in 0..max_len {
+        let c = cairo_ids.get(i).map(|x| x.id.as_str()).unwrap_or("(none)");
+        let m = multi_ids.get(i).map(|x| x.id.as_str()).unwrap_or("(none)");
+        let same = c == m;
+        if same {
+            n_match += 1;
+        } else if first_diff.is_none() {
+            first_diff = Some(i);
+        }
+        println!("{:>3}  {:<35}  {:<35}  {}", i, c, m, if same { "✓" } else { "✗" });
+    }
+    println!(
+        "\n{n_match}/{max_len} positions match. First mismatch at index {:?}.",
+        first_diff,
+    );
+}
+
 #[test]
 fn explore_blake_gate_counts() {
     // Print fib's and multi's blake-gate counts so we know how much to pad.

@@ -14,6 +14,7 @@ circuits-stark-verifier.workspace = true
 circuit-verifier.workspace = true
 
 [dev-dependencies]
+circuit-cairo-verifier.workspace = true
 circuit-common.workspace = true
 circuit-prover.workspace = true
 circuit-serialize.workspace = true
