@@ -21,6 +21,7 @@ pub struct CircuitConfig {
     pub preprocessed_column_ids: Vec<PreProcessedColumnId>,
     pub preprocessed_column_log_sizes: Vec<u32>,
     pub preprocessed_root: HashValue<QM31>,
+    pub trace_log_size: u32,
 }
 
 pub fn build_verification_circuit<Value: IValue>(
@@ -44,6 +45,7 @@ pub fn build_verification_circuit<Value: IValue>(
         vec![true; statement.get_components().len()],
         circuit_config.preprocessed_column_log_sizes.clone(),
         &circuit_config.config,
+        circuit_config.trace_log_size,
         INTERACTION_POW_BITS,
     );
     let proof_vars = proof.guess(&mut context);

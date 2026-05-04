@@ -71,11 +71,15 @@ pub fn verify_cairo_with_component_set(
             })
             .try_collect()?;
 
+    let pcs_config = &cairo_proof.extended_stark_proof.proof.config;
+    let log_trace_size = pcs_config.lifting_log_size.expect("Expected lifting_log_size to be set")
+        - pcs_config.fri_config.log_blowup_factor;
     let proof_config = ProofConfig::new(
         &components,
         component_enable_bits,
         cairo_proof.preprocessed_trace_variant.to_preprocessed_trace().log_sizes(),
-        &cairo_proof.extended_stark_proof.proof.config,
+        pcs_config,
+        log_trace_size,
         INTERACTION_POW_BITS,
     );
 
@@ -106,8 +110,6 @@ pub fn verify_cairo_with_component_set(
 fn test_verify() {
     let mut pcs_config = PcsConfig::default();
     pcs_config.fri_config.fold_step = 4;
-    pcs_config.lifting_log_size =
-        Some(MAX_SEQUENCE_LOG_SIZE as u32 + pcs_config.fri_config.log_blowup_factor);
 
     let mut novalue_context = Context::<NoValue>::default();
     let output_len = 1;
@@ -139,6 +141,7 @@ fn test_verify() {
         enabled_bits,
         statement.preprocessed_trace_variant.to_preprocessed_trace().log_sizes(),
         &pcs_config,
+        MAX_SEQUENCE_LOG_SIZE as u32,
         INTERACTION_POW_BITS,
     );
 

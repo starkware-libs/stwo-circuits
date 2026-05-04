@@ -250,11 +250,13 @@ fn circuit_verify(
 ) {
     let all_components = all_circuit_components::<QM31>();
     let enabled_bits: Vec<bool> = vec![true; all_components.len()];
+    let trace_log_size = preprocessed_circuit.params.trace_log_size;
     let proof_config = ProofConfig::new(
         &all_components,
         enabled_bits,
         preprocessed_circuit.preprocessed_trace.log_sizes(),
         &circuit_proof.pcs_config,
+        trace_log_size,
         INTERACTION_POW_BITS,
     );
     let circuit_config = CircuitConfig {
@@ -264,6 +266,7 @@ fn circuit_verify(
         preprocessed_column_ids: preprocessed_circuit.preprocessed_trace.ids(),
         preprocessed_column_log_sizes: preprocessed_circuit.preprocessed_trace.log_sizes(),
         preprocessed_root: preprocessed_root.into(),
+        trace_log_size,
     };
     let (proof, public_data) =
         prepare_circuit_proof_for_circuit_verifier(circuit_proof, &proof_config);

@@ -5,7 +5,7 @@ use crate::serialize::CircuitSerialize;
 use circuits_stark_verifier::proof::{ProofConfig, ProofInfo};
 use circuits_stark_verifier::proof_from_stark_proof::proof_from_stark_proof;
 use circuits_stark_verifier::statement::Statement;
-use circuits_stark_verifier_examples::simple_air::create_proof;
+use circuits_stark_verifier_examples::simple_air::{LOG_SIZE_LONG, create_proof};
 use circuits_stark_verifier_examples::simple_statement::{
     COMPONENT_ENABLE_BITS, PREPROCESSED_COLUMN_LOG_SIZES, SimpleStatement,
 };
@@ -21,6 +21,7 @@ fn test_serialize_deserialize() {
         COMPONENT_ENABLE_BITS.to_vec(),
         PREPROCESSED_COLUMN_LOG_SIZES.to_vec(),
         &pcs_config,
+        LOG_SIZE_LONG,
         8,
     );
     let proof = proof_from_stark_proof(&proof, &config, claim, interaction_pow_nonce, channel_salt);

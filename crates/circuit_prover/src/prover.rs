@@ -88,8 +88,6 @@ where
     SimdBackend: stwo::prover::backend::BackendForChannel<MC>,
 {
     let trace_log_size = preprocessed_circuit.params.trace_log_size;
-    let lifting_log_size = trace_log_size + pcs_config.fri_config.log_blowup_factor;
-    let pcs_config = PcsConfig { lifting_log_size: Some(lifting_log_size), ..pcs_config };
 
     // Precompute twiddles.
     // Account for blowup factor and for composition polynomial calculation (taking the max since

@@ -55,6 +55,7 @@ pub fn privacy_cairo_verifier_config(log_blowup_factor: u32) -> CairoVerifierCon
         enabled_bits,
         preprocessed_trace_variant.to_preprocessed_trace().log_sizes(),
         &pcs_config,
+        20,
         INTERACTION_POW_BITS,
     );
 

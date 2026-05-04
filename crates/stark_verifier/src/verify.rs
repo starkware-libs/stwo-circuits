@@ -54,14 +54,13 @@ pub fn verify<Value: IValue>(
     // Mix the channel salt.
     channel.mix_qm31s(context, [proof.channel_salt]);
 
-    let lifting_log_size = config.log_trace_size() + config.fri.log_blowup_factor;
     let pcs_config_values = vec![
         config.n_pow_bits,
         config.fri.log_blowup_factor as u32,
         config.fri.n_queries as u32,
         config.fri.log_n_last_layer_coefs as u32,
         config.fri.fold_step as u32,
-        lifting_log_size as u32,
+        config.lifting_log_size,
     ];
 
     let pcs_config_vars = pack_into_qm31s(pcs_config_values.into_iter())

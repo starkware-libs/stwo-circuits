@@ -212,7 +212,6 @@ pub fn create_proof_with_fold_step(
     config.fri_config.log_blowup_factor = 2;
     config.fri_config.fold_step = fold_step;
     let lifting_log_size = LOG_SIZE_LONG + config.fri_config.log_blowup_factor;
-    config.lifting_log_size = Some(lifting_log_size);
     // Precompute twiddles.
     let twiddles = SimdBackend::precompute_twiddles(
         CanonicCoset::new(lifting_log_size).circle_domain().half_coset,

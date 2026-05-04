@@ -35,11 +35,13 @@ fn verify_circuit_proof(
 ) -> Context<QM31> {
     let components = all_circuit_components::<QM31>();
     let enabled_bits = vec![true; components.len()];
+    let trace_log_size = preprocessed_circuit.params.trace_log_size;
     let proof_config = ProofConfig::new(
         &components,
         enabled_bits,
         preprocessed_circuit.preprocessed_trace.log_sizes(),
         &circuit_proof.pcs_config,
+        trace_log_size,
         circuit_verifier::statement::INTERACTION_POW_BITS,
     );
     let circuit_config = CircuitConfig {
@@ -49,6 +51,7 @@ fn verify_circuit_proof(
         preprocessed_column_ids: preprocessed_circuit.preprocessed_trace.ids(),
         preprocessed_column_log_sizes: preprocessed_circuit.preprocessed_trace.log_sizes(),
         preprocessed_root,
+        trace_log_size,
     };
     let (proof, public_data) =
         prepare_circuit_proof_for_circuit_verifier(circuit_proof, &proof_config);
@@ -224,7 +227,6 @@ fn test_privacy_proof_info() {
     let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut novalue_context);
 
     let log_blowup_factor = 2;
-    let lifting_log_size = preprocessed_circuit.params.trace_log_size + log_blowup_factor;
     let pcs_config = PcsConfig {
         pow_bits: 26,
         fri_config: FriConfig {
@@ -233,7 +235,7 @@ fn test_privacy_proof_info() {
             n_queries: 35,
             fold_step: 4,
         },
-        lifting_log_size: Some(lifting_log_size),
+        lifting_log_size: None,
     };
     let preprocessed_root = HashValue(QM31::zero(), QM31::zero());
     let circuit_config = CircuitConfig {
@@ -243,6 +245,7 @@ fn test_privacy_proof_info() {
         preprocessed_column_ids: preprocessed_circuit.preprocessed_trace.ids(),
         preprocessed_column_log_sizes: preprocessed_circuit.preprocessed_trace.log_sizes(),
         preprocessed_root,
+        trace_log_size: preprocessed_circuit.params.trace_log_size,
     };
     let public_data = CircuitPublicData {
         output_values: vec![QM31::zero(); preprocessed_circuit.params.output_addresses.len()],
@@ -264,6 +267,7 @@ fn test_privacy_proof_info() {
         enabled_bits,
         circuit_config.preprocessed_column_log_sizes.clone(),
         &circuit_config.config,
+        circuit_config.trace_log_size,
         circuit_verifier::statement::INTERACTION_POW_BITS,
     );
     let proof_info = ProofInfo::from_config(&proof_config);

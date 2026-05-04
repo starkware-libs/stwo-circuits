@@ -63,6 +63,7 @@ fn test_fri_decommit_with_jumps(
             log_n_last_layer_coefs: 0,
             fold_step,
         },
+        lifting_log_size: 0,
     };
 
     // Compute FRI input.

@@ -240,6 +240,10 @@ pub struct ProofConfig {
     pub enabled_bits: Vec<bool>,
 
     pub fri: FriConfig,
+
+    /// The log size of the lifting domain (including the blowup factor).
+    /// This is the same as `PcsConfig::lifting_log_size.unwrap_or(0)`.
+    pub lifting_log_size: u32,
 }
 impl ProofConfig {
     pub fn new<Value: IValue>(
@@ -247,6 +251,7 @@ impl ProofConfig {
         enabled_bits: Vec<bool>,
         preprocessed_column_log_sizes: Vec<u32>,
         pcs_config: &PcsConfig,
+        log_trace_size: u32,
         n_interaction_pow_bits: u32,
     ) -> Self {
         let mut component_shapes = Vec::with_capacity(components.len());
@@ -294,13 +299,8 @@ impl ProofConfig {
                     log_last_layer_degree_bound,
                     fold_step,
                 },
-            lifting_log_size: Some(lifting_log_size),
-        } = pcs_config
-        else {
-            panic!("Lifting log size must be set");
-        };
-
-        let log_trace_size = (*lifting_log_size - log_blowup_factor) as usize;
+            lifting_log_size: pcs_lifting_log_size,
+        } = pcs_config;
 
         Self {
             n_pow_bits: *pow_bits,
@@ -312,12 +312,13 @@ impl ProofConfig {
             cumulative_sum_columns,
             enabled_bits,
             fri: FriConfig {
-                log_trace_size,
+                log_trace_size: log_trace_size as usize,
                 log_blowup_factor: *log_blowup_factor as usize,
                 n_queries: *n_queries,
                 log_n_last_layer_coefs: *log_last_layer_degree_bound as usize,
                 fold_step: *fold_step as usize,
             },
+            lifting_log_size: pcs_lifting_log_size.unwrap_or(0),
         }
     }
 

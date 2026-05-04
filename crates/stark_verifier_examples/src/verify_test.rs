@@ -3,7 +3,7 @@ use rstest::rstest;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::vcs::blake2_hash::Blake2sHash;
 
-use crate::simple_air::{create_proof, create_proof_with_fold_step};
+use crate::simple_air::{LOG_SIZE_LONG, create_proof, create_proof_with_fold_step};
 use crate::simple_statement::{
     COMPONENT_ENABLE_BITS, PREPROCESSED_COLUMN_LOG_SIZES, SimpleStatement,
 };
@@ -43,6 +43,7 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
         COMPONENT_ENABLE_BITS.to_vec(),
         PREPROCESSED_COLUMN_LOG_SIZES.to_vec(),
         &pcs_config,
+        LOG_SIZE_LONG,
         8,
     );
     // Create a NoValue version.
@@ -152,6 +153,7 @@ fn test_proof_info(#[case] fold_step: u32) {
         COMPONENT_ENABLE_BITS.to_vec(),
         PREPROCESSED_COLUMN_LOG_SIZES.to_vec(),
         &pcs_config,
+        LOG_SIZE_LONG,
         8,
     );
     let info = ProofInfo::from_config(&config);
