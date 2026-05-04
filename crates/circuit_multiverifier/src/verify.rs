@@ -40,6 +40,10 @@ mod verify_test;
 #[path = "multi_fibonacci_test.rs"]
 mod multi_fibonacci_test;
 
+#[cfg(test)]
+#[path = "multi_cairo_test.rs"]
+mod multi_cairo_test;
+
 // TODO: remove this struct
 pub struct Input<Value: IValue> {
     pub(crate) proof: Proof<Value>,
@@ -292,6 +296,9 @@ pub fn build_multiverifier_circuit<Value: IValue>(
     context.finalize_guessed_vars();
     context
 }
+
+
+pub fn pad_multiverifier_() {}
 
 // We will need
 //
