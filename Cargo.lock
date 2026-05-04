@@ -1299,6 +1299,7 @@ dependencies = [
  "indexmap",
  "itertools 0.12.1",
  "rand_chacha 0.3.1",
+ "serde",
  "stwo",
  "stwo-cairo-common",
  "stwo-constraint-framework",
