@@ -35,6 +35,10 @@ use crate::statement::SubCircuitStatement;
 #[path ="verify_test.rs"]
 mod verify_test;
 
+#[cfg(test)]
+#[path = "multi_fibonacci_test.rs"]
+mod multi_fibonacci_test;
+
 // TODO: compute the true root
 const VALID_METADATA_ROOT: HashValue<QM31> =
     HashValue(QM31::from_u32_unchecked(0, 0, 0, 0), QM31::from_u32_unchecked(0, 0, 0, 0));
@@ -57,6 +61,7 @@ pub struct Input<Value: IValue> {
     /// against which this proof's metadata hash is paired to recompute the
     /// root. The prover provides it as a witness; the Merkle equation
     /// constrains its value.
+    // TODO: remove from this struct, compute it on the fly.
     pub(crate) other_hash: HashValue<QM31>,
 }
 
