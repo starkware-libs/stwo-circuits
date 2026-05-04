@@ -200,7 +200,7 @@ fn stwo_verify(
 
     commitment_scheme.commit(
         proof.proof.commitments[0],
-        &preprocessed_circuit.preprocessed_trace.log_sizes(),
+        &preprocessed_circuit.preprocessed_trace.log_sizes().values().copied().collect::<Vec<_>>(),
         verifier_channel,
     );
     claim.mix_into(verifier_channel);
@@ -366,7 +366,6 @@ fn circuit_verify(
         config: circuit_proof.pcs_config,
         output_addresses: preprocessed_circuit.params.output_addresses.clone(),
         n_blake_gates: preprocessed_circuit.params.n_blake_gates,
-        preprocessed_column_ids: preprocessed_circuit.preprocessed_trace.ids(),
         preprocessed_column_log_sizes: preprocessed_circuit.preprocessed_trace.log_sizes(),
         preprocessed_root: preprocessed_root.into(),
     };
