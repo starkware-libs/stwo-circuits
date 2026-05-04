@@ -46,7 +46,6 @@ fn verify_circuit_proof(
         config: circuit_proof.pcs_config,
         output_addresses: preprocessed_circuit.params.output_addresses.clone(),
         n_blake_gates: preprocessed_circuit.params.n_blake_gates,
-        preprocessed_column_ids: preprocessed_circuit.preprocessed_trace.ids(),
         preprocessed_column_log_sizes: preprocessed_circuit.preprocessed_trace.log_sizes(),
         preprocessed_root,
     };
@@ -240,7 +239,6 @@ fn test_privacy_proof_info() {
         config: pcs_config,
         output_addresses: preprocessed_circuit.params.output_addresses.clone(),
         n_blake_gates: preprocessed_circuit.params.n_blake_gates,
-        preprocessed_column_ids: preprocessed_circuit.preprocessed_trace.ids(),
         preprocessed_column_log_sizes: preprocessed_circuit.preprocessed_trace.log_sizes(),
         preprocessed_root,
     };
@@ -253,7 +251,6 @@ fn test_privacy_proof_info() {
         &circuit_config.output_addresses,
         &public_data.output_values,
         circuit_config.n_blake_gates,
-        circuit_config.preprocessed_column_ids.clone(),
         circuit_config.preprocessed_column_log_sizes.clone(),
         circuit_config.preprocessed_root,
     );

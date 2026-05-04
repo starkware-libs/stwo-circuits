@@ -477,8 +477,8 @@ impl PreProcessedTrace {
         }
     }
 
-    pub fn log_sizes(&self) -> Vec<u32> {
-        self.columns.values().map(|c| c.len().ilog2()).collect()
+    pub fn log_sizes(&self) -> OrderedHashMap<PreProcessedColumnId, u32> {
+        self.columns.iter().map(|(id, column)| (id.clone(), column.len().ilog2())).collect()
     }
 
     pub fn ids(&self) -> Vec<PreProcessedColumnId> {
@@ -565,7 +565,7 @@ impl PreprocessedCircuit {
         // The trace size is the max between:
         // 1. The largest preprocessed column size.
         // 2. BlakeG trace size (= number of blake updates * 2^7).
-        let max_pp_trace_log_size = pp_trace.log_sizes().into_iter().max().unwrap();
+        let max_pp_trace_log_size = pp_trace.log_sizes().values().copied().max().unwrap();
         let blake_g_log_size = log_n_blake_updates + 7;
         let trace_log_size = std::cmp::max(max_pp_trace_log_size, blake_g_log_size);
 

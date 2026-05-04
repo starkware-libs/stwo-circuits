@@ -6,6 +6,7 @@ use crate::components::{
     verify_bitwise_xor_12,
 };
 use crate::relations::{BLAKE_STATE_RELATION_ID, GATE_RELATION_ID};
+use circuit_common::order_hash_map::OrderedHashMap;
 use circuits::blake::HashValue;
 use circuits::context::{Context, Var};
 use circuits::eval;
@@ -32,10 +33,10 @@ pub struct CircuitStatement<Value: IValue> {
     pub output_values: Vec<Var>,
     /// The number of blake gates in the circuit.
     pub n_blake_gates: usize,
-    /// Preprocessed column ids in the exact order used by the prover's preprocessed trace.
-    pub preprocessed_column_ids: Vec<PreProcessedColumnId>,
-    /// Log size of each preprocessed column, in the same order as `preprocessed_column_ids`.
-    pub preprocessed_column_log_sizes: Vec<u32>,
+    /// Maps preprocessed column ids to their log sizes.
+    /// The order of the keys is the same as the order of the columns in the prover's preprocessed
+    /// trace.
+    pub preprocessed_column_log_sizes: OrderedHashMap<PreProcessedColumnId, u32>,
     /// The preprocessed trace root.
     pub preprocessed_root: HashValue<QM31>,
 }
@@ -45,8 +46,7 @@ impl<Value: IValue> CircuitStatement<Value> {
         output_addresses: &[usize],
         output_values: &[QM31],
         n_blake_gates: usize,
-        preprocessed_column_ids: Vec<PreProcessedColumnId>,
-        preprocessed_column_log_sizes: Vec<u32>,
+        preprocessed_column_log_sizes: OrderedHashMap<PreProcessedColumnId, u32>,
         preprocessed_root: HashValue<QM31>,
     ) -> Self {
         let output_addresses = output_addresses
@@ -60,7 +60,6 @@ impl<Value: IValue> CircuitStatement<Value> {
             output_addresses,
             output_values,
             n_blake_gates,
-            preprocessed_column_ids,
             preprocessed_column_log_sizes,
             preprocessed_root,
         }
@@ -132,7 +131,7 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
     }
 
     fn get_preprocessed_column_ids(&self) -> Vec<PreProcessedColumnId> {
-        self.preprocessed_column_ids.clone()
+        self.preprocessed_column_log_sizes.keys().cloned().collect()
     }
 
     fn get_preprocessed_root(&self, context: &mut Context<Value>) -> HashValue<Var> {
