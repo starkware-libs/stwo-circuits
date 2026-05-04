@@ -1,3 +1,4 @@
+pub mod component_utils;
 pub mod finalize;
 pub mod preprocessed;
 

@@ -11,6 +11,7 @@ stwo.workspace = true
 stwo-constraint-framework.workspace = true
 circuits.workspace = true
 circuits-stark-verifier.workspace = true
+circuit-common.workspace = true
 
 [dev-dependencies]
 indoc.workspace = true

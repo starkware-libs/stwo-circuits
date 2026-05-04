@@ -1,4 +1,5 @@
-use crate::{component_utils::seq_of_component_size, components::prelude::*};
+use crate::components::prelude::*;
+use circuit_common::component_utils::seq_of_component_size;
 
 const MEMORY_ADDRESS_TO_ID_SPLIT: usize = 16;
 pub const N_TRACE_COLUMNS: usize = MEMORY_ADDRESS_TO_ID_SPLIT * 2;
