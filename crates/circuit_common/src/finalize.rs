@@ -53,6 +53,15 @@ fn pad_blake(context: &mut Context<impl IValue>) {
     }
 }
 
+fn pad_triple_xor(context: &mut Context<impl IValue>) {
+    let n_rows = context.circuit.triple_xor.len();
+    let padded = std::cmp::max(n_rows.next_power_of_two(), N_LANES);
+    let zero = context.zero();
+    for _ in n_rows..padded {
+        circuits::blake::triple_xor(context, zero, zero, zero);
+    }
+}
+
 fn pad_m31_to_u32(context: &mut Context<impl IValue>) {
     let n_rows = context.circuit.m31_to_u32.len();
     let padded = std::cmp::max(n_rows.next_power_of_two(), N_LANES);
@@ -85,6 +94,7 @@ pub fn finalize_context(context: &mut Context<impl IValue>) {
     pad_eq(context);
     pad_qm31_ops(context);
     pad_blake(context);
+    pad_triple_xor(context);
     pad_m31_to_u32(context);
 }
 
