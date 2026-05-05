@@ -17,7 +17,7 @@ pub struct CircuitPublicData {
     pub output_values: Vec<QM31>,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct CircuitConfig {
     pub config: PcsConfig,
     pub output_addresses: Vec<usize>,

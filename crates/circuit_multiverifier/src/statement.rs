@@ -33,31 +33,6 @@ pub struct SubCircuitStatement<Value: IValue> {
     /// The preprocessed trace root.
     pub preprocessed_root: HashValue<Var>,
 }
-// impl<Value: IValue> SubCircuitStatement<Value> {
-//     pub fn new(
-//         context: &mut Context<Value>,
-//         output_addresses: &[usize],
-//         output_values: &[QM31],
-//         n_blake_gates: usize,
-//         preprocessed_column_ids: Vec<PreProcessedColumnId>,
-//         preprocessed_root: HashValue<QM31>,
-//     ) -> Self {
-//         let output_addresses = output_addresses
-//             .iter()
-//             .map(|&addr| M31Wrapper::new_unsafe(context.constant(addr.into())))
-//             .collect_vec();
-//         let output_values =
-//             output_values.iter().map(|value|
-// Value::from_qm31(*value).guess(context)).collect_vec();         Self {
-//             components: all_circuit_components(),
-//             output_addresses,
-//             output_values,
-//             n_blake_gates,
-//             preprocessed_column_ids,
-//             preprocessed_root,
-//         }
-//     }
-// }
 
 impl<Value: IValue> Statement<Value> for SubCircuitStatement<Value> {
     fn claims_to_mix(&self, _context: &mut Context<Value>) -> Vec<Vec<Var>> {

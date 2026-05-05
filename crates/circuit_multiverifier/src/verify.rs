@@ -50,6 +50,7 @@ pub struct SubCircuitInput<Value: IValue> {
 }
 
 // TODO: find better name.
+#[derive(Clone)]
 pub struct Metadata<T> {
     pub n_blake_gates_pow_two: M31Wrapper<T>,
     pub output_addresses: Vec<M31Wrapper<T>>,
@@ -241,3 +242,18 @@ pub fn build_multiverifier_circuit<Value: IValue>(
 //     circuit_proof: CircuitProof<Blake2sM31MerkleHasher>,
 //     proof_config: &ProofConfig,
 // ) -> (Proof<QM31>, CircuitPublicData)
+
+// To verify a circuit, you need a circuit statement and a proof config, so that you can call
+// verify.
+
+// How do they affect the topology of the resulting verifier circuit?
+// 1. output addresses are added as consts: bad
+// 1'. even if they were somehow guessed, their number affects the # of vars of the resulting
+// circuit
+// 2. preprocessed_cols: ordered set of pp cols affects the wiring of the resulting circuit when it
+//    needs to compute the constraints at ood. -> requirement: given a pcs config, (the witnesses
+//    of) circuit A and circuit B need to have the same ordered set of pp cols
+// 3. pp root added as const: bad
+// 4. n_blake_gates.next_power_of_two added as const: bad
+
+// What is currently added as a const will be guessed and then verified by the next verifier.

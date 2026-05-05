@@ -123,7 +123,7 @@ pub fn pad_components_to_target_counts<Value: IValue>(
 
 /// Mirrors the `qm31_ops_n_rows` formula used by `pad_qm31_ops` in
 /// `circuit_common::finalize`.
-fn qm31_ops_n_rows(circuit: &Circuit) -> usize {
+pub fn qm31_ops_n_rows(circuit: &Circuit) -> usize {
     circuit.add.len()
         + circuit.sub.len()
         + circuit.mul.len()
