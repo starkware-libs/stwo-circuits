@@ -2,13 +2,13 @@ use crate::CircuitParams;
 use crate::N_LANES;
 use crate::Qm31OpsTraceGenerator;
 use crate::finalize::finalize_context;
+use crate::order_hash_map::OrderedHashMap;
 use circuits::circuit::Blake;
 use circuits::circuit::Gate;
 use circuits::circuit::M31ToU32;
 use circuits::circuit::{Circuit, Permutation};
 use circuits::context::Context;
 use circuits::ivalue::IValue;
-use indexmap::IndexMap;
 use itertools::zip_eq;
 use std::sync::Arc;
 #[cfg(feature = "prover")]
@@ -424,17 +424,9 @@ fn add_m31_to_u32_to_preprocessed_trace(
 
 /// A collection of preprocessed columns, whose values are publicly acknowledged, and independent of
 /// the proof.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct PreProcessedTrace {
-    columns: IndexMap<PreProcessedColumnId, Vec<usize>>,
-}
-
-// Manual order-dependent `PartialEq` since `IndexMap`'s derived `PartialEq` is order-independent
-// (matching `HashMap` semantics), but column order is meaningful here — see `sort_by_size`.
-impl PartialEq for PreProcessedTrace {
-    fn eq(&self, other: &Self) -> bool {
-        self.columns.iter().eq(other.columns.iter())
-    }
+    columns: OrderedHashMap<PreProcessedColumnId, Vec<usize>>,
 }
 
 impl PreProcessedTrace {
