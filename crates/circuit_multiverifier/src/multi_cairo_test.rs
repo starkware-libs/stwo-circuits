@@ -32,7 +32,7 @@ use circuit_verifier::statement::{INTERACTION_POW_BITS, all_circuit_components};
 use circuit_verifier::verify::{CircuitConfig, CircuitPublicData};
 use circuits::blake::{HashValue, blake_qm31};
 use circuits::context::Context;
-use circuits::ivalue::{NoValue, qm31_from_u32s};
+use circuits::ivalue::{IValue, NoValue, qm31_from_u32s};
 use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
 use circuits_stark_verifier::proof::{ProofConfig, empty_proof};
@@ -118,9 +118,21 @@ fn cairo_circuit_config(pcs_config: PcsConfig) -> CircuitConfig {
         preprocessed_root: HashValue(QM31::zero(), QM31::zero()),
     }
 }
-fn pp_cairo_circuit(pcs_config: PcsConfig) -> (PreprocessedCircuit, Context<NoValue>) {
+fn pp_cairo_circuit(
+    pcs_config: PcsConfig,
+    target_padding: Option<(usize, usize, usize, usize)>,
+) -> (PreprocessedCircuit, Context<NoValue>) {
     let const_config = privacy_cairo_verifier_config(pcs_config.fri_config.log_blowup_factor);
     let mut novalue_context = build_cairo_verifier_circuit_with_prepended_outputs(&const_config);
+    if let Some((eq, qm31_ops, blake_gates, blake_compress)) = target_padding {
+        pad_components_to_target_counts(
+            &mut novalue_context,
+            eq,
+            qm31_ops,
+            blake_gates,
+            blake_compress,
+        );
+    }
     let pp = PreprocessedCircuit::preprocess_circuit(&mut novalue_context);
     (pp, novalue_context)
 }
@@ -128,6 +140,7 @@ fn pp_cairo_circuit(pcs_config: PcsConfig) -> (PreprocessedCircuit, Context<NoVa
 fn pp_multiverifier_circuit_from_cairo(
     pp_cairo_circuit: &PreprocessedCircuit,
     mut pcs_config: PcsConfig,
+    target_padding: Option<(usize, usize, usize, usize)>,
 ) -> (PreprocessedCircuit, Context<NoValue>) {
     pcs_config.lifting_log_size =
         Some(pp_cairo_circuit.params.trace_log_size + pcs_config.fri_config.log_blowup_factor);
@@ -165,34 +178,74 @@ fn pp_multiverifier_circuit_from_cairo(
         subcircuit_config,
         metadata_tree,
     );
+    if let Some((eq, qm31_ops, blake_gates, blake_compress)) = target_padding {
+        pad_components_to_target_counts(
+            &mut multiverifier_context,
+            eq,
+            qm31_ops,
+            blake_gates,
+            blake_compress,
+        )
+    };
     let pp = PreprocessedCircuit::preprocess_circuit(&mut multiverifier_context);
     (pp, multiverifier_context)
 }
 
+fn compute_component_sizes(
+    pp_circuit: &PreprocessedCircuit,
+    context: &Context<impl IValue>,
+) -> ComponentSizes {
+    ComponentSizes {
+        eq: context.stats.equals,
+        qm31_ops: qm31_ops_n_rows(&context.circuit),
+        n_blake_gates: pp_circuit.params.n_blake_gates,
+        n_blake_updates: context.stats.blake_updates,
+    }
+}
 /// Diagnostic: print cairo's and multi's natural component counts under the
 /// current `PCS_CONFIG` so we can pick the right bracket targets.
 #[test]
 fn test_compare_cairo_and_multiverifier_stats() {
     let pcs_config = PCS_CONFIG;
-    let (pp_cairo_circuit, novalue_cairo_context) = pp_cairo_circuit(pcs_config);
-    println!(
-        "cairo: eq={}, qm31_ops={}, n_blake={}, blake_compress={}",
-        novalue_cairo_context.stats.equals,
-        qm31_ops_n_rows(&novalue_cairo_context.circuit),
-        pp_cairo_circuit.params.n_blake_gates,
-        novalue_cairo_context.stats.blake_updates,
-    );
+    let (pp_cairo_circuit, novalue_cairo_context) = pp_cairo_circuit(pcs_config, None);
+    let cairo_component_sizes = compute_component_sizes(&pp_cairo_circuit, &novalue_cairo_context);
+    println!("cairo: {}", cairo_component_sizes);
+
     let (pp_multiverifier_circuit, novalue_multiverifier_context) =
-        pp_multiverifier_circuit_from_cairo(&pp_cairo_circuit, pcs_config);
-    println!(
-        "multiverifier: eq={}, qm31_ops={}, n_blake={}, blake_compress={}",
-        novalue_multiverifier_context.stats.equals,
-        qm31_ops_n_rows(&novalue_multiverifier_context.circuit),
-        pp_multiverifier_circuit.params.n_blake_gates,
-        novalue_multiverifier_context.stats.blake_updates,
-    );
+        pp_multiverifier_circuit_from_cairo(&pp_cairo_circuit, pcs_config, None);
+    let multiverifier_component_sizes =
+        compute_component_sizes(&pp_multiverifier_circuit, &novalue_multiverifier_context);
+    println!("multiverifier: {}", multiverifier_component_sizes);
+
+    //
+    let shared_max_component_sizes = ComponentSizes {
+        eq: cairo_component_sizes.eq.max(multiverifier_component_sizes.eq),
+        qm31_ops: cairo_component_sizes.qm31_ops.max(multiverifier_component_sizes.qm31_ops),
+        n_blake_gates: cairo_component_sizes
+            .n_blake_gates
+            .max(multiverifier_component_sizes.n_blake_gates),
+        n_blake_updates: cairo_component_sizes
+            .n_blake_updates
+            .max(multiverifier_component_sizes.n_blake_updates),
+    };
+    println!("common: {}", shared_max_component_sizes)
 }
 
+pub struct ComponentSizes {
+    pub eq: usize,
+    pub qm31_ops: usize,
+    pub n_blake_gates: usize,
+    pub n_blake_updates: usize,
+}
+
+impl std::fmt::Display for ComponentSizes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&format!(
+            "eq={}, qm31_ops={}, n_blake={}, blake_compress={}",
+            self.eq, self.qm31_ops, self.n_blake_gates, self.n_blake_updates
+        ))
+    }
+}
 /// After padding multi up into Cairo's brackets, both circuits should produce
 /// identical `preprocessed_column_ids` (in the same order) when preprocessed.
 /// // TODO: use pp cairo circuit and pp_multiverifier
@@ -242,6 +295,8 @@ const MULTI_OF_CAIRO_PROOF_PATH: &str = "/tmp/circuit_multiverifier_test_multi_o
 /// (which lives behind `#[cfg(test)]` in the cairo_verifier crate, so it isn't
 /// callable from outside). Verifies a `CairoProof` with the given component
 /// set and returns the resulting QM31 context.
+/// 
+// TODO: try to move it to cairo verifier crate
 fn verify_cairo_with_component_set_inline(
     cairo_proof: &CairoProof<Blake2sM31MerkleHasher>,
     component_set: HashSet<&str>,
