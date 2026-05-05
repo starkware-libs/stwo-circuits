@@ -162,17 +162,7 @@ pub fn build_cairo_verifier_circuit(verifier_config: &CairoVerifierConfig) -> Co
     context
 }
 
-/// Adds two zero-valued [`Output`] gates to the front of the context's
-/// output list, using the standard `guess` + `output` pattern. Intended to
-/// be called *before* any other outputs are added to the context, so the
-/// dummies end up at output slots 0 and 1.
-///
-/// Used by `build_*_with_prepended_outputs` so that the resulting Cairo
-/// verifier circuit has 5 outputs in the
-/// `[dummy_0, dummy_1, output_hash.0, output_hash.1, u]` layout — matching
-/// the multiverifier's `[H_or_0, H_or_0, payload, payload, u]` 5-slot
-/// convention for variant-A (leaf) circuits.
-fn prepend_two_dummy_outputs<Value: IValue>(context: &mut Context<Value>) {
+fn add_dummy_outputs<Value: IValue>(context: &mut Context<Value>) {
     let dummy_0 = guess(context, Value::from_qm31(QM31::zero()));
     let dummy_1 = guess(context, Value::from_qm31(QM31::zero()));
     output(context, dummy_0);
@@ -183,7 +173,7 @@ fn prepend_two_dummy_outputs<Value: IValue>(context: &mut Context<Value>) {
 /// prepended to the front of the output list (so the circuit produces 5
 /// outputs in the `[0, 0, output_hash.0, output_hash.1, u]` layout the
 /// multiverifier expects of leaf circuits).
-pub fn build_fixed_cairo_circuit_with_prepended_outputs(
+pub fn build_fixed_cairo_subcircuit(
     verifier_config: &CairoVerifierConfig,
     proof: Proof<QM31>,
     public_claim: Vec<u32>,
@@ -204,13 +194,9 @@ pub fn build_fixed_cairo_circuit_with_prepended_outputs(
         verifier_config.preprocessed_trace_variant,
     );
 
-    // Add the two dummy slots BEFORE `verify()` adds the cairo
-    // statement's own outputs (`output_hash.0`, `output_hash.1` via
-    // `claims_to_mix`), so the dummies end up at slots 0 and 1.
-    prepend_two_dummy_outputs(&mut context);
-
     let proof_vars = proof.guess(&mut context);
     verify(&mut context, &proof_vars, config, &statement);
+    add_dummy_outputs(&mut context);
     finalize_constants(&mut context);
     context.finalize_guessed_vars();
 
@@ -219,7 +205,7 @@ pub fn build_fixed_cairo_circuit_with_prepended_outputs(
 
 /// Like [`verify_fixed_cairo_circuit`] but with two extra zero outputs
 /// prepended (see [`build_fixed_cairo_circuit_with_prepended_outputs`]).
-pub fn verify_fixed_cairo_circuit_with_prepended_outputs(
+pub fn verify_fixed_cairo_subcircuit(
     verifier_config: &CairoVerifierConfig,
     proof: Proof<QM31>,
     public_claim: Vec<u32>,
@@ -229,7 +215,7 @@ pub fn verify_fixed_cairo_circuit_with_prepended_outputs(
         return Err("The proof claim does not match the expected number of outputs.".to_string());
     }
     let context =
-        build_fixed_cairo_circuit_with_prepended_outputs(verifier_config, proof, public_claim, outputs);
+        build_fixed_cairo_subcircuit(verifier_config, proof, public_claim, outputs);
 
     #[cfg(test)]
     context.check_vars_used();
@@ -243,7 +229,7 @@ pub fn verify_fixed_cairo_circuit_with_prepended_outputs(
 
 /// Like [`build_cairo_verifier_circuit`] but with two extra zero outputs
 /// prepended (see [`build_fixed_cairo_circuit_with_prepended_outputs`]).
-pub fn build_cairo_verifier_circuit_with_prepended_outputs(
+pub fn build_cairo_verifier_subcircuit(
     verifier_config: &CairoVerifierConfig,
 ) -> Context<NoValue> {
     let config = &verifier_config.proof_config;
@@ -265,10 +251,9 @@ pub fn build_cairo_verifier_circuit_with_prepended_outputs(
         verifier_config.preprocessed_trace_variant,
     );
 
-    prepend_two_dummy_outputs(&mut context);
-
     let proof_vars = empty_proof(config).guess(&mut context);
     verify(&mut context, &proof_vars, config, &statement);
+    add_dummy_outputs(&mut context);
     finalize_constants(&mut context);
     context.finalize_guessed_vars();
     context

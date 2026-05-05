@@ -177,8 +177,6 @@ pub fn build_multiverifier_circuit<Value: IValue>(
     let proof_config = subcircuit_config.to_proof_config();
     let mut context: Context<Value> = Context::default();
     let metadata_root_var = metadata_tree.root.guess(&mut context);
-    output(&mut context, metadata_root_var.0);
-    output(&mut context, metadata_root_var.1);
 
     let mut inner_outputs = vec![];
     // Verify each subcircuit proof.
@@ -201,16 +199,16 @@ pub fn build_multiverifier_circuit<Value: IValue>(
         // require its first two outputs to equal *our own* metadata_root —
         // that's how `H` is propagated up the recursion. For a leaf circuit
         // (bit = 0) the corresponding outputs are padding zeros.
-        let output0 = mul(&mut context, bit, metadata_root_var.0);
-        let output1 = mul(&mut context, bit, metadata_root_var.1);
+        let output2 = mul(&mut context, bit, metadata_root_var.0);
+        let output3 = mul(&mut context, bit, metadata_root_var.1);
         let output4 = context.u();
         // Unconstrained outputs. (i.e. the hash-of-outputs of the circuit being verified now).
-        let (output2, output3) = (
-            Value::from_qm31(circuit_public_data.output_values[2]).guess(&mut context),
-            Value::from_qm31(circuit_public_data.output_values[3]).guess(&mut context),
+        let (output0, output1) = (
+            Value::from_qm31(circuit_public_data.output_values[0]).guess(&mut context),
+            Value::from_qm31(circuit_public_data.output_values[1]).guess(&mut context),
         );
         // Add the unconstrained outputs to the inner outputs, which will need to be hashed later.
-        inner_outputs.extend([output2.clone(), output3.clone()]);
+        inner_outputs.extend([output0.clone(), output1.clone()]);
 
         let output_values = vec![output0, output1, output2, output3, output4];
         let statement = SubCircuitStatement::<Value> {
@@ -229,7 +227,9 @@ pub fn build_multiverifier_circuit<Value: IValue>(
     let HashValue(hash0, hash1) = blake(&mut context, &inner_outputs, 64);
     output(&mut context, hash0);
     output(&mut context, hash1);
-
+    // output the metadata root.
+    output(&mut context, metadata_root_var.0);
+    output(&mut context, metadata_root_var.1);
     // finalize consts
     finalize_constants(&mut context);
     context.finalize_guessed_vars();

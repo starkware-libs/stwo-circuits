@@ -18,8 +18,8 @@ use circuit_cairo_verifier::privacy::{privacy_cairo_verifier_config, privacy_com
 use circuit_cairo_verifier::statement::MEMORY_VALUES_LIMBS;
 use circuit_cairo_verifier::utils::get_proof_file_path;
 use circuit_cairo_verifier::verify::{
-    CairoVerifierConfig, build_cairo_verifier_circuit_with_prepended_outputs,
-    prepare_cairo_proof_for_circuit_verifier, verify_fixed_cairo_circuit_with_prepended_outputs,
+    CairoVerifierConfig, build_cairo_verifier_subcircuit, prepare_cairo_proof_for_circuit_verifier,
+    verify_fixed_cairo_subcircuit,
 };
 use circuit_common::finalize::finalize_context as pad_components_to_powers_of_two;
 use circuit_common::preprocessed::PreprocessedCircuit;
@@ -92,7 +92,7 @@ const PCS_CONFIG: PcsConfig =
 // TODO: accept a subsircuit config. This is needed only for testing. useful to inspect pp ids.
 fn cairo_circuit_config(pcs_config: PcsConfig) -> CircuitConfig {
     let const_config = privacy_cairo_verifier_config(pcs_config.fri_config.log_blowup_factor);
-    let mut novalue_context = build_cairo_verifier_circuit_with_prepended_outputs(&const_config);
+    let mut novalue_context = build_cairo_verifier_subcircuit(&const_config);
     // Pad cairo up into the shared brackets so its `preprocessed_column_ids`
     // post-`sort_by_size` agree with the (separately-padded) multiverifier.
     pad_components_to_target_counts(
@@ -118,12 +118,13 @@ fn cairo_circuit_config(pcs_config: PcsConfig) -> CircuitConfig {
         preprocessed_root: HashValue(QM31::zero(), QM31::zero()),
     }
 }
+// TODO: change from 4-tuple to component sizes
 fn pp_cairo_circuit(
     pcs_config: PcsConfig,
     target_padding: Option<(usize, usize, usize, usize)>,
 ) -> (PreprocessedCircuit, Context<NoValue>) {
     let const_config = privacy_cairo_verifier_config(pcs_config.fri_config.log_blowup_factor);
-    let mut novalue_context = build_cairo_verifier_circuit_with_prepended_outputs(&const_config);
+    let mut novalue_context = build_cairo_verifier_subcircuit(&const_config);
     if let Some((eq, qm31_ops, blake_gates, blake_compress)) = target_padding {
         pad_components_to_target_counts(
             &mut novalue_context,
@@ -158,7 +159,7 @@ fn pp_multiverifier_circuit_from_cairo(
         preprocessed_column_ids: pp_cairo_circuit.preprocessed_trace.ids().clone(),
         preprocessed_root: HashValue(QM31::from(0), QM31::from(0)),
     };
-    // Use a closure to bypass absence of Clone
+    // Use a closure to bypass lack of Clone
     let make_input = || SubCircuitInput {
         proof: empty_proof(&proof_config),
         circuit_public_data: CircuitPublicData { output_values: vec![QM31::zero(); N_OUTPUTS] },
@@ -171,6 +172,7 @@ fn pp_multiverifier_circuit_from_cairo(
         preprocessed_column_ids: cairo_config.preprocessed_column_ids.clone(),
     };
     let metadata = Metadata::<QM31>::from_config(&cairo_config);
+    // TODO: make a empty_metadata_tree func.
     let metadata_tree = MetadataTree::<NoValue>::commit(metadata.clone(), metadata);
     let mut multiverifier_context = build_multiverifier_circuit::<NoValue>(
         make_input(),
@@ -207,12 +209,17 @@ fn compute_component_sizes(
 #[test]
 fn test_compare_cairo_and_multiverifier_stats() {
     let pcs_config = PCS_CONFIG;
-    let (pp_cairo_circuit, novalue_cairo_context) = pp_cairo_circuit(pcs_config, Some((1 << 17, 1<<21, 1<<14, 1<<14)));
+    let (pp_cairo_circuit, novalue_cairo_context) =
+        pp_cairo_circuit(pcs_config, Some((1 << 17, 1 << 21, 1 << 14, 1 << 14)));
     let cairo_component_sizes = compute_component_sizes(&pp_cairo_circuit, &novalue_cairo_context);
     println!("cairo: {}", cairo_component_sizes);
     println!("pp cols: {:?}\n", pp_cairo_circuit.preprocessed_trace.ids());
     let (pp_multiverifier_circuit, novalue_multiverifier_context) =
-        pp_multiverifier_circuit_from_cairo(&pp_cairo_circuit, pcs_config, Some((1 << 17, 1<<21, 1<<14, 1<<14)));
+        pp_multiverifier_circuit_from_cairo(
+            &pp_cairo_circuit,
+            pcs_config,
+            Some((1 << 17, 1 << 21, 1 << 14, 1 << 14)),
+        );
     let multiverifier_component_sizes =
         compute_component_sizes(&pp_multiverifier_circuit, &novalue_multiverifier_context);
     println!("multiverifier: {}", multiverifier_component_sizes);
@@ -228,7 +235,10 @@ fn test_compare_cairo_and_multiverifier_stats() {
             .n_blake_updates
             .max(multiverifier_component_sizes.n_blake_updates),
     };
-    assert_eq!(pp_multiverifier_circuit.preprocessed_trace.ids(), pp_cairo_circuit.preprocessed_trace.ids());
+    assert_eq!(
+        pp_multiverifier_circuit.preprocessed_trace.ids(),
+        pp_cairo_circuit.preprocessed_trace.ids()
+    );
     println!("common: {}", shared_max_component_sizes)
 }
 
@@ -257,38 +267,8 @@ fn test_preprocessed_column_ids_are_equal() {
 
     let multi_meta = extract_padded_multi_metadata(&cairo_config);
     let multi_ids = &multi_meta.preprocessed_column_ids;
-
-    println!(
-        "cairo: n_blake_gates = {}, n_columns = {}",
-        cairo_config.n_blake_gates,
-        cairo_ids.len(),
-    );
-    println!(
-        "multi: n_blake_gates = {}, n_columns = {}",
-        multi_meta.n_blake_gates,
-        multi_ids.len(),
-    );
-
-    if cairo_ids != multi_ids {
-        // Print a side-by-side diff so the failure mode is obvious.
-        let max_len = std::cmp::max(cairo_ids.len(), multi_ids.len());
-        let mut first_diff = None;
-        println!("\n{:>3}  {:<35}  {:<35}  match", "i", "cairo verifier", "multiverifier (padded)",);
-        println!("{}", "-".repeat(90));
-        for i in 0..max_len {
-            let c = cairo_ids.get(i).map(|x| x.id.as_str()).unwrap_or("(none)");
-            let m = multi_ids.get(i).map(|x| x.id.as_str()).unwrap_or("(none)");
-            let same = c == m;
-            if !same && first_diff.is_none() {
-                first_diff = Some(i);
-            }
-            println!("{:>3}  {:<35}  {:<35}  {}", i, c, m, if same { "✓" } else { "✗" },);
-        }
-        panic!("preprocessed_column_ids differ; first mismatch at index {first_diff:?}");
-    }
+    assert_eq!(cairo_ids, multi_ids);
 }
-
-// ---------- Tests A & B: prove → save → load → verify (Cairo edition) ----------
 
 const MULTI_OF_CAIRO_PROOF_PATH: &str = "/tmp/circuit_multiverifier_test_multi_of_cairo_proof.bin";
 
@@ -296,7 +276,6 @@ const MULTI_OF_CAIRO_PROOF_PATH: &str = "/tmp/circuit_multiverifier_test_multi_o
 /// (which lives behind `#[cfg(test)]` in the cairo_verifier crate, so it isn't
 /// callable from outside). Verifies a `CairoProof` with the given component
 /// set and returns the resulting QM31 context.
-/// 
 // TODO: try to move it to cairo verifier crate
 fn verify_cairo_with_component_set_inline(
     cairo_proof: &CairoProof<Blake2sM31MerkleHasher>,
@@ -350,12 +329,7 @@ fn verify_cairo_with_component_set_inline(
         preprocessed_trace_variant: cairo_proof.preprocessed_trace_variant,
     };
 
-    verify_fixed_cairo_circuit_with_prepended_outputs(
-        &verifier_config,
-        proof,
-        public_claim,
-        outputs,
-    )
+    verify_fixed_cairo_subcircuit(&verifier_config, proof, public_claim, outputs)
 }
 
 /// Builds & proves the Cairo verifier circuit (post-processed to expose 5
@@ -375,7 +349,7 @@ fn prove_cairo_and_prepare() -> SubCircuitInput<QM31> {
     // the multiverifier's. The QM31 path below applies the same padding so
     // both topologies match (and `commitments[0]` matches the offline
     // preprocessed_root).
-    let mut novalue_context = build_cairo_verifier_circuit_with_prepended_outputs(&const_config);
+    let mut novalue_context = build_cairo_verifier_subcircuit(&const_config);
     pad_components_to_target_counts(
         &mut novalue_context,
         shared_targets::EQ,
@@ -679,17 +653,17 @@ fn test_b_verify_multi_proof_and_cairo_proof_with_multiverifier() {
     //    hash_of_payloads_lo, hash_of_payloads_hi, u]`, where `hash_of_payloads =
     //    blake([cairo_payload, cairo_payload], 64)` over the two identical Cairo payload pairs
     //    (Test A's two Cairo proofs are deterministic and identical, so so are this Test's).
-    let cairo_payload_lo = sub_circuit_input.circuit_public_data.output_values[2];
-    let cairo_payload_hi = sub_circuit_input.circuit_public_data.output_values[3];
+    let cairo_payload_lo = sub_circuit_input.circuit_public_data.output_values[0];
+    let cairo_payload_hi = sub_circuit_input.circuit_public_data.output_values[1];
     let hash_of_payloads =
         blake_qm31(&[cairo_payload_lo, cairo_payload_hi, cairo_payload_lo, cairo_payload_hi], 64);
     let u_value = qm31_from_u32s(0, 0, 1, 0);
     let multi_public_data = CircuitPublicData {
         output_values: vec![
-            metadata_root.0,
-            metadata_root.1,
             hash_of_payloads.0,
             hash_of_payloads.1,
+            metadata_root.0,
+            metadata_root.1,
             u_value,
         ],
     };
