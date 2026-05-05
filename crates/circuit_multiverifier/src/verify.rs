@@ -296,10 +296,6 @@ pub fn build_multiverifier_circuit<Value: IValue>(
     context.finalize_guessed_vars();
     context
 }
-
-
-pub fn pad_multiverifier_() {}
-
 // We will need
 //
 // pub fn prepare_circuit_proof_for_multicircuit_verifier(

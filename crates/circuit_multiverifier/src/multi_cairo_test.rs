@@ -18,8 +18,8 @@ use circuit_cairo_verifier::privacy::{privacy_cairo_verifier_config, privacy_com
 use circuit_cairo_verifier::statement::MEMORY_VALUES_LIMBS;
 use circuit_cairo_verifier::utils::get_proof_file_path;
 use circuit_cairo_verifier::verify::{
-    CairoVerifierConfig, build_cairo_verifier_circuit, enabled_components,
-    prepare_cairo_proof_for_circuit_verifier, verify_fixed_cairo_circuit,
+    CairoVerifierConfig, build_cairo_verifier_circuit_with_prepended_outputs, enabled_components,
+    prepare_cairo_proof_for_circuit_verifier, verify_fixed_cairo_circuit_with_prepended_outputs,
 };
 use circuit_common::finalize::finalize_context as pad_components_to_powers_of_two;
 use circuit_common::preprocessed::PreprocessedCircuit;
@@ -31,10 +31,8 @@ use circuit_serialize::serialize::CircuitSerialize;
 use circuit_verifier::statement::{INTERACTION_POW_BITS, all_circuit_components};
 use circuit_verifier::verify::{CircuitConfig, CircuitPublicData};
 use circuits::blake::{HashValue, blake_qm31};
-use circuits::circuit::{Add, Output};
 use circuits::context::Context;
-use circuits::finalize_constants::finalize_constants;
-use circuits::ivalue::{IValue, NoValue, qm31_from_u32s};
+use circuits::ivalue::{NoValue, qm31_from_u32s};
 use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
 use circuits_stark_verifier::proof::{Proof, ProofConfig, empty_proof};
@@ -45,7 +43,6 @@ use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::PcsConfig;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 
-use super::verify_test::build_fibonacci_context_with_5_outputs;
 use super::{Input, Metadata, SubCircuitConfig, build_multiverifier_circuit};
 use crate::padding::pad_components_to_target_counts;
 
@@ -63,101 +60,54 @@ mod cairo_targets {
     pub(super) const N_BLAKE_COMPRESS_ROWS: usize = 1 << 14; // 16_384
 }
 
-/// Builds a NoValue multiverifier circuit (verifying two Fibonacci-shaped
-/// inputs) and pads it up into Cairo's column-size brackets.
-fn build_padded_multi_for_cairo() -> Context<NoValue> {
-    // Derive a Fibonacci `CircuitConfig` so the inner `verify()` calls have a
-    // realistic shape. The actual values don't matter under `NoValue`.
-    let mut fib_ctx = build_fibonacci_context_with_5_outputs::<NoValue>();
-    finalize_constants(&mut fib_ctx);
-    let pp_fib = PreprocessedCircuit::preprocess_circuit(&mut fib_ctx);
+/// Builds the Cairo verifier circuit (NoValue) — with our 2-dummy
+/// modification so it lands at the multiverifier's 5-output convention —
+/// preprocesses it, and packages the result as a [`CircuitConfig`] with a
+/// placeholder `preprocessed_root`. Used as the leaf-input shape when
+/// building the padded multi for topology comparisons.
+fn cairo_circuit_config_topology_only() -> CircuitConfig {
+    let cairo_proof_log_blowup_factor = 3;
+    let const_config = privacy_cairo_verifier_config(cairo_proof_log_blowup_factor);
+    let mut novalue_context = build_cairo_verifier_circuit_with_prepended_outputs(&const_config);
+    let pp = PreprocessedCircuit::preprocess_circuit(&mut novalue_context);
 
-    let log_blowup = PcsConfig::default().fri_config.log_blowup_factor;
-    let inner_pcs_config = PcsConfig {
-        lifting_log_size: Some(pp_fib.params.trace_log_size as u32 + log_blowup),
-        ..PcsConfig::default()
-    };
+    // Match the auto-lifting `prove_circuit_assignment` would pick when proving
+    // the Cairo verifier circuit at default PcsConfig.
+    let mut pcs_config = PcsConfig::default();
+    pcs_config.lifting_log_size =
+        Some(pp.params.trace_log_size as u32 + pcs_config.fri_config.log_blowup_factor);
 
-    let placeholder_root = HashValue(QM31::zero(), QM31::zero());
-    let make_input = || {
-        let proof_config = ProofConfig::from_components(
-            &all_circuit_components::<NoValue>(),
-            vec![true; all_circuit_components::<NoValue>().len()],
-            pp_fib.preprocessed_trace.ids().len(),
-            &inner_pcs_config,
-            INTERACTION_POW_BITS,
-        );
-        Input {
-            proof: empty_proof(&proof_config),
-            circuit_public_data: CircuitPublicData {
-                output_values: vec![QM31::zero(); 4],
-            },
-            config: CircuitConfig {
-                config: inner_pcs_config,
-                output_addresses: pp_fib.params.output_addresses.clone(),
-                n_blake_gates: pp_fib.params.n_blake_gates,
-                preprocessed_column_ids: pp_fib.preprocessed_trace.ids(),
-                preprocessed_root: placeholder_root,
-            },
-            is_multiverifier: false,
-            other_hash: placeholder_root,
-        }
-    };
-    let subcircuit_config = SubCircuitConfig {
-        pcs_config: inner_pcs_config,
-        n_outputs: 5,
-        preprocessed_column_ids: pp_fib.preprocessed_trace.ids(),
-    };
-
-    let mut multi_ctx = build_multiverifier_circuit::<NoValue>(
-        make_input(),
-        make_input(),
-        subcircuit_config,
-        placeholder_root,
-    );
-
-    // The padding helper is meant to be called *after* `build_multiverifier_circuit`
-    // (which has already run `finalize_constants` + `finalize_guessed_vars`) and
-    // *before* `PreprocessedCircuit::preprocess_circuit`. The new gates we add
-    // here yield their own outputs (via Add/Blake) so don't break yield
-    // bookkeeping; the freshly-yielded vars are unused (no consumer), which
-    // would fail `check_vars_used` but doesn't matter for a topology-only
-    // comparison.
-    pad_components_to_target_counts(
-        &mut multi_ctx,
-        cairo_targets::EQ,
-        cairo_targets::QM31_OPS,
-        cairo_targets::N_BLAKE_GATES,
-        cairo_targets::N_BLAKE_COMPRESS_ROWS,
-    );
-
-    multi_ctx
+    CircuitConfig {
+        config: pcs_config,
+        output_addresses: pp.params.output_addresses.clone(),
+        n_blake_gates: pp.params.n_blake_gates,
+        preprocessed_column_ids: pp.preprocessed_trace.ids(),
+        // Topology only — value isn't checked under `NoValue`.
+        preprocessed_root: HashValue(QM31::zero(), QM31::zero()),
+    }
 }
 
 /// After padding multi up into Cairo's brackets, both circuits should produce
 /// identical `preprocessed_column_ids` (in the same order) when preprocessed.
 #[test]
 fn test_padded_multi_matches_cairo_preprocessed_column_ids() {
-    // --- Cairo verifier ---
-    let cairo_proof_log_blowup_factor = 3;
-    let cairo_verifier_config = privacy_cairo_verifier_config(cairo_proof_log_blowup_factor);
-    let mut cairo_ctx = build_cairo_verifier_circuit(&cairo_verifier_config);
-    let pp_cairo = PreprocessedCircuit::preprocess_circuit(&mut cairo_ctx);
-    let cairo_ids = pp_cairo.preprocessed_trace.ids();
+    // --- Cairo verifier (with 2-dummy modification, matching what the real
+    //     proving flow does in `prove_cairo_and_prepare`) ---
+    let cairo_config = cairo_circuit_config_topology_only();
+    let cairo_ids = &cairo_config.preprocessed_column_ids;
 
-    // --- Padded multiverifier ---
-    let mut multi_ctx = build_padded_multi_for_cairo();
-    let pp_multi = PreprocessedCircuit::preprocess_circuit(&mut multi_ctx);
-    let multi_ids = pp_multi.preprocessed_trace.ids();
+    // --- Padded multiverifier built around the same cairo input shape ---
+    let multi_meta = extract_padded_multi_metadata(&cairo_config);
+    let multi_ids = &multi_meta.preprocessed_column_ids;
 
     println!(
-        "cairo: trace_log_size = {}, n_columns = {}",
-        pp_cairo.params.trace_log_size,
+        "cairo: n_blake_gates = {}, n_columns = {}",
+        cairo_config.n_blake_gates,
         cairo_ids.len(),
     );
     println!(
-        "multi: trace_log_size = {}, n_columns = {}",
-        pp_multi.params.trace_log_size,
+        "multi: n_blake_gates = {}, n_columns = {}",
+        multi_meta.n_blake_gates,
         multi_ids.len(),
     );
 
@@ -199,46 +149,13 @@ fn test_padded_multi_matches_cairo_preprocessed_column_ids() {
 const MULTI_OF_CAIRO_PROOF_PATH: &str =
     "/tmp/circuit_multiverifier_test_multi_of_cairo_proof.bin";
 
-/// Variant of `ProofBundle` from `multi_fibonacci_test`, local to this module.
+/// Bundles a proven Cairo verifier circuit's `Proof<QM31>` together with the
+/// `CircuitPublicData` and `CircuitConfig` needed to feed it into the
+/// multiverifier as an [`Input`].
 struct ProofBundle {
     proof: Proof<QM31>,
     public_data: CircuitPublicData,
     config: CircuitConfig,
-}
-
-/// The Cairo verifier circuit naturally has 3 outputs:
-///   `[output_hash.0, output_hash.1, u]`.
-/// To fit the multiverifier's 5-slot `[H_or_0, H_or_0, payload, payload, u]`
-/// convention without modifying the Cairo verifier source, we post-process
-/// the context after `build_cairo_verifier_circuit` / `verify_cairo_*`
-/// returns: insert 2 zero-yielded outputs at the *front* of the output list.
-///
-/// The new `dummy0`/`dummy1` vars are created via `new_var` (so they don't
-/// touch `guessed_vars`, which `verify_fixed_cairo_circuit` has already
-/// drained) and yielded via trivial `Add { 0, 0, dummy_i }` gates so the
-/// logup balance survives.
-///
-/// After this, the output order becomes
-/// `[dummy0=0, dummy1=0, output_hash.0, output_hash.1, u]` — exactly the
-/// multiverifier's expected `[H_or_0, H_or_0, payload, payload, u]` layout
-/// for variant A (a leaf circuit).
-fn add_two_dummy_outputs_at_front<Value: IValue>(context: &mut Context<Value>) {
-    let zero_idx = context.zero().idx;
-    let dummy0 = context.new_var(Value::from_qm31(QM31::zero()));
-    let dummy1 = context.new_var(Value::from_qm31(QM31::zero()));
-    context
-        .circuit
-        .add
-        .push(Add { in0: zero_idx, in1: zero_idx, out: dummy0.idx });
-    context
-        .circuit
-        .add
-        .push(Add { in0: zero_idx, in1: zero_idx, out: dummy1.idx });
-    // Insert order matters: `insert(0, ...)` shifts everything else right, so
-    // pushing dummy1 first (at index 0) then dummy0 (also at index 0) leaves
-    // [dummy0, dummy1, ...originals...].
-    context.circuit.output.insert(0, Output { in0: dummy1.idx });
-    context.circuit.output.insert(0, Output { in0: dummy0.idx });
 }
 
 /// Inlined copy of `circuit_cairo_verifier::test::verify_cairo_with_component_set`
@@ -304,7 +221,12 @@ fn verify_cairo_with_component_set_inline(
         preprocessed_trace_variant: cairo_proof.preprocessed_trace_variant,
     };
 
-    verify_fixed_cairo_circuit(&verifier_config, proof, public_claim, outputs)
+    verify_fixed_cairo_circuit_with_prepended_outputs(
+        &verifier_config,
+        proof,
+        public_claim,
+        outputs,
+    )
 }
 
 /// Builds & proves the Cairo verifier circuit (post-processed to expose 5
@@ -318,17 +240,17 @@ fn prove_cairo_and_prepare() -> ProofBundle {
     let cairo_proof_log_blowup_factor = 3;
     let const_config = privacy_cairo_verifier_config(cairo_proof_log_blowup_factor);
 
-    // NoValue topology for preprocessing — must be modified the *same* way as
-    // the QM31 context below, otherwise the preprocessed_root won't match the
-    // commitment that the prover ends up producing.
-    let mut novalue_context = build_cairo_verifier_circuit(&const_config);
-    add_two_dummy_outputs_at_front(&mut novalue_context);
+    // NoValue topology — uses `_with_prepended_outputs` so the circuit has 5
+    // outputs in the multiverifier's `[0, 0, hash, hash, u]` layout. The QM31
+    // path below uses the matching variant via
+    // `verify_cairo_with_component_set_inline`, so both topologies agree and
+    // the prover's `commitments[0]` matches the offline preprocessed_root.
+    let mut novalue_context = build_cairo_verifier_circuit_with_prepended_outputs(&const_config);
     let preprocessed = PreprocessedCircuit::preprocess_circuit(&mut novalue_context);
 
     // QM31 context with values from the proof.
     let mut context =
         verify_cairo_with_component_set_inline(&cairo_proof, privacy_components()).unwrap();
-    add_two_dummy_outputs_at_front(&mut context);
     pad_components_to_powers_of_two(&mut context);
 
     let circuit_proof = prove_circuit_assignment(
@@ -414,10 +336,12 @@ struct MultiCircuitMetadata {
     outer_pcs_config: PcsConfig,
 }
 
-/// Builds a NoValue padded multi (verifying two Cairo-shaped Inputs) and
-/// extracts every piece of metadata Tests A and B need. Mirrors
-/// `extract_multi_metadata` in `multi_fibonacci_test`, but inputs use the
-/// Cairo `CircuitConfig` and the multi gets padded after construction.
+/// Builds a NoValue padded multi (verifying two Cairo-shaped Inputs), pads it
+/// up into Cairo's column-size brackets, and extracts every piece of metadata
+/// Tests A and B need. The multi is preprocessed but not proven — its
+/// `preprocessed_root` is computed directly from a fresh
+/// [`CommitmentTreeProver`] over the multi's preprocessed trace at the
+/// auto-lifted size (i.e. what the prover would produce).
 fn extract_padded_multi_metadata(cairo_config: &CircuitConfig) -> MultiCircuitMetadata {
     use stwo::core::poly::circle::CanonicCoset;
     use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
