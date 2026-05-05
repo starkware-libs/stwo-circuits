@@ -6,6 +6,7 @@ use crate::witness::components::{
     blake_message, blake_output, blake_round, range_check_15, range_check_16, triple_xor_32,
     verify_bitwise_xor_8,
 };
+use circuits::blake::blake2s_g;
 use itertools::zip_eq;
 use stwo::core::fields::FieldExpOps;
 use stwo_cairo_prover::witness::prelude::EqExtend;
@@ -16,18 +17,6 @@ pub type PackedInputType = ([[PackedUInt32; 8]; 2], [PackedM31; 16]);
 // #[derive(Default)]
 pub struct ClaimGenerator {
     preprocessed_trace: Arc<PreProcessedTrace>,
-}
-
-#[inline]
-fn blake2s_g(v: &mut [u32; 16], a: usize, b: usize, c: usize, d: usize, x: u32, y: u32) {
-    v[a] = v[a].wrapping_add(v[b]).wrapping_add(x);
-    v[d] = (v[d] ^ v[a]).rotate_right(16);
-    v[c] = v[c].wrapping_add(v[d]);
-    v[b] = (v[b] ^ v[c]).rotate_right(12);
-    v[a] = v[a].wrapping_add(v[b]).wrapping_add(y);
-    v[d] = (v[d] ^ v[a]).rotate_right(8);
-    v[c] = v[c].wrapping_add(v[d]);
-    v[b] = (v[b] ^ v[c]).rotate_right(7);
 }
 
 fn blake2s_compress(
@@ -47,14 +36,70 @@ fn blake2s_compress(
     }
 
     for sigma in BLAKE_SIGMA.iter().take(10).copied() {
-        blake2s_g(&mut v, 0, 4, 8, 12, message[sigma[0] as usize], message[sigma[1] as usize]);
-        blake2s_g(&mut v, 1, 5, 9, 13, message[sigma[2] as usize], message[sigma[3] as usize]);
-        blake2s_g(&mut v, 2, 6, 10, 14, message[sigma[4] as usize], message[sigma[5] as usize]);
-        blake2s_g(&mut v, 3, 7, 11, 15, message[sigma[6] as usize], message[sigma[7] as usize]);
-        blake2s_g(&mut v, 0, 5, 10, 15, message[sigma[8] as usize], message[sigma[9] as usize]);
-        blake2s_g(&mut v, 1, 6, 11, 12, message[sigma[10] as usize], message[sigma[11] as usize]);
-        blake2s_g(&mut v, 2, 7, 8, 13, message[sigma[12] as usize], message[sigma[13] as usize]);
-        blake2s_g(&mut v, 3, 4, 9, 14, message[sigma[14] as usize], message[sigma[15] as usize]);
+        (v[0], v[4], v[8], v[12]) = blake2s_g(
+            v[0],
+            v[4],
+            v[8],
+            v[12],
+            message[sigma[0] as usize],
+            message[sigma[1] as usize],
+        );
+        (v[1], v[5], v[9], v[13]) = blake2s_g(
+            v[1],
+            v[5],
+            v[9],
+            v[13],
+            message[sigma[2] as usize],
+            message[sigma[3] as usize],
+        );
+        (v[2], v[6], v[10], v[14]) = blake2s_g(
+            v[2],
+            v[6],
+            v[10],
+            v[14],
+            message[sigma[4] as usize],
+            message[sigma[5] as usize],
+        );
+        (v[3], v[7], v[11], v[15]) = blake2s_g(
+            v[3],
+            v[7],
+            v[11],
+            v[15],
+            message[sigma[6] as usize],
+            message[sigma[7] as usize],
+        );
+        (v[0], v[5], v[10], v[15]) = blake2s_g(
+            v[0],
+            v[5],
+            v[10],
+            v[15],
+            message[sigma[8] as usize],
+            message[sigma[9] as usize],
+        );
+        (v[1], v[6], v[11], v[12]) = blake2s_g(
+            v[1],
+            v[6],
+            v[11],
+            v[12],
+            message[sigma[10] as usize],
+            message[sigma[11] as usize],
+        );
+        (v[2], v[7], v[8], v[13]) = blake2s_g(
+            v[2],
+            v[7],
+            v[8],
+            v[13],
+            message[sigma[12] as usize],
+            message[sigma[13] as usize],
+        );
+        (v[3], v[4], v[9], v[14]) = blake2s_g(
+            v[3],
+            v[4],
+            v[9],
+            v[14],
+            message[sigma[14] as usize],
+            message[sigma[15] as usize],
+        );
     }
 
     let mut out = [0u32; 8];

@@ -3,7 +3,7 @@ use itertools::Itertools;
 use stwo::core::vcs::blake2_hash::Blake2sHash;
 use stwo::core::{fields::qm31::QM31, vcs::blake2_hash::reduce_to_m31};
 
-use crate::circuit::{Blake, M31ToU32, TripleXor};
+use crate::circuit::{Blake, BlakeGGate, M31ToU32, TripleXor};
 use crate::context::{Context, Var};
 use crate::ivalue::{IValue, qm31_from_u32s};
 use crate::ops::Guess;
@@ -149,6 +149,20 @@ pub fn triple_xor<Value: IValue>(
     out
 }
 
+/// Blake2s mixing function *G* on four state words `(a, b, c, d)` with message words `f0`, `f1`.
+#[must_use]
+pub fn blake2s_g(a: u32, b: u32, c: u32, d: u32, f0: u32, f1: u32) -> (u32, u32, u32, u32) {
+    let a = a.wrapping_add(b).wrapping_add(f0);
+    let d = (d ^ a).rotate_right(16);
+    let c = c.wrapping_add(d);
+    let b = (b ^ c).rotate_right(12);
+    let a = a.wrapping_add(b).wrapping_add(f1);
+    let d = (d ^ a).rotate_right(8);
+    let c = c.wrapping_add(d);
+    let b = (b ^ c).rotate_right(7);
+    (a, b, c, d)
+}
+
 /// Adds an M31ToU32 gate to the circuit: convert an `M31` value into its `u32` representation, i.e
 /// `(x, 0, 0, 0)` into `(x & 0xFFFF, x >> 16, 0, 0)`.
 pub fn m31_to_u32<Value: IValue>(ctx: &mut Context<Value>, input: Var) -> Var {
@@ -156,4 +170,45 @@ pub fn m31_to_u32<Value: IValue>(ctx: &mut Context<Value>, input: Var) -> Var {
     ctx.stats.m31_to_u32 += 1;
     ctx.circuit.m31_to_u32.push(M31ToU32 { input: input.idx, out: out.idx });
     out
+}
+
+/// Adds a Blake2s G function gate to the circuit: G(a, b, c, d, f0, f1) = (a', b', c', d').
+/// Inputs and outputs are all encoded as `(low_u16, high_u16, 0, 0)` in QM31.
+pub fn blake_g_gate<Value: IValue>(
+    ctx: &mut Context<Value>,
+    input_a: Var,
+    input_b: Var,
+    input_c: Var,
+    input_d: Var,
+    input_f0: Var,
+    input_f1: Var,
+) -> (Var, Var, Var, Var) {
+    let a = ctx.get(input_a).unpack_u32();
+    let b = ctx.get(input_b).unpack_u32();
+    let c = ctx.get(input_c).unpack_u32();
+    let d = ctx.get(input_d).unpack_u32();
+    let f0 = ctx.get(input_f0).unpack_u32();
+    let f1 = ctx.get(input_f1).unpack_u32();
+
+    let (a_out, b_out, c_out, d_out) = blake2s_g(a, b, c, d, f0, f1);
+
+    let out_a = ctx.new_var(Value::pack_u32(a_out));
+    let out_b = ctx.new_var(Value::pack_u32(b_out));
+    let out_c = ctx.new_var(Value::pack_u32(c_out));
+    let out_d = ctx.new_var(Value::pack_u32(d_out));
+
+    ctx.circuit.blake_g_gate.push(BlakeGGate {
+        input_a: input_a.idx,
+        input_b: input_b.idx,
+        input_c: input_c.idx,
+        input_d: input_d.idx,
+        input_f0: input_f0.idx,
+        input_f1: input_f1.idx,
+        out_a: out_a.idx,
+        out_b: out_b.idx,
+        out_c: out_c.idx,
+        out_d: out_d.idx,
+    });
+
+    (out_a, out_b, out_c, out_d)
 }

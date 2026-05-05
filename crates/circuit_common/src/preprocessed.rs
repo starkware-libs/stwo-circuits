@@ -436,6 +436,103 @@ fn add_m31_to_u32_to_preprocessed_trace(
     }
 }
 
+/// Adds BlakeGGate gates to the preprocessed trace. Preprocessed columns are in the format:
+/// | input_addr_a | input_addr_b | input_addr_c | input_addr_d | input_addr_f0 | input_addr_f1 |
+/// | output_addr_a | output_addr_b | output_addr_c | output_addr_d | multiplicity |
+fn add_blake_g_gate_to_preprocessed_trace(
+    circuit: &Circuit,
+    multiplicities: &[usize],
+    pp_trace: &mut PreProcessedTrace,
+) {
+    let Circuit { blake_g_gate, .. } = circuit;
+    let mut blake_g_gate_input_addr_a = vec![];
+    let mut blake_g_gate_input_addr_b = vec![];
+    let mut blake_g_gate_input_addr_c = vec![];
+    let mut blake_g_gate_input_addr_d = vec![];
+    let mut blake_g_gate_input_addr_f0 = vec![];
+    let mut blake_g_gate_input_addr_f1 = vec![];
+    let mut blake_g_gate_output_addr_a = vec![];
+    let mut blake_g_gate_output_addr_b = vec![];
+    let mut blake_g_gate_output_addr_c = vec![];
+    let mut blake_g_gate_output_addr_d = vec![];
+    let mut blake_g_gate_multiplicity = vec![];
+    for gate in blake_g_gate.iter() {
+        let [input_a, input_b, input_c, input_d, input_f0, input_f1] = gate.uses()[..] else {
+            panic!("Expected 6 uses for BlakeGGate")
+        };
+        let [out_a, out_b, out_c, out_d] = gate.yields()[..] else {
+            panic!("Expected 4 yields for BlakeGGate")
+        };
+        blake_g_gate_input_addr_a.push(input_a);
+        blake_g_gate_input_addr_b.push(input_b);
+        blake_g_gate_input_addr_c.push(input_c);
+        blake_g_gate_input_addr_d.push(input_d);
+        blake_g_gate_input_addr_f0.push(input_f0);
+        blake_g_gate_input_addr_f1.push(input_f1);
+        blake_g_gate_output_addr_a.push(out_a);
+        blake_g_gate_output_addr_b.push(out_b);
+        blake_g_gate_output_addr_c.push(out_c);
+        blake_g_gate_output_addr_d.push(out_d);
+
+        // All four outputs of a Blake G gate share one multiplicity column. In the Blake
+        // construction, each G output is consumed exactly once (by another G step or by the
+        // triple-XOR).
+        let mult = multiplicities[out_a];
+        for y in [out_b, out_c, out_d] {
+            assert_eq!(
+                multiplicities[y], mult,
+                "BlakeGGate output multiplicities must be identical"
+            );
+        }
+        blake_g_gate_multiplicity.push(mult);
+    }
+
+    pp_trace.push_column(
+        PreProcessedColumnId { id: "blake_g_gate_input_addr_a".to_owned() },
+        blake_g_gate_input_addr_a,
+    );
+    pp_trace.push_column(
+        PreProcessedColumnId { id: "blake_g_gate_input_addr_b".to_owned() },
+        blake_g_gate_input_addr_b,
+    );
+    pp_trace.push_column(
+        PreProcessedColumnId { id: "blake_g_gate_input_addr_c".to_owned() },
+        blake_g_gate_input_addr_c,
+    );
+    pp_trace.push_column(
+        PreProcessedColumnId { id: "blake_g_gate_input_addr_d".to_owned() },
+        blake_g_gate_input_addr_d,
+    );
+    pp_trace.push_column(
+        PreProcessedColumnId { id: "blake_g_gate_input_addr_f0".to_owned() },
+        blake_g_gate_input_addr_f0,
+    );
+    pp_trace.push_column(
+        PreProcessedColumnId { id: "blake_g_gate_input_addr_f1".to_owned() },
+        blake_g_gate_input_addr_f1,
+    );
+    pp_trace.push_column(
+        PreProcessedColumnId { id: "blake_g_gate_output_addr_a".to_owned() },
+        blake_g_gate_output_addr_a,
+    );
+    pp_trace.push_column(
+        PreProcessedColumnId { id: "blake_g_gate_output_addr_b".to_owned() },
+        blake_g_gate_output_addr_b,
+    );
+    pp_trace.push_column(
+        PreProcessedColumnId { id: "blake_g_gate_output_addr_c".to_owned() },
+        blake_g_gate_output_addr_c,
+    );
+    pp_trace.push_column(
+        PreProcessedColumnId { id: "blake_g_gate_output_addr_d".to_owned() },
+        blake_g_gate_output_addr_d,
+    );
+    pp_trace.push_column(
+        PreProcessedColumnId { id: "blake_g_gate_multiplicity".to_owned() },
+        blake_g_gate_multiplicity,
+    );
+}
+
 /// A collection of preprocessed columns, whose values are publicly acknowledged, and independent of
 /// the proof.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -562,6 +659,8 @@ impl PreprocessedCircuit {
         add_triple_xor_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
         // Add M31ToU32 columns.
         add_m31_to_u32_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
+        // Add BlakeGGate columns.
+        add_blake_g_gate_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
 
         // Generate seq columns for sizes needed by circuit components:
         // - 15, 16: needed by range_check_15 and range_check_16.
