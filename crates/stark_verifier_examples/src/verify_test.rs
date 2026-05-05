@@ -41,7 +41,7 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
     let config = ProofConfig::new(
         statement.get_components(),
         COMPONENT_ENABLE_BITS.to_vec(),
-        PREPROCESSED_COLUMN_LOG_SIZES.to_vec(),
+        PREPROCESSED_COLUMN_LOG_SIZES.len(),
         &pcs_config,
         8,
     );
@@ -150,7 +150,7 @@ fn test_proof_info(#[case] fold_step: u32) {
     let config = ProofConfig::new(
         statement.get_components(),
         COMPONENT_ENABLE_BITS.to_vec(),
-        PREPROCESSED_COLUMN_LOG_SIZES.to_vec(),
+        PREPROCESSED_COLUMN_LOG_SIZES.len(),
         &pcs_config,
         8,
     );

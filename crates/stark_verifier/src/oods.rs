@@ -199,7 +199,7 @@ pub fn collect_oods_responses(
     // The order below is the order dictated by the stwo prover.
     // First, we have all the `OodsResponse`s for the OODS point, then for the previous point.
     chain!(
-        (0..config.n_preprocessed_columns()).map(|column_idx| OodsResponse {
+        (0..config.n_preprocessed_columns).map(|column_idx| OodsResponse {
             trace_idx: 0,
             column_idx,
             pt: oods_point,

@@ -106,7 +106,7 @@ pub fn deserialize_proof_with_config(
     let interaction_root = HashValue::<QM31>::deserialize(data)?;
     let composition_polynomial_root = HashValue::<QM31>::deserialize(data)?;
     let claim = deserialize_claim(data, config)?;
-    let preprocessed_columns_at_oods = deserialize_vec(data, config.n_preprocessed_columns())?;
+    let preprocessed_columns_at_oods = deserialize_vec(data, config.n_preprocessed_columns)?;
     let trace_at_oods = deserialize_vec(data, config.n_trace_columns)?;
     let interaction_at_oods = deserialize_interaction_at_oods(data, config)?;
     let composition_eval_at_oods = <[QM31; N_COMPOSITION_COLUMNS]>::deserialize(data)?;
