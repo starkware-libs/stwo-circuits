@@ -254,8 +254,7 @@ fn measure_multi_trace_log_size_at_inner_lifting(inner_lifting_log_size: u32) ->
     };
     let placeholder_meta = Metadata::<QM31>::from_config(&fib_config);
     let placeholder_meta_clone = Metadata::<QM31>::from_config(&fib_config);
-    let metadata_tree =
-        MetadataTree::<NoValue>::commit(placeholder_meta, placeholder_meta_clone);
+    let metadata_tree = MetadataTree::<NoValue>::commit(placeholder_meta, placeholder_meta_clone);
     let mut multi_ctx = build_multiverifier_circuit::<NoValue>(
         make_input(),
         make_input(),
@@ -395,8 +394,8 @@ fn test_a_prove_multiverifier_of_fibs_and_save() {
     let bundle2 = prove_fibonacci_and_prepare();
     let pcs_config = bundle1.config.config; // inner pcs_config (lifting=21)
 
-    // 2. Build the metadata Merkle tree over the two valid descriptors:
-    //    leaf 0 = fib (variant A), leaf 1 = multiverifier (variant B).
+    // 2. Build the metadata Merkle tree over the two valid descriptors: leaf 0 = fib (variant A),
+    //    leaf 1 = multiverifier (variant B).
     let m_fib = Metadata::<QM31>::from_config(&bundle1.config);
     let multi_meta = extract_multi_metadata(&bundle1.config, pcs_config);
     let m_multi = multiverifier_metadata(

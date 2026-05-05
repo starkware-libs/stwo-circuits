@@ -20,7 +20,7 @@ use circuits_stark_verifier::{
     proof::{Proof, ProofConfig},
     verify::verify,
 };
-use itertools::Itertools;
+use itertools::{Itertools, chain};
 use stwo::core::{fields::qm31::QM31, pcs::PcsConfig};
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
@@ -93,10 +93,12 @@ impl<Value: IValue> Guess<Value> for Metadata<Value> {
 impl<T: Copy> Metadata<T> {
     fn flatten(&self) -> Vec<T> {
         let Metadata { n_blake_gates_pow_two, output_addresses, preprocessed_root } = self;
-        let mut res = vec![*n_blake_gates_pow_two.get()];
-        res.extend(output_addresses.iter().map(|x| x.get()).copied());
-        res.extend([preprocessed_root.0, preprocessed_root.1]);
-        res
+        chain![
+            [*n_blake_gates_pow_two.get()],
+            output_addresses.iter().map(|x| x.get()).copied(),
+            [preprocessed_root.0, preprocessed_root.1]
+        ]
+        .collect()
     }
 }
 

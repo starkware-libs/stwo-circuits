@@ -28,10 +28,10 @@ use circuits::ops::eq;
 ///     `blake_compress` columns and `log_n_blake_updates`, which decides the `seq_<log>` column
 ///     id).
 ///
-/// Blake padding is filled with a mix of 1-, 2-, and 3-chunk dummies so that
-/// *both* the gate count and the compression-row count hit their respective
-/// targets. This requires `n_blake_gates <= n_blake_compress_rows < 3 * n_blake_gates`
-/// (post-pad); otherwise the function asserts.
+/// Blake padding is filled with a mix of 1-, 2-, 3-, and 4-chunk dummies so
+/// that *both* the gate count and the compression-row count hit their
+/// respective targets. This requires `n_blake_gates <= n_blake_compress_rows
+/// <= 4 * n_blake_gates` (post-pad); otherwise the function asserts.
 pub fn pad_components_to_target_counts<Value: IValue>(
     context: &mut Context<Value>,
     target_eq: usize,
@@ -76,20 +76,29 @@ pub fn pad_components_to_target_counts<Value: IValue>(
         need_compress >= need_gates,
         "blake compress target requires fewer rows than gates would produce ({need_compress} < {need_gates}); each blake gate has at least one chunk",
     );
-    // Solve for non-negative `(x_1, x_2, x_3)` with
-    //   x_1 + x_2 + x_3 = need_gates,
-    //   x_1 + 2*x_2 + 3*x_3 = need_compress.
-    // i.e. (extra rows beyond 1 per gate) = x_2 + 2*x_3 = need_compress - need_gates.
-    // Greedy: maximise 3-chunk gates. This works whenever
-    //   need_compress < 3 * need_gates.
+    // Solve for non-negative `(x_1, x_2, x_3, x_4)` with
+    //   x_1 + x_2 + x_3 + x_4 = need_gates,
+    //   1*x_1 + 2*x_2 + 3*x_3 + 4*x_4 = need_compress.
+    // Equivalently (rows beyond 1 per gate):
+    //   x_2 + 2*x_3 + 3*x_4 = need_compress - need_gates.
+    // Greedy: maximise 4-chunk gates. This works whenever
+    //   need_compress <= 4 * need_gates.
     let extra_rows = need_compress - need_gates;
-    let three_chunk = extra_rows / 2;
-    let two_chunk = extra_rows % 2;
+    let four_chunk = extra_rows / 3;
+    let remainder = extra_rows % 3;
+    // Distribute the remainder as 1 two-chunk (extra=1) or 1 three-chunk
+    // (extra=2). Either gives a small fixup.
+    let (two_chunk, three_chunk) = match remainder {
+        0 => (0, 0),
+        1 => (1, 0),
+        2 => (0, 1),
+        _ => unreachable!(),
+    };
     assert!(
-        need_gates >= three_chunk + two_chunk,
-        "blake gates target ({need_gates}) too low to reach compress target ({need_compress}); would need 4+ chunks per gate",
+        need_gates >= four_chunk + three_chunk + two_chunk,
+        "blake gates target ({need_gates}) too low to reach compress target ({need_compress}); would need 5+ chunks per gate",
     );
-    let one_chunk = need_gates - three_chunk - two_chunk;
+    let one_chunk = need_gates - four_chunk - three_chunk - two_chunk;
 
     for _ in 0..one_chunk {
         // 1 input QM31 → 1 chunk → 1 compression row.
@@ -104,6 +113,11 @@ pub fn pad_components_to_target_counts<Value: IValue>(
     for _ in 0..three_chunk {
         // 12 input QM31s → 3 chunks → 3 compression rows. n_bytes = 12 * 16.
         blake(context, &twelve_zeros, 192);
+    }
+    let sixteen_zeros = vec![zero; 16];
+    for _ in 0..four_chunk {
+        // 16 input QM31s → 4 chunks → 4 compression rows. n_bytes = 16 * 16.
+        blake(context, &sixteen_zeros, 256);
     }
 }
 
