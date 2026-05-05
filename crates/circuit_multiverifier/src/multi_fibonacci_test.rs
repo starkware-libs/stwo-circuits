@@ -15,11 +15,13 @@ use circuits::{
     wrappers::M31Wrapper,
 };
 use circuits_stark_verifier::proof::{Proof, ProofConfig, empty_proof};
-use num_traits::{One, Zero};
+use num_traits::Zero;
 use stwo::core::{fields::qm31::QM31, pcs::PcsConfig};
 
 use super::verify_test::build_fibonacci_context_with_5_outputs;
-use super::{Input, Metadata, SubCircuitConfig, build_multiverifier_circuit};
+use super::{
+    Metadata, MetadataTree, SubCircuitConfig, SubCircuitInput, build_multiverifier_circuit,
+};
 
 /// Result of proving a single Fibonacci circuit, bundled so the caller can derive
 /// both the per-proof [`Input`] data and the structural metadata needed to compute
@@ -76,15 +78,15 @@ fn prove_fibonacci_and_prepare() -> ProofBundle {
     ProofBundle { proof, public_data, config }
 }
 
-/// Builds a `Metadata<QM31>` for the multiverifier circuit (variant B:
-/// `bit = 1`) given its preprocessed shape and root.
+/// Builds a `Metadata<QM31>` for the multiverifier circuit given its
+/// preprocessed shape and root. (Used as the leaf-1 entry of the metadata
+/// Merkle tree.)
 fn multiverifier_metadata(
     output_addresses: &[usize],
     n_blake_gates: usize,
     preprocessed_root: HashValue<QM31>,
 ) -> Metadata<QM31> {
     Metadata {
-        bit: M31Wrapper::new_unsafe(QM31::one()),
         n_blake_gates_pow_two: M31Wrapper::new_unsafe(QM31::from(
             n_blake_gates.next_power_of_two(),
         )),
@@ -94,18 +96,6 @@ fn multiverifier_metadata(
             .collect(),
         preprocessed_root,
     }
-}
-
-/// Hashes a `Metadata<QM31>` exactly the way `Metadata::hash` does in-circuit.
-fn hash_metadata(m: Metadata<QM31>) -> HashValue<QM31> {
-    let qm31s = m.serialize_to_qm31();
-    blake_qm31(&qm31s, 16 * qm31s.len())
-}
-
-/// Hashes two leaf hashes into a parent node, matching the in-circuit
-/// `merkle::hash_node` (`blake([left.0, left.1, right.0, right.1], 64)`).
-fn hash_node(left: HashValue<QM31>, right: HashValue<QM31>) -> HashValue<QM31> {
-    blake_qm31(&[left.0, left.1, right.0, right.1], 64)
 }
 
 /// All structural metadata of the multiverifier circuit at a given inner
@@ -135,7 +125,6 @@ fn extract_multi_metadata(
     use stwo::prover::CommitmentTreeProver;
     use stwo::prover::poly::circle::PolyOps;
 
-    let placeholder_root = HashValue(QM31::zero(), QM31::zero());
     let proof_config = ProofConfig::from_components(
         &all_circuit_components::<NoValue>(),
         vec![true; all_circuit_components::<NoValue>().len()],
@@ -148,7 +137,7 @@ fn extract_multi_metadata(
         n_outputs: fib_config.output_addresses.len(),
         preprocessed_column_ids: fib_config.preprocessed_column_ids.clone(),
     };
-    let make_novalue_input = || Input {
+    let make_novalue_input = || SubCircuitInput {
         proof: empty_proof(&proof_config),
         circuit_public_data: CircuitPublicData { output_values: vec![QM31::zero(); 4] },
         config: CircuitConfig {
@@ -159,13 +148,20 @@ fn extract_multi_metadata(
             preprocessed_root: fib_config.preprocessed_root,
         },
         is_multiverifier: false,
-        other_hash: placeholder_root,
     };
+    // For `extract_multi_metadata` we only care about the *topology* of the
+    // multi (its preprocessed columns / root). The metadata-tree contents
+    // don't affect that, so a tree built from two copies of the leaf
+    // `Metadata` is fine.
+    let placeholder_metadata = Metadata::<QM31>::from_config(fib_config);
+    let placeholder_metadata_clone = Metadata::<QM31>::from_config(fib_config);
+    let metadata_tree =
+        MetadataTree::<NoValue>::commit(placeholder_metadata, placeholder_metadata_clone);
     let mut multi_ctx = build_multiverifier_circuit::<NoValue>(
         make_novalue_input(),
         make_novalue_input(),
         subcircuit_config,
-        placeholder_root,
+        metadata_tree,
     );
     let pp_multi = PreprocessedCircuit::preprocess_circuit(&mut multi_ctx);
 
@@ -239,7 +235,7 @@ fn measure_multi_trace_log_size_at_inner_lifting(inner_lifting_log_size: u32) ->
         INTERACTION_POW_BITS,
     );
 
-    let make_input = || Input {
+    let make_input = || SubCircuitInput {
         proof: empty_proof(&proof_config),
         circuit_public_data: CircuitPublicData { output_values: vec![QM31::zero(); 4] },
         config: CircuitConfig {
@@ -250,18 +246,21 @@ fn measure_multi_trace_log_size_at_inner_lifting(inner_lifting_log_size: u32) ->
             preprocessed_root: fib_config.preprocessed_root,
         },
         is_multiverifier: false,
-        other_hash: HashValue(QM31::zero(), QM31::zero()),
     };
     let subcircuit_config = SubCircuitConfig {
         pcs_config: inner_pcs_config,
         n_outputs: fib_config.output_addresses.len(),
         preprocessed_column_ids: fib_config.preprocessed_column_ids.clone(),
     };
+    let placeholder_meta = Metadata::<QM31>::from_config(&fib_config);
+    let placeholder_meta_clone = Metadata::<QM31>::from_config(&fib_config);
+    let metadata_tree =
+        MetadataTree::<NoValue>::commit(placeholder_meta, placeholder_meta_clone);
     let mut multi_ctx = build_multiverifier_circuit::<NoValue>(
         make_input(),
         make_input(),
         subcircuit_config,
-        HashValue(QM31::zero(), QM31::zero()),
+        metadata_tree,
     );
     let pp_multi = PreprocessedCircuit::preprocess_circuit(&mut multi_ctx);
     let _ = log_blowup;
@@ -396,35 +395,29 @@ fn test_a_prove_multiverifier_of_fibs_and_save() {
     let bundle2 = prove_fibonacci_and_prepare();
     let pcs_config = bundle1.config.config; // inner pcs_config (lifting=21)
 
-    // 2. h_fib (variant A descriptor hash).
-    let h_fib = hash_metadata(Metadata::<QM31>::from_config(&bundle1.config, false));
-
-    // 3. Multi structural metadata + h_multi.
+    // 2. Build the metadata Merkle tree over the two valid descriptors:
+    //    leaf 0 = fib (variant A), leaf 1 = multiverifier (variant B).
+    let m_fib = Metadata::<QM31>::from_config(&bundle1.config);
     let multi_meta = extract_multi_metadata(&bundle1.config, pcs_config);
-    let h_multi = hash_metadata(multiverifier_metadata(
+    let m_multi = multiverifier_metadata(
         &multi_meta.output_addresses,
         multi_meta.n_blake_gates,
         multi_meta.preprocessed_root,
-    ));
+    );
+    let metadata_tree = MetadataTree::<QM31>::commit(m_fib, m_multi);
 
-    // 4. Recursion-tree-wide metadata root: H = hash_node(h_fib, h_multi).
-    let metadata_root = hash_node(h_fib, h_multi);
-
-    // 5. Build the multi (QM31) verifying both Fib proofs at the correct H, each with sibling
-    //    `h_multi`.
-    let p1 = Input {
+    // 3. Build the multi (QM31) verifying both Fib proofs against this tree.
+    let p1 = SubCircuitInput {
         proof: bundle1.proof,
         circuit_public_data: bundle1.public_data,
         config: bundle1.config,
         is_multiverifier: false,
-        other_hash: h_multi,
     };
-    let p2 = Input {
+    let p2 = SubCircuitInput {
         proof: bundle2.proof,
         circuit_public_data: bundle2.public_data,
         config: bundle2.config,
         is_multiverifier: false,
-        other_hash: h_multi,
     };
 
     let subcircuit_config = SubCircuitConfig {
@@ -433,7 +426,7 @@ fn test_a_prove_multiverifier_of_fibs_and_save() {
         preprocessed_column_ids: p1.config.preprocessed_column_ids.clone(),
     };
     let mut multi_ctx =
-        build_multiverifier_circuit::<QM31>(p1, p2, subcircuit_config, metadata_root);
+        build_multiverifier_circuit::<QM31>(p1, p2, subcircuit_config, metadata_tree);
     multi_ctx.validate_circuit();
 
     // 6. Prove the multiverifier circuit itself. `prove_circuit_assignment` auto-lifts to
@@ -494,15 +487,16 @@ fn test_b_verify_multi_proof_and_fibonacci_proof_with_multiverifier() {
     let fib_bundle = prove_fibonacci_and_prepare();
     let inner_pcs_config = fib_bundle.config.config; // lifting=21
 
-    // 2. Re-derive h_fib, h_multi, H deterministically.
-    let h_fib = hash_metadata(Metadata::<QM31>::from_config(&fib_bundle.config, false));
+    // 2. Re-derive the metadata tree deterministically (same shape as Test A).
+    let m_fib = Metadata::<QM31>::from_config(&fib_bundle.config);
     let multi_meta = extract_multi_metadata(&fib_bundle.config, inner_pcs_config);
-    let h_multi = hash_metadata(multiverifier_metadata(
+    let m_multi = multiverifier_metadata(
         &multi_meta.output_addresses,
         multi_meta.n_blake_gates,
         multi_meta.preprocessed_root,
-    ));
-    let metadata_root = hash_node(h_fib, h_multi);
+    );
+    let metadata_tree = MetadataTree::<QM31>::commit(m_fib, m_multi);
+    let metadata_root = metadata_tree.root;
 
     // 3. Reconstruct the multi's `CircuitPublicData`. The multi's outputs are `[H_lo, H_hi,
     //    hash_of_payloads_lo, hash_of_payloads_hi, u]`, where `hash_of_payloads = blake([fib_a,
@@ -556,24 +550,22 @@ fn test_b_verify_multi_proof_and_fibonacci_proof_with_multiverifier() {
     //    pcs-config-must-be-the-same constraint is satisfied because both the
     //    multi proof and the fib proof are at lifting=21 (multi's natural
     //    lifting, which is also fib's natural lifting).
-    let multi_input = Input {
+    let multi_input = SubCircuitInput {
         proof: multi_proof,
         circuit_public_data: multi_public_data,
         config: multi_config,
         is_multiverifier: true,
-        other_hash: h_fib,
     };
-    let fib_input = Input {
+    let fib_input = SubCircuitInput {
         proof: fib_bundle.proof,
         circuit_public_data: fib_bundle.public_data,
         config: fib_bundle.config,
         is_multiverifier: false,
-        other_hash: h_multi,
     };
     // Note: `inner_pcs_config` (lifting=21) is what's "baked" into the
     // second-level multi's verify() calls — same as the first-level multi.
     // This is what makes the two circuits identical (the recursion fixed
-    // point). `metadata_root` is the same H as Test A used.
+    // point). `metadata_tree` is the same H-tree as Test A used.
     let subcircuit_config = SubCircuitConfig {
         pcs_config: multi_meta.outer_pcs_config,
         n_outputs: multi_meta.output_addresses.len(),
@@ -583,7 +575,7 @@ fn test_b_verify_multi_proof_and_fibonacci_proof_with_multiverifier() {
         multi_input,
         fib_input,
         subcircuit_config,
-        metadata_root,
+        metadata_tree,
     );
 
     context.check_vars_used();
@@ -613,54 +605,34 @@ fn test_multiverifier_verifies_two_fibonacci_proofs() {
     assert_eq!(bundle1.config.preprocessed_root, bundle2.config.preprocessed_root);
     assert_eq!(bundle1.config.output_addresses, bundle2.config.output_addresses);
 
-    // Build the metadata hash out-of-circuit, mirroring what `Metadata::hash` does
-    // in-circuit (`blake` over `serialize_to_qm31`, byte-length = 16 * n_qm31s).
-    // `bit = 0` because Fibonacci is a leaf (variant A).
-    let metadata: Metadata<QM31> = Metadata {
-        bit: M31Wrapper::new_unsafe(QM31::zero()),
-        n_blake_gates_pow_two: M31Wrapper::new_unsafe(QM31::from(
-            bundle1.config.n_blake_gates.next_power_of_two(),
-        )),
-        output_addresses: bundle1
-            .config
-            .output_addresses
-            .iter()
-            .map(|x| M31Wrapper::new_unsafe(QM31::from(*x)))
-            .collect(),
-        preprocessed_root: bundle1.config.preprocessed_root,
-    };
-    let metadata_qm31s = metadata.serialize_to_qm31();
-    let metadata_hash = blake_qm31(&metadata_qm31s, 16 * metadata_qm31s.len());
-
-    // The multiverifier's verify_merkle_path with `bit = zero` and
-    // `other_hash = HashValue(0, 0)` expects:
-    //   root == hash_node(metadata_hash, HashValue(0, 0))
-    //         == blake([metadata_hash.0, metadata_hash.1, 0, 0], 64).
-    let metadata_root =
-        blake_qm31(&[metadata_hash.0, metadata_hash.1, QM31::zero(), QM31::zero()], 64);
+    // Build a metadata tree where both leaves are the fib metadata. Since both
+    // Inputs in this test are fibs (variant A, `is_multiverifier = false` → bit
+    // = 0), they sit at leaf 0 of the tree, so the leaf-1 entry is unused at
+    // the *bit* level — but the Merkle equation still has to hash up to the
+    // committed root, so we just put the fib metadata in both slots.
+    let m_fib = Metadata::<QM31>::from_config(&bundle1.config);
+    let m_fib_clone = Metadata::<QM31>::from_config(&bundle1.config);
+    let metadata_tree = MetadataTree::<QM31>::commit(m_fib, m_fib_clone);
 
     let subcircuit_config = SubCircuitConfig {
         pcs_config: bundle1.config.config,
         n_outputs: bundle1.config.output_addresses.len(),
         preprocessed_column_ids: bundle1.config.preprocessed_column_ids.clone(),
     };
-    let zero_sibling = HashValue(QM31::zero(), QM31::zero());
-    let p1 = Input {
+    let p1 = SubCircuitInput {
         proof: bundle1.proof,
         circuit_public_data: bundle1.public_data,
         config: bundle1.config,
         is_multiverifier: false,
-        other_hash: zero_sibling,
     };
-    let p2 = Input {
+    let p2 = SubCircuitInput {
         proof: bundle2.proof,
         circuit_public_data: bundle2.public_data,
         config: bundle2.config,
         is_multiverifier: false,
-        other_hash: zero_sibling,
     };
 
-    let context = build_multiverifier_circuit::<QM31>(p1, p2, subcircuit_config, metadata_root);
+    let context = build_multiverifier_circuit::<QM31>(p1, p2, subcircuit_config, metadata_tree);
 
     context.check_vars_used();
     context.circuit.check_yields();

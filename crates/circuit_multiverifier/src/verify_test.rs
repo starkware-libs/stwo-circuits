@@ -15,7 +15,7 @@ use circuits_stark_verifier::proof::{ProofConfig, empty_proof};
 use num_traits::{One, Zero};
 use stwo::core::{fields::qm31::QM31, pcs::PcsConfig};
 
-use super::{Input, SubCircuitConfig, build_multiverifier_circuit};
+use super::{Metadata, MetadataTree, SubCircuitConfig, SubCircuitInput, build_multiverifier_circuit};
 
 /// Builds the same Fibonacci-shaped [`CircuitConfig`] used by the real test, but
 /// without running the prover. Driving topology checks through the *real* trace
@@ -43,7 +43,7 @@ fn synthetic_circuit_config() -> CircuitConfig {
     }
 }
 
-fn build_novalue_input() -> Input<NoValue> {
+fn build_novalue_input() -> SubCircuitInput<NoValue> {
     let config = synthetic_circuit_config();
     let components = all_circuit_components::<NoValue>();
     let proof_config = ProofConfig::from_components(
@@ -58,12 +58,11 @@ fn build_novalue_input() -> Input<NoValue> {
         // Multiverifier reads slots [2] and [3]; provide four dummies.
         output_values: vec![QM31::zero(); 4],
     };
-    Input {
+    SubCircuitInput {
         proof,
         circuit_public_data,
         config,
         is_multiverifier: false,
-        other_hash: HashValue(QM31::zero(), QM31::zero()),
     }
 }
 
@@ -80,10 +79,15 @@ fn test_novalue_multiverifier_circuit() {
     let p1 = build_novalue_input();
     let p2 = build_novalue_input();
 
-    // Dummy metadata root.
-    let metadata_root = HashValue(QM31::zero(), QM31::zero());
+    // Build a placeholder MetadataTree; for `NoValue` topology only the
+    // structure matters, not the actual hashes.
+    let metadata_leaf = Metadata::<QM31>::from_config(&p1.config);
+    let metadata_multi = Metadata::<QM31>::from_config(&p1.config);
+    let metadata_tree =
+        MetadataTree::<NoValue>::commit(metadata_leaf, metadata_multi);
 
-    let context = build_multiverifier_circuit::<NoValue>(p1, p2, subcircuit_config, metadata_root);
+    let context =
+        build_multiverifier_circuit::<NoValue>(p1, p2, subcircuit_config, metadata_tree);
 
     context.check_vars_used();
     context.circuit.check_yields();

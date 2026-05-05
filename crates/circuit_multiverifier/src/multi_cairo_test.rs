@@ -18,7 +18,7 @@ use circuit_cairo_verifier::privacy::{privacy_cairo_verifier_config, privacy_com
 use circuit_cairo_verifier::statement::MEMORY_VALUES_LIMBS;
 use circuit_cairo_verifier::utils::get_proof_file_path;
 use circuit_cairo_verifier::verify::{
-    CairoVerifierConfig, build_cairo_verifier_circuit_with_prepended_outputs, enabled_components,
+    CairoVerifierConfig, build_cairo_verifier_circuit_with_prepended_outputs,
     prepare_cairo_proof_for_circuit_verifier, verify_fixed_cairo_circuit_with_prepended_outputs,
 };
 use circuit_common::finalize::finalize_context as pad_components_to_powers_of_two;
@@ -37,13 +37,15 @@ use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
 use circuits_stark_verifier::proof::{Proof, ProofConfig, empty_proof};
 use itertools::{Itertools, zip_eq};
-use num_traits::{One, Zero};
+use num_traits::Zero;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::PcsConfig;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 
-use super::{Input, Metadata, SubCircuitConfig, build_multiverifier_circuit};
+use super::{
+    Metadata, MetadataTree, SubCircuitConfig, SubCircuitInput, build_multiverifier_circuit,
+};
 use crate::padding::pad_components_to_target_counts;
 
 /// Targets matching the Cairo-verifier circuit's component-size brackets
@@ -115,10 +117,7 @@ fn test_padded_multi_matches_cairo_preprocessed_column_ids() {
         // Print a side-by-side diff so the failure mode is obvious.
         let max_len = std::cmp::max(cairo_ids.len(), multi_ids.len());
         let mut first_diff = None;
-        println!(
-            "\n{:>3}  {:<35}  {:<35}  match",
-            "i", "cairo verifier", "multiverifier (padded)",
-        );
+        println!("\n{:>3}  {:<35}  {:<35}  match", "i", "cairo verifier", "multiverifier (padded)",);
         println!("{}", "-".repeat(90));
         for i in 0..max_len {
             let c = cairo_ids.get(i).map(|x| x.id.as_str()).unwrap_or("(none)");
@@ -127,27 +126,17 @@ fn test_padded_multi_matches_cairo_preprocessed_column_ids() {
             if !same && first_diff.is_none() {
                 first_diff = Some(i);
             }
-            println!(
-                "{:>3}  {:<35}  {:<35}  {}",
-                i,
-                c,
-                m,
-                if same { "✓" } else { "✗" },
-            );
+            println!("{:>3}  {:<35}  {:<35}  {}", i, c, m, if same { "✓" } else { "✗" },);
         }
         panic!("preprocessed_column_ids differ; first mismatch at index {first_diff:?}");
     }
 
-    println!(
-        "\npreprocessed_column_ids match across all {} entries.",
-        cairo_ids.len(),
-    );
+    println!("\npreprocessed_column_ids match across all {} entries.", cairo_ids.len(),);
 }
 
 // ---------- Tests A & B: prove → save → load → verify (Cairo edition) ----------
 
-const MULTI_OF_CAIRO_PROOF_PATH: &str =
-    "/tmp/circuit_multiverifier_test_multi_of_cairo_proof.bin";
+const MULTI_OF_CAIRO_PROOF_PATH: &str = "/tmp/circuit_multiverifier_test_multi_of_cairo_proof.bin";
 
 /// Bundles a proven Cairo verifier circuit's `Proof<QM31>` together with the
 /// `CircuitPublicData` and `CircuitConfig` needed to feed it into the
@@ -166,11 +155,8 @@ fn verify_cairo_with_component_set_inline(
     cairo_proof: &CairoProof<Blake2sM31MerkleHasher>,
     component_set: HashSet<&str>,
 ) -> Result<Context<QM31>, String> {
-    let FlatClaim {
-        component_enable_bits,
-        component_log_sizes: _,
-        public_data: _,
-    } = cairo_proof.claim.flatten_claim();
+    let FlatClaim { component_enable_bits, component_log_sizes: _, public_data: _ } =
+        cairo_proof.claim.flatten_claim();
     let components: indexmap::IndexMap<&'static str, Box<dyn CircuitEval<QM31>>> = zip_eq(
         cairo_all_components::<QM31>().into_iter(),
         &component_enable_bits,
@@ -192,11 +178,7 @@ fn verify_cairo_with_component_set_inline(
     let proof_config = ProofConfig::from_components(
         &components,
         component_enable_bits,
-        cairo_proof
-            .preprocessed_trace_variant
-            .to_preprocessed_trace()
-            .ids()
-            .len(),
+        cairo_proof.preprocessed_trace_variant.to_preprocessed_trace().ids().len(),
         &cairo_proof.extended_stark_proof.proof.config,
         CAIRO_INTERACTION_POW_BITS,
     );
@@ -260,13 +242,8 @@ fn prove_cairo_and_prepare() -> ProofBundle {
         PcsConfig::default(),
     );
 
-    let preprocessed_root: HashValue<QM31> = circuit_proof
-        .stark_proof
-        .as_ref()
-        .expect("proving failed")
-        .proof
-        .commitments[0]
-        .into();
+    let preprocessed_root: HashValue<QM31> =
+        circuit_proof.stark_proof.as_ref().expect("proving failed").proof.commitments[0].into();
 
     let preprocessed_column_ids = preprocessed.preprocessed_trace.ids();
     let proof_config = ProofConfig::from_components(
@@ -291,26 +268,14 @@ fn prove_cairo_and_prepare() -> ProofBundle {
     ProofBundle { proof, public_data, config }
 }
 
-/// Hashes a `Metadata<QM31>` exactly the way `Metadata::hash` does in-circuit.
-fn hash_metadata(m: Metadata<QM31>) -> HashValue<QM31> {
-    let qm31s = m.serialize_to_qm31();
-    blake_qm31(&qm31s, 16 * qm31s.len())
-}
-
-/// Hashes two leaf hashes into a parent node, matching the in-circuit
-/// `merkle::hash_node` (`blake([left.0, left.1, right.0, right.1], 64)`).
-fn hash_node(left: HashValue<QM31>, right: HashValue<QM31>) -> HashValue<QM31> {
-    blake_qm31(&[left.0, left.1, right.0, right.1], 64)
-}
-
-/// Builds a `Metadata<QM31>` for the multiverifier circuit (variant B).
+/// Builds a `Metadata<QM31>` for the multiverifier circuit. (Used as the
+/// leaf-1 entry of the metadata Merkle tree.)
 fn multiverifier_metadata(
     output_addresses: &[usize],
     n_blake_gates: usize,
     preprocessed_root: HashValue<QM31>,
 ) -> Metadata<QM31> {
     Metadata {
-        bit: M31Wrapper::new_unsafe(QM31::one()),
         n_blake_gates_pow_two: M31Wrapper::new_unsafe(QM31::from(
             n_blake_gates.next_power_of_two(),
         )),
@@ -349,7 +314,6 @@ fn extract_padded_multi_metadata(cairo_config: &CircuitConfig) -> MultiCircuitMe
     use stwo::prover::poly::circle::PolyOps;
 
     let inner_pcs_config = cairo_config.config;
-    let placeholder_root = HashValue(QM31::zero(), QM31::zero());
     let proof_config = ProofConfig::from_components(
         &all_circuit_components::<NoValue>(),
         vec![true; all_circuit_components::<NoValue>().len()],
@@ -357,11 +321,9 @@ fn extract_padded_multi_metadata(cairo_config: &CircuitConfig) -> MultiCircuitMe
         &inner_pcs_config,
         INTERACTION_POW_BITS,
     );
-    let make_novalue_input = || Input {
+    let make_novalue_input = || SubCircuitInput {
         proof: empty_proof(&proof_config),
-        circuit_public_data: CircuitPublicData {
-            output_values: vec![QM31::zero(); 4],
-        },
+        circuit_public_data: CircuitPublicData { output_values: vec![QM31::zero(); 4] },
         config: CircuitConfig {
             config: inner_pcs_config,
             output_addresses: cairo_config.output_addresses.clone(),
@@ -370,18 +332,24 @@ fn extract_padded_multi_metadata(cairo_config: &CircuitConfig) -> MultiCircuitMe
             preprocessed_root: cairo_config.preprocessed_root,
         },
         is_multiverifier: false,
-        other_hash: placeholder_root,
     };
     let subcircuit_config = SubCircuitConfig {
         pcs_config: inner_pcs_config,
         n_outputs: cairo_config.output_addresses.len(),
         preprocessed_column_ids: cairo_config.preprocessed_column_ids.clone(),
     };
+    // For metadata extraction we only need the multi's *topology*; the tree
+    // contents don't influence the preprocessed columns. Use two copies of
+    // the cairo metadata as placeholder leaves.
+    let placeholder_meta = Metadata::<QM31>::from_config(cairo_config);
+    let placeholder_meta_clone = Metadata::<QM31>::from_config(cairo_config);
+    let metadata_tree =
+        MetadataTree::<NoValue>::commit(placeholder_meta, placeholder_meta_clone);
     let mut multi_ctx = build_multiverifier_circuit::<NoValue>(
         make_novalue_input(),
         make_novalue_input(),
         subcircuit_config,
-        placeholder_root,
+        metadata_tree,
     );
     // Pad up into Cairo's brackets so the multi's preprocessed_column_ids
     // match (verified by `test_padded_multi_matches_cairo_preprocessed_column_ids`).
@@ -403,9 +371,7 @@ fn extract_padded_multi_metadata(cairo_config: &CircuitConfig) -> MultiCircuitMe
 
     // Compute the multi's preprocessed_root via the commitment tree.
     let twiddles = SimdBackend::precompute_twiddles(
-        CanonicCoset::new(trace_log_size + std::cmp::max(log_blowup, 1))
-            .circle_domain()
-            .half_coset,
+        CanonicCoset::new(trace_log_size + std::cmp::max(log_blowup, 1)).circle_domain().half_coset,
     );
     let preprocessed_trace = pp_multi.preprocessed_trace.get_trace::<SimdBackend>();
     let preprocessed_trace_polys = SimdBackend::interpolate_columns(preprocessed_trace, &twiddles);
@@ -440,37 +406,36 @@ fn test_a_prove_multiverifier_of_cairos_and_save() {
         bundle1.config.preprocessed_root, bundle2.config.preprocessed_root,
         "Cairo proving must be deterministic"
     );
-    assert_eq!(bundle1.config.output_addresses.len(), 5, "expected 5 outputs after dummy injection");
+    assert_eq!(
+        bundle1.config.output_addresses.len(),
+        5,
+        "expected 5 outputs after dummy injection"
+    );
     let inner_pcs_config = bundle1.config.config;
 
-    // 2. h_cairo (variant A descriptor hash).
-    let h_cairo = hash_metadata(Metadata::<QM31>::from_config(&bundle1.config, false));
-
-    // 3. Padded multi structural metadata + h_multi.
+    // 2. Build the metadata Merkle tree over the two valid descriptors:
+    //    leaf 0 = cairo (variant A), leaf 1 = multiverifier (variant B).
+    let m_cairo = Metadata::<QM31>::from_config(&bundle1.config);
     let multi_meta = extract_padded_multi_metadata(&bundle1.config);
-    let h_multi = hash_metadata(multiverifier_metadata(
+    let m_multi = multiverifier_metadata(
         &multi_meta.output_addresses,
         multi_meta.n_blake_gates,
         multi_meta.preprocessed_root,
-    ));
+    );
+    let metadata_tree = MetadataTree::<QM31>::commit(m_cairo, m_multi);
 
-    // 4. Recursion-tree-wide metadata root.
-    let metadata_root = hash_node(h_cairo, h_multi);
-
-    // 5. Build the QM31 padded multi verifying both Cairo proofs.
-    let p1 = Input {
+    // 3. Build the QM31 padded multi verifying both Cairo proofs.
+    let p1 = SubCircuitInput {
         proof: bundle1.proof,
         circuit_public_data: bundle1.public_data,
         config: bundle1.config,
         is_multiverifier: false,
-        other_hash: h_multi,
     };
-    let p2 = Input {
+    let p2 = SubCircuitInput {
         proof: bundle2.proof,
         circuit_public_data: bundle2.public_data,
         config: bundle2.config,
         is_multiverifier: false,
-        other_hash: h_multi,
     };
     let subcircuit_config = SubCircuitConfig {
         pcs_config: inner_pcs_config,
@@ -478,7 +443,7 @@ fn test_a_prove_multiverifier_of_cairos_and_save() {
         preprocessed_column_ids: p1.config.preprocessed_column_ids.clone(),
     };
     let mut multi_ctx =
-        build_multiverifier_circuit::<QM31>(p1, p2, subcircuit_config, metadata_root);
+        build_multiverifier_circuit::<QM31>(p1, p2, subcircuit_config, metadata_tree);
     // Apply the same Cairo-target padding the metadata extraction did.
     pad_components_to_target_counts(
         &mut multi_ctx,
@@ -542,32 +507,25 @@ fn test_b_verify_multi_proof_and_cairo_proof_with_multiverifier() {
     let cairo_bundle = prove_cairo_and_prepare();
     let inner_pcs_config = cairo_bundle.config.config;
 
-    // 2. Re-derive h_cairo, h_multi, H deterministically.
-    let h_cairo = hash_metadata(Metadata::<QM31>::from_config(&cairo_bundle.config, false));
+    // 2. Re-derive the metadata tree deterministically (same shape as Test A).
+    let m_cairo = Metadata::<QM31>::from_config(&cairo_bundle.config);
     let multi_meta = extract_padded_multi_metadata(&cairo_bundle.config);
-    let h_multi = hash_metadata(multiverifier_metadata(
+    let m_multi = multiverifier_metadata(
         &multi_meta.output_addresses,
         multi_meta.n_blake_gates,
         multi_meta.preprocessed_root,
-    ));
-    let metadata_root = hash_node(h_cairo, h_multi);
+    );
+    let metadata_tree = MetadataTree::<QM31>::commit(m_cairo, m_multi);
+    let metadata_root = metadata_tree.root;
 
-    // 3. Reconstruct the multi's expected `CircuitPublicData`. Multi's outputs
-    //    are `[H_lo, H_hi, hash_of_payloads_lo, hash_of_payloads_hi, u]`,
-    //    where `hash_of_payloads = blake([cairo_payload, cairo_payload], 64)`
-    //    over the two identical Cairo payload pairs (Test A's two Cairo proofs
-    //    are deterministic and identical, so so are this Test's).
+    // 3. Reconstruct the multi's expected `CircuitPublicData`. Multi's outputs are `[H_lo, H_hi,
+    //    hash_of_payloads_lo, hash_of_payloads_hi, u]`, where `hash_of_payloads =
+    //    blake([cairo_payload, cairo_payload], 64)` over the two identical Cairo payload pairs
+    //    (Test A's two Cairo proofs are deterministic and identical, so so are this Test's).
     let cairo_payload_lo = cairo_bundle.public_data.output_values[2];
     let cairo_payload_hi = cairo_bundle.public_data.output_values[3];
-    let hash_of_payloads = blake_qm31(
-        &[
-            cairo_payload_lo,
-            cairo_payload_hi,
-            cairo_payload_lo,
-            cairo_payload_hi,
-        ],
-        64,
-    );
+    let hash_of_payloads =
+        blake_qm31(&[cairo_payload_lo, cairo_payload_hi, cairo_payload_lo, cairo_payload_hi], 64);
     let u_value = qm31_from_u32s(0, 0, 1, 0);
     let multi_public_data = CircuitPublicData {
         output_values: vec![
@@ -607,19 +565,17 @@ fn test_b_verify_multi_proof_and_cairo_proof_with_multiverifier() {
     // 7. Build the second-level padded multi:
     //    - The multi proof sits at leaf index 1 (`bit = 1`), sibling = `h_cairo`.
     //    - The cairo proof sits at leaf index 0 (`bit = 0`), sibling = `h_multi`.
-    let multi_input = Input {
+    let multi_input = SubCircuitInput {
         proof: multi_proof,
         circuit_public_data: multi_public_data,
         config: multi_config,
         is_multiverifier: true,
-        other_hash: h_cairo,
     };
-    let cairo_input = Input {
+    let cairo_input = SubCircuitInput {
         proof: cairo_bundle.proof,
         circuit_public_data: cairo_bundle.public_data,
         config: cairo_bundle.config,
         is_multiverifier: false,
-        other_hash: h_multi,
     };
     let subcircuit_config = SubCircuitConfig {
         pcs_config: inner_pcs_config,
@@ -630,7 +586,7 @@ fn test_b_verify_multi_proof_and_cairo_proof_with_multiverifier() {
         multi_input,
         cairo_input,
         subcircuit_config,
-        metadata_root,
+        metadata_tree,
     );
     // Same padding as Test A — keeps the second-level multi byte-identical to
     // the first-level one (recursion fixed point).

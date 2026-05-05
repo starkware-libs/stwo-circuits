@@ -20,13 +20,13 @@ use circuits::ops::eq;
 /// Pads `context`'s components so their natural (pre-`pad_*`) counts reach
 /// the specified targets:
 ///   - `eq`: number of `Eq` gates.
-///   - `qm31_ops`: total `add + sub + mul + pointwise_mul + 2 * permutation`
-///     rows (the "qm31 ops" component's natural row count).
-///   - `n_blake_gates`: number of `Blake` gates (drives the `blake_output`
-///     component's column size).
-///   - `n_blake_compress_rows`: total compression rows across all blake gates
-///     (drives the `blake_compress` columns and `log_n_blake_updates`, which
-///     decides the `seq_<log>` column id).
+///   - `qm31_ops`: total `add + sub + mul + pointwise_mul + 2 * permutation` rows (the "qm31 ops"
+///     component's natural row count).
+///   - `n_blake_gates`: number of `Blake` gates (drives the `blake_output` component's column
+///     size).
+///   - `n_blake_compress_rows`: total compression rows across all blake gates (drives the
+///     `blake_compress` columns and `log_n_blake_updates`, which decides the `seq_<log>` column
+///     id).
 ///
 /// Blake padding is filled with a mix of 1-, 2-, and 3-chunk dummies so that
 /// *both* the gate count and the compression-row count hit their respective
@@ -43,10 +43,7 @@ pub fn pad_components_to_target_counts<Value: IValue>(
 
     // --- eq ---
     let current_eq = context.circuit.eq.len();
-    assert!(
-        target_eq >= current_eq,
-        "target_eq ({target_eq}) below current count ({current_eq})",
-    );
+    assert!(target_eq >= current_eq, "target_eq ({target_eq}) below current count ({current_eq})",);
     for _ in 0..(target_eq - current_eq) {
         eq(context, zero, zero);
     }
@@ -64,8 +61,7 @@ pub fn pad_components_to_target_counts<Value: IValue>(
 
     // --- blake (1-chunk + 2-chunk mix) ---
     let current_blakes = context.circuit.blake.len();
-    let current_blake_compress: usize =
-        context.circuit.blake.iter().map(|g| g.input.len()).sum();
+    let current_blake_compress: usize = context.circuit.blake.iter().map(|g| g.input.len()).sum();
     assert!(
         target_n_blake_gates >= current_blakes,
         "target_n_blake_gates ({target_n_blake_gates}) below current ({current_blakes})",
@@ -118,9 +114,5 @@ fn qm31_ops_n_rows(circuit: &Circuit) -> usize {
         + circuit.sub.len()
         + circuit.mul.len()
         + circuit.pointwise_mul.len()
-        + circuit
-            .permutation
-            .iter()
-            .map(|p| p.inputs.len() + p.outputs.len())
-            .sum::<usize>()
+        + circuit.permutation.iter().map(|p| p.inputs.len() + p.outputs.len()).sum::<usize>()
 }

@@ -1,4 +1,3 @@
-#![allow(unused)]
 // Want:
 // - two circuit proof test vectors.
 // - define a single pcs config which is used by both circuit proofs.
@@ -13,20 +12,15 @@ use circuits::{
     context::Var,
     finalize_constants::finalize_constants,
     ivalue::IValue,
-    ops::{Guess, output},
+    ops::{Guess, mul, output},
 };
-use circuits::{
-    context::Context,
-    eval,
-    ivalue::qm31_from_u32s,
-    ops::{eq, sub},
-    wrappers::M31Wrapper,
-};
+use circuits::{context::Context, eval, ops::eq, wrappers::M31Wrapper};
 use circuits_stark_verifier::{
     merkle::{AuthPath, verify_merkle_path},
     proof::{Proof, ProofConfig},
     verify::verify,
 };
+use itertools::Itertools;
 use stwo::core::{fields::qm31::QM31, pcs::PcsConfig};
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
@@ -44,53 +38,26 @@ mod multi_fibonacci_test;
 #[path = "multi_cairo_test.rs"]
 mod multi_cairo_test;
 
-// TODO: remove this struct
-pub struct Input<Value: IValue> {
-    pub(crate) proof: Proof<Value>,
-    pub(crate) circuit_public_data: CircuitPublicData,
-    pub(crate) config: CircuitConfig,
+// TODO: maybe remove this struct?
+pub struct SubCircuitInput<Value: IValue> {
+    pub proof: Proof<Value>,
+    pub circuit_public_data: CircuitPublicData,
+    pub config: CircuitConfig,
     /// `true` if this proof is a proof of the multiverifier circuit itself
     /// (variant B in the recursion); `false` for a leaf circuit such as the
-    /// Fibonacci/`circuit_verifier` proof (variant A). Encoded as the `bit`
-    /// field in [`Metadata`] and used to:
-    ///  - select the leaf position (and Merkle path direction) in the `metadata_root` commitment,
-    ///  - select between `0` and `metadata_root` as the expected output value at slots 0,1 of the
-    ///    proof being verified.
-    pub(crate) is_multiverifier: bool,
-    /// The other leaf in the 2-leaf metadata Merkle tree — the sibling
-    /// against which this proof's metadata hash is paired to recompute the
-    /// root. The prover provides it as a witness; the Merkle equation
-    /// constrains its value.
-    // TODO: remove from this struct, compute it on the fly.
-    pub(crate) other_hash: HashValue<QM31>,
+    /// Fibonacci/`circuit_verifier` proof (variant A).
+    pub is_multiverifier: bool,
 }
 
 // TODO: find better name.
 pub struct Metadata<T> {
-    /// `0` for a leaf-circuit descriptor (variant A), `1` for the
-    /// multiverifier descriptor (variant B). Hashed into the descriptor so
-    /// that `bit` is bound to the leaf type via the Merkle path.
-    pub(crate) bit: M31Wrapper<T>,
-    pub(crate) n_blake_gates_pow_two: M31Wrapper<T>,
-    pub(crate) output_addresses: Vec<M31Wrapper<T>>,
-    pub(crate) preprocessed_root: HashValue<T>,
-}
-
-impl Metadata<QM31> {
-    pub fn serialize_to_qm31(self) -> Vec<QM31> {
-        let Metadata { bit, n_blake_gates_pow_two, output_addresses, preprocessed_root } = self;
-
-        let mut res = vec![*bit.get(), *n_blake_gates_pow_two.get()];
-        // Add domain separation for length.
-        res.extend(output_addresses.iter().map(|x| *x.get()));
-        res.extend([preprocessed_root.0, preprocessed_root.1]);
-        res
-    }
+    pub n_blake_gates_pow_two: M31Wrapper<T>,
+    pub output_addresses: Vec<M31Wrapper<T>>,
+    pub preprocessed_root: HashValue<T>,
 }
 
 impl<Value: IValue> Metadata<Value> {
-    pub fn from_config(config: &CircuitConfig, is_multiverifier: bool) -> Self {
-        let bit = M31Wrapper::new_unsafe(Value::from_qm31(QM31::from(is_multiverifier as u32)));
+    pub fn from_config(config: &CircuitConfig) -> Self {
         let n_blake_gates_pow_two = M31Wrapper::new_unsafe(Value::from_qm31(QM31::from(
             config.n_blake_gates.next_power_of_two(),
         )));
@@ -102,7 +69,6 @@ impl<Value: IValue> Metadata<Value> {
             .collect();
 
         Metadata {
-            bit,
             n_blake_gates_pow_two,
             output_addresses,
             preprocessed_root: HashValue(
@@ -117,7 +83,6 @@ impl<Value: IValue> Guess<Value> for Metadata<Value> {
     type Target = Metadata<Var>;
     fn guess(&self, context: &mut Context<Value>) -> Self::Target {
         Metadata {
-            bit: self.bit.guess(context),
             n_blake_gates_pow_two: self.n_blake_gates_pow_two.guess(context),
             output_addresses: self.output_addresses.guess(context),
             preprocessed_root: self.preprocessed_root.guess(context),
@@ -125,37 +90,58 @@ impl<Value: IValue> Guess<Value> for Metadata<Value> {
     }
 }
 
-impl Metadata<Var> {
-    fn serialize_to_qm31(&self) -> Vec<Var> {
-        let Metadata { bit, n_blake_gates_pow_two, output_addresses, preprocessed_root } = self;
-
-        let mut res = vec![*bit.get(), *n_blake_gates_pow_two.get()];
-        // TODO: Add domain separation for length.
+impl<T: Copy> Metadata<T> {
+    fn flatten(&self) -> Vec<T> {
+        let Metadata { n_blake_gates_pow_two, output_addresses, preprocessed_root } = self;
+        let mut res = vec![*n_blake_gates_pow_two.get()];
         res.extend(output_addresses.iter().map(|x| x.get()).copied());
         res.extend([preprocessed_root.0, preprocessed_root.1]);
         res
     }
+}
 
+impl Metadata<Var> {
     fn hash<Value: IValue>(&self, context: &mut Context<Value>) -> HashValue<Var> {
-        let qm31s = self.serialize_to_qm31();
-        blake(context, &qm31s, 16 * qm31s.len())
+        let flattened = self.flatten();
+        blake(context, &flattened, 16 * flattened.len())
     }
 }
 
-/// Computes the metadata Merkle root over the two valid descriptors.
-/// `m1` (the leaf at index 0) should be the leaf-circuit descriptor with
-/// `bit = 0`; `m2` (the leaf at index 1) the multiverifier descriptor with
-/// `bit = 1`.
-pub fn merkleize_metadata(m1: Metadata<QM31>, m2: Metadata<QM31>) -> HashValue<QM31> {
-    let m1_qm31s = m1.serialize_to_qm31();
-    let m2_qm31s = m2.serialize_to_qm31();
-    let hash_1 = blake_qm31(&m1_qm31s, 16 * m1_qm31s.len());
-    let hash_2 = blake_qm31(&m2_qm31s, 16 * m2_qm31s.len());
-    blake_qm31(&[hash_1.0, hash_1.1, hash_2.0, hash_2.1], 64)
+impl Metadata<QM31> {
+    fn hash_qm31(&self) -> HashValue<QM31> {
+        let flattened = self.flatten();
+        blake_qm31(&flattened, 16 * flattened.len())
+    }
 }
 
-const N_OUTPUTS: usize = 5;
+pub struct MetadataTree<Value: IValue> {
+    root: HashValue<Value>,
+    leaves: Vec<HashValue<Value>>,
+}
 
+impl<Value: IValue> MetadataTree<Value> {
+    pub fn commit(m1: Metadata<QM31>, m2: Metadata<QM31>) -> Self {
+        let mut leaves = vec![];
+        for metadata in [m1, m2] {
+            let hashed_metadata = metadata.hash_qm31();
+            leaves.push(hashed_metadata);
+        }
+        let root = blake_qm31(&leaves.iter().flat_map(|&x| [x.0, x.1]).collect_vec(), 64);
+
+        MetadataTree {
+            root: HashValue(Value::from_qm31(root.0), Value::from_qm31(root.1)),
+            leaves: leaves
+                .iter()
+                .map(|x| HashValue(Value::from_qm31(x.0), Value::from_qm31(x.1)))
+                .collect(),
+        }
+    }
+
+    pub fn decommit(&self, bit: usize) -> AuthPath<Value> {
+        assert!((0..=1).contains(&bit));
+        AuthPath(vec![self.leaves[bit ^ 1]])
+    }
+}
 /// Contains all the parameters that are fixed for the proofs being validated.
 pub struct SubCircuitConfig {
     pub pcs_config: PcsConfig,
@@ -176,101 +162,51 @@ impl SubCircuitConfig {
     }
 }
 
-// pub fn circuit_verify_two_proofs(
-//     p1: Input<QM31>,
-//     p2: Input<QM31>,
-//     subcircuit_config: SubCircuitConfig,
-//     metadata_root: HashValue<QM31>,
-// ) {
-//     // build multiverifier config.
-//     // validate the two configs against the multiverifier one.
-//     for circuit_config in [p1.config, p2.config] {
-//         //validate config against the multi verifier config.
-//     }
-//    // assert_eq!(p1.config.preprocessed_column_ids, p2.config.preprocessed_column_ids);
-//    // assert_eq!(p1.config.output_addresses.len(), N_OUTPUTS);
-// //    assert_eq!(p2.config.output_addresses.len(), N_OUTPUTS);
-
-//     let all_components = all_circuit_components::<QM31>();
-//     let proof_config = ProofConfig::from_components(
-//         &all_components,
-//         vec![true; all_components.len()],
-//         subcircuit_config.preprocessed_column_ids.len(),
-//         &subcircuit_config.pcs_config,
-//         INTERACTION_POW_BITS,
-//     );
-// }
 pub fn build_multiverifier_circuit<Value: IValue>(
-    p1: Input<Value>,
-    p2: Input<Value>,
-    // proof config assumed to be the same for p1 and p2.
+    i1: SubCircuitInput<Value>,
+    i2: SubCircuitInput<Value>,
+    // subcircuit config assumed to be the same for p1 and p2.
     subcircuit_config: SubCircuitConfig,
-    metadata_root: HashValue<QM31>,
+    metadata_tree: MetadataTree<Value>,
     // TODO: return a result.
 ) -> Context<Value> {
     // ProofConfig that is shared between the two proofs.
     let proof_config = subcircuit_config.to_proof_config();
     let mut context: Context<Value> = Context::default();
-    let metadata_root =
-        HashValue(Value::from_qm31(metadata_root.0), Value::from_qm31(metadata_root.1));
-    let metadata_root_var = metadata_root.guess(&mut context);
+    let metadata_root_var = metadata_tree.root.guess(&mut context);
     output(&mut context, metadata_root_var.0);
     output(&mut context, metadata_root_var.1);
 
     let mut inner_outputs = vec![];
-    for input in [p1, p2] {
-        let Input { proof, circuit_public_data, config, is_multiverifier, other_hash } = input;
-        let metadata = Metadata::from_config(&config, is_multiverifier).guess(&mut context);
-
-        // Hash it.
+    // Verify each subcircuit proof.
+    for subcircuit_input in [i1, i2] {
+        let SubCircuitInput { proof, circuit_public_data, config, is_multiverifier } =
+            subcircuit_input;
+        // Verify the metadata
+        let metadata = Metadata::from_config(&config).guess(&mut context);
         let hashed_metadata = metadata.hash(&mut context);
-        // The sibling hash in the 2-leaf metadata Merkle tree.
-        let other_hash_var =
-            HashValue::<Value>(Value::from_qm31(other_hash.0), Value::from_qm31(other_hash.1))
-                .guess(&mut context);
-
-        // The variant bit also serves as the Merkle leaf index. Constrain it
-        // to be boolean so `cond_flip` (and the output-value selection below)
-        // are sound — without `bit*bit == bit` an adversary could choose any
-        // QM31 here.
-        let bit = *metadata.bit.get();
+        let auth_path = metadata_tree.decommit(is_multiverifier as usize).guess(&mut context);
+        let bit = Value::from_qm31(QM31::from(is_multiverifier as usize)).guess(&mut context);
         let bit_squared = eval!(&mut context, (bit) * (bit));
         eq(&mut context, bit_squared, bit);
+        verify_merkle_path(&mut context, hashed_metadata, &[bit], metadata_root_var, &auth_path);
 
-        verify_merkle_path(
-            &mut context,
-            hashed_metadata,
-            &[bit],
-            metadata_root_var,
-            &AuthPath(vec![other_hash_var]),
-        );
-
-        // Build statement (p1 and p2 must have the same # of outputs: here we assume 5).
-
+        // Build statement
         // Build the output values that need to be yielded.
         // Constrained outputs.
-        let one = context.one();
-        let one_minus_bit = sub(&mut context, one, bit);
         // If the circuit being verified is a multiverifier (bit = 1), we
         // require its first two outputs to equal *our own* metadata_root —
         // that's how `H` is propagated up the recursion. For a leaf circuit
         // (bit = 0) the corresponding outputs are padding zeros.
-        // TODO: do the obvious optimization.
-        let output0 = eval!(
-            &mut context,
-            ((bit) * (metadata_root_var.0)) + ((one_minus_bit) * (context.zero()))
-        );
-        let output1 = eval!(
-            &mut context,
-            ((bit) * (metadata_root_var.1)) + ((one_minus_bit) * (context.zero()))
-        );
+        let output0 = mul(&mut context, bit, metadata_root_var.0);
+        let output1 = mul(&mut context, bit, metadata_root_var.1);
         let output4 = context.u();
         // Unconstrained outputs. (i.e. the hash-of-outputs of the circuit being verified now).
         let (output2, output3) = (
             Value::from_qm31(circuit_public_data.output_values[2]).guess(&mut context),
             Value::from_qm31(circuit_public_data.output_values[3]).guess(&mut context),
         );
-        // Add the unconstrained outputs to the inner outputs.
+        // Add the unconstrained outputs to the inner outputs, which will need to be hashed later.
         inner_outputs.extend([output2.clone(), output3.clone()]);
 
         let output_values = vec![output0, output1, output2, output3, output4];
@@ -296,6 +232,7 @@ pub fn build_multiverifier_circuit<Value: IValue>(
     context.finalize_guessed_vars();
     context
 }
+
 // We will need
 //
 // pub fn prepare_circuit_proof_for_multicircuit_verifier(
