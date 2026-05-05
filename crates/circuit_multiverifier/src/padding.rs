@@ -60,65 +60,67 @@ pub fn pad_components_to_target_counts<Value: IValue>(
     }
 
     // --- blake (1-chunk + 2-chunk mix) ---
-    let current_blakes = context.circuit.blake.len();
-    let current_blake_compress: usize = context.circuit.blake.iter().map(|g| g.input.len()).sum();
+    let current_blake_gates = context.circuit.blake.len();
     assert!(
-        target_n_blake_gates >= current_blakes,
-        "target_n_blake_gates ({target_n_blake_gates}) below current ({current_blakes})",
+        target_n_blake_gates > current_blake_gates,
+        "target_n_blake_gates ({target_n_blake_gates}) below current ({current_blake_gates})",
     );
+    let need_gates = ((target_n_blake_gates / 2) + 1).saturating_sub(current_blake_gates);
+    if need_gates > 0 {
+    for _ in 0..need_gates - 1 {
+        blake(context, &[zero], 1);
+    }}
+
+    let current_blake_compress: usize = context.stats.blake_updates;
     assert!(
-        target_n_blake_compress_rows >= current_blake_compress,
+        target_n_blake_compress_rows > current_blake_compress,
         "target_n_blake_compress_rows ({target_n_blake_compress_rows}) below current ({current_blake_compress})",
     );
-    let need_gates = target_n_blake_gates - current_blakes;
     let need_compress = target_n_blake_compress_rows - current_blake_compress;
-    assert!(
-        need_compress >= need_gates,
-        "blake compress target requires fewer rows than gates would produce ({need_compress} < {need_gates}); each blake gate has at least one chunk",
-    );
-    // Solve for non-negative `(x_1, x_2, x_3, x_4)` with
-    //   x_1 + x_2 + x_3 + x_4 = need_gates,
-    //   1*x_1 + 2*x_2 + 3*x_3 + 4*x_4 = need_compress.
-    // Equivalently (rows beyond 1 per gate):
-    //   x_2 + 2*x_3 + 3*x_4 = need_compress - need_gates.
-    // Greedy: maximise 4-chunk gates. This works whenever
-    //   need_compress <= 4 * need_gates.
-    let extra_rows = need_compress - need_gates;
-    let four_chunk = extra_rows / 3;
-    let remainder = extra_rows % 3;
-    // Distribute the remainder as 1 two-chunk (extra=1) or 1 three-chunk
-    // (extra=2). Either gives a small fixup.
-    let (two_chunk, three_chunk) = match remainder {
-        0 => (0, 0),
-        1 => (1, 0),
-        2 => (0, 1),
-        _ => unreachable!(),
-    };
-    assert!(
-        need_gates >= four_chunk + three_chunk + two_chunk,
-        "blake gates target ({need_gates}) too low to reach compress target ({need_compress}); would need 5+ chunks per gate",
-    );
-    let one_chunk = need_gates - four_chunk - three_chunk - two_chunk;
+    blake(context, &vec![zero; need_compress * 4], need_compress * 64);
+    // // Solve for non-negative `(x_1, x_2, x_3, x_4)` with
+    // //   x_1 + x_2 + x_3 + x_4 = need_gates,
+    // //   1*x_1 + 2*x_2 + 3*x_3 + 4*x_4 = need_compress.
+    // // Equivalently (rows beyond 1 per gate):
+    // //   x_2 + 2*x_3 + 3*x_4 = need_compress - need_gates.
+    // // Greedy: maximise 4-chunk gates. This works whenever
+    // //   need_compress <= 4 * need_gates.
+    // let extra_rows = need_compress - need_gates;
+    // let four_chunk = extra_rows / 3;
+    // let remainder = extra_rows % 3;
+    // // Distribute the remainder as 1 two-chunk (extra=1) or 1 three-chunk
+    // // (extra=2). Either gives a small fixup.
+    // let (two_chunk, three_chunk) = match remainder {
+    //     0 => (0, 0),
+    //     1 => (1, 0),
+    //     2 => (0, 1),
+    //     _ => unreachable!(),
+    // };
+    // assert!(
+    //     need_gates >= four_chunk + three_chunk + two_chunk,
+    //     "blake gates target ({need_gates}) too low to reach compress target ({need_compress}); would need 5+ chunks per gate",
+    // );
+    // let one_chunk = need_gates - four_chunk - three_chunk - two_chunk;
 
-    for _ in 0..one_chunk {
-        // 1 input QM31 → 1 chunk → 1 compression row.
-        blake(context, &[zero], 1);
-    }
-    let eight_zeros = vec![zero; 8];
-    for _ in 0..two_chunk {
-        // 8 input QM31s → 2 chunks → 2 compression rows. n_bytes = 8 * 16.
-        blake(context, &eight_zeros, 128);
-    }
-    let twelve_zeros = vec![zero; 12];
-    for _ in 0..three_chunk {
-        // 12 input QM31s → 3 chunks → 3 compression rows. n_bytes = 12 * 16.
-        blake(context, &twelve_zeros, 192);
-    }
-    let sixteen_zeros = vec![zero; 16];
-    for _ in 0..four_chunk {
-        // 16 input QM31s → 4 chunks → 4 compression rows. n_bytes = 16 * 16.
-        blake(context, &sixteen_zeros, 256);
-    }
+    // for _ in 0..one_chunk {
+    //     // 1 input QM31 → 1 chunk → 1 compression row.
+    //     blake(context, &[zero], 1);
+    // }
+    // let eight_zeros = vec![zero; 8];
+    // for _ in 0..two_chunk {
+    //     // 8 input QM31s → 2 chunks → 2 compression rows. n_bytes = 8 * 16.
+    //     blake(context, &eight_zeros, 128);
+    // }
+    // let twelve_zeros = vec![zero; 12];
+    // for _ in 0..three_chunk {
+    //     // 12 input QM31s → 3 chunks → 3 compression rows. n_bytes = 12 * 16.
+    //     blake(context, &twelve_zeros, 192);
+    // }
+    // let sixteen_zeros = vec![zero; 16];
+    // for _ in 0..four_chunk {
+    //     // 16 input QM31s → 4 chunks → 4 compression rows. n_bytes = 16 * 16.
+    //     blake(context, &sixteen_zeros, 256);
+    // }
 }
 
 /// Mirrors the `qm31_ops_n_rows` formula used by `pad_qm31_ops` in

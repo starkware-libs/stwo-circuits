@@ -76,7 +76,7 @@ mod shared_targets {
     pub(super) const EQ: usize = 1 << 17; // 131_072
     pub(super) const QM31_OPS: usize = 1 << 21; // 2_097_152
     pub(super) const N_BLAKE_GATES: usize = 1 << 14; // 16_384
-    pub(super) const N_BLAKE_COMPRESS_ROWS: usize = 1 << 15; // 32_768
+    pub(super) const N_BLAKE_COMPRESS_ROWS: usize = 1 << 14; // 32_768
 }
 
 const FRI_CONFIG: FriConfig =
@@ -207,16 +207,16 @@ fn compute_component_sizes(
 #[test]
 fn test_compare_cairo_and_multiverifier_stats() {
     let pcs_config = PCS_CONFIG;
-    let (pp_cairo_circuit, novalue_cairo_context) = pp_cairo_circuit(pcs_config, None);
+    let (pp_cairo_circuit, novalue_cairo_context) = pp_cairo_circuit(pcs_config, Some((1 << 17, 1<<21, 1<<14, 1<<14)));
     let cairo_component_sizes = compute_component_sizes(&pp_cairo_circuit, &novalue_cairo_context);
     println!("cairo: {}", cairo_component_sizes);
-
+    println!("pp cols: {:?}\n", pp_cairo_circuit.preprocessed_trace.ids());
     let (pp_multiverifier_circuit, novalue_multiverifier_context) =
-        pp_multiverifier_circuit_from_cairo(&pp_cairo_circuit, pcs_config, None);
+        pp_multiverifier_circuit_from_cairo(&pp_cairo_circuit, pcs_config, Some((1 << 17, 1<<21, 1<<14, 1<<14)));
     let multiverifier_component_sizes =
         compute_component_sizes(&pp_multiverifier_circuit, &novalue_multiverifier_context);
     println!("multiverifier: {}", multiverifier_component_sizes);
-
+    println!("pp cols: {:?}\n", pp_multiverifier_circuit.preprocessed_trace.ids());
     //
     let shared_max_component_sizes = ComponentSizes {
         eq: cairo_component_sizes.eq.max(multiverifier_component_sizes.eq),
@@ -228,6 +228,7 @@ fn test_compare_cairo_and_multiverifier_stats() {
             .n_blake_updates
             .max(multiverifier_component_sizes.n_blake_updates),
     };
+    assert_eq!(pp_multiverifier_circuit.preprocessed_trace.ids(), pp_cairo_circuit.preprocessed_trace.ids());
     println!("common: {}", shared_max_component_sizes)
 }
 
