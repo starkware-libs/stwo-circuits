@@ -144,10 +144,10 @@ pub fn denom_inverse(context: &mut Context<impl IValue>, x: Var, log_trace_size:
 pub fn compute_half_coset_points<Value: IValue>(
     context: &mut Context<Value>,
     base_points: &CirclePoint<Simd>,
-    log_size: u32,
+    log_size: usize,
 ) -> Vec<CirclePoint<Simd>> {
     assert!(log_size > 0);
-    let gen_pt = generator_point_simd(context, log_size as usize, base_points.x.len());
+    let gen_pt = generator_point_simd(context, log_size, base_points.x.len());
     let mut curr_pt = base_points.clone();
     let mut half_coset = vec![curr_pt.clone()];
     let half_log_size = log_size - 1;

@@ -90,10 +90,11 @@ pub fn empty_eval_domain_samples(
     }
 }
 
-/// Given the generator of the lifted trace and the component sizes, computes the period
+/// Given the generator of the trace and the component sizes, computes the period
 /// generator for each component.
 /// The period generator of a component is component_size * trace_gen.
 ///
+/// 
 /// Assumptions:
 /// - All component sizes are powers of two.
 pub fn period_generators(
@@ -102,38 +103,25 @@ pub fn period_generators(
     component_sizes_bits: &[Simd],
 ) -> Vec<CirclePoint<Var>> {
     let mut period_gen = CirclePoint {
-        x: M31Wrapper::new_unsafe(context.constant(QM31::from_m31(
-            trace_gen.x,
-            zero(),
-            zero(),
-            zero(),
-        ))),
-        y: M31Wrapper::new_unsafe(context.constant(QM31::from_m31(
-            trace_gen.y,
-            zero(),
-            zero(),
-            zero(),
-        ))),
+        x: M31Wrapper::new_unsafe(context.constant(trace_gen.x.into())),
+        y: M31Wrapper::new_unsafe(context.constant(trace_gen.y.into())),
     };
 
     let bits_0 = &component_sizes_bits[0];
-    let mut res = CirclePoint {
-        x: Simd::scalar_mul(context, bits_0, &period_gen.x),
-        y: Simd::scalar_mul(context, bits_0, &period_gen.y),
-    };
+    let mut selected_x = Simd::scalar_mul(context, bits_0, &period_gen.x);
+    let mut selected_y = Simd::scalar_mul(context, bits_0, &period_gen.y);
 
     for bit in component_sizes_bits.iter().skip(1) {
         period_gen = double_point(context, &period_gen);
 
         let zero_or_x = Simd::scalar_mul(context, bit, &period_gen.x);
         let zero_or_y = Simd::scalar_mul(context, bit, &period_gen.y);
-        res = CirclePoint {
-            x: Simd::add(context, &res.x, &zero_or_x),
-            y: Simd::add(context, &res.y, &zero_or_y),
-        };
+
+        selected_x = Simd::add(context, &selected_x, &zero_or_x);
+        selected_y = Simd::add(context, &selected_y, &zero_or_y);
     }
 
-    zip_eq(Simd::unpack(context, &res.x), Simd::unpack(context, &res.y))
+    zip_eq(Simd::unpack(context, &selected_x), Simd::unpack(context, &selected_y))
         .map(|(x, y)| CirclePoint { x, y })
         .collect()
 }
@@ -144,7 +132,7 @@ pub fn extract_expected_composition_eval(
     context: &mut Context<impl IValue>,
     composition_eval_at_oods: &[Var; N_COMPOSITION_COLUMNS],
     oods_point: CirclePoint<Var>,
-    max_log_degree_bound: usize,
+    log_trace_size: usize,
 ) -> Var {
     let composition_eval_at_oods_left =
         from_partial_evals(context, composition_eval_at_oods[0..4].try_into().unwrap());
@@ -152,9 +140,9 @@ pub fn extract_expected_composition_eval(
         from_partial_evals(context, composition_eval_at_oods[4..8].try_into().unwrap());
 
     // Compute:
-    //  `x = pi^{max_log_degree_bound - 2}(oods_point.x) = pi(pi(...pi(oods_point.x)...))`.
+    //  `x = pi^{log_trace_size - 1}(oods_point.x) = pi(pi(...pi(oods_point.x)...))`.
     let mut x = oods_point.x;
-    for _ in 0..max_log_degree_bound - 2 {
+    for _ in 0..(log_trace_size - 1) {
         x = double_x(context, x);
     }
 
@@ -188,12 +176,15 @@ pub fn collect_oods_responses(
     periodicity_sample_points_per_column: &[CirclePoint<Var>],
     proof: &Proof<Var>,
 ) -> Vec<OodsResponse> {
+
+    // TODO(audit): try to compute periodicity_sample_points_per_column here.
+
     // The negation of the trace generator, as `CirclePoint<Var>`.
     let neg_trace_gen: CirclePoint<Var> = CirclePoint {
         x: context.constant(trace_gen.x.into()),
         y: context.constant((-trace_gen.y).into()),
     };
-    // The point: `oods_point - neg_trace_gen`.
+    // The point: `oods_point - trace_gen`.
     let oods_point_at_prev_row = add_points(context, &oods_point, &neg_trace_gen);
 
     // The order below is the order dictated by the stwo prover.
@@ -325,6 +316,8 @@ pub fn compute_fri_input(
         }
     }
 
+    // TODO(audit): check that the out of of domain point is not in CM.
+
     // The coefficients `a, b, c` for each response.
     let abc = oods_responses
         .iter()
@@ -339,8 +332,10 @@ pub fn compute_fri_input(
         })
         .collect_vec();
 
+    // TODO(audit): Remove this from the protocol.f
     let minus_two_u = context.constant(-qm31_from_u32s(0, 0, 2, 0));
 
+    // TODO(audit): with capacity.
     let mut fri_queries = Vec::new();
     for (query_idx, (_q_x, q_y)) in zip_eq(&query_point_x, &query_point_y).enumerate() {
         // Multiply all the quotient coefficients by `-2u` to compensate for the different

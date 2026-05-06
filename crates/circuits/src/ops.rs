@@ -91,6 +91,8 @@ pub fn mul(context: &mut Context<impl IValue>, a: Var, b: Var) -> Var {
 /// validate its correctness.
 ///
 /// The caller must ensure that `b` is not zero.
+/// 
+/// TODO(audit): check all call sites of this function for zero division.
 pub fn div(context: &mut Context<impl IValue>, a: Var, b: Var) -> Var {
     context.stats.div += 1;
     let out = guess(context, context.get(a) / context.get(b));
@@ -107,6 +109,7 @@ pub fn pointwise_mul<Value: IValue>(context: &mut Context<Value>, a: Var, b: Var
 }
 
 /// Permutes the input values using the given function and returns the new variables.
+/// The function is a hint, the circuit needs to validate that the permutation is correct.
 pub fn permute<Value: IValue>(
     context: &mut Context<Value>,
     inputs: &[Var],
@@ -117,6 +120,8 @@ pub fn permute<Value: IValue>(
         .iter()
         .map(|value| context.new_var(*value))
         .collect();
+
+    assert_eq!(inputs.len(), outputs.len());
     context.circuit.permutation.push(Permutation {
         inputs: inputs.iter().map(|var| var.idx).collect(),
         outputs: outputs.iter().map(|var| var.idx).collect(),

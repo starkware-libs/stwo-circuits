@@ -156,6 +156,7 @@ impl CompositionConstraintAccumulator {
         context: &mut Context<impl IValue>,
         constraint_eval_at_oods: Var,
     ) {
+        // TODO(audit): inline accumulate.
         self.accumulate(context, constraint_eval_at_oods);
     }
 
@@ -177,12 +178,13 @@ impl CompositionConstraintAccumulator {
         // TODO(Gali): Get the terms from the component instead of storing them in the accumulator.
         let n_batches = self.terms.len().div_ceil(2);
         assert_eq!(interaction_columns.len(), n_batches * SECURE_EXTENSION_DEGREE);
-        let (interaction_columns, last_chunk) = interaction_columns.split_last_chunk().unwrap();
+        let (interaction_columns, last_chunk) = interaction_columns.split_last_chunk::<SECURE_EXTENSION_DEGREE>().unwrap();
         let mut prev_col_cumsum = context.zero();
 
         for (i, mut chunk_iter) in
             interaction_columns.iter().chunks(SECURE_EXTENSION_DEGREE).into_iter().enumerate()
         {
+            // TODO(audit): add assert that there is no prev_point.
             let cur_cumsum = from_partial_evals(
                 context,
                 std::array::from_fn(|_| chunk_iter.next().unwrap().at_oods),
@@ -339,10 +341,12 @@ pub fn compute_composition_polynomial<Value: IValue>(
         );
     }
 
+    assert!(evaluation_accumulator.terms.is_empty(), "unconsumed logup terms");
+
     assert!(oods_samples.trace.is_empty(), "unconsumed trace columns");
     assert!(oods_samples.interaction.is_empty(), "unconsumed interaction columns");
 
     let final_evaluation = evaluation_accumulator.finalize();
-    let denom_inverse = denom_inverse(context, pt.x, log_domain_size);
+    let denom_inverse = denom_inverse(context, pt.x, config.log_trace_size());
     eval!(context, (final_evaluation) * (denom_inverse))
 }

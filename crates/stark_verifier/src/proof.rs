@@ -228,6 +228,8 @@ pub struct ProofConfig {
     // Per column in the interaction trace, an indicator of whether it is a cumulative sum column.
     // This is used to determine whether to include a sample point at the previous point in the
     // OODS response.
+
+    // TODO(audit): rename to is_cumulative_sum_column.
     pub cumulative_sum_columns: Vec<bool>,
 
     // Number of components in the AIR.

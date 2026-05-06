@@ -72,7 +72,7 @@ pub fn hash_packed_leaf_qm31s(
     context: &mut Context<impl IValue>,
     values: [Var; PACKED_LEAF_SIZE],
 ) -> HashValue<Var> {
-    blake(context, &values, 64)
+    blake(context, &values, 16 * PACKED_LEAF_SIZE)
 }
 
 /// Computes the hash of an internal node in the Merkle tree.

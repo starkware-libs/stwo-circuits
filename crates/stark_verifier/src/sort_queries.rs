@@ -19,11 +19,12 @@ const COLUMN_IDX_BOUND: u32 = 1 << COLUMN_IDX_BITS;
 use circuits::extract_bits::extract_bits;
 
 /// Generates the column indices for the columns.
-/// The column indices are the values 1..n_columns.
+/// The column indices are the values 0..(n_columns - 1).
 pub fn generate_column_indices<Value: IValue>(
     context: &mut Context<Value>,
     n_columns: usize,
 ) -> Vec<Var> {
+   
     let mut column_idx = context.zero();
     let mut column_indices = vec![column_idx];
     for _ in 1..n_columns {
@@ -37,14 +38,18 @@ pub fn generate_column_indices<Value: IValue>(
 /// the key for the i'th column is (log_size * COLUMN_IDX_BOUND + column_idx) * u.
 /// Those keys guarantee a stable sort of the query values by the column indices and log sizes.
 ///
-/// column_indices hold the values 1..N, where N >= column_log_sizes.len().
+/// column_indices hold the values 0..(N - 1), where N >= column_log_sizes.len().
 /// column_log_sizes hold the log sizes of the columns.
 fn generate_sort_keys<Value: IValue>(
     context: &mut Context<Value>,
     column_indices: &[Var],
     column_log_sizes: &[Var],
 ) -> Vec<Var> {
+
+    assert!(column_log_sizes.len() <= COLUMN_IDX_BOUND.try_into().unwrap());
+
     assert!(column_indices.len() >= column_log_sizes.len());
+
     let u = context.constant(qm31_from_u32s(0, 0, 1, 0));
     let shift = context.constant(COLUMN_IDX_BOUND.into());
     let mut sort_keys = Vec::with_capacity(column_log_sizes.len());
@@ -59,14 +64,14 @@ fn generate_sort_keys<Value: IValue>(
 }
 
 /// Verifies that the sorted keys are indeed sorted.
+/// 
+/// TODO(audit): add test for this function.
 fn verify_sorted_keys<Value: IValue>(context: &mut Context<Value>, sorted_keys: &[Var]) {
     let u_inverse = context.constant(qm31_from_u32s(0, 0, 1, 0).inverse());
 
-    let Some(mut prev) = sorted_keys.first() else {
-        // if there are no sorted keys, return.
-        return;
-    };
+    let mut prev = sorted_keys.first().expect("Expected at least one sorted key");
 
+    // TODO(audit): use windows<2>.
     let diffs = sorted_keys
         .iter()
         .skip(1)
@@ -91,7 +96,6 @@ fn verify_sorted_keys<Value: IValue>(context: &mut Context<Value>, sorted_keys: 
     // => 2**31 - 2**RANGE_CHECK_BITS > 0
     // => RANGE_CHECK_BITS < 30
     const _: () = assert!(RANGE_CHECK_BITS < 30);
-    // Add static assert.
     let _bits = extract_bits(context, &packed, RANGE_CHECK_BITS);
 }
 
@@ -141,6 +145,8 @@ impl QuerySorter {
         let sorted = permute(context, &tagged_values, IValue::sort_by_u_coordinate);
 
         let mut sorted_keys = Vec::with_capacity(sorted.len());
+
+        // TODO(audit): use unzip.
         let sorted_values = sorted
             .iter()
             .map(|var| {

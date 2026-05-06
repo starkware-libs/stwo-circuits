@@ -46,26 +46,27 @@ pub fn logup_use_term(
 }
 
 /// Computes the constraint polynomial for a single logup term.
+/// Computes: diff * denominator - numerator = 0.
 pub fn single_logup_constraint(
     context: &mut Context<impl IValue>,
     term: LogupTerm,
-    shifted_diff: Var,
+    diff: Var,
 ) -> Var {
-    eval!(context, ((shifted_diff) * (term.denominator)) - (term.numerator))
+    eval!(context, ((diff) * (term.denominator)) - (term.numerator))
 }
 
 /// Computes the constraint polynomial for a pair logup term.
+/// 
 pub fn pair_logup_constraint(
     context: &mut Context<impl IValue>,
     term0: LogupTerm,
     term1: LogupTerm,
-    shifted_diff: Var,
+    diff: Var,
 ) -> Var {
     let denominator = eval!(context, (term0.denominator) * (term1.denominator));
     let numerator = eval!(
         context,
         ((term1.numerator) * (term0.denominator)) + ((term0.numerator) * (term1.denominator))
     );
-    let term = LogupTerm::new(numerator, denominator);
-    single_logup_constraint(context, term, shifted_diff)
+    eval!(context, ((diff) * (denominator)) - (numerator))
 }

@@ -210,10 +210,12 @@ pub fn verify<Value: IValue>(
         context,
         &proof.composition_eval_at_oods,
         oods_point,
-        config.log_trace_size() + COMPOSITION_LOG_SPLIT as usize,
+        config.log_trace_size(),
     );
     eq(context, composition_eval, expected_composition_eval);
 
+
+    // TODO(audit): move down, next to usage.
     // The generator of the trace subgroup on the circle.
     let trace_gen = generator_point(config.log_trace_size());
 
@@ -244,6 +246,8 @@ pub fn verify<Value: IValue>(
     let bits = queries.bits.iter().map(|simd| Simd::unpack(context, simd)).collect_vec();
 
     let column_log_sizes_by_trace = column_log_sizes_by_trace(context, config, component_log_sizes);
+
+    // TODO(audit): move down.
     let periodicity_sample_points_per_column =
         column_periodicity_sample_points(context, config, &periodicity_sample_points_per_component);
 
@@ -371,6 +375,7 @@ fn column_log_sizes_by_trace(
         Vec::with_capacity(config.n_interaction_columns),
     ];
 
+    // TODO(audit): zip_eq3.
     for (n_trace_columns_in_component, n_interaction_columns_in_component, log_size) in izip!(
         &config.trace_columns_per_component,
         &config.interaction_columns_per_component,
@@ -396,7 +401,7 @@ fn column_periodicity_sample_points(
 ) -> Vec<CirclePoint<Var>> {
     let mut periodicity_sample_points_per_column = Vec::with_capacity(config.n_interaction_columns);
     for (n_interaction_columns_in_component, sample_point) in
-        izip!(&config.interaction_columns_per_component, sample_points_per_component)
+        zip_eq(&config.interaction_columns_per_component, sample_points_per_component)
     {
         if *n_interaction_columns_in_component == 0 {
             context.mark_as_unused(sample_point.x);

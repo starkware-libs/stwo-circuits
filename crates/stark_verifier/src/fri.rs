@@ -54,6 +54,8 @@ pub fn fri_decommit<Value: IValue>(
         witness: FriWitness(witness_per_query_per_tree),
     } = proof;
 
+    // TODO(audit): accept fri_input as a owned vector.
+
     let mut layer_values = fri_input.to_vec();
     let mut base_point = queries.points.clone();
     let mut packed_bits = queries.bits.as_slice();
@@ -88,7 +90,7 @@ pub fn fri_decommit<Value: IValue>(
 
         // Check merkle decommitment.
         for (query_idx, witness) in witness_per_query.iter().enumerate() {
-            let pack_leaves = log_layer_size >= LOG_PACKED_LEAF_SIZE as usize && step > 1;
+            let pack_leaves = step >= LOG_PACKED_LEAF_SIZE as usize;
             // Compute the leaves.
             let (mut leaves, n_folds): (Vec<HashValue<Var>>, usize) = if pack_leaves {
                 (
@@ -99,6 +101,8 @@ pub fn fri_decommit<Value: IValue>(
                     step - LOG_PACKED_LEAF_SIZE as usize,
                 )
             } else {
+
+                // TODO(audit): don't hash the leaves.
                 (witness.iter().map(|val| hash_leaf_qm31(context, *val)).collect(), step)
             };
 
@@ -224,9 +228,9 @@ fn validate_query_position_in_coset<Value: IValue>(
     layer_values: &[Var],
     bits: &[Vec<Var>],
 ) {
-    for (query_idx, (query_value, coset)) in zip_eq(layer_values, witness_per_query).enumerate() {
+    for (query_idx, (query_value, witness)) in zip_eq(layer_values, witness_per_query).enumerate() {
         let bits: Vec<Var> = bits.iter().map(|b| b[query_idx]).collect();
-        let expected_query_value = select_by_index(context, coset, &bits);
+        let expected_query_value = select_by_index(context, witness, &bits);
         eq(context, *query_value, expected_query_value);
     }
 }
@@ -249,20 +253,22 @@ fn circle_compute_twiddles_from_base_point<Value: IValue>(
 
     // For circle-to-line, the witness domain is a circle domain with half-coset of size
     // `fold_step - 1`.
-    let coset_points = compute_half_coset_points(context, base_point, (fold_step - 1) as u32);
-    if let Some(last_pt) = coset_points.iter().skip(1).last() {
+    let half_coset_points = compute_half_coset_points(context, base_point, fold_step - 1);
+    if let Some(last_pt) = half_coset_points.iter().skip(1).last() {
         Simd::mark_partly_used(context, &last_pt.y);
     }
 
     // The first fold uses y-coordinate twiddles (one per pair of conjugate points).
     let zero = Simd::zero(context, n_queries);
+
+    // TODO(audit): change the order of inversion and negation.
     let y_coords: Vec<Simd> =
-        coset_points.iter().flat_map(|p| [p.y.clone(), Simd::sub(context, &zero, &p.y)]).collect();
+        half_coset_points.iter().flat_map(|p| [p.y.clone(), Simd::sub(context, &zero, &p.y)]).collect();
     let mut twiddles_per_fold: Vec<Vec<Simd>> =
         vec![y_coords.iter().map(|y| y.inv(context)).collect()];
 
     // The remaining folds use x-coordinate twiddles, reusing the same coset points.
-    let x_coords: Vec<Simd> = coset_points.into_iter().map(|p| p.x).collect();
+    let x_coords: Vec<Simd> = half_coset_points.into_iter().map(|p| p.x).collect();
     twiddles_per_fold.extend(compute_x_twiddles(context, x_coords, fold_step - 1));
     twiddles_per_fold
 }
@@ -307,7 +313,7 @@ fn compute_twiddles_from_base_point<Value: IValue>(
 ) -> Vec<Vec<Simd>> {
     assert!(fold_step > 0);
 
-    let coset_points = compute_half_coset_points(context, base_point, fold_step as u32);
+    let coset_points = compute_half_coset_points(context, base_point, fold_step);
     // The y-coordinate of the last point of half_coset is not necessarily used. In the special case
     // where half_coset consists only of the base point, we don't enter this code path (this special
     // case happens if and only if fold step = 1).
@@ -331,11 +337,10 @@ fn circle_translate_to_base_point<Value: IValue>(
     let n_queries = base_point.x.len();
     let zero = Simd::zero(context, n_queries);
     let minus_y_coord = Simd::sub(context, &zero, &base_point.y);
-    let minus_y_point = CirclePoint { x: base_point.x.clone(), y: minus_y_coord };
     // Select between `point` and `point - g_0` (implemented by negating `y`).
     base_point = CirclePoint {
         x: base_point.x.clone(),
-        y: Simd::select(context, &packed_bits[0], &base_point.y, &minus_y_point.y),
+        y: Simd::select(context, &packed_bits[0], &base_point.y, &minus_y_coord),
     };
     translate_to_base_point(context, base_point, &packed_bits[1..])
 }
@@ -364,6 +369,8 @@ fn translate_to_base_point<Value: IValue>(
         // The group inverse of the generator of the subgroup of size 2^(i+1).
         let minus_cur_gen_pt = minus_generator_point_simd(context, i + 1, n_queries);
         // Select between `point` and `point - cur_gen_pt`.
+
+        // TODO(audit): consider adding sub_points_simd.
         let point_if_bit = add_points_simd(context, &base_point, &minus_cur_gen_pt);
         base_point = CirclePoint {
             x: Simd::select(context, bit, &base_point.x, &point_if_bit.x),

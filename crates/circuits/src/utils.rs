@@ -2,7 +2,6 @@ use crate::{
     context::{Context, Var},
     eval,
     ivalue::IValue,
-    ops::sub,
 };
 
 /// Implements a multiplexer.
@@ -18,15 +17,13 @@ pub fn select_by_index<Value: IValue>(
     assert!(values.len().is_power_of_two());
     assert_eq!(values.len(), 1 << index_bits.len());
 
-    let one = context.one();
     let mut layer = values.to_vec();
     let mut curr_layer_len = layer.len();
 
     for &bit in index_bits {
-        let one_minus_bit = sub(context, one, bit);
         for i in (0..curr_layer_len).step_by(2) {
             let (left, right) = (layer[i], layer[i + 1]);
-            layer[i >> 1] = eval!(context, ((one_minus_bit) * (left)) + ((bit) * (right)));
+            layer[i >> 1] = eval!(context, (left) + ((bit) * ((right) - (left))));
         }
         curr_layer_len >>= 1;
     }
