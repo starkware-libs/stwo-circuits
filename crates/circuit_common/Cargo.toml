@@ -10,11 +10,14 @@ prover = ["stwo/parallel", "stwo/prover", "stwo-constraint-framework/parallel", 
 indexmap = { workspace = true, features = ["serde"] }
 itertools.workspace = true
 rand_chacha.workspace = true
+serde.workspace = true
+
 stwo.workspace = true
 stwo-constraint-framework.workspace = true
 stwo_cairo_common.workspace = true
+
 circuits.workspace = true
-serde.workspace = true
+circuits-stark-verifier.workspace = true
 
 [dev-dependencies]
 expect-test.workspace = true

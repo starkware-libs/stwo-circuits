@@ -1,6 +1,6 @@
-pub use crate::component_utils::*;
 pub use crate::components::subroutines::*;
 pub use crate::components::*;
+pub use circuit_common::component_utils::*;
 pub use circuits::context::{Context, Var};
 pub use circuits::eval;
 pub use circuits::ivalue::IValue;

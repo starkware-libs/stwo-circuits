@@ -1295,6 +1295,7 @@ name = "circuit-common"
 version = "0.1.0"
 dependencies = [
  "circuits",
+ "circuits-stark-verifier",
  "expect-test",
  "indexmap",
  "itertools 0.12.1",
@@ -1343,6 +1344,7 @@ dependencies = [
 name = "circuit-verifier"
 version = "0.1.0"
 dependencies = [
+ "circuit-common",
  "circuits",
  "circuits-stark-verifier",
  "expect-test",
