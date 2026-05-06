@@ -15,9 +15,11 @@ use circuits_stark_verifier::proof::{ProofConfig, empty_proof};
 use num_traits::{One, Zero};
 use stwo::core::{fields::qm31::QM31, pcs::PcsConfig};
 
-use super::{
-    Metadata, MetadataTree, SubCircuitConfig, SubCircuitInput, build_multiverifier_circuit,
-};
+use crate::verify::empty_metadata;
+
+use super::{MetadataTree, SubCircuitConfig, SubCircuitInput, build_multiverifier_circuit};
+
+const N_OUTPUTS: usize = 5;
 
 /// Builds the same Fibonacci-shaped [`CircuitConfig`] used by the real test, but
 /// without running the prover. Driving topology checks through the *real* trace
@@ -56,10 +58,7 @@ fn build_novalue_input() -> SubCircuitInput<NoValue> {
         INTERACTION_POW_BITS,
     );
     let proof = empty_proof(&proof_config);
-    let circuit_public_data = CircuitPublicData {
-        // Multiverifier reads slots [2] and [3]; provide four dummies.
-        output_values: vec![QM31::zero(); 4],
-    };
+    let circuit_public_data = CircuitPublicData { output_values: vec![QM31::zero(); N_OUTPUTS] };
     SubCircuitInput { proof, circuit_public_data, config, is_multiverifier: false }
 }
 
@@ -78,9 +77,8 @@ fn test_novalue_multiverifier_circuit() {
 
     // Build a placeholder MetadataTree; for `NoValue` topology only the
     // structure matters, not the actual hashes.
-    let metadata_leaf = Metadata::<QM31>::from_config(&p1.config);
-    let metadata_multi = Metadata::<QM31>::from_config(&p1.config);
-    let metadata_tree = MetadataTree::<NoValue>::commit(metadata_leaf, metadata_multi);
+    let empty_metadata = empty_metadata(N_OUTPUTS);
+    let metadata_tree = MetadataTree::<NoValue>::commit(empty_metadata.clone(), empty_metadata);
 
     let context = build_multiverifier_circuit::<NoValue>(p1, p2, subcircuit_config, metadata_tree);
 

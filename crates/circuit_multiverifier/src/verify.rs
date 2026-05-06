@@ -8,10 +8,10 @@ use circuit_verifier::{
     verify::{CircuitConfig, CircuitPublicData},
 };
 use circuits::{
-    blake::{HashValue, blake, blake_qm31},
+    blake::{HashValue, blake},
     context::Var,
     finalize_constants::finalize_constants,
-    ivalue::IValue,
+    ivalue::{IValue, NoValue},
     ops::{Guess, mul, output},
 };
 use circuits::{context::Context, eval, ops::eq, wrappers::M31Wrapper};
@@ -50,7 +50,7 @@ pub struct SubCircuitInput<Value: IValue> {
 }
 
 // TODO: find better name.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Metadata<T> {
     pub n_blake_gates_pow_two: M31Wrapper<T>,
     pub output_addresses: Vec<M31Wrapper<T>>,
@@ -110,10 +110,10 @@ impl Metadata<Var> {
     }
 }
 
-impl Metadata<QM31> {
-    fn hash_qm31(&self) -> HashValue<QM31> {
+impl<Value: IValue> Metadata<Value> {
+    fn hash_value(&self) -> HashValue<Value> {
         let flattened = self.flatten();
-        blake_qm31(&flattened, 16 * flattened.len())
+        Value::blake(&flattened, 16 * flattened.len())
     }
 }
 
@@ -123,21 +123,15 @@ pub struct MetadataTree<Value: IValue> {
 }
 
 impl<Value: IValue> MetadataTree<Value> {
-    pub fn commit(m1: Metadata<QM31>, m2: Metadata<QM31>) -> Self {
+    pub fn commit(m1: Metadata<Value>, m2: Metadata<Value>) -> Self {
         let mut leaves = vec![];
         for metadata in [m1, m2] {
-            let hashed_metadata = metadata.hash_qm31();
+            let hashed_metadata = metadata.hash_value();
             leaves.push(hashed_metadata);
         }
-        let root = blake_qm31(&leaves.iter().flat_map(|&x| [x.0, x.1]).collect_vec(), 64);
+        let root = Value::blake(&leaves.iter().flat_map(|&x| [x.0, x.1]).collect_vec(), 64);
 
-        MetadataTree {
-            root: HashValue(Value::from_qm31(root.0), Value::from_qm31(root.1)),
-            leaves: leaves
-                .iter()
-                .map(|x| HashValue(Value::from_qm31(x.0), Value::from_qm31(x.1)))
-                .collect(),
-        }
+        MetadataTree { root, leaves }
     }
 
     pub fn decommit(&self, bit: usize) -> AuthPath<Value> {
@@ -145,6 +139,15 @@ impl<Value: IValue> MetadataTree<Value> {
         AuthPath(vec![self.leaves[bit ^ 1]])
     }
 }
+
+pub fn empty_metadata(n_outputs: usize) -> Metadata<NoValue> {
+    Metadata {
+        n_blake_gates_pow_two: M31Wrapper::from(NoValue {}),
+        output_addresses: vec![M31Wrapper::from(NoValue {}); n_outputs],
+        preprocessed_root: HashValue(NoValue {}, NoValue {}),
+    }
+}
+
 /// Contains all the parameters that are fixed for the proofs being validated.
 pub struct SubCircuitConfig {
     pub pcs_config: PcsConfig,
@@ -192,9 +195,13 @@ pub fn build_multiverifier_circuit<Value: IValue>(
         eq(&mut context, bit_squared, bit);
         verify_merkle_path(&mut context, hashed_metadata, &[bit], metadata_root_var, &auth_path);
 
-        // Build statement
-        // Build the output values that need to be yielded.
-        // Constrained outputs.
+        // Build the output values that need to be yielded in the public logup sum.
+        // First build the "unconstrained" outputs by taking them directly from the public data.
+        let (output0, output1) = (
+            Value::from_qm31(circuit_public_data.output_values[0]).guess(&mut context),
+            Value::from_qm31(circuit_public_data.output_values[1]).guess(&mut context),
+        );
+        // Then build the constrained outputs.
         // If the circuit being verified is a multiverifier (bit = 1), we
         // require its first two outputs to equal *our own* metadata_root —
         // that's how `H` is propagated up the recursion. For a leaf circuit
@@ -202,15 +209,11 @@ pub fn build_multiverifier_circuit<Value: IValue>(
         let output2 = mul(&mut context, bit, metadata_root_var.0);
         let output3 = mul(&mut context, bit, metadata_root_var.1);
         let output4 = context.u();
-        // Unconstrained outputs. (i.e. the hash-of-outputs of the circuit being verified now).
-        let (output0, output1) = (
-            Value::from_qm31(circuit_public_data.output_values[0]).guess(&mut context),
-            Value::from_qm31(circuit_public_data.output_values[1]).guess(&mut context),
-        );
-        // Add the unconstrained outputs to the inner outputs, which will need to be hashed later.
+        let output_values = vec![output0, output1, output2, output3, output4];
+        // Add the unconstrained outputs to the inner outputs, which will need to be hashed at the
+        // end.
         inner_outputs.extend([output0.clone(), output1.clone()]);
 
-        let output_values = vec![output0, output1, output2, output3, output4];
         let statement = SubCircuitStatement::<Value> {
             components: all_circuit_components(),
             output_addresses: metadata.output_addresses,
@@ -223,14 +226,14 @@ pub fn build_multiverifier_circuit<Value: IValue>(
         let proof_vars = proof.guess(&mut context);
         verify(&mut context, &proof_vars, &proof_config, &statement);
     }
-    // hash the hash-of-outputs
+    // Hash the unconstrained outputs of the inner proofs and output the hash.
     let HashValue(hash0, hash1) = blake(&mut context, &inner_outputs, 64);
     output(&mut context, hash0);
     output(&mut context, hash1);
-    // output the metadata root.
+    // Output the metadata root guessed at the beginning.
     output(&mut context, metadata_root_var.0);
     output(&mut context, metadata_root_var.1);
-    // finalize consts
+
     finalize_constants(&mut context);
     context.finalize_guessed_vars();
     context

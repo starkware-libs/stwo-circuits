@@ -153,8 +153,8 @@ fn extract_multi_metadata(
     // multi (its preprocessed columns / root). The metadata-tree contents
     // don't affect that, so a tree built from two copies of the leaf
     // `Metadata` is fine.
-    let placeholder_metadata = Metadata::<QM31>::from_config(fib_config);
-    let placeholder_metadata_clone = Metadata::<QM31>::from_config(fib_config);
+    let placeholder_metadata = Metadata::from_config(fib_config);
+    let placeholder_metadata_clone = Metadata::from_config(fib_config);
     let metadata_tree =
         MetadataTree::<NoValue>::commit(placeholder_metadata, placeholder_metadata_clone);
     let mut multi_ctx = build_multiverifier_circuit::<NoValue>(
@@ -252,8 +252,8 @@ fn measure_multi_trace_log_size_at_inner_lifting(inner_lifting_log_size: u32) ->
         n_outputs: fib_config.output_addresses.len(),
         preprocessed_column_ids: fib_config.preprocessed_column_ids.clone(),
     };
-    let placeholder_meta = Metadata::<QM31>::from_config(&fib_config);
-    let placeholder_meta_clone = Metadata::<QM31>::from_config(&fib_config);
+    let placeholder_meta = Metadata::from_config(&fib_config);
+    let placeholder_meta_clone = Metadata::from_config(&fib_config);
     let metadata_tree = MetadataTree::<NoValue>::commit(placeholder_meta, placeholder_meta_clone);
     let mut multi_ctx = build_multiverifier_circuit::<NoValue>(
         make_input(),
