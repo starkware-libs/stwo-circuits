@@ -1368,6 +1368,7 @@ dependencies = [
  "num-traits",
  "rstest",
  "stwo",
+ "stwo-cairo-common",
 ]
 
 [[package]]
