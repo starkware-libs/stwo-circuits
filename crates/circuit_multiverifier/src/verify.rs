@@ -158,7 +158,7 @@ pub struct SubCircuitConfig {
 impl SubCircuitConfig {
     pub fn to_proof_config(&self) -> ProofConfig {
         let all_components = all_circuit_components::<QM31>();
-        ProofConfig::from_components(
+        ProofConfig::new(
             &all_components,
             vec![true; all_components.len()],
             self.preprocessed_column_ids.len(),
@@ -197,7 +197,7 @@ pub fn build_multiverifier_circuit<Value: IValue>(
         eq(&mut context, bit_squared, bit);
         verify_merkle_path(&mut context, hashed_metadata, &[bit], metadata_root_var, &auth_path);
 
-        // Build the output values that need to be yielded in the public logup sum.
+        // Build the values that are supposedly the output wires of the circuit being verified.
         // First build the "unconstrained" outputs by taking them directly from the public data.
         let (output0, output1) = (
             Value::from_qm31(circuit_public_data.output_values[0]).guess(&mut context),

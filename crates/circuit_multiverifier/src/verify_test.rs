@@ -41,7 +41,7 @@ fn synthetic_circuit_config() -> CircuitConfig {
         config: pcs_config,
         output_addresses: preprocessed_circuit.params.output_addresses.clone(),
         n_blake_gates: preprocessed_circuit.params.n_blake_gates,
-        preprocessed_column_ids: preprocessed_circuit.preprocessed_trace.ids(),
+        preprocessed_column_log_sizes: preprocessed_circuit.preprocessed_trace.log_sizes(),
         // Dummy root.
         preprocessed_root: HashValue(QM31::zero(), QM31::zero()),
     }
@@ -50,10 +50,10 @@ fn synthetic_circuit_config() -> CircuitConfig {
 fn build_novalue_input() -> SubCircuitInput<NoValue> {
     let config = synthetic_circuit_config();
     let components = all_circuit_components::<NoValue>();
-    let proof_config = ProofConfig::from_components(
+    let proof_config = ProofConfig::new(
         &components,
         vec![true; components.len()],
-        config.preprocessed_column_ids.len(),
+        config.preprocessed_column_log_sizes.len(),
         &config.config,
         INTERACTION_POW_BITS,
     );
@@ -70,7 +70,7 @@ fn test_novalue_multiverifier_circuit() {
     let subcircuit_config = SubCircuitConfig {
         pcs_config: config.config,
         n_outputs: config.output_addresses.len(),
-        preprocessed_column_ids: config.preprocessed_column_ids.clone(),
+        preprocessed_column_ids: config.preprocessed_column_log_sizes.keys().cloned().collect(),
     };
     let p1 = build_novalue_input();
     let p2 = build_novalue_input();

@@ -30,7 +30,7 @@ pub fn pp_multiverifier_circuit_from_subcircuit(
     target_padding: Option<ComponentSizes>,
 ) -> (PreprocessedCircuit, Context<NoValue>) {
     let all_circuit_components = &all_circuit_components::<NoValue>();
-    let proof_config = ProofConfig::from_components(
+    let proof_config = ProofConfig::new(
         &all_circuit_components,
         vec![true; all_circuit_components.len()],
         pp_subcircuit.preprocessed_trace.ids().len(),
@@ -41,7 +41,7 @@ pub fn pp_multiverifier_circuit_from_subcircuit(
         config: pcs_config,
         output_addresses: pp_subcircuit.params.output_addresses.clone(),
         n_blake_gates: pp_subcircuit.params.n_blake_gates.clone(),
-        preprocessed_column_ids: pp_subcircuit.preprocessed_trace.ids().clone(),
+        preprocessed_column_log_sizes: pp_subcircuit.preprocessed_trace.log_sizes(),
         preprocessed_root: HashValue(QM31::from(0), QM31::from(0)),
     };
     // Use a closure to bypass lack of Clone
@@ -54,7 +54,7 @@ pub fn pp_multiverifier_circuit_from_subcircuit(
     let subcircuit_config = SubCircuitConfig {
         pcs_config: subcircuit_config.config,
         n_outputs: N_OUTPUTS,
-        preprocessed_column_ids: subcircuit_config.preprocessed_column_ids.clone(),
+        preprocessed_column_ids: subcircuit_config.preprocessed_column_log_sizes.keys().cloned().collect(),
     };
     let empty_metadata = empty_metadata(N_OUTPUTS);
     let metadata_tree = MetadataTree::<NoValue>::commit(empty_metadata.clone(), empty_metadata);

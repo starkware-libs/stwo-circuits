@@ -4,6 +4,7 @@ use cairo_air::utils::binary_deserialize_from_file;
 use circuit_cairo_verifier::privacy::{privacy_cairo_verifier_config, privacy_components};
 use circuit_cairo_verifier::utils::get_proof_file_path;
 use circuit_common::finalize::finalize_context as pad_components_to_powers_of_two;
+use circuit_common::order_hash_map::OrderedHashMap;
 use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_prover::prover::{
     BaseColumnPool, SimdBackend, prepare_circuit_proof_for_circuit_verifier,
@@ -172,16 +173,16 @@ fn prove_cairo_and_prepare() -> SubCircuitInput<QM31> {
         &preprocessed,
         &BaseColumnPool::<SimdBackend>::new(),
         PCS_CONFIG,
-    );
+    ).unwrap();
 
     let preprocessed_root: HashValue<QM31> =
-        circuit_proof.stark_proof.as_ref().expect("proving failed").proof.commitments[0].into();
+        circuit_proof.stark_proof.proof.commitments[0].into();
 
-    let preprocessed_column_ids = preprocessed.preprocessed_trace.ids();
-    let proof_config = ProofConfig::from_components(
+    let preprocessed_column_log_sizes = preprocessed.preprocessed_trace.log_sizes();
+    let proof_config = ProofConfig::new(
         &all_circuit_components::<QM31>(),
         vec![true; all_circuit_components::<QM31>().len()],
-        preprocessed_column_ids.len(),
+        preprocessed_column_log_sizes.len(),
         &circuit_proof.pcs_config,
         INTERACTION_POW_BITS,
     );
@@ -190,7 +191,7 @@ fn prove_cairo_and_prepare() -> SubCircuitInput<QM31> {
         config: circuit_proof.pcs_config,
         output_addresses: preprocessed.params.output_addresses.clone(),
         n_blake_gates: preprocessed.params.n_blake_gates,
-        preprocessed_column_ids,
+        preprocessed_column_log_sizes,
         preprocessed_root,
     };
 
@@ -289,78 +290,98 @@ fn generate_multiverifier_metadata_constant() {
 }
 // ---------- end of discovery part
 
-const MULTIVERIFIER_N_BLAKE_GATES: usize = 10938;
+const MULTIVERIFIER_N_BLAKE_GATES: usize = 10946;
 const MULTIVERIFIER_METADATA_N_BLAKE_GATES_POW_TWO: u32 = 16384;
-const MULTIVERIFIER_METADATA_OUTPUT_ADDRESSES: [u32; N_OUTPUTS] = [681800, 681801, 3, 4, 2];
-const MULTIVERIFIER_METADATA_PREPROCESSED_ROOT: [u32; 8] =
-    [1315161826, 1461131136, 1463491267, 1443815472, 1063125447, 1738526006, 632815449, 1636391323];
-const MULTIVERIFIER_N_PREPROCESSED_COLUMNS: usize = 63;
-fn multiverifier_preprocessed_column_ids() -> [PreProcessedColumnId; 63] {
+const MULTIVERIFIER_METADATA_OUTPUT_ADDRESSES: [u32; N_OUTPUTS] = [777062, 777063, 3, 4, 2];
+const MULTIVERIFIER_METADATA_PREPROCESSED_ROOT: [u32; 8] = [
+    2147172461, 427259034, 1773458221, 293019583, 239753370, 1538327556, 747464207, 1848932673,
+];
+const MULTIVERIFIER_N_PREPROCESSED_COLUMNS: usize = 79;
+fn multiverifier_preprocessed_column_log_sizes() -> OrderedHashMap<PreProcessedColumnId, u32> {
     [
-        PreProcessedColumnId { id: "blake_sigma_0".to_string() },
-        PreProcessedColumnId { id: "blake_sigma_1".to_string() },
-        PreProcessedColumnId { id: "blake_sigma_2".to_string() },
-        PreProcessedColumnId { id: "blake_sigma_3".to_string() },
-        PreProcessedColumnId { id: "blake_sigma_4".to_string() },
-        PreProcessedColumnId { id: "blake_sigma_5".to_string() },
-        PreProcessedColumnId { id: "blake_sigma_6".to_string() },
-        PreProcessedColumnId { id: "blake_sigma_7".to_string() },
-        PreProcessedColumnId { id: "blake_sigma_8".to_string() },
-        PreProcessedColumnId { id: "blake_sigma_9".to_string() },
-        PreProcessedColumnId { id: "blake_sigma_10".to_string() },
-        PreProcessedColumnId { id: "blake_sigma_11".to_string() },
-        PreProcessedColumnId { id: "blake_sigma_12".to_string() },
-        PreProcessedColumnId { id: "blake_sigma_13".to_string() },
-        PreProcessedColumnId { id: "blake_sigma_14".to_string() },
-        PreProcessedColumnId { id: "blake_sigma_15".to_string() },
-        PreProcessedColumnId { id: "m31_to_u32_input_addr".to_string() },
-        PreProcessedColumnId { id: "m31_to_u32_output_addr".to_string() },
-        PreProcessedColumnId { id: "m31_to_u32_multiplicity".to_string() },
-        PreProcessedColumnId { id: "seq_4".to_string() },
-        PreProcessedColumnId { id: "bitwise_xor_4_0".to_string() },
-        PreProcessedColumnId { id: "bitwise_xor_4_1".to_string() },
-        PreProcessedColumnId { id: "bitwise_xor_4_2".to_string() },
-        PreProcessedColumnId { id: "t0".to_string() },
-        PreProcessedColumnId { id: "t1".to_string() },
-        PreProcessedColumnId { id: "finalize_flag".to_string() },
-        PreProcessedColumnId { id: "state_before_addr".to_string() },
-        PreProcessedColumnId { id: "state_after_addr".to_string() },
-        PreProcessedColumnId { id: "message0_addr".to_string() },
-        PreProcessedColumnId { id: "message1_addr".to_string() },
-        PreProcessedColumnId { id: "message2_addr".to_string() },
-        PreProcessedColumnId { id: "message3_addr".to_string() },
-        PreProcessedColumnId { id: "compress_enabler".to_string() },
-        PreProcessedColumnId { id: "final_state_addr".to_string() },
-        PreProcessedColumnId { id: "blake_output0_addr".to_string() },
-        PreProcessedColumnId { id: "blake_output1_addr".to_string() },
-        PreProcessedColumnId { id: "blake_output0_mults".to_string() },
-        PreProcessedColumnId { id: "blake_output1_mults".to_string() },
-        PreProcessedColumnId { id: "seq_14".to_string() },
-        PreProcessedColumnId { id: "bitwise_xor_7_0".to_string() },
-        PreProcessedColumnId { id: "bitwise_xor_7_1".to_string() },
-        PreProcessedColumnId { id: "bitwise_xor_7_2".to_string() },
-        PreProcessedColumnId { id: "seq_15".to_string() },
-        PreProcessedColumnId { id: "seq_16".to_string() },
-        PreProcessedColumnId { id: "bitwise_xor_8_0".to_string() },
-        PreProcessedColumnId { id: "bitwise_xor_8_1".to_string() },
-        PreProcessedColumnId { id: "bitwise_xor_8_2".to_string() },
-        PreProcessedColumnId { id: "eq_in0_address".to_string() },
-        PreProcessedColumnId { id: "eq_in1_address".to_string() },
-        PreProcessedColumnId { id: "bitwise_xor_9_0".to_string() },
-        PreProcessedColumnId { id: "bitwise_xor_9_1".to_string() },
-        PreProcessedColumnId { id: "bitwise_xor_9_2".to_string() },
-        PreProcessedColumnId { id: "bitwise_xor_10_0".to_string() },
-        PreProcessedColumnId { id: "bitwise_xor_10_1".to_string() },
-        PreProcessedColumnId { id: "bitwise_xor_10_2".to_string() },
-        PreProcessedColumnId { id: "qm31_ops_add_flag".to_string() },
-        PreProcessedColumnId { id: "qm31_ops_sub_flag".to_string() },
-        PreProcessedColumnId { id: "qm31_ops_mul_flag".to_string() },
-        PreProcessedColumnId { id: "qm31_ops_pointwise_mul_flag".to_string() },
-        PreProcessedColumnId { id: "qm31_ops_in0_address".to_string() },
-        PreProcessedColumnId { id: "qm31_ops_in1_address".to_string() },
-        PreProcessedColumnId { id: "qm31_ops_out_address".to_string() },
-        PreProcessedColumnId { id: "qm31_ops_mults".to_string() },
+        ("blake_sigma_0", 4),
+        ("blake_sigma_1", 4),
+        ("blake_sigma_2", 4),
+        ("blake_sigma_3", 4),
+        ("blake_sigma_4", 4),
+        ("blake_sigma_5", 4),
+        ("blake_sigma_6", 4),
+        ("blake_sigma_7", 4),
+        ("blake_sigma_8", 4),
+        ("blake_sigma_9", 4),
+        ("blake_sigma_10", 4),
+        ("blake_sigma_11", 4),
+        ("blake_sigma_12", 4),
+        ("blake_sigma_13", 4),
+        ("blake_sigma_14", 4),
+        ("blake_sigma_15", 4),
+        ("triple_xor_input_addr_0", 4),
+        ("triple_xor_input_addr_1", 4),
+        ("triple_xor_input_addr_2", 4),
+        ("triple_xor_output_addr", 4),
+        ("triple_xor_multiplicity", 4),
+        ("m31_to_u32_input_addr", 4),
+        ("m31_to_u32_output_addr", 4),
+        ("m31_to_u32_multiplicity", 4),
+        ("blake_g_gate_input_addr_a", 4),
+        ("blake_g_gate_input_addr_b", 4),
+        ("blake_g_gate_input_addr_c", 4),
+        ("blake_g_gate_input_addr_d", 4),
+        ("blake_g_gate_input_addr_f0", 4),
+        ("blake_g_gate_input_addr_f1", 4),
+        ("blake_g_gate_output_addr_a", 4),
+        ("blake_g_gate_output_addr_b", 4),
+        ("blake_g_gate_output_addr_c", 4),
+        ("blake_g_gate_output_addr_d", 4),
+        ("blake_g_gate_multiplicity", 4),
+        ("seq_4", 4),
+        ("bitwise_xor_4_0", 8),
+        ("bitwise_xor_4_1", 8),
+        ("bitwise_xor_4_2", 8),
+        ("t0", 14),
+        ("t1", 14),
+        ("finalize_flag", 14),
+        ("state_before_addr", 14),
+        ("state_after_addr", 14),
+        ("message0_addr", 14),
+        ("message1_addr", 14),
+        ("message2_addr", 14),
+        ("message3_addr", 14),
+        ("compress_enabler", 14),
+        ("final_state_addr", 14),
+        ("blake_output0_addr", 14),
+        ("blake_output1_addr", 14),
+        ("blake_output0_mults", 14),
+        ("blake_output1_mults", 14),
+        ("seq_14", 14),
+        ("bitwise_xor_7_0", 14),
+        ("bitwise_xor_7_1", 14),
+        ("bitwise_xor_7_2", 14),
+        ("seq_15", 15),
+        ("seq_16", 16),
+        ("bitwise_xor_8_0", 16),
+        ("bitwise_xor_8_1", 16),
+        ("bitwise_xor_8_2", 16),
+        ("eq_in0_address", 17),
+        ("eq_in1_address", 17),
+        ("bitwise_xor_9_0", 18),
+        ("bitwise_xor_9_1", 18),
+        ("bitwise_xor_9_2", 18),
+        ("bitwise_xor_10_0", 20),
+        ("bitwise_xor_10_1", 20),
+        ("bitwise_xor_10_2", 20),
+        ("qm31_ops_add_flag", 21),
+        ("qm31_ops_sub_flag", 21),
+        ("qm31_ops_mul_flag", 21),
+        ("qm31_ops_pointwise_mul_flag", 21),
+        ("qm31_ops_in0_address", 21),
+        ("qm31_ops_in1_address", 21),
+        ("qm31_ops_out_address", 21),
+        ("qm31_ops_mults", 21),
     ]
+    .into_iter()
+    .map(|(id, log_size)| (PreProcessedColumnId { id: id.to_string() }, log_size))
+    .collect()
 }
 
 fn make_struct() -> Metadata<QM31> {
@@ -394,7 +415,12 @@ fn test_prove_multiverifier_of_two_cairo_subcircuits() {
     let subcircuit_config = SubCircuitConfig {
         pcs_config: subcircuit_pcs_config,
         n_outputs: subcircuit_input.config.output_addresses.len(),
-        preprocessed_column_ids: subcircuit_input.config.preprocessed_column_ids.clone(),
+        preprocessed_column_ids: subcircuit_input
+            .config
+            .preprocessed_column_log_sizes
+            .keys()
+            .cloned()
+            .collect(),
     };
     let mut multiverifier_context = build_multiverifier_circuit::<QM31>(
         subcircuit_input,
@@ -420,8 +446,8 @@ fn test_prove_multiverifier_of_two_cairo_subcircuits() {
         &pp_multi,
         &BaseColumnPool::<SimdBackend>::new(),
         PCS_CONFIG,
-    );
-    let multi_proof_config = ProofConfig::from_components(
+    ).unwrap();
+    let multi_proof_config = ProofConfig::new(
         &all_circuit_components::<QM31>(),
         vec![true; all_circuit_components::<QM31>().len()],
         MULTIVERIFIER_N_PREPROCESSED_COLUMNS,
@@ -481,12 +507,12 @@ fn test_verify_multiverifier_proof_and_cairo_proof() {
             .map(|&x| x as usize)
             .collect(),
         n_blake_gates: MULTIVERIFIER_N_BLAKE_GATES,
-        preprocessed_column_ids: multiverifier_preprocessed_column_ids().to_vec(),
+        preprocessed_column_log_sizes: multiverifier_preprocessed_column_log_sizes(),
         preprocessed_root: HashValue::from(MULTIVERIFIER_METADATA_PREPROCESSED_ROOT),
     };
 
     // 5. Multi's `ProofConfig` for deserialization.
-    let multi_proof_config = ProofConfig::from_components(
+    let multi_proof_config = ProofConfig::new(
         &all_circuit_components::<QM31>(),
         vec![true; all_circuit_components::<QM31>().len()],
         MULTIVERIFIER_N_PREPROCESSED_COLUMNS,
@@ -517,7 +543,10 @@ fn test_verify_multiverifier_proof_and_cairo_proof() {
     let subcircuit_config = SubCircuitConfig {
         pcs_config: subcircuit_pcs_config,
         n_outputs: N_OUTPUTS,
-        preprocessed_column_ids: multiverifier_preprocessed_column_ids().to_vec(),
+        preprocessed_column_ids: multiverifier_preprocessed_column_log_sizes()
+            .keys()
+            .cloned()
+            .collect(),
     };
     let mut context = build_multiverifier_circuit::<QM31>(
         multi_input,

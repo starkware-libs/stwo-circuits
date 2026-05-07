@@ -47,19 +47,20 @@ fn prove_fibonacci_and_prepare() -> ProofBundle {
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
         pcs_config,
-    );
+    )
+    .unwrap();
 
     // The actual preprocessed root that was committed during proving — read it back
     // from `commitments[0]` rather than relying on a stale hardcoded constant, since
     // the modified Fibonacci context (5 outputs) changes the trace shape.
     let preprocessed_root: HashValue<QM31> =
-        circuit_proof.stark_proof.as_ref().expect("proving failed").proof.commitments[0].into();
+        circuit_proof.stark_proof.proof.commitments[0].into();
 
-    let preprocessed_column_ids = preprocessed_circuit.preprocessed_trace.ids();
-    let proof_config = ProofConfig::from_components(
+    let preprocessed_column_log_sizes = preprocessed_circuit.preprocessed_trace.log_sizes();
+    let proof_config = ProofConfig::new(
         &all_circuit_components::<QM31>(),
         vec![true; all_circuit_components::<QM31>().len()],
-        preprocessed_column_ids.len(),
+        preprocessed_column_log_sizes.len(),
         &circuit_proof.pcs_config,
         INTERACTION_POW_BITS,
     );
@@ -68,7 +69,7 @@ fn prove_fibonacci_and_prepare() -> ProofBundle {
         config: circuit_proof.pcs_config,
         output_addresses: preprocessed_circuit.params.output_addresses.clone(),
         n_blake_gates: preprocessed_circuit.params.n_blake_gates,
-        preprocessed_column_ids,
+        preprocessed_column_log_sizes,
         preprocessed_root,
     };
 
@@ -108,6 +109,10 @@ struct MultiCircuitMetadata {
     n_blake_gates: usize,
     preprocessed_column_ids:
         Vec<stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId>,
+    preprocessed_column_log_sizes: circuit_common::order_hash_map::OrderedHashMap<
+        stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId,
+        u32,
+    >,
     /// `pcs_config` at which the multi proof itself is/was generated. The
     /// `lifting_log_size` here is the auto-lift used by `prove_circuit_assignment`,
     /// i.e. `multi_trace_log_size + log_blowup_factor`.
@@ -125,17 +130,21 @@ fn extract_multi_metadata(
     use stwo::prover::CommitmentTreeProver;
     use stwo::prover::poly::circle::PolyOps;
 
-    let proof_config = ProofConfig::from_components(
+    let proof_config = ProofConfig::new(
         &all_circuit_components::<NoValue>(),
         vec![true; all_circuit_components::<NoValue>().len()],
-        fib_config.preprocessed_column_ids.len(),
+        fib_config.preprocessed_column_log_sizes.len(),
         &inner_pcs_config,
         INTERACTION_POW_BITS,
     );
     let subcircuit_config = SubCircuitConfig {
         pcs_config: inner_pcs_config,
         n_outputs: fib_config.output_addresses.len(),
-        preprocessed_column_ids: fib_config.preprocessed_column_ids.clone(),
+        preprocessed_column_ids: fib_config
+            .preprocessed_column_log_sizes
+            .keys()
+            .cloned()
+            .collect(),
     };
     let make_novalue_input = || SubCircuitInput {
         proof: empty_proof(&proof_config),
@@ -144,7 +153,7 @@ fn extract_multi_metadata(
             config: fib_config.config,
             output_addresses: fib_config.output_addresses.clone(),
             n_blake_gates: fib_config.n_blake_gates,
-            preprocessed_column_ids: fib_config.preprocessed_column_ids.clone(),
+            preprocessed_column_log_sizes: fib_config.preprocessed_column_log_sizes.clone(),
             preprocessed_root: fib_config.preprocessed_root,
         },
         is_multiverifier: false,
@@ -201,6 +210,7 @@ fn extract_multi_metadata(
         output_addresses: pp_multi.params.output_addresses.clone(),
         n_blake_gates: pp_multi.params.n_blake_gates,
         preprocessed_column_ids: pp_multi.preprocessed_trace.ids(),
+        preprocessed_column_log_sizes: pp_multi.preprocessed_trace.log_sizes(),
         outer_pcs_config,
     }
 }
@@ -223,14 +233,14 @@ fn measure_multi_trace_log_size_at_inner_lifting(inner_lifting_log_size: u32) ->
         config: inner_pcs_config,
         output_addresses: pp_fib.params.output_addresses.clone(),
         n_blake_gates: pp_fib.params.n_blake_gates,
-        preprocessed_column_ids: pp_fib.preprocessed_trace.ids(),
+        preprocessed_column_log_sizes: pp_fib.preprocessed_trace.log_sizes(),
         preprocessed_root: HashValue(QM31::zero(), QM31::zero()),
     };
 
-    let proof_config = ProofConfig::from_components(
+    let proof_config = ProofConfig::new(
         &all_circuit_components::<NoValue>(),
         vec![true; all_circuit_components::<NoValue>().len()],
-        fib_config.preprocessed_column_ids.len(),
+        fib_config.preprocessed_column_log_sizes.len(),
         &inner_pcs_config,
         INTERACTION_POW_BITS,
     );
@@ -242,7 +252,7 @@ fn measure_multi_trace_log_size_at_inner_lifting(inner_lifting_log_size: u32) ->
             config: fib_config.config,
             output_addresses: fib_config.output_addresses.clone(),
             n_blake_gates: fib_config.n_blake_gates,
-            preprocessed_column_ids: fib_config.preprocessed_column_ids.clone(),
+            preprocessed_column_log_sizes: fib_config.preprocessed_column_log_sizes.clone(),
             preprocessed_root: fib_config.preprocessed_root,
         },
         is_multiverifier: false,
@@ -250,7 +260,11 @@ fn measure_multi_trace_log_size_at_inner_lifting(inner_lifting_log_size: u32) ->
     let subcircuit_config = SubCircuitConfig {
         pcs_config: inner_pcs_config,
         n_outputs: fib_config.output_addresses.len(),
-        preprocessed_column_ids: fib_config.preprocessed_column_ids.clone(),
+        preprocessed_column_ids: fib_config
+            .preprocessed_column_log_sizes
+            .keys()
+            .cloned()
+            .collect(),
     };
     let placeholder_meta = Metadata::from_config(&fib_config);
     let placeholder_meta_clone = Metadata::from_config(&fib_config);
@@ -298,7 +312,7 @@ fn explore_cairo_vs_multi_preprocessed_column_ids() {
         config: inner_pcs_config,
         output_addresses: pp_fib.params.output_addresses.clone(),
         n_blake_gates: pp_fib.params.n_blake_gates,
-        preprocessed_column_ids: pp_fib.preprocessed_trace.ids(),
+        preprocessed_column_log_sizes: pp_fib.preprocessed_trace.log_sizes(),
         preprocessed_root: HashValue(QM31::zero(), QM31::zero()),
     };
     let multi_meta = extract_multi_metadata(&fib_config, inner_pcs_config);
@@ -344,7 +358,7 @@ fn explore_blake_gate_counts() {
         config: inner_pcs_config,
         output_addresses: pp_fib.params.output_addresses.clone(),
         n_blake_gates: pp_fib.params.n_blake_gates,
-        preprocessed_column_ids: pp_fib.preprocessed_trace.ids(),
+        preprocessed_column_log_sizes: pp_fib.preprocessed_trace.log_sizes(),
         preprocessed_root: HashValue(QM31::zero(), QM31::zero()),
     };
     let multi_meta = extract_multi_metadata(&fib_config, inner_pcs_config);
@@ -422,7 +436,12 @@ fn test_a_prove_multiverifier_of_fibs_and_save() {
     let subcircuit_config = SubCircuitConfig {
         pcs_config,
         n_outputs: p1.config.output_addresses.len(),
-        preprocessed_column_ids: p1.config.preprocessed_column_ids.clone(),
+        preprocessed_column_ids: p1
+            .config
+            .preprocessed_column_log_sizes
+            .keys()
+            .cloned()
+            .collect(),
     };
     let mut multi_ctx =
         build_multiverifier_circuit::<QM31>(p1, p2, subcircuit_config, metadata_tree);
@@ -437,20 +456,19 @@ fn test_a_prove_multiverifier_of_fibs_and_save() {
         &pp_multi,
         &BaseColumnPool::<SimdBackend>::new(),
         PcsConfig::default(),
-    );
+    )
+    .unwrap();
     let resolved_outer_pcs_config = multi_circuit_proof.pcs_config;
     assert_eq!(resolved_outer_pcs_config, multi_meta.outer_pcs_config);
     // Sanity: the preprocessed_root we extracted offline should match the
     // commitments[0] the prover just produced.
     assert_eq!(
         multi_meta.preprocessed_root,
-        Into::<HashValue<QM31>>::into(
-            multi_circuit_proof.stark_proof.as_ref().unwrap().proof.commitments[0],
-        ),
+        Into::<HashValue<QM31>>::into(multi_circuit_proof.stark_proof.proof.commitments[0]),
     );
 
     // 7. Convert to circuit-shaped (Proof<QM31>) form and serialize.
-    let multi_proof_config = ProofConfig::from_components(
+    let multi_proof_config = ProofConfig::new(
         &all_circuit_components::<QM31>(),
         vec![true; all_circuit_components::<QM31>().len()],
         multi_meta.preprocessed_column_ids.len(),
@@ -522,12 +540,12 @@ fn test_b_verify_multi_proof_and_fibonacci_proof_with_multiverifier() {
         config: multi_meta.outer_pcs_config,
         output_addresses: multi_meta.output_addresses.clone(),
         n_blake_gates: multi_meta.n_blake_gates,
-        preprocessed_column_ids: multi_meta.preprocessed_column_ids.clone(),
+        preprocessed_column_log_sizes: multi_meta.preprocessed_column_log_sizes.clone(),
         preprocessed_root: multi_meta.preprocessed_root,
     };
 
     // 5. Multi's `ProofConfig` for deserialization.
-    let multi_proof_config = ProofConfig::from_components(
+    let multi_proof_config = ProofConfig::new(
         &all_circuit_components::<QM31>(),
         vec![true; all_circuit_components::<QM31>().len()],
         multi_meta.preprocessed_column_ids.len(),
@@ -617,7 +635,12 @@ fn test_multiverifier_verifies_two_fibonacci_proofs() {
     let subcircuit_config = SubCircuitConfig {
         pcs_config: bundle1.config.config,
         n_outputs: bundle1.config.output_addresses.len(),
-        preprocessed_column_ids: bundle1.config.preprocessed_column_ids.clone(),
+        preprocessed_column_ids: bundle1
+            .config
+            .preprocessed_column_log_sizes
+            .keys()
+            .cloned()
+            .collect(),
     };
     let p1 = SubCircuitInput {
         proof: bundle1.proof,

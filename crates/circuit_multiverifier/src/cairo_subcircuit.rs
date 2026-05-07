@@ -136,7 +136,7 @@ pub fn verify_cairo_with_component_set(
     })
     .try_collect()?;
 
-    let proof_config = ProofConfig::from_components(
+    let proof_config = ProofConfig::new(
         &components,
         component_enable_bits,
         cairo_proof.preprocessed_trace_variant.to_preprocessed_trace().ids().len(),
