@@ -74,7 +74,7 @@ pub fn verify_cairo_with_component_set(
     let proof_config = ProofConfig::new(
         &components,
         component_enable_bits,
-        cairo_proof.preprocessed_trace_variant.to_preprocessed_trace().log_sizes(),
+        cairo_proof.preprocessed_trace_variant.n_columns(),
         &cairo_proof.extended_stark_proof.proof.config,
         INTERACTION_POW_BITS,
     );
@@ -137,7 +137,7 @@ fn test_verify() {
     let config = ProofConfig::new(
         statement.get_components(),
         enabled_bits,
-        statement.preprocessed_trace_variant.to_preprocessed_trace().log_sizes(),
+        statement.preprocessed_trace_variant.n_columns(),
         &pcs_config,
         INTERACTION_POW_BITS,
     );

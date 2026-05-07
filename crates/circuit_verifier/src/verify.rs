@@ -42,7 +42,7 @@ pub fn build_verification_circuit<Value: IValue>(
     let proof_config = ProofConfig::new(
         statement.get_components(),
         vec![true; statement.get_components().len()],
-        circuit_config.preprocessed_column_log_sizes.clone(),
+        circuit_config.preprocessed_column_log_sizes.len(),
         &circuit_config.config,
         INTERACTION_POW_BITS,
     );

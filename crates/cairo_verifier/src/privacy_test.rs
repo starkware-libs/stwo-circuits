@@ -38,7 +38,7 @@ fn verify_circuit_proof(
     let proof_config = ProofConfig::new(
         &components,
         enabled_bits,
-        preprocessed_circuit.preprocessed_trace.log_sizes(),
+        preprocessed_circuit.preprocessed_trace.n_columns(),
         &circuit_proof.pcs_config,
         circuit_verifier::statement::INTERACTION_POW_BITS,
     );
@@ -262,7 +262,7 @@ fn test_privacy_proof_info() {
     let proof_config = ProofConfig::new(
         statement.get_components(),
         enabled_bits,
-        circuit_config.preprocessed_column_log_sizes.clone(),
+        circuit_config.preprocessed_column_log_sizes.len(),
         &circuit_config.config,
         circuit_verifier::statement::INTERACTION_POW_BITS,
     );

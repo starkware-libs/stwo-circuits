@@ -596,6 +596,10 @@ impl PreProcessedTrace {
         self.columns.keys().cloned().collect()
     }
 
+    pub fn n_columns(&self) -> usize {
+        self.columns.len()
+    }
+
     #[cfg(feature = "prover")]
     pub fn get_trace<B: Backend>(&self) -> Vec<CircleEvaluation<B, BaseField, BitReversedOrder>> {
         let to_evaluation = |vec: &[usize]| {

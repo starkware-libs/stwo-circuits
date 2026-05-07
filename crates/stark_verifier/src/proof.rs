@@ -223,7 +223,7 @@ pub struct ProofConfig {
     pub n_interaction_pow_bits: u32,
 
     // AIR structure.
-    pub preprocessed_column_log_sizes: Vec<u32>,
+    pub n_preprocessed_columns: usize,
     pub n_trace_columns: usize,
     pub n_interaction_columns: usize,
     pub component_shapes: Vec<ComponentShape>,
@@ -245,7 +245,7 @@ impl ProofConfig {
     pub fn new<Value: IValue>(
         components: &IndexMap<&'static str, Box<dyn CircuitEval<Value>>>,
         enabled_bits: Vec<bool>,
-        preprocessed_column_log_sizes: Vec<u32>,
+        n_preprocessed_columns: usize,
         pcs_config: &PcsConfig,
         n_interaction_pow_bits: u32,
     ) -> Self {
@@ -263,10 +263,6 @@ impl ProofConfig {
             component_shapes.len(),
             enabled_bits.iter().filter(|b| **b).count(),
             "Number of enabled bits must match the number of component shapes"
-        );
-        assert!(
-            preprocessed_column_log_sizes.is_sorted(),
-            "The preprocessed column log sizes must be sorted in ascending order"
         );
 
         let n_trace_columns: usize = component_shapes.iter().map(|info| info.trace_columns).sum();
@@ -305,7 +301,7 @@ impl ProofConfig {
         Self {
             n_pow_bits: *pow_bits,
             n_interaction_pow_bits,
-            preprocessed_column_log_sizes,
+            n_preprocessed_columns,
             n_trace_columns,
             n_interaction_columns,
             component_shapes,
@@ -326,11 +322,6 @@ impl ProofConfig {
         self.component_shapes.len()
     }
 
-    /// Returns the number of preprocessed columns.
-    pub fn n_preprocessed_columns(&self) -> usize {
-        self.preprocessed_column_log_sizes.len()
-    }
-
     /// Returns the log2 of the size of the trace.
     pub fn log_trace_size(&self) -> usize {
         self.fri.log_trace_size
@@ -349,7 +340,7 @@ impl ProofConfig {
     /// Returns the number of columns for each of the traces.
     pub fn n_columns_per_trace(&self) -> [usize; N_TRACES] {
         [
-            self.n_preprocessed_columns(),
+            self.n_preprocessed_columns,
             self.n_trace_columns,
             self.n_interaction_columns,
             N_COMPOSITION_COLUMNS,
@@ -427,7 +418,7 @@ impl<T> Proof<T> {
     /// Validates that the size of the members of the struct are consistent with the config.
     pub fn validate_structure(&self, config: &ProofConfig) {
         // Validate preprocessed_columns_at_oods.
-        assert_eq!(self.preprocessed_columns_at_oods.len(), config.n_preprocessed_columns());
+        assert_eq!(self.preprocessed_columns_at_oods.len(), config.n_preprocessed_columns);
 
         // Validate trace_at_oods.
         assert_eq!(self.trace_at_oods.len(), config.n_trace_columns);
@@ -467,7 +458,7 @@ pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
         trace_root: HashValue(NoValue, NoValue),
         interaction_root: HashValue(NoValue, NoValue),
         composition_polynomial_root: HashValue(NoValue, NoValue),
-        preprocessed_columns_at_oods: vec![NoValue; config.n_preprocessed_columns()],
+        preprocessed_columns_at_oods: vec![NoValue; config.n_preprocessed_columns],
         trace_at_oods: vec![NoValue; config.n_trace_columns],
         interaction_at_oods: config
             .cumulative_sum_columns

@@ -358,7 +358,7 @@ fn circuit_verify(
     let proof_config = ProofConfig::new(
         &all_components,
         enabled_bits,
-        preprocessed_circuit.preprocessed_trace.log_sizes(),
+        preprocessed_circuit.preprocessed_trace.n_columns(),
         &circuit_proof.pcs_config,
         INTERACTION_POW_BITS,
     );

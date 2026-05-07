@@ -51,7 +51,7 @@ fn test_fri_decommit_with_jumps(
         enabled_bits: vec![],
         n_pow_bits: 0,
         n_interaction_pow_bits: 0,
-        preprocessed_column_log_sizes: vec![],
+        n_preprocessed_columns: 0,
         n_trace_columns: 0,
         n_interaction_columns: 0,
         component_shapes: vec![],
