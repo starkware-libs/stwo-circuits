@@ -12,11 +12,11 @@ stwo-constraint-framework.workspace = true
 circuits.workspace = true
 circuits-stark-verifier.workspace = true
 circuit-verifier.workspace = true
+circuit-common.workspace = true
 
 [dev-dependencies]
 cairo-air.workspace = true
 circuit-cairo-verifier.workspace = true
-circuit-common.workspace = true
 circuit-prover.workspace = true
 circuit-serialize.workspace = true
 indoc.workspace = true

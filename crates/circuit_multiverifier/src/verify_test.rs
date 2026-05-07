@@ -90,21 +90,16 @@ fn test_novalue_multiverifier_circuit() {
 const FIB_N: usize = 1030;
 
 /// Replica of `build_fibonacci_context` from `circuit_prover::prover_test`,
-/// shaped so that after `finalize_constants` the outputs match the multiverifier's
-/// `[H_lo, H_hi, payload_lo, payload_hi, u]` 5-slot convention:
+/// shaped so that after `finalize_constants` the outputs match the
+/// multiverifier's `[payload_lo, payload_hi, H_lo, H_hi, u]` 5-slot convention:
 ///
-/// 1. `output(dummy_h0 = 0)` — H slot, padding zero.
-/// 2. `output(dummy_h1 = 0)` — H slot, padding zero.
-/// 3. `output(fib_a)`        — payload slot.
-/// 4. `output(fib_b)`        — payload slot.
+/// 1. `output(fib_a)`        — payload slot.
+/// 2. `output(fib_b)`        — payload slot.
+/// 3. `output(dummy_h0 = 0)` — H slot, padding zero.
+/// 4. `output(dummy_h1 = 0)` — H slot, padding zero.
 /// 5. `output(u)`            — appended by `finalize_constants` (last slot).
 pub(super) fn build_fibonacci_context_with_5_outputs<Value: IValue>() -> Context<Value> {
     let mut context = Context::<Value>::default();
-
-    let dummy_h0 = guess(&mut context, Value::from_qm31(QM31::zero()));
-    let dummy_h1 = guess(&mut context, Value::from_qm31(QM31::zero()));
-    output(&mut context, dummy_h0);
-    output(&mut context, dummy_h1);
 
     let (mut a, mut b) = (
         guess(&mut context, Value::from_qm31(QM31::zero())),
@@ -115,6 +110,11 @@ pub(super) fn build_fibonacci_context_with_5_outputs<Value: IValue>() -> Context
     }
     output(&mut context, a);
     output(&mut context, b);
+
+    let dummy_h0 = guess(&mut context, Value::from_qm31(QM31::zero()));
+    let dummy_h1 = guess(&mut context, Value::from_qm31(QM31::zero()));
+    output(&mut context, dummy_h0);
+    output(&mut context, dummy_h1);
 
     // The two proof variants submitted to the multiverifier must
     // the same `preprocessed_column_ids` vector. The order of this vector

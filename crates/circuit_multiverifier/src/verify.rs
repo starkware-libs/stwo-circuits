@@ -168,11 +168,13 @@ impl SubCircuitConfig {
     }
 }
 
+// TODO: circuit config does not belong to input?
 pub fn build_multiverifier_circuit<Value: IValue>(
     i1: SubCircuitInput<Value>,
     i2: SubCircuitInput<Value>,
-    // subcircuit config assumed to be the same for p1 and p2.
+    // Things that are constant
     subcircuit_config: SubCircuitConfig,
+    // Things that are constant but we need to guess.
     metadata_tree: MetadataTree<Value>,
     // TODO: return a result.
 ) -> Context<Value> {

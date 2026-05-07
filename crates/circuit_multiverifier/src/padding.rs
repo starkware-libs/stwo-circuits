@@ -44,18 +44,39 @@ pub fn pad_components_to_target_counts<Value: IValue>(
     // n_blake_updates \in `(target_n_blake_updates / 2, target_n_blake_updates]`
     // Each addition of a blake gate increases n_blake_updates by at least 1.
     let current_blake_gates = context.circuit.blake.len();
-    assert!(target_n_blake_gates > current_blake_gates);
+    let mut current_blake_updates = context.stats.blake_updates;
+    assert!(current_blake_gates <= target_n_blake_gates);
+    assert!(current_blake_updates <= target_n_blake_compress_rows);
+
+    let lower_bound_blake_gates = (target_n_blake_gates / 2) + 1;
+    let lower_bound_blake_updates = (target_n_blake_compress_rows / 2) + 1;
+
+    if lower_bound_blake_gates <= current_blake_gates
+        && lower_bound_blake_updates <= current_blake_updates
+    {
+        return;
+    }
+    if (current_blake_gates == target_n_blake_gates)
+        || (current_blake_updates == target_n_blake_gates)
+    {
+        panic!("Unable to pad blake.")
+    }
     let need_gates = ((target_n_blake_gates / 2) + 1).saturating_sub(current_blake_gates);
     if need_gates > 0 {
         for _ in 0..need_gates - 1 {
             blake(context, &[zero], 1);
+            current_blake_updates += 1;
         }
     }
 
-    let current_blake_compress = context.stats.blake_updates;
-    assert!(target_n_blake_compress_rows > current_blake_compress);
-    let need_compress = target_n_blake_compress_rows - current_blake_compress;
-    blake(context, &vec![zero; need_compress * 4], need_compress * 64);
+    if current_blake_updates > target_n_blake_compress_rows {
+        panic!("Unable to pad blake.")
+    }
+    let need_compress =
+        ((target_n_blake_compress_rows / 2) + 1).saturating_sub(current_blake_updates);
+    if need_compress > 0 {
+        blake(context, &vec![zero; need_compress * 4], need_compress * 64);
+    }
 }
 
 /// Mirrors the `qm31_ops_n_rows` formula used by `pad_qm31_ops` in

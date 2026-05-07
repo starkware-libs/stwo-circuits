@@ -497,21 +497,22 @@ fn test_b_verify_multi_proof_and_fibonacci_proof_with_multiverifier() {
     let metadata_tree = MetadataTree::<QM31>::commit(m_fib, m_multi);
     let metadata_root = metadata_tree.root;
 
-    // 3. Reconstruct the multi's `CircuitPublicData`. The multi's outputs are `[H_lo, H_hi,
-    //    hash_of_payloads_lo, hash_of_payloads_hi, u]`, where `hash_of_payloads = blake([fib_a,
-    //    fib_b, fib_a, fib_b], 64)` over the two Fibonacci payload pairs (Test A's two fibs are
-    //    identical, since Fibonacci is deterministic — so so are this Test's).
-    let fib_payload_lo = fib_bundle.public_data.output_values[2];
-    let fib_payload_hi = fib_bundle.public_data.output_values[3];
+    // 3. Reconstruct the multi's `CircuitPublicData`. The multi's outputs are
+    //    `[hash_of_payloads_lo, hash_of_payloads_hi, H_lo, H_hi, u]`, where
+    //    `hash_of_payloads = blake([fib_a, fib_b, fib_a, fib_b], 64)` over the two
+    //    Fibonacci payload pairs (Test A's two fibs are identical, since Fibonacci is
+    //    deterministic — so so are this Test's).
+    let fib_payload_lo = fib_bundle.public_data.output_values[0];
+    let fib_payload_hi = fib_bundle.public_data.output_values[1];
     let hash_of_payloads =
         blake_qm31(&[fib_payload_lo, fib_payload_hi, fib_payload_lo, fib_payload_hi], 64);
     let u_value = circuits::ivalue::qm31_from_u32s(0, 0, 1, 0);
     let multi_public_data = CircuitPublicData {
         output_values: vec![
-            metadata_root.0,
-            metadata_root.1,
             hash_of_payloads.0,
             hash_of_payloads.1,
+            metadata_root.0,
+            metadata_root.1,
             u_value,
         ],
     };
