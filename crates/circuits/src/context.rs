@@ -11,6 +11,12 @@ use crate::stats::Stats;
 #[path = "context_test.rs"]
 pub mod test;
 
+/// Variable index reserved for the QM31 constant `u = (0, 0, 1, 0)`. `Context::default()` registers
+/// `zero`, `one`, and `u` as the first three constants.
+///
+/// Keep in sync with the registration order in `Context::default`.
+pub const U_ADDRESS: usize = 2;
+
 /// Represents a variable in a [Circuit].
 ///
 /// A [Var] represents a `QM31` value.
@@ -73,7 +79,7 @@ impl<Value: IValue> Context<Value> {
     }
 
     pub fn u(&self) -> Var {
-        Var { idx: 2 }
+        Var { idx: U_ADDRESS }
     }
 
     /// Creates a new variable.
