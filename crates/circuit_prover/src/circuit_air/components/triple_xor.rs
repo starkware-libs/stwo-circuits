@@ -1,6 +1,8 @@
+// This file was created by the AIR team.
+
 use crate::circuit_air::components::prelude::*;
-use crate::circuit_air::components::subroutines::bitwise_xor_num_bits_8::BitwiseXorNumBits8;
-use crate::circuit_air::components::subroutines::split_16_low_part_size_8::Split16LowPartSize8;
+use subroutines::bitwise_xor_num_bits_8::BitwiseXorNumBits8;
+use subroutines::split_16_low_part_size_8::Split16LowPartSize8;
 
 pub const N_TRACE_COLUMNS: usize = 20;
 pub const RELATION_USES_PER_ROW: [RelationUse; 2] = [
@@ -21,22 +23,13 @@ impl Claim {
     pub fn log_sizes(&self) -> TreeVec<Vec<u32>> {
         let trace_log_sizes = vec![self.log_size; N_TRACE_COLUMNS];
         let interaction_log_sizes = vec![self.log_size; SECURE_EXTENSION_DEGREE * 6];
-        TreeVec::new(vec![vec![], trace_log_sizes, interaction_log_sizes])
-    }
-
-    pub fn mix_into(&self, channel: &mut impl Channel) {
-        channel.mix_u64(self.log_size as u64);
+        TreeVec::new(vec![trace_log_sizes, interaction_log_sizes])
     }
 }
 
 #[derive(Copy, Clone, Serialize, Deserialize)]
 pub struct InteractionClaim {
     pub claimed_sum: SecureField,
-}
-impl InteractionClaim {
-    pub fn mix_into(&self, channel: &mut impl Channel) {
-        channel.mix_felts(&[self.claimed_sum]);
-    }
 }
 
 pub type Component = FrameworkComponent<Eval>;
@@ -95,7 +88,7 @@ impl FrameworkEval for Eval {
 
         #[allow(clippy::unused_unit)]
         #[allow(unused_variables)]
-        let [split_16_low_part_size_8_output_tmp_568ba_1_limb_0] = Split16LowPartSize8::evaluate(
+        let [split_16_low_part_size_8_output_tmp_4ec2c_1_limb_0] = Split16LowPartSize8::evaluate(
             [input_a_limb_0_col0.clone()],
             ms_8_bits_col8.clone(),
             &self.common_lookup_elements,
@@ -103,7 +96,7 @@ impl FrameworkEval for Eval {
         );
         #[allow(clippy::unused_unit)]
         #[allow(unused_variables)]
-        let [split_16_low_part_size_8_output_tmp_568ba_3_limb_0] = Split16LowPartSize8::evaluate(
+        let [split_16_low_part_size_8_output_tmp_4ec2c_3_limb_0] = Split16LowPartSize8::evaluate(
             [input_a_limb_1_col1.clone()],
             ms_8_bits_col9.clone(),
             &self.common_lookup_elements,
@@ -111,7 +104,7 @@ impl FrameworkEval for Eval {
         );
         #[allow(clippy::unused_unit)]
         #[allow(unused_variables)]
-        let [split_16_low_part_size_8_output_tmp_568ba_5_limb_0] = Split16LowPartSize8::evaluate(
+        let [split_16_low_part_size_8_output_tmp_4ec2c_5_limb_0] = Split16LowPartSize8::evaluate(
             [input_b_limb_0_col2.clone()],
             ms_8_bits_col10.clone(),
             &self.common_lookup_elements,
@@ -119,7 +112,7 @@ impl FrameworkEval for Eval {
         );
         #[allow(clippy::unused_unit)]
         #[allow(unused_variables)]
-        let [split_16_low_part_size_8_output_tmp_568ba_7_limb_0] = Split16LowPartSize8::evaluate(
+        let [split_16_low_part_size_8_output_tmp_4ec2c_7_limb_0] = Split16LowPartSize8::evaluate(
             [input_b_limb_1_col3.clone()],
             ms_8_bits_col11.clone(),
             &self.common_lookup_elements,
@@ -127,7 +120,7 @@ impl FrameworkEval for Eval {
         );
         #[allow(clippy::unused_unit)]
         #[allow(unused_variables)]
-        let [split_16_low_part_size_8_output_tmp_568ba_9_limb_0] = Split16LowPartSize8::evaluate(
+        let [split_16_low_part_size_8_output_tmp_4ec2c_9_limb_0] = Split16LowPartSize8::evaluate(
             [input_c_limb_0_col4.clone()],
             ms_8_bits_col12.clone(),
             &self.common_lookup_elements,
@@ -135,7 +128,7 @@ impl FrameworkEval for Eval {
         );
         #[allow(clippy::unused_unit)]
         #[allow(unused_variables)]
-        let [split_16_low_part_size_8_output_tmp_568ba_11_limb_0] = Split16LowPartSize8::evaluate(
+        let [split_16_low_part_size_8_output_tmp_4ec2c_11_limb_0] = Split16LowPartSize8::evaluate(
             [input_c_limb_1_col5.clone()],
             ms_8_bits_col13.clone(),
             &self.common_lookup_elements,
@@ -143,7 +136,7 @@ impl FrameworkEval for Eval {
         );
         #[allow(clippy::unused_unit)]
         #[allow(unused_variables)]
-        let [split_16_low_part_size_8_output_tmp_568ba_13_limb_0] = Split16LowPartSize8::evaluate(
+        let [split_16_low_part_size_8_output_tmp_4ec2c_13_limb_0] = Split16LowPartSize8::evaluate(
             [input_a_xor_b_xor_c_limb_0_col6.clone()],
             ms_8_bits_col14.clone(),
             &self.common_lookup_elements,
@@ -151,7 +144,7 @@ impl FrameworkEval for Eval {
         );
         #[allow(clippy::unused_unit)]
         #[allow(unused_variables)]
-        let [split_16_low_part_size_8_output_tmp_568ba_15_limb_0] = Split16LowPartSize8::evaluate(
+        let [split_16_low_part_size_8_output_tmp_4ec2c_15_limb_0] = Split16LowPartSize8::evaluate(
             [input_a_xor_b_xor_c_limb_1_col7.clone()],
             ms_8_bits_col15.clone(),
             &self.common_lookup_elements,
@@ -159,8 +152,8 @@ impl FrameworkEval for Eval {
         );
         BitwiseXorNumBits8::evaluate(
             [
-                split_16_low_part_size_8_output_tmp_568ba_1_limb_0.clone(),
-                split_16_low_part_size_8_output_tmp_568ba_5_limb_0.clone(),
+                split_16_low_part_size_8_output_tmp_4ec2c_1_limb_0.clone(),
+                split_16_low_part_size_8_output_tmp_4ec2c_5_limb_0.clone(),
             ],
             xor_col16.clone(),
             &self.common_lookup_elements,
@@ -174,8 +167,8 @@ impl FrameworkEval for Eval {
         );
         BitwiseXorNumBits8::evaluate(
             [
-                split_16_low_part_size_8_output_tmp_568ba_3_limb_0.clone(),
-                split_16_low_part_size_8_output_tmp_568ba_7_limb_0.clone(),
+                split_16_low_part_size_8_output_tmp_4ec2c_3_limb_0.clone(),
+                split_16_low_part_size_8_output_tmp_4ec2c_7_limb_0.clone(),
             ],
             xor_col18.clone(),
             &self.common_lookup_elements,
@@ -193,8 +186,8 @@ impl FrameworkEval for Eval {
             &[
                 M31_112558620.clone(),
                 xor_col16.clone(),
-                split_16_low_part_size_8_output_tmp_568ba_9_limb_0.clone(),
-                split_16_low_part_size_8_output_tmp_568ba_13_limb_0.clone(),
+                split_16_low_part_size_8_output_tmp_4ec2c_9_limb_0.clone(),
+                split_16_low_part_size_8_output_tmp_4ec2c_13_limb_0.clone(),
             ],
         ));
 
@@ -215,8 +208,8 @@ impl FrameworkEval for Eval {
             &[
                 M31_112558620.clone(),
                 xor_col18.clone(),
-                split_16_low_part_size_8_output_tmp_568ba_11_limb_0.clone(),
-                split_16_low_part_size_8_output_tmp_568ba_15_limb_0.clone(),
+                split_16_low_part_size_8_output_tmp_4ec2c_11_limb_0.clone(),
+                split_16_low_part_size_8_output_tmp_4ec2c_15_limb_0.clone(),
             ],
         ));
 
@@ -277,5 +270,34 @@ impl FrameworkEval for Eval {
 
         eval.finalize_logup_in_pairs();
         eval
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use num_traits::Zero;
+    use rand::rngs::SmallRng;
+    use rand::{Rng, SeedableRng};
+    use stwo::core::fields::qm31::QM31;
+    use stwo_constraint_framework::expr::ExprEvaluator;
+
+    use super::*;
+
+    #[test]
+    fn triple_xor_constraints_regression() {
+        let mut rng = SmallRng::seed_from_u64(0);
+        let eval = Eval {
+            claim: Claim { log_size: 4 },
+            common_lookup_elements: relations::CommonLookupElements::dummy(),
+        };
+        let expr_eval = eval.evaluate(ExprEvaluator::new());
+        let assignment = expr_eval.random_assignment();
+
+        let mut sum = QM31::zero();
+        for c in expr_eval.constraints {
+            sum += c.assign(&assignment) * rng.r#gen::<QM31>();
+        }
+
+        constraints_regression_test_values::TRIPLE_XOR.assert_debug_eq(&sum);
     }
 }
