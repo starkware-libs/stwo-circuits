@@ -1,3 +1,5 @@
+// This file was created by the AIR team.
+
 use crate::circuit_air::components::prelude::*;
 
 pub const N_TRACE_COLUMNS: usize = 4;
@@ -19,7 +21,7 @@ impl Claim {
     pub fn log_sizes(&self) -> TreeVec<Vec<u32>> {
         let trace_log_sizes = vec![self.log_size; N_TRACE_COLUMNS];
         let interaction_log_sizes = vec![self.log_size; SECURE_EXTENSION_DEGREE * 3];
-        TreeVec::new(vec![vec![], trace_log_sizes, interaction_log_sizes])
+        TreeVec::new(vec![trace_log_sizes, interaction_log_sizes])
     }
 }
 
@@ -110,5 +112,34 @@ impl FrameworkEval for Eval {
 
         eval.finalize_logup_in_pairs();
         eval
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use num_traits::Zero;
+    use rand::rngs::SmallRng;
+    use rand::{Rng, SeedableRng};
+    use stwo::core::fields::qm31::QM31;
+    use stwo_constraint_framework::expr::ExprEvaluator;
+
+    use super::*;
+
+    #[test]
+    fn m_31_to_u_32_constraints_regression() {
+        let mut rng = SmallRng::seed_from_u64(0);
+        let eval = Eval {
+            claim: Claim { log_size: 4 },
+            common_lookup_elements: relations::CommonLookupElements::dummy(),
+        };
+        let expr_eval = eval.evaluate(ExprEvaluator::new());
+        let assignment = expr_eval.random_assignment();
+
+        let mut sum = QM31::zero();
+        for c in expr_eval.constraints {
+            sum += c.assign(&assignment) * rng.r#gen::<QM31>();
+        }
+
+        constraints_regression_test_values::M_31_TO_U_32.assert_debug_eq(&sum);
     }
 }
