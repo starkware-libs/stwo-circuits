@@ -130,9 +130,32 @@ fn test_compare_cairo_and_multiverifier_stats() {
 
 const MULTI_OF_CAIRO_PROOF_PATH: &str = "/tmp/circuit_multiverifier_test_multi_of_cairo_proof.bin";
 
+/// Bundles the per-proof outputs of `prove_cairo_and_prepare` so callers can
+/// build a `SubCircuitInput` *and* read `config` / `public_data` separately
+/// (e.g. to derive `pcs_config`, output addresses, or payload values).
+struct CairoBundle {
+    proof: circuits_stark_verifier::proof::Proof<QM31>,
+    public_data: CircuitPublicData,
+    config: CircuitConfig,
+}
+
+impl CairoBundle {
+    fn into_subcircuit_input(self) -> SubCircuitInput<QM31> {
+        SubCircuitInput {
+            proof: self.proof,
+            metadata: Metadata::from_config(&self.config),
+            unconstrained_outputs: [
+                self.public_data.output_values[0],
+                self.public_data.output_values[1],
+            ],
+            is_multiverifier: false,
+        }
+    }
+}
+
 /// Builds & proves the Cairo verifier circuit (post-processed to expose 5
 /// outputs in the multiverifier's convention) on the privacy proof fixture.
-fn prove_cairo_and_prepare() -> SubCircuitInput<QM31> {
+fn prove_cairo_and_prepare() -> CairoBundle {
     // Load the cached Cairo proof.
     let proof_path = get_proof_file_path("privacy");
     let proof_file = File::open(proof_path).expect("test_data/privacy/proof.bin must exist");
@@ -198,7 +221,7 @@ fn prove_cairo_and_prepare() -> SubCircuitInput<QM31> {
     let (proof, public_data) =
         prepare_circuit_proof_for_circuit_verifier(circuit_proof, &proof_config);
 
-    SubCircuitInput { proof, circuit_public_data: public_data, config, is_multiverifier: false }
+    CairoBundle { proof, public_data, config }
 }
 
 /// Structural metadata of the *padded* multiverifier circuit (the one whose
@@ -402,20 +425,20 @@ fn make_struct() -> Metadata<QM31> {
 /// and write the resulting `Proof<QM31>` bytes to disk for Test B to consume.
 #[test]
 fn test_prove_multiverifier_of_two_cairo_subcircuits() {
-    let subcircuit_input = prove_cairo_and_prepare();
-    assert_eq!(subcircuit_input.config.output_addresses.len(), N_OUTPUTS);
-    let subcircuit_pcs_config = subcircuit_input.config.config;
+    let bundle = prove_cairo_and_prepare();
+    assert_eq!(bundle.config.output_addresses.len(), N_OUTPUTS);
+    let subcircuit_pcs_config = bundle.config.config;
 
     // TODO: these metadata configs could be consts.
-    let metadata_cairo = Metadata::<QM31>::from_config(&subcircuit_input.config);
+    let metadata_cairo = Metadata::<QM31>::from_config(&bundle.config);
     let multiverifier_metadata = make_struct();
     let metadata_tree = MetadataTree::<QM31>::commit(metadata_cairo, multiverifier_metadata);
 
     // TODO: should be const.
     let subcircuit_config = SubCircuitConfig {
         pcs_config: subcircuit_pcs_config,
-        n_outputs: subcircuit_input.config.output_addresses.len(),
-        preprocessed_column_ids: subcircuit_input
+        n_outputs: bundle.config.output_addresses.len(),
+        preprocessed_column_ids: bundle
             .config
             .preprocessed_column_log_sizes
             .keys()
@@ -423,9 +446,9 @@ fn test_prove_multiverifier_of_two_cairo_subcircuits() {
             .collect(),
     };
     let mut multiverifier_context = build_multiverifier_circuit::<QM31>(
-        subcircuit_input,
-        // TODO: change to subcircuit_input.clone() when Clone becomes available.
-        prove_cairo_and_prepare(),
+        bundle.into_subcircuit_input(),
+        // TODO: change to bundle.clone().into_subcircuit_input() when Clone becomes available.
+        prove_cairo_and_prepare().into_subcircuit_input(),
         subcircuit_config,
         metadata_tree,
     );
@@ -471,11 +494,11 @@ fn test_verify_multiverifier_proof_and_cairo_proof() {
     use circuit_serialize::deserialize::deserialize_proof_with_config;
 
     // 1. Fresh Cairo proof (also gives us the cairo_config for everything else).
-    let subcircuit_input = prove_cairo_and_prepare();
-    let subcircuit_pcs_config = subcircuit_input.config.config;
+    let bundle = prove_cairo_and_prepare();
+    let subcircuit_pcs_config = bundle.config.config;
 
     // TODO: these metadata configs could be consts.
-    let metadata_cairo = Metadata::<QM31>::from_config(&subcircuit_input.config);
+    let metadata_cairo = Metadata::<QM31>::from_config(&bundle.config);
     let multiverifier_metadata = make_struct();
     let metadata_tree = MetadataTree::<QM31>::commit(metadata_cairo, multiverifier_metadata);
     let metadata_root = metadata_tree.root;
@@ -484,8 +507,8 @@ fn test_verify_multiverifier_proof_and_cairo_proof() {
     //    hash_of_payloads_lo, hash_of_payloads_hi, u]`, where `hash_of_payloads =
     //    blake([cairo_payload, cairo_payload], 64)` over the two identical Cairo payload pairs
     //    (Test A's two Cairo proofs are deterministic and identical, so so are this Test's).
-    let cairo_payload_lo = subcircuit_input.circuit_public_data.output_values[0];
-    let cairo_payload_hi = subcircuit_input.circuit_public_data.output_values[1];
+    let cairo_payload_lo = bundle.public_data.output_values[0];
+    let cairo_payload_hi = bundle.public_data.output_values[1];
     let hash_of_payloads =
         blake_qm31(&[cairo_payload_lo, cairo_payload_hi, cairo_payload_lo, cairo_payload_hi], 64);
     let u_value = qm31_from_u32s(0, 0, 1, 0);
@@ -530,16 +553,14 @@ fn test_verify_multiverifier_proof_and_cairo_proof() {
     // Build inputs for multiverifier.
     let multi_input = SubCircuitInput {
         proof: multi_proof,
-        circuit_public_data: multi_public_data,
-        config: multi_config,
+        metadata: Metadata::from_config(&multi_config),
+        unconstrained_outputs: [
+            multi_public_data.output_values[0],
+            multi_public_data.output_values[1],
+        ],
         is_multiverifier: true,
     };
-    let cairo_input = SubCircuitInput {
-        proof: subcircuit_input.proof,
-        circuit_public_data: subcircuit_input.circuit_public_data,
-        config: subcircuit_input.config,
-        is_multiverifier: false,
-    };
+    let cairo_input = bundle.into_subcircuit_input();
     let subcircuit_config = SubCircuitConfig {
         pcs_config: subcircuit_pcs_config,
         n_outputs: N_OUTPUTS,

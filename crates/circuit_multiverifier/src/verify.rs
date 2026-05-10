@@ -5,7 +5,7 @@
 
 use circuit_verifier::{
     statement::{INTERACTION_POW_BITS, all_circuit_components},
-    verify::{CircuitConfig, CircuitPublicData},
+    verify::CircuitConfig,
 };
 use circuits::{
     blake::{HashValue, blake},
@@ -38,11 +38,21 @@ mod multi_fibonacci_test;
 #[path = "multi_cairo_test.rs"]
 mod multi_cairo_test;
 
-// TODO: maybe remove this struct?
+/// All per-subproof data the multiverifier consumes.
+///
+/// Compared to the project-wide `CircuitConfig` / `CircuitPublicData`, this
+/// only carries what `build_multiverifier_circuit` actually reads:
+/// * `metadata` — the leaf-of-`metadata_tree` triple
+///   (`n_blake_gates_pow_two`, `output_addresses`, `preprocessed_root`).
+/// * `unconstrained_outputs` — the two `output_values[0..2]` slots that are
+///   guessed straight from the public data (the other three slots are
+///   constrained or padding zeros, so they aren't inputs).
+///
+/// Use `Metadata::from_config` if you have a `CircuitConfig` lying around.
 pub struct SubCircuitInput<Value: IValue> {
     pub proof: Proof<Value>,
-    pub circuit_public_data: CircuitPublicData,
-    pub config: CircuitConfig,
+    pub metadata: Metadata<Value>,
+    pub unconstrained_outputs: [QM31; 2],
     /// `true` if this proof is a proof of the multiverifier circuit itself
     /// (variant B in the recursion); `false` for a leaf circuit such as the
     /// Fibonacci/`circuit_verifier` proof (variant A).
@@ -168,13 +178,13 @@ impl SubCircuitConfig {
     }
 }
 
-// TODO: circuit config does not belong to input?
 pub fn build_multiverifier_circuit<Value: IValue>(
     i1: SubCircuitInput<Value>,
     i2: SubCircuitInput<Value>,
     // Things that are constant
     subcircuit_config: SubCircuitConfig,
-    // Things that are constant but we need to guess.
+    // Things that are constant but we need to guess. The root is the trusted
+    // anchor of the recursion, precomputed and externally validated.
     metadata_tree: MetadataTree<Value>,
     // TODO: return a result.
 ) -> Context<Value> {
@@ -186,10 +196,21 @@ pub fn build_multiverifier_circuit<Value: IValue>(
     let mut inner_outputs = vec![];
     // Verify each subcircuit proof.
     for subcircuit_input in [i1, i2] {
-        let SubCircuitInput { proof, circuit_public_data, config, is_multiverifier } =
+        let SubCircuitInput { proof, metadata, unconstrained_outputs, is_multiverifier } =
             subcircuit_input;
+        // The leaf at `is_multiverifier` of the precomputed tree must commit
+        // to exactly the metadata we're about to feed into this subproof's
+        // verification. A mismatch is a caller-side bug — without this check
+        // it would manifest as a confusing failure deep inside the in-circuit
+        // Merkle path verification.
+        debug_assert_eq!(
+            metadata.hash_value(),
+            metadata_tree.leaves[is_multiverifier as usize],
+            "SubCircuitInput.metadata does not match metadata_tree leaf at bit={}",
+            is_multiverifier as usize,
+        );
         // Verify the metadata
-        let metadata = Metadata::from_config(&config).guess(&mut context);
+        let metadata = metadata.guess(&mut context);
         let hashed_metadata = metadata.hash(&mut context);
         let auth_path = metadata_tree.decommit(is_multiverifier as usize).guess(&mut context);
         let bit = Value::from_qm31(QM31::from(is_multiverifier as usize)).guess(&mut context);
@@ -200,8 +221,8 @@ pub fn build_multiverifier_circuit<Value: IValue>(
         // Build the values that are supposedly the output wires of the circuit being verified.
         // First build the "unconstrained" outputs by taking them directly from the public data.
         let (output0, output1) = (
-            Value::from_qm31(circuit_public_data.output_values[0]).guess(&mut context),
-            Value::from_qm31(circuit_public_data.output_values[1]).guess(&mut context),
+            Value::from_qm31(unconstrained_outputs[0]).guess(&mut context),
+            Value::from_qm31(unconstrained_outputs[1]).guess(&mut context),
         );
         // Then build the constrained outputs.
         // If the circuit being verified is a multiverifier (bit = 1), we

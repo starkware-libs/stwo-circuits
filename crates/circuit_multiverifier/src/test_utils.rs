@@ -1,7 +1,7 @@
 use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_verifier::{
     statement::{INTERACTION_POW_BITS, all_circuit_components},
-    verify::{CircuitConfig, CircuitPublicData},
+    verify::CircuitConfig,
 };
 use circuits::{
     blake::HashValue,
@@ -9,13 +9,12 @@ use circuits::{
     ivalue::{IValue, NoValue},
 };
 use circuits_stark_verifier::proof::{ProofConfig, empty_proof};
-use num_traits::Zero;
 use stwo::core::{fields::qm31::QM31, pcs::PcsConfig};
 
 use crate::{
     padding::{pad_components_to_target_counts, qm31_ops_n_rows},
     verify::{
-        MetadataTree, SubCircuitConfig, SubCircuitInput, build_multiverifier_circuit,
+        Metadata, MetadataTree, SubCircuitConfig, SubCircuitInput, build_multiverifier_circuit,
         empty_metadata,
     },
 };
@@ -47,8 +46,8 @@ pub fn pp_multiverifier_circuit_from_subcircuit(
     // Use a closure to bypass lack of Clone
     let make_input = || SubCircuitInput {
         proof: empty_proof(&proof_config),
-        circuit_public_data: CircuitPublicData { output_values: vec![QM31::zero(); N_OUTPUTS] },
-        config: subcircuit_config.clone(),
+        metadata: Metadata::from_config(&subcircuit_config),
+        unconstrained_outputs: [QM31::from(0); 2],
         is_multiverifier: false,
     };
     let subcircuit_config = SubCircuitConfig {

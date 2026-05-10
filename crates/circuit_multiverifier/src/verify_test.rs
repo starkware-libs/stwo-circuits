@@ -1,7 +1,7 @@
 use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_verifier::{
     statement::{INTERACTION_POW_BITS, all_circuit_components},
-    verify::{CircuitConfig, CircuitPublicData},
+    verify::CircuitConfig,
 };
 use circuits::{
     blake::{HashValue, blake},
@@ -15,7 +15,7 @@ use circuits_stark_verifier::proof::{ProofConfig, empty_proof};
 use num_traits::{One, Zero};
 use stwo::core::{fields::qm31::QM31, pcs::PcsConfig};
 
-use crate::verify::empty_metadata;
+use crate::verify::{Metadata, empty_metadata};
 
 use super::{MetadataTree, SubCircuitConfig, SubCircuitInput, build_multiverifier_circuit};
 
@@ -58,8 +58,12 @@ fn build_novalue_input() -> SubCircuitInput<NoValue> {
         INTERACTION_POW_BITS,
     );
     let proof = empty_proof(&proof_config);
-    let circuit_public_data = CircuitPublicData { output_values: vec![QM31::zero(); N_OUTPUTS] };
-    SubCircuitInput { proof, circuit_public_data, config, is_multiverifier: false }
+    SubCircuitInput {
+        proof,
+        metadata: Metadata::from_config(&config),
+        unconstrained_outputs: [QM31::zero(); 2],
+        is_multiverifier: false,
+    }
 }
 
 /// Topology smoke test: build the multiverifier circuit with `NoValue` and verify
