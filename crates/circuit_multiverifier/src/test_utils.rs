@@ -82,10 +82,6 @@ pub fn pp_multiverifier_circuit_from_subcircuit(
         );
     }
     let pp = PreprocessedCircuit::preprocess_circuit(&mut multiverifier_context);
-    println!(
-        "Ingested two proofs of trace_log_size = {} and fri_config = {:?} --> Multiverifier has trace_log_size = {}",
-        pp_subcircuit.params.trace_log_size, pcs_config.fri_config, pp.params.trace_log_size
-    );
     (pp, multiverifier_context)
 }
 
@@ -116,4 +112,31 @@ impl std::fmt::Display for ComponentSizes {
             self.eq, self.qm31_ops, self.n_blake_gates, self.n_blake_updates
         ))
     }
+}
+
+pub fn get_preprocessed_root(pp: &PreprocessedCircuit, log_blowup_factor: u32) -> HashValue<QM31> {
+    use stwo::core::poly::circle::CanonicCoset;
+    use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
+    use stwo::prover::CommitmentTreeProver;
+    use stwo::prover::poly::circle::PolyOps;
+    use stwo::prover::mempool::BaseColumnPool;
+    use stwo::prover::backend::simd::SimdBackend;
+
+    assert!(log_blowup_factor > 0);
+    let lifting_log_size = pp.params.trace_log_size + log_blowup_factor;
+    // Compute the multi's preprocessed_root via the commitment tree.
+    let twiddles = SimdBackend::precompute_twiddles(
+        CanonicCoset::new(lifting_log_size).circle_domain().half_coset,
+    );
+    let preprocessed_trace = pp.preprocessed_trace.get_trace::<SimdBackend>();
+    let preprocessed_trace_polys = SimdBackend::interpolate_columns(preprocessed_trace, &twiddles);
+    let preprocessed_tree = CommitmentTreeProver::<SimdBackend, Blake2sM31MerkleChannel>::new(
+        preprocessed_trace_polys,
+        log_blowup_factor,
+        &twiddles,
+        true,
+        Some(lifting_log_size),
+        &BaseColumnPool::<SimdBackend>::new(),
+    );
+    preprocessed_tree.commitment.root().into()
 }
