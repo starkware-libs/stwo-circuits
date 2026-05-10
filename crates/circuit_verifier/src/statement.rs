@@ -8,7 +8,7 @@ use crate::components::{
 use crate::relations::{BLAKE_STATE_RELATION_ID, GATE_RELATION_ID};
 use circuit_common::order_hash_map::OrderedHashMap;
 use circuits::blake::HashValue;
-use circuits::context::{Context, Var};
+use circuits::context::{Context, U_ADDRESS, Var};
 use circuits::eval;
 use circuits::ivalue::IValue;
 use circuits::ops::{Guess, div};
@@ -80,14 +80,24 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
         interaction_elements: [Var; 2],
     ) -> Var {
         let mut sum = context.zero();
+        let zero = context.zero();
+        let one = context.one();
+        // Unwrapping is fine because a valid CircuitStatement should always have the wire 2 in its
+        // output addresses. These output addresses are added as constants to the circuit by
+        // the constructor `Self::new`.
+        let two = *context.constants().get(&QM31::from(U_ADDRESS)).unwrap();
 
         // Output gates public logup sum contribution.
         let gate_relation_id = context.constant(GATE_RELATION_ID.into());
         for (output_address, output_value) in zip_eq(&self.output_addresses, &self.output_values) {
             let [output_value_0, output_value_1, output_value_2, output_value_3] =
-                Simd::unpack(context, &Simd::from_packed(vec![*output_value], 4))
-                    .try_into()
-                    .unwrap();
+                if output_address.get().idx == two.idx {
+                    [zero, zero, one, zero]
+                } else {
+                    Simd::unpack(context, &Simd::from_packed(vec![*output_value], 4))
+                        .try_into()
+                        .unwrap()
+                };
             let term = logup_use_term(
                 context,
                 &[
