@@ -408,12 +408,12 @@ pub fn accumulate_constraints<Value: IValue>(
         acc,
     );
 
-    let partial_ec_mul_window_bits_9_chain_tmp_tmp_344c0_8 = eval!(context, (seq) * (2));
+    let partial_ec_mul_window_bits_9_chain_tmp_tmp_e17b2_8 = eval!(context, (seq) * (2));
 
     // Yield PartialEcMulWindowBits9.
     let tuple_5 = &[
         eval!(context, 2038149019),
-        eval!(context, partial_ec_mul_window_bits_9_chain_tmp_tmp_344c0_8),
+        eval!(context, partial_ec_mul_window_bits_9_chain_tmp_tmp_e17b2_8),
         eval!(context, 0),
         eval!(context, value_limb_0_col3),
         eval!(context, value_limb_1_col4),
@@ -506,7 +506,7 @@ pub fn accumulate_constraints<Value: IValue>(
     // Use PartialEcMulWindowBits9.
     let tuple_6 = &[
         eval!(context, 2038149019),
-        eval!(context, partial_ec_mul_window_bits_9_chain_tmp_tmp_344c0_8),
+        eval!(context, partial_ec_mul_window_bits_9_chain_tmp_tmp_e17b2_8),
         eval!(context, 28),
         eval!(context, partial_ec_mul_window_bits_9_output_limb_0_col65),
         eval!(context, partial_ec_mul_window_bits_9_output_limb_1_col66),
@@ -596,13 +596,13 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_6 = eval!(context, 1);
     acc.add_to_relation(context, numerator_6, tuple_6);
 
-    let partial_ec_mul_window_bits_9_chain_id_tmp_344c0_37 =
-        eval!(context, (partial_ec_mul_window_bits_9_chain_tmp_tmp_344c0_8) + (1));
+    let partial_ec_mul_window_bits_9_chain_id_tmp_e17b2_37 =
+        eval!(context, (partial_ec_mul_window_bits_9_chain_tmp_tmp_e17b2_8) + (1));
 
     // Yield PartialEcMulWindowBits9.
     let tuple_8 = &[
         eval!(context, 2038149019),
-        eval!(context, partial_ec_mul_window_bits_9_chain_id_tmp_344c0_37),
+        eval!(context, partial_ec_mul_window_bits_9_chain_id_tmp_e17b2_37),
         eval!(context, 28),
         eval!(context, value_limb_0_col31),
         eval!(context, value_limb_1_col32),
@@ -695,7 +695,7 @@ pub fn accumulate_constraints<Value: IValue>(
     // Use PartialEcMulWindowBits9.
     let tuple_9 = &[
         eval!(context, 2038149019),
-        eval!(context, partial_ec_mul_window_bits_9_chain_id_tmp_344c0_37),
+        eval!(context, partial_ec_mul_window_bits_9_chain_id_tmp_e17b2_37),
         eval!(context, 56),
         eval!(context, partial_ec_mul_window_bits_9_output_limb_0_col149),
         eval!(context, partial_ec_mul_window_bits_9_output_limb_1_col150),

@@ -13,7 +13,7 @@ pub fn accumulate_constraints<Value: IValue>(
     acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
     let [
-        decode_instruction_4b8cf_input_pc,
+        decode_instruction_c67a5_input_pc,
         offset0_col0,
         offset1_col1,
         offset2_col2,
@@ -21,7 +21,8 @@ pub fn accumulate_constraints<Value: IValue>(
         op0_base_fp_col4,
         op1_imm_col5,
         op1_base_fp_col6,
-        ap_update_add_1_col7,
+        res_add_col7,
+        ap_update_add_1_col8,
     ] = input.try_into().unwrap();
 
     //Flag dst_base_fp is a bit.
@@ -40,40 +41,47 @@ pub fn accumulate_constraints<Value: IValue>(
     let constraint_3_value = eval!(context, (op1_base_fp_col6) * ((1) - (op1_base_fp_col6)));
     acc.add_constraint(context, constraint_3_value);
 
-    let op1_base_ap_tmp_4b8cf_9 = eval!(context, ((1) - (op1_imm_col5)) - (op1_base_fp_col6));
+    let op1_base_ap_tmp_c67a5_9 = eval!(context, ((1) - (op1_imm_col5)) - (op1_base_fp_col6));
 
     //Flag op1_base_ap is a bit.
     let constraint_5_value =
-        eval!(context, (op1_base_ap_tmp_4b8cf_9) * ((1) - (op1_base_ap_tmp_4b8cf_9)));
+        eval!(context, (op1_base_ap_tmp_c67a5_9) * ((1) - (op1_base_ap_tmp_c67a5_9)));
     acc.add_constraint(context, constraint_5_value);
 
-    //Flag ap_update_add_1 is a bit.
-    let constraint_6_value =
-        eval!(context, (ap_update_add_1_col7) * ((1) - (ap_update_add_1_col7)));
+    //Flag res_add is a bit.
+    let constraint_6_value = eval!(context, (res_add_col7) * ((1) - (res_add_col7)));
     acc.add_constraint(context, constraint_6_value);
 
+    //Flag ap_update_add_1 is a bit.
+    let constraint_7_value =
+        eval!(context, (ap_update_add_1_col8) * ((1) - (ap_update_add_1_col8)));
+    acc.add_constraint(context, constraint_7_value);
+
     // Use VerifyInstruction.
-    let tuple_7 = &[
+    let tuple_8 = &[
         eval!(context, 1719106205),
-        eval!(context, decode_instruction_4b8cf_input_pc),
+        eval!(context, decode_instruction_c67a5_input_pc),
         eval!(context, offset0_col0),
         eval!(context, offset1_col1),
         eval!(context, offset2_col2),
         eval!(
             context,
-            (((((dst_base_fp_col3) * (8)) + ((op0_base_fp_col4) * (16)))
+            ((((((dst_base_fp_col3) * (8)) + ((op0_base_fp_col4) * (16)))
                 + ((op1_imm_col5) * (32)))
                 + ((op1_base_fp_col6) * (64)))
-                + ((op1_base_ap_tmp_4b8cf_9) * (128))
+                + ((op1_base_ap_tmp_c67a5_9) * (128)))
+                + ((res_add_col7) * (256))
         ),
-        eval!(context, ((1) + ((ap_update_add_1_col7) * (32))) + (256)),
+        eval!(context, (((1) - (res_add_col7)) + ((ap_update_add_1_col8) * (32))) + (256)),
+        eval!(context, 3),
     ];
-    let numerator_7 = eval!(context, 1);
-    acc.add_to_relation(context, numerator_7, tuple_7);
+    let numerator_8 = eval!(context, 1);
+    acc.add_to_relation(context, numerator_8, tuple_8);
     vec![
         eval!(context, (offset0_col0) - (32768)),
         eval!(context, (offset1_col1) - (32768)),
         eval!(context, (offset2_col2) - (32768)),
-        eval!(context, op1_base_ap_tmp_4b8cf_9),
+        eval!(context, op1_base_ap_tmp_c67a5_9),
+        eval!(context, (1) - (res_add_col7)),
     ]
 }

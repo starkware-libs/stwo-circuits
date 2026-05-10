@@ -58,11 +58,11 @@ pub fn accumulate_constraints<Value: IValue>(
     ] = input.try_into().unwrap();
 
     let [
-        decode_instruction_472fe_output_tmp_47e62_9_offset0,
-        decode_instruction_472fe_output_tmp_47e62_9_offset1,
-        decode_instruction_472fe_output_tmp_47e62_9_offset2,
-        decode_instruction_472fe_output_tmp_47e62_9_op1_base_ap,
-    ] = decode_instruction_472fe::accumulate_constraints(
+        decode_instruction_30129_output_tmp_c2bd8_9_offset0,
+        decode_instruction_30129_output_tmp_c2bd8_9_offset1,
+        decode_instruction_30129_output_tmp_c2bd8_9_offset2,
+        decode_instruction_30129_output_tmp_c2bd8_9_op1_base_ap,
+    ] = decode_instruction_30129::accumulate_constraints(
         &[
             eval!(context, decode_blake_opcode_input_pc),
             eval!(context, offset0_col0),
@@ -99,7 +99,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(
                 context,
-                (mem0_base_col8) + (decode_instruction_472fe_output_tmp_47e62_9_offset1)
+                (mem0_base_col8) + (decode_instruction_30129_output_tmp_c2bd8_9_offset1)
             ),
             eval!(context, op0_id_col9),
             eval!(context, op0_limb_0_col10),
@@ -118,7 +118,7 @@ pub fn accumulate_constraints<Value: IValue>(
         context,
         (mem1_base_col15)
             - (((op1_base_fp_col5) * (decode_blake_opcode_input_fp))
-                + ((decode_instruction_472fe_output_tmp_47e62_9_op1_base_ap)
+                + ((decode_instruction_30129_output_tmp_c2bd8_9_op1_base_ap)
                     * (decode_blake_opcode_input_ap)))
     );
     acc.add_constraint(context, constraint_4_value);
@@ -127,7 +127,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(
                 context,
-                (mem1_base_col15) + (decode_instruction_472fe_output_tmp_47e62_9_offset2)
+                (mem1_base_col15) + (decode_instruction_30129_output_tmp_c2bd8_9_offset2)
             ),
             eval!(context, op1_id_col16),
             eval!(context, op1_limb_0_col17),
@@ -169,7 +169,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(
                 context,
-                (mem_dst_base_col28) + (decode_instruction_472fe_output_tmp_47e62_9_offset0)
+                (mem_dst_base_col28) + (decode_instruction_30129_output_tmp_c2bd8_9_offset0)
             ),
             eval!(context, low_16_bits_col29),
             eval!(context, high_16_bits_col30),

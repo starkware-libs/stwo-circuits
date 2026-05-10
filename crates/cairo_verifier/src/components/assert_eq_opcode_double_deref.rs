@@ -42,10 +42,10 @@ pub fn accumulate_constraints<Value: IValue>(
     ] = input.try_into().unwrap();
 
     let [
-        decode_instruction_cb32b_output_tmp_b1151_8_offset0,
-        decode_instruction_cb32b_output_tmp_b1151_8_offset1,
-        decode_instruction_cb32b_output_tmp_b1151_8_offset2,
-    ] = decode_instruction_cb32b::accumulate_constraints(
+        decode_instruction_ed841_output_tmp_b7bfa_8_offset0,
+        decode_instruction_ed841_output_tmp_b7bfa_8_offset1,
+        decode_instruction_ed841_output_tmp_b7bfa_8_offset2,
+    ] = decode_instruction_ed841::accumulate_constraints(
         &[
             eval!(context, input_pc_col0),
             eval!(context, offset0_col3),
@@ -84,7 +84,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(
                 context,
-                (mem0_base_col10) + (decode_instruction_cb32b_output_tmp_b1151_8_offset1)
+                (mem0_base_col10) + (decode_instruction_ed841_output_tmp_b7bfa_8_offset1)
             ),
             eval!(context, mem1_base_id_col11),
             eval!(context, mem1_base_limb_0_col12),
@@ -102,14 +102,14 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(
                 context,
-                (mem_dst_base_col9) + (decode_instruction_cb32b_output_tmp_b1151_8_offset0)
+                (mem_dst_base_col9) + (decode_instruction_ed841_output_tmp_b7bfa_8_offset0)
             ),
             eval!(
                 context,
                 ((((mem1_base_limb_0_col12) + ((mem1_base_limb_1_col13) * (512)))
                     + ((mem1_base_limb_2_col14) * (262144)))
                     + ((mem1_base_limb_3_col15) * (134217728)))
-                    + (decode_instruction_cb32b_output_tmp_b1151_8_offset2)
+                    + (decode_instruction_ed841_output_tmp_b7bfa_8_offset2)
             ),
             eval!(context, dst_id_col17),
         ],

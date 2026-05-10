@@ -367,12 +367,12 @@ pub fn accumulate_constraints<Value: IValue>(
         acc,
     );
 
-    let poseidon_full_round_chain_chain_tmp_tmp_7d028_63 = eval!(context, (seq) * (2));
+    let poseidon_full_round_chain_chain_tmp_tmp_da3c7_63 = eval!(context, (seq) * (2));
 
     // Yield PoseidonFullRoundChain.
     let tuple_4 = &[
         eval!(context, 1480369132),
-        eval!(context, poseidon_full_round_chain_chain_tmp_tmp_7d028_63),
+        eval!(context, poseidon_full_round_chain_chain_tmp_tmp_da3c7_63),
         eval!(context, 0),
         eval!(context, combination_limb_0_col0),
         eval!(context, combination_limb_1_col1),
@@ -411,7 +411,7 @@ pub fn accumulate_constraints<Value: IValue>(
     // Use PoseidonFullRoundChain.
     let tuple_5 = &[
         eval!(context, 1480369132),
-        eval!(context, poseidon_full_round_chain_chain_tmp_tmp_7d028_63),
+        eval!(context, poseidon_full_round_chain_chain_tmp_tmp_da3c7_63),
         eval!(context, 4),
         eval!(context, poseidon_full_round_chain_output_limb_0_col33),
         eval!(context, poseidon_full_round_chain_output_limb_1_col34),
@@ -869,13 +869,13 @@ pub fn accumulate_constraints<Value: IValue>(
         acc,
     );
 
-    let poseidon_full_round_chain_chain_id_tmp_7d028_146 =
-        eval!(context, (poseidon_full_round_chain_chain_tmp_tmp_7d028_63) + (1));
+    let poseidon_full_round_chain_chain_id_tmp_da3c7_146 =
+        eval!(context, (poseidon_full_round_chain_chain_tmp_tmp_da3c7_63) + (1));
 
     // Yield PoseidonFullRoundChain.
     let tuple_17 = &[
         eval!(context, 1480369132),
-        eval!(context, poseidon_full_round_chain_chain_id_tmp_7d028_146),
+        eval!(context, poseidon_full_round_chain_chain_id_tmp_da3c7_146),
         eval!(context, 31),
         eval!(context, combination_limb_0_col156),
         eval!(context, combination_limb_1_col157),
@@ -914,7 +914,7 @@ pub fn accumulate_constraints<Value: IValue>(
     // Use PoseidonFullRoundChain.
     let tuple_18 = &[
         eval!(context, 1480369132),
-        eval!(context, poseidon_full_round_chain_chain_id_tmp_7d028_146),
+        eval!(context, poseidon_full_round_chain_chain_id_tmp_da3c7_146),
         eval!(context, 35),
         eval!(context, poseidon_full_round_chain_output_limb_0_col167),
         eval!(context, poseidon_full_round_chain_output_limb_1_col168),

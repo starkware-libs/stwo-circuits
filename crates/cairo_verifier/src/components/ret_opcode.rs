@@ -38,7 +38,7 @@ pub fn accumulate_constraints<Value: IValue>(
         enabler_col15,
     ] = input.try_into().unwrap();
 
-    decode_instruction_15a61::accumulate_constraints(
+    decode_instruction_a4d88::accumulate_constraints(
         &[eval!(context, input_pc_col0)],
         context,
         component_data,

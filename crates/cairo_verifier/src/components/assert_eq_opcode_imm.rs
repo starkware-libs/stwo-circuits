@@ -30,8 +30,8 @@ pub fn accumulate_constraints<Value: IValue>(
         enabler_col8,
     ] = input.try_into().unwrap();
 
-    let [decode_instruction_161c9_output_tmp_bb09e_5_offset0] =
-        decode_instruction_161c9::accumulate_constraints(
+    let [decode_instruction_324b0_output_tmp_86a47_5_offset0] =
+        decode_instruction_324b0::accumulate_constraints(
             &[
                 eval!(context, input_pc_col0),
                 eval!(context, offset0_col3),
@@ -58,7 +58,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(
                 context,
-                (mem_dst_base_col6) + (decode_instruction_161c9_output_tmp_bb09e_5_offset0)
+                (mem_dst_base_col6) + (decode_instruction_324b0_output_tmp_86a47_5_offset0)
             ),
             eval!(context, (input_pc_col0) + (1)),
             eval!(context, dst_id_col7),

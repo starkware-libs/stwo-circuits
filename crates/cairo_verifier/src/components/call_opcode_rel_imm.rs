@@ -46,7 +46,7 @@ pub fn accumulate_constraints<Value: IValue>(
         enabler_col23,
     ] = input.try_into().unwrap();
 
-    decode_instruction_2a7a2::accumulate_constraints(
+    decode_instruction_e4e14::accumulate_constraints(
         &[eval!(context, input_pc_col0)],
         context,
         component_data,
@@ -103,7 +103,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_4_value);
 
-    let [read_small_output_tmp_9db06_26_limb_0] = read_small::accumulate_constraints(
+    let [read_small_output_tmp_82d62_26_limb_0] = read_small::accumulate_constraints(
         &[
             eval!(context, (input_pc_col0) + (1)),
             eval!(context, distance_to_next_pc_id_col15),
@@ -139,7 +139,7 @@ pub fn accumulate_constraints<Value: IValue>(
     // Yield Opcodes.
     let tuple_8 = &[
         eval!(context, 428564188),
-        eval!(context, (input_pc_col0) + (read_small_output_tmp_9db06_26_limb_0)),
+        eval!(context, (input_pc_col0) + (read_small_output_tmp_82d62_26_limb_0)),
         eval!(context, (input_ap_col1) + (2)),
         eval!(context, (input_ap_col1) + (2)),
     ];

@@ -12,12 +12,12 @@ pub fn accumulate_constraints<Value: IValue>(
     component_data: &dyn ComponentDataTrait<Value>,
     acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
-    let [decode_instruction_2a7a2_input_pc] = input.try_into().unwrap();
+    let [decode_instruction_e4e14_input_pc] = input.try_into().unwrap();
 
     // Use VerifyInstruction.
     let tuple_0 = &[
         eval!(context, 1719106205),
-        eval!(context, decode_instruction_2a7a2_input_pc),
+        eval!(context, decode_instruction_e4e14_input_pc),
         eval!(context, 32768),
         eval!(context, 32769),
         eval!(context, 32769),

@@ -22,7 +22,7 @@ pub fn accumulate_constraints<Value: IValue>(
         verify_triple_sum_32_input_limb_7,
     ] = input.try_into().unwrap();
 
-    let carry_low_tmp_24c23_0 = eval!(
+    let carry_low_tmp_a7b7a_0 = eval!(
         context,
         ((((verify_triple_sum_32_input_limb_0) + (verify_triple_sum_32_input_limb_2))
             + (verify_triple_sum_32_input_limb_4))
@@ -33,16 +33,16 @@ pub fn accumulate_constraints<Value: IValue>(
     //carry low is 0 or 1 or 2.
     let constraint_1_value = eval!(
         context,
-        ((carry_low_tmp_24c23_0) * ((carry_low_tmp_24c23_0) - (1)))
-            * ((carry_low_tmp_24c23_0) - (2))
+        ((carry_low_tmp_a7b7a_0) * ((carry_low_tmp_a7b7a_0) - (1)))
+            * ((carry_low_tmp_a7b7a_0) - (2))
     );
     acc.add_constraint(context, constraint_1_value);
 
-    let carry_high_tmp_24c23_1 = eval!(
+    let carry_high_tmp_a7b7a_1 = eval!(
         context,
         (((((verify_triple_sum_32_input_limb_1) + (verify_triple_sum_32_input_limb_3))
             + (verify_triple_sum_32_input_limb_5))
-            + (carry_low_tmp_24c23_0))
+            + (carry_low_tmp_a7b7a_0))
             - (verify_triple_sum_32_input_limb_7))
             * (32768)
     );
@@ -50,8 +50,8 @@ pub fn accumulate_constraints<Value: IValue>(
     //carry high is 0 or 1 or 2.
     let constraint_3_value = eval!(
         context,
-        ((carry_high_tmp_24c23_1) * ((carry_high_tmp_24c23_1) - (1)))
-            * ((carry_high_tmp_24c23_1) - (2))
+        ((carry_high_tmp_a7b7a_1) * ((carry_high_tmp_a7b7a_1) - (1)))
+            * ((carry_high_tmp_a7b7a_1) - (2))
     );
     acc.add_constraint(context, constraint_3_value);
     vec![]

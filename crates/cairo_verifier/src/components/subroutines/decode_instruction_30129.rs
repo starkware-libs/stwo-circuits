@@ -13,7 +13,7 @@ pub fn accumulate_constraints<Value: IValue>(
     acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
     let [
-        decode_instruction_472fe_input_pc,
+        decode_instruction_30129_input_pc,
         offset0_col0,
         offset1_col1,
         offset2_col2,
@@ -44,7 +44,7 @@ pub fn accumulate_constraints<Value: IValue>(
     // Use VerifyInstruction.
     let tuple_4 = &[
         eval!(context, 1719106205),
-        eval!(context, decode_instruction_472fe_input_pc),
+        eval!(context, decode_instruction_30129_input_pc),
         eval!(context, offset0_col0),
         eval!(context, offset1_col1),
         eval!(context, offset2_col2),

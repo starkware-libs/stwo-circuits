@@ -13,7 +13,7 @@ pub fn accumulate_constraints<Value: IValue>(
     acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
     let [
-        decode_instruction_bc3cd_input_pc,
+        decode_instruction_7785f_input_pc,
         offset0_col0,
         offset1_col1,
         offset2_col2,
@@ -40,11 +40,11 @@ pub fn accumulate_constraints<Value: IValue>(
     let constraint_3_value = eval!(context, (op1_base_fp_col6) * ((1) - (op1_base_fp_col6)));
     acc.add_constraint(context, constraint_3_value);
 
-    let op1_base_ap_tmp_bc3cd_9 = eval!(context, ((1) - (op1_imm_col5)) - (op1_base_fp_col6));
+    let op1_base_ap_tmp_7785f_9 = eval!(context, ((1) - (op1_imm_col5)) - (op1_base_fp_col6));
 
     //Flag op1_base_ap is a bit.
     let constraint_5_value =
-        eval!(context, (op1_base_ap_tmp_bc3cd_9) * ((1) - (op1_base_ap_tmp_bc3cd_9)));
+        eval!(context, (op1_base_ap_tmp_7785f_9) * ((1) - (op1_base_ap_tmp_7785f_9)));
     acc.add_constraint(context, constraint_5_value);
 
     //Flag ap_update_add_1 is a bit.
@@ -55,7 +55,7 @@ pub fn accumulate_constraints<Value: IValue>(
     // Use VerifyInstruction.
     let tuple_7 = &[
         eval!(context, 1719106205),
-        eval!(context, decode_instruction_bc3cd_input_pc),
+        eval!(context, decode_instruction_7785f_input_pc),
         eval!(context, offset0_col0),
         eval!(context, offset1_col1),
         eval!(context, offset2_col2),
@@ -64,7 +64,7 @@ pub fn accumulate_constraints<Value: IValue>(
             ((((((dst_base_fp_col3) * (8)) + ((op0_base_fp_col4) * (16)))
                 + ((op1_imm_col5) * (32)))
                 + ((op1_base_fp_col6) * (64)))
-                + ((op1_base_ap_tmp_bc3cd_9) * (128)))
+                + ((op1_base_ap_tmp_7785f_9) * (128)))
                 + (256)
         ),
         eval!(context, ((ap_update_add_1_col7) * (32)) + (256)),
@@ -75,6 +75,6 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, (offset0_col0) - (32768)),
         eval!(context, (offset1_col1) - (32768)),
         eval!(context, (offset2_col2) - (32768)),
-        eval!(context, op1_base_ap_tmp_bc3cd_9),
+        eval!(context, op1_base_ap_tmp_7785f_9),
     ]
 }

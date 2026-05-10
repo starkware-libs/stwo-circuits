@@ -22,14 +22,14 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_0_value);
 
-    let partial_limb_bit_before_msb_tmp_88401_1 =
+    let partial_limb_bit_before_msb_tmp_36c3a_1 =
         eval!(context, (cond_range_check_2_input_limb_0) - ((partial_limb_msb_col0) * (2)));
 
     //bit before msb is a bit or condition is 0.
     let constraint_2_value = eval!(
         context,
-        ((partial_limb_bit_before_msb_tmp_88401_1)
-            * ((1) - (partial_limb_bit_before_msb_tmp_88401_1)))
+        ((partial_limb_bit_before_msb_tmp_36c3a_1)
+            * ((1) - (partial_limb_bit_before_msb_tmp_36c3a_1)))
             * (cond_range_check_2_input_limb_1)
     );
     acc.add_constraint(context, constraint_2_value);

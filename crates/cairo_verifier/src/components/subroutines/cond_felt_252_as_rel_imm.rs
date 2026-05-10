@@ -47,10 +47,10 @@ pub fn accumulate_constraints<Value: IValue>(
     ] = input.try_into().unwrap();
 
     let [
-        decode_small_sign_output_tmp_1e9bf_2_limb3_7_high_bits,
-        decode_small_sign_output_tmp_1e9bf_2_limbs4_to_20,
-        decode_small_sign_output_tmp_1e9bf_2_limb21,
-        decode_small_sign_output_tmp_1e9bf_2_limb27,
+        decode_small_sign_output_tmp_37f57_2_limb3_7_high_bits,
+        decode_small_sign_output_tmp_37f57_2_limbs4_to_20,
+        decode_small_sign_output_tmp_37f57_2_limb21,
+        decode_small_sign_output_tmp_37f57_2_limb27,
     ] = decode_small_sign::accumulate_constraints(
         &[eval!(context, msb_col0), eval!(context, mid_limbs_set_col1)],
         context,
@@ -60,15 +60,15 @@ pub fn accumulate_constraints<Value: IValue>(
     .try_into()
     .unwrap();
 
-    let remainder_bits_tmp_1e9bf_3 = eval!(
+    let remainder_bits_tmp_37f57_3 = eval!(
         context,
         (cond_felt_252_as_rel_imm_input_limb_3)
-            - (decode_small_sign_output_tmp_1e9bf_2_limb3_7_high_bits)
+            - (decode_small_sign_output_tmp_37f57_2_limb3_7_high_bits)
     );
 
     cond_range_check_2::accumulate_constraints(
         &[
-            eval!(context, remainder_bits_tmp_1e9bf_3),
+            eval!(context, remainder_bits_tmp_37f57_3),
             eval!(context, cond_felt_252_as_rel_imm_input_limb_28),
             eval!(context, partial_limb_msb_col2),
         ],
@@ -98,7 +98,7 @@ pub fn accumulate_constraints<Value: IValue>(
                 + (cond_felt_252_as_rel_imm_input_limb_18))
                 + (cond_felt_252_as_rel_imm_input_limb_19))
                 + (cond_felt_252_as_rel_imm_input_limb_20))
-                - ((decode_small_sign_output_tmp_1e9bf_2_limbs4_to_20) * (17)))
+                - ((decode_small_sign_output_tmp_37f57_2_limbs4_to_20) * (17)))
     );
     acc.add_constraint(context, constraint_3_value);
 
@@ -107,7 +107,7 @@ pub fn accumulate_constraints<Value: IValue>(
         context,
         (cond_felt_252_as_rel_imm_input_limb_28)
             * ((cond_felt_252_as_rel_imm_input_limb_21)
-                - (decode_small_sign_output_tmp_1e9bf_2_limb21))
+                - (decode_small_sign_output_tmp_37f57_2_limb21))
     );
     acc.add_constraint(context, constraint_4_value);
 
@@ -128,7 +128,7 @@ pub fn accumulate_constraints<Value: IValue>(
         context,
         (cond_felt_252_as_rel_imm_input_limb_28)
             * ((cond_felt_252_as_rel_imm_input_limb_27)
-                - (decode_small_sign_output_tmp_1e9bf_2_limb27))
+                - (decode_small_sign_output_tmp_37f57_2_limb27))
     );
     acc.add_constraint(context, constraint_6_value);
     vec![eval!(
@@ -136,7 +136,7 @@ pub fn accumulate_constraints<Value: IValue>(
         (((((cond_felt_252_as_rel_imm_input_limb_0)
             + ((cond_felt_252_as_rel_imm_input_limb_1) * (512)))
             + ((cond_felt_252_as_rel_imm_input_limb_2) * (262144)))
-            + ((remainder_bits_tmp_1e9bf_3) * (134217728)))
+            + ((remainder_bits_tmp_37f57_3) * (134217728)))
             - (msb_col0))
             - ((536870912) * (mid_limbs_set_col1))
     )]
