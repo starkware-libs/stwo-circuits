@@ -1,4 +1,6 @@
-pub use crate::circuit_air::components::subroutines::*;
+pub use crate::circuit_air::components::subroutines;
+#[cfg(test)]
+pub use crate::circuit_air::constraints_regression_test_values;
 pub use circuit_common::component_utils::*;
 pub use circuit_verifier::relations;
 pub use circuits::context::{Context, Var};
