@@ -25,14 +25,14 @@ pub fn accumulate_constraints<Value: IValue>(
         id_col3,
     ] = input.try_into().unwrap();
 
-    let high_2_ls_bits_tmp_c4bc0_2 =
+    let high_2_ls_bits_tmp_1a63a_2 =
         eval!(context, (verify_u_32_input_limb_2) - ((high_14_ms_bits_col1) * (4)));
 
     // Use RangeCheck_7_2_5.
     let tuple_1 = &[
         eval!(context, 371240602),
         eval!(context, low_7_ms_bits_col0),
-        eval!(context, high_2_ls_bits_tmp_c4bc0_2),
+        eval!(context, high_2_ls_bits_tmp_1a63a_2),
         eval!(context, high_5_ms_bits_col2),
     ];
     let numerator_1 = eval!(context, 1);
@@ -42,7 +42,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, verify_u_32_input_limb_0),
             eval!(context, (verify_u_32_input_limb_1) - ((low_7_ms_bits_col0) * (512))),
-            eval!(context, (low_7_ms_bits_col0) + ((high_2_ls_bits_tmp_c4bc0_2) * (128))),
+            eval!(context, (low_7_ms_bits_col0) + ((high_2_ls_bits_tmp_1a63a_2) * (128))),
             eval!(context, (high_14_ms_bits_col1) - ((high_5_ms_bits_col2) * (512))),
             eval!(context, high_5_ms_bits_col2),
             eval!(context, 0),

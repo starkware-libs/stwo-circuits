@@ -12,7 +12,7 @@ pub fn accumulate_constraints<Value: IValue>(
     component_data: &dyn ComponentDataTrait<Value>,
     acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
-    let [decode_instruction_7ebc4_input_pc, ap_update_add_1_col0] = input.try_into().unwrap();
+    let [decode_instruction_7dcb2_input_pc, ap_update_add_1_col0] = input.try_into().unwrap();
 
     //Flag ap_update_add_1 is a bit.
     let constraint_0_value =
@@ -22,7 +22,7 @@ pub fn accumulate_constraints<Value: IValue>(
     // Use VerifyInstruction.
     let tuple_1 = &[
         eval!(context, 1719106205),
-        eval!(context, decode_instruction_7ebc4_input_pc),
+        eval!(context, decode_instruction_7dcb2_input_pc),
         eval!(context, 32767),
         eval!(context, 32767),
         eval!(context, 32769),

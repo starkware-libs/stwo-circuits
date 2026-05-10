@@ -44,9 +44,9 @@ pub fn accumulate_constraints<Value: IValue>(
     ] = input.try_into().unwrap();
 
     let [
-        decode_instruction_9bd86_output_tmp_22134_6_offset1,
-        decode_instruction_9bd86_output_tmp_22134_6_offset2,
-    ] = decode_instruction_9bd86::accumulate_constraints(
+        decode_instruction_11364_output_tmp_b5a8f_6_offset1,
+        decode_instruction_11364_output_tmp_b5a8f_6_offset2,
+    ] = decode_instruction_11364::accumulate_constraints(
         &[
             eval!(context, input_pc_col0),
             eval!(context, offset1_col3),
@@ -74,7 +74,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(
                 context,
-                (mem0_base_col7) + (decode_instruction_9bd86_output_tmp_22134_6_offset1)
+                (mem0_base_col7) + (decode_instruction_11364_output_tmp_b5a8f_6_offset1)
             ),
             eval!(context, mem1_base_id_col8),
             eval!(context, mem1_base_limb_0_col9),
@@ -95,7 +95,7 @@ pub fn accumulate_constraints<Value: IValue>(
                 ((((mem1_base_limb_0_col9) + ((mem1_base_limb_1_col10) * (512)))
                     + ((mem1_base_limb_2_col11) * (262144)))
                     + ((mem1_base_limb_3_col12) * (134217728)))
-                    + (decode_instruction_9bd86_output_tmp_22134_6_offset2)
+                    + (decode_instruction_11364_output_tmp_b5a8f_6_offset2)
             ),
             eval!(context, next_pc_id_col14),
             eval!(context, next_pc_limb_0_col15),

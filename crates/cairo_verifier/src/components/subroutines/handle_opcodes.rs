@@ -349,7 +349,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_33_value);
 
-    let [cond_felt_252_as_addr_output_tmp_aa5c5_2] = cond_felt_252_as_addr::accumulate_constraints(
+    let [cond_felt_252_as_addr_output_tmp_fe176_2] = cond_felt_252_as_addr::accumulate_constraints(
         &[
             eval!(context, handle_opcodes_input_dst_limb_0),
             eval!(context, handle_opcodes_input_dst_limb_1),
@@ -392,11 +392,11 @@ pub fn accumulate_constraints<Value: IValue>(
     let constraint_35_value = eval!(
         context,
         (handle_opcodes_input_opcode_call)
-            * ((cond_felt_252_as_addr_output_tmp_aa5c5_2) - (handle_opcodes_input_fp))
+            * ((cond_felt_252_as_addr_output_tmp_fe176_2) - (handle_opcodes_input_fp))
     );
     acc.add_constraint(context, constraint_35_value);
 
-    let [cond_felt_252_as_addr_output_tmp_aa5c5_5] = cond_felt_252_as_addr::accumulate_constraints(
+    let [cond_felt_252_as_addr_output_tmp_fe176_5] = cond_felt_252_as_addr::accumulate_constraints(
         &[
             eval!(context, handle_opcodes_input_op0_limb_0),
             eval!(context, handle_opcodes_input_op0_limb_1),
@@ -439,7 +439,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let constraint_37_value = eval!(
         context,
         (handle_opcodes_input_opcode_call)
-            * ((cond_felt_252_as_addr_output_tmp_aa5c5_5)
+            * ((cond_felt_252_as_addr_output_tmp_fe176_5)
                 - ((handle_opcodes_input_pc) + (handle_opcodes_input_instruction_size)))
     );
     acc.add_constraint(context, constraint_37_value);
