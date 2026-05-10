@@ -2,13 +2,13 @@ use crate::CircuitParams;
 use crate::N_LANES;
 use crate::Qm31OpsTraceGenerator;
 use crate::finalize::finalize_context;
-use crate::order_hash_map::OrderedHashMap;
 use circuits::circuit::Blake;
 use circuits::circuit::Gate;
 use circuits::circuit::M31ToU32;
 use circuits::circuit::{Circuit, Permutation};
 use circuits::context::Context;
 use circuits::ivalue::IValue;
+use circuits_stark_verifier::order_hash_map::OrderedHashMap;
 use itertools::zip_eq;
 use std::sync::Arc;
 #[cfg(feature = "prover")]

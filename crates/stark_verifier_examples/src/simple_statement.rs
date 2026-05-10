@@ -1,11 +1,6 @@
-use circuits::blake::HashValue;
-use indexmap::IndexMap;
-use num_traits::One;
-use stwo::core::fields::m31::M31;
-use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
-
 use super::simple_air::FIB_SEQUENCE_LENGTH;
 use crate::simple_air::{FIB_PREPROCESSED_COLUMNS, LOG_SIZE_LONG, LOG_SIZE_SHORT};
+use circuits::blake::HashValue;
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::ivalue::{IValue, qm31_from_u32s};
@@ -15,7 +10,12 @@ use circuits_stark_verifier::constraint_eval::{
     CircuitEval, ComponentDataTrait, CompositionConstraintAccumulator,
 };
 use circuits_stark_verifier::logup::combine_term;
+use circuits_stark_verifier::order_hash_map::OrderedHashMap;
 use circuits_stark_verifier::statement::Statement;
+use indexmap::IndexMap;
+use num_traits::One;
+use stwo::core::fields::m31::M31;
+use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 /// Log sizes of the enabled components in [`SimpleStatement`].
 /// The stwo prover in `create_proof` runs with an additional disabled component (see
@@ -72,6 +72,13 @@ impl<Value: IValue> CircuitEval<Value> for SquaredFibonacciComponent {
 
     fn relation_uses_per_row(&self) -> &[RelationUse] {
         &[RelationUse { relation_id: "fib_relation", uses: 3 }]
+    }
+
+    fn log_size(
+        &self,
+        preprocessed_column_log_sizes: &OrderedHashMap<PreProcessedColumnId, u32>,
+    ) -> Option<u32> {
+        preprocessed_column_log_sizes.get(&self.preprocessed_column_id).cloned()
     }
 
     fn evaluate(

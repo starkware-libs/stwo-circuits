@@ -711,4 +711,13 @@ impl<Value: IValue> CircuitEval<Value> for Component {
     fn relation_uses_per_row(&self) -> &[RelationUse] {
         &RELATION_USES_PER_ROW
     }
+
+    fn log_size(
+        &self,
+        preprocessed_column_log_sizes: &OrderedHashMap<PreProcessedColumnId, u32>,
+    ) -> Option<u32> {
+        preprocessed_column_log_sizes
+            .get(&PreProcessedColumnId { id: "compress_enabler".to_string() })
+            .cloned()
+    }
 }
