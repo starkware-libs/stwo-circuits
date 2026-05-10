@@ -1,10 +1,5 @@
-// Want:
-// - two circuit proof test vectors.
-// - define a single pcs config which is used by both circuit proofs.
-// - both proofs are of the cairo verifier.
-
 use circuit_verifier::{
-    statement::{INTERACTION_POW_BITS, all_circuit_components},
+    statement::{all_circuit_components},
     verify::CircuitConfig,
 };
 use circuits::{
@@ -21,7 +16,7 @@ use circuits_stark_verifier::{
     verify::verify,
 };
 use itertools::{Itertools, chain};
-use stwo::core::{fields::qm31::QM31, pcs::PcsConfig};
+use stwo::core::{fields::qm31::QM31};
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 use crate::statement::SubCircuitStatement;
@@ -49,13 +44,10 @@ mod multi_cairo_test;
 ///   constrained or padding zeros, so they aren't inputs).
 ///
 /// Use `Metadata::from_config` if you have a `CircuitConfig` lying around.
-pub struct SubCircuitInput<Value: IValue> {
+pub struct MultiverifierInput<Value: IValue> {
     pub proof: Proof<Value>,
     pub metadata: Metadata<Value>,
     pub unconstrained_outputs: [QM31; 2],
-    /// `true` if this proof is a proof of the multiverifier circuit itself
-    /// (variant B in the recursion); `false` for a leaf circuit such as the
-    /// Fibonacci/`circuit_verifier` proof (variant A).
     pub is_multiverifier: bool,
 }
 
@@ -158,46 +150,29 @@ pub fn empty_metadata(n_outputs: usize) -> Metadata<NoValue> {
     }
 }
 
-/// Contains all the parameters that are fixed for the proofs being validated.
-pub struct SubCircuitConfig {
-    pub pcs_config: PcsConfig,
-    pub n_outputs: usize,
+
+pub struct CommonConfig {
+    pub proof_config: ProofConfig,
     pub preprocessed_column_ids: Vec<PreProcessedColumnId>,
 }
 
-impl SubCircuitConfig {
-    pub fn to_proof_config(&self) -> ProofConfig {
-        let all_components = all_circuit_components::<QM31>();
-        ProofConfig::new(
-            &all_components,
-            vec![true; all_components.len()],
-            self.preprocessed_column_ids.len(),
-            &self.pcs_config,
-            INTERACTION_POW_BITS,
-        )
-    }
-}
-
 pub fn build_multiverifier_circuit<Value: IValue>(
-    i1: SubCircuitInput<Value>,
-    i2: SubCircuitInput<Value>,
-    // Things that are constant
-    subcircuit_config: SubCircuitConfig,
-    // Things that are constant but we need to guess. The root is the trusted
-    // anchor of the recursion, precomputed and externally validated.
+    i1: MultiverifierInput<Value>,
+    i2: MultiverifierInput<Value>,
+    common_config: CommonConfig,
     metadata_tree: MetadataTree<Value>,
     // TODO: return a result.
 ) -> Context<Value> {
     // ProofConfig that is shared between the two proofs.
-    let proof_config = subcircuit_config.to_proof_config();
+    let proof_config = common_config.proof_config;
     let mut context: Context<Value> = Context::default();
     let metadata_root_var = metadata_tree.root.guess(&mut context);
 
     let mut inner_outputs = vec![];
     // Verify each subcircuit proof.
-    for subcircuit_input in [i1, i2] {
-        let SubCircuitInput { proof, metadata, unconstrained_outputs, is_multiverifier } =
-            subcircuit_input;
+    for multiverifier_input in [i1, i2] {
+        let MultiverifierInput { proof, metadata, unconstrained_outputs, is_multiverifier } =
+            multiverifier_input;
         // The leaf at `is_multiverifier` of the precomputed tree must commit
         // to exactly the metadata we're about to feed into this subproof's
         // verification. A mismatch is a caller-side bug — without this check
@@ -206,8 +181,6 @@ pub fn build_multiverifier_circuit<Value: IValue>(
         debug_assert_eq!(
             metadata.hash_value(),
             metadata_tree.leaves[is_multiverifier as usize],
-            "SubCircuitInput.metadata does not match metadata_tree leaf at bit={}",
-            is_multiverifier as usize,
         );
         // Verify the metadata
         let metadata = metadata.guess(&mut context);
@@ -242,7 +215,7 @@ pub fn build_multiverifier_circuit<Value: IValue>(
             output_addresses: metadata.output_addresses,
             output_values,
             n_blake_gates_pow_two: metadata.n_blake_gates_pow_two,
-            preprocessed_column_ids: subcircuit_config.preprocessed_column_ids.clone(),
+            preprocessed_column_ids: common_config.preprocessed_column_ids.clone(),
             preprocessed_root: metadata.preprocessed_root,
         };
 

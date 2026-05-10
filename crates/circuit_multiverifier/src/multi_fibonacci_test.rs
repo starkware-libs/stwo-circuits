@@ -20,7 +20,7 @@ use stwo::core::{fields::qm31::QM31, pcs::PcsConfig};
 
 use super::verify_test::build_fibonacci_context_with_5_outputs;
 use super::{
-    Metadata, MetadataTree, SubCircuitConfig, SubCircuitInput, build_multiverifier_circuit,
+    CommonConfig, Metadata, MetadataTree, MultiverifierInput, build_multiverifier_circuit,
 };
 
 /// Result of proving a single Fibonacci circuit, bundled so the caller can derive
@@ -137,20 +137,25 @@ fn extract_multi_metadata(
         &inner_pcs_config,
         INTERACTION_POW_BITS,
     );
-    let subcircuit_config = SubCircuitConfig {
-        pcs_config: inner_pcs_config,
-        n_outputs: fib_config.output_addresses.len(),
+    let make_novalue_input = || MultiverifierInput {
+        proof: empty_proof(&proof_config),
+        metadata: Metadata::from_config(fib_config),
+        unconstrained_outputs: [QM31::zero(); 2],
+        is_multiverifier: false,
+    };
+    let common_config = CommonConfig {
+        proof_config: ProofConfig::new(
+            &all_circuit_components::<NoValue>(),
+            vec![true; all_circuit_components::<NoValue>().len()],
+            fib_config.preprocessed_column_log_sizes.len(),
+            &inner_pcs_config,
+            INTERACTION_POW_BITS,
+        ),
         preprocessed_column_ids: fib_config
             .preprocessed_column_log_sizes
             .keys()
             .cloned()
             .collect(),
-    };
-    let make_novalue_input = || SubCircuitInput {
-        proof: empty_proof(&proof_config),
-        metadata: Metadata::from_config(fib_config),
-        unconstrained_outputs: [QM31::zero(); 2],
-        is_multiverifier: false,
     };
     // For `extract_multi_metadata` we only care about the *topology* of the
     // multi (its preprocessed columns / root). The metadata-tree contents
@@ -163,7 +168,7 @@ fn extract_multi_metadata(
     let mut multi_ctx = build_multiverifier_circuit::<NoValue>(
         make_novalue_input(),
         make_novalue_input(),
-        subcircuit_config,
+        common_config,
         metadata_tree,
     );
     let pp_multi = PreprocessedCircuit::preprocess_circuit(&mut multi_ctx);
@@ -239,15 +244,20 @@ fn measure_multi_trace_log_size_at_inner_lifting(inner_lifting_log_size: u32) ->
         INTERACTION_POW_BITS,
     );
 
-    let make_input = || SubCircuitInput {
+    let make_input = || MultiverifierInput {
         proof: empty_proof(&proof_config),
         metadata: Metadata::from_config(&fib_config),
         unconstrained_outputs: [QM31::zero(); 2],
         is_multiverifier: false,
     };
-    let subcircuit_config = SubCircuitConfig {
-        pcs_config: inner_pcs_config,
-        n_outputs: fib_config.output_addresses.len(),
+    let common_config = CommonConfig {
+        proof_config: ProofConfig::new(
+            &all_circuit_components::<NoValue>(),
+            vec![true; all_circuit_components::<NoValue>().len()],
+            fib_config.preprocessed_column_log_sizes.len(),
+            &inner_pcs_config,
+            INTERACTION_POW_BITS,
+        ),
         preprocessed_column_ids: fib_config
             .preprocessed_column_log_sizes
             .keys()
@@ -260,7 +270,7 @@ fn measure_multi_trace_log_size_at_inner_lifting(inner_lifting_log_size: u32) ->
     let mut multi_ctx = build_multiverifier_circuit::<NoValue>(
         make_input(),
         make_input(),
-        subcircuit_config,
+        common_config,
         metadata_tree,
     );
     let pp_multi = PreprocessedCircuit::preprocess_circuit(&mut multi_ctx);
@@ -408,9 +418,14 @@ fn test_a_prove_multiverifier_of_fibs_and_save() {
     let metadata_tree = MetadataTree::<QM31>::commit(m_fib, m_multi);
 
     // 3. Build the multi (QM31) verifying both Fib proofs against this tree.
-    let subcircuit_config = SubCircuitConfig {
-        pcs_config,
-        n_outputs: bundle1.config.output_addresses.len(),
+    let common_config = CommonConfig {
+        proof_config: ProofConfig::new(
+            &all_circuit_components::<QM31>(),
+            vec![true; all_circuit_components::<QM31>().len()],
+            bundle1.config.preprocessed_column_log_sizes.len(),
+            &pcs_config,
+            INTERACTION_POW_BITS,
+        ),
         preprocessed_column_ids: bundle1
             .config
             .preprocessed_column_log_sizes
@@ -418,7 +433,7 @@ fn test_a_prove_multiverifier_of_fibs_and_save() {
             .cloned()
             .collect(),
     };
-    let p1 = SubCircuitInput {
+    let p1 = MultiverifierInput {
         proof: bundle1.proof,
         metadata: Metadata::from_config(&bundle1.config),
         unconstrained_outputs: [
@@ -427,7 +442,7 @@ fn test_a_prove_multiverifier_of_fibs_and_save() {
         ],
         is_multiverifier: false,
     };
-    let p2 = SubCircuitInput {
+    let p2 = MultiverifierInput {
         proof: bundle2.proof,
         metadata: Metadata::from_config(&bundle2.config),
         unconstrained_outputs: [
@@ -437,7 +452,7 @@ fn test_a_prove_multiverifier_of_fibs_and_save() {
         is_multiverifier: false,
     };
     let mut multi_ctx =
-        build_multiverifier_circuit::<QM31>(p1, p2, subcircuit_config, metadata_tree);
+        build_multiverifier_circuit::<QM31>(p1, p2, common_config, metadata_tree);
     multi_ctx.validate_circuit();
 
     // 6. Prove the multiverifier circuit itself. `prove_circuit_assignment` auto-lifts to
@@ -561,7 +576,7 @@ fn test_b_verify_multi_proof_and_fibonacci_proof_with_multiverifier() {
     //    pcs-config-must-be-the-same constraint is satisfied because both the
     //    multi proof and the fib proof are at lifting=21 (multi's natural
     //    lifting, which is also fib's natural lifting).
-    let multi_input = SubCircuitInput {
+    let multi_input = MultiverifierInput {
         proof: multi_proof,
         metadata: Metadata::from_config(&multi_config),
         unconstrained_outputs: [
@@ -570,7 +585,7 @@ fn test_b_verify_multi_proof_and_fibonacci_proof_with_multiverifier() {
         ],
         is_multiverifier: true,
     };
-    let fib_input = SubCircuitInput {
+    let fib_input = MultiverifierInput {
         proof: fib_bundle.proof,
         metadata: Metadata::from_config(&fib_bundle.config),
         unconstrained_outputs: [
@@ -583,15 +598,20 @@ fn test_b_verify_multi_proof_and_fibonacci_proof_with_multiverifier() {
     // second-level multi's verify() calls — same as the first-level multi.
     // This is what makes the two circuits identical (the recursion fixed
     // point). `metadata_tree` is the same H-tree as Test A used.
-    let subcircuit_config = SubCircuitConfig {
-        pcs_config: multi_meta.outer_pcs_config,
-        n_outputs: multi_meta.output_addresses.len(),
+    let common_config = CommonConfig {
+        proof_config: ProofConfig::new(
+            &all_circuit_components::<QM31>(),
+            vec![true; all_circuit_components::<QM31>().len()],
+            multi_meta.preprocessed_column_ids.len(),
+            &multi_meta.outer_pcs_config,
+            INTERACTION_POW_BITS,
+        ),
         preprocessed_column_ids: multi_meta.preprocessed_column_ids.clone(),
     };
     let context = build_multiverifier_circuit::<QM31>(
         multi_input,
         fib_input,
-        subcircuit_config,
+        common_config,
         metadata_tree,
     );
 
@@ -631,9 +651,14 @@ fn test_multiverifier_verifies_two_fibonacci_proofs() {
     let m_fib_clone = Metadata::<QM31>::from_config(&bundle1.config);
     let metadata_tree = MetadataTree::<QM31>::commit(m_fib, m_fib_clone);
 
-    let subcircuit_config = SubCircuitConfig {
-        pcs_config: bundle1.config.config,
-        n_outputs: bundle1.config.output_addresses.len(),
+    let common_config = CommonConfig {
+        proof_config: ProofConfig::new(
+            &all_circuit_components::<QM31>(),
+            vec![true; all_circuit_components::<QM31>().len()],
+            bundle1.config.preprocessed_column_log_sizes.len(),
+            &bundle1.config.config,
+            INTERACTION_POW_BITS,
+        ),
         preprocessed_column_ids: bundle1
             .config
             .preprocessed_column_log_sizes
@@ -641,7 +666,7 @@ fn test_multiverifier_verifies_two_fibonacci_proofs() {
             .cloned()
             .collect(),
     };
-    let p1 = SubCircuitInput {
+    let p1 = MultiverifierInput {
         proof: bundle1.proof,
         metadata: Metadata::from_config(&bundle1.config),
         unconstrained_outputs: [
@@ -650,7 +675,7 @@ fn test_multiverifier_verifies_two_fibonacci_proofs() {
         ],
         is_multiverifier: false,
     };
-    let p2 = SubCircuitInput {
+    let p2 = MultiverifierInput {
         proof: bundle2.proof,
         metadata: Metadata::from_config(&bundle2.config),
         unconstrained_outputs: [
@@ -660,7 +685,7 @@ fn test_multiverifier_verifies_two_fibonacci_proofs() {
         is_multiverifier: false,
     };
 
-    let context = build_multiverifier_circuit::<QM31>(p1, p2, subcircuit_config, metadata_tree);
+    let context = build_multiverifier_circuit::<QM31>(p1, p2, common_config, metadata_tree);
 
     context.check_vars_used();
     context.circuit.check_yields();

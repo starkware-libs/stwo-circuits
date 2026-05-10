@@ -14,7 +14,7 @@ use stwo::core::{fields::qm31::QM31, pcs::PcsConfig};
 use crate::{
     padding::{pad_components_to_target_counts, qm31_ops_n_rows},
     verify::{
-        Metadata, MetadataTree, SubCircuitConfig, SubCircuitInput, build_multiverifier_circuit,
+        CommonConfig, Metadata, MetadataTree, MultiverifierInput, build_multiverifier_circuit,
         empty_metadata,
     },
 };
@@ -44,23 +44,32 @@ pub fn pp_multiverifier_circuit_from_subcircuit(
         preprocessed_root: HashValue(QM31::from(0), QM31::from(0)),
     };
     // Use a closure to bypass lack of Clone
-    let make_input = || SubCircuitInput {
+    let make_input = || MultiverifierInput {
         proof: empty_proof(&proof_config),
         metadata: Metadata::from_config(&subcircuit_config),
         unconstrained_outputs: [QM31::from(0); 2],
         is_multiverifier: false,
     };
-    let subcircuit_config = SubCircuitConfig {
-        pcs_config: subcircuit_config.config,
-        n_outputs: N_OUTPUTS,
-        preprocessed_column_ids: subcircuit_config.preprocessed_column_log_sizes.keys().cloned().collect(),
+    let common_config = CommonConfig {
+        proof_config: ProofConfig::new(
+            all_circuit_components,
+            vec![true; all_circuit_components.len()],
+            subcircuit_config.preprocessed_column_log_sizes.len(),
+            &subcircuit_config.config,
+            INTERACTION_POW_BITS,
+        ),
+        preprocessed_column_ids: subcircuit_config
+            .preprocessed_column_log_sizes
+            .keys()
+            .cloned()
+            .collect(),
     };
     let empty_metadata = empty_metadata(N_OUTPUTS);
     let metadata_tree = MetadataTree::<NoValue>::commit(empty_metadata.clone(), empty_metadata);
     let mut multiverifier_context = build_multiverifier_circuit::<NoValue>(
         make_input(),
         make_input(),
-        subcircuit_config,
+        common_config,
         metadata_tree,
     );
     if let Some(ComponentSizes { eq, qm31_ops, n_blake_gates, n_blake_updates }) = target_padding {

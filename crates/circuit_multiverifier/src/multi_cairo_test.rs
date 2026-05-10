@@ -3,7 +3,7 @@ use std::fs::File;
 use cairo_air::utils::binary_deserialize_from_file;
 use circuit_cairo_verifier::privacy::{privacy_cairo_verifier_config, privacy_components};
 use circuit_cairo_verifier::utils::get_proof_file_path;
-use circuit_common::finalize::finalize_context as pad_components_to_powers_of_two;
+use circuit_common::finalize::finalize_context;
 use circuit_common::order_hash_map::OrderedHashMap;
 use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_prover::prover::{
@@ -25,7 +25,7 @@ use stwo::core::pcs::PcsConfig;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 use super::{
-    Metadata, MetadataTree, SubCircuitConfig, SubCircuitInput, build_multiverifier_circuit,
+    CommonConfig, Metadata, MetadataTree, MultiverifierInput, build_multiverifier_circuit,
 };
 use crate::cairo_subcircuit::{build_cairo_verifier_subcircuit, verify_cairo_with_component_set};
 use crate::padding::pad_components_to_target_counts;
@@ -115,23 +115,10 @@ fn test_compare_cairo_and_multiverifier_stats() {
     println!("max: {}", shared_max_component_sizes)
 }
 
-// /// After padding multi up into Cairo's brackets, both circuits should produce
-// /// identical `preprocessed_column_ids` (in the same order) when preprocessed.
-// /// // TODO: use pp cairo circuit and pp_multiverifier
-// #[test]
-// fn test_preprocessed_column_ids_are_equal() {
-//     let cairo_config = cairo_circuit_config(PCS_CONFIG);
-//     let cairo_ids = &cairo_config.preprocessed_column_ids;
-
-//     let multi_meta = extract_padded_multi_metadata(&cairo_config);
-//     let multi_ids = &multi_meta.preprocessed_column_ids;
-//     assert_eq!(cairo_ids, multi_ids);
-// }
-
 const MULTI_OF_CAIRO_PROOF_PATH: &str = "/tmp/circuit_multiverifier_test_multi_of_cairo_proof.bin";
 
 /// Bundles the per-proof outputs of `prove_cairo_and_prepare` so callers can
-/// build a `SubCircuitInput` *and* read `config` / `public_data` separately
+/// build a `MultiverifierInput` *and* read `config` / `public_data` separately
 /// (e.g. to derive `pcs_config`, output addresses, or payload values).
 struct CairoBundle {
     proof: circuits_stark_verifier::proof::Proof<QM31>,
@@ -140,8 +127,8 @@ struct CairoBundle {
 }
 
 impl CairoBundle {
-    fn into_subcircuit_input(self) -> SubCircuitInput<QM31> {
-        SubCircuitInput {
+    fn into_multiverifier_input(self) -> MultiverifierInput<QM31> {
+        MultiverifierInput {
             proof: self.proof,
             metadata: Metadata::from_config(&self.config),
             unconstrained_outputs: [
@@ -189,7 +176,7 @@ fn prove_cairo_and_prepare() -> CairoBundle {
         shared_targets::N_BLAKE_GATES,
         shared_targets::N_BLAKE_COMPRESS_ROWS,
     );
-    pad_components_to_powers_of_two(&mut context);
+    finalize_context(&mut context);
 
     let circuit_proof = prove_circuit_assignment(
         context.values(),
@@ -435,9 +422,14 @@ fn test_prove_multiverifier_of_two_cairo_subcircuits() {
     let metadata_tree = MetadataTree::<QM31>::commit(metadata_cairo, multiverifier_metadata);
 
     // TODO: should be const.
-    let subcircuit_config = SubCircuitConfig {
-        pcs_config: subcircuit_pcs_config,
-        n_outputs: bundle.config.output_addresses.len(),
+    let common_config = CommonConfig {
+        proof_config: ProofConfig::new(
+            &all_circuit_components::<QM31>(),
+            vec![true; all_circuit_components::<QM31>().len()],
+            bundle.config.preprocessed_column_log_sizes.len(),
+            &subcircuit_pcs_config,
+            INTERACTION_POW_BITS,
+        ),
         preprocessed_column_ids: bundle
             .config
             .preprocessed_column_log_sizes
@@ -446,10 +438,10 @@ fn test_prove_multiverifier_of_two_cairo_subcircuits() {
             .collect(),
     };
     let mut multiverifier_context = build_multiverifier_circuit::<QM31>(
-        bundle.into_subcircuit_input(),
-        // TODO: change to bundle.clone().into_subcircuit_input() when Clone becomes available.
-        prove_cairo_and_prepare().into_subcircuit_input(),
-        subcircuit_config,
+        bundle.into_multiverifier_input(),
+        // TODO: change to bundle.clone().into_multiverifier_input() when Clone becomes available.
+        prove_cairo_and_prepare().into_multiverifier_input(),
+        common_config,
         metadata_tree,
     );
     // Apply the same Cairo-target padding the metadata extraction did.
@@ -551,7 +543,7 @@ fn test_verify_multiverifier_proof_and_cairo_proof() {
         .expect("deserialize multi-of-cairo proof");
 
     // Build inputs for multiverifier.
-    let multi_input = SubCircuitInput {
+    let multi_input = MultiverifierInput {
         proof: multi_proof,
         metadata: Metadata::from_config(&multi_config),
         unconstrained_outputs: [
@@ -560,19 +552,25 @@ fn test_verify_multiverifier_proof_and_cairo_proof() {
         ],
         is_multiverifier: true,
     };
-    let cairo_input = bundle.into_subcircuit_input();
-    let subcircuit_config = SubCircuitConfig {
-        pcs_config: subcircuit_pcs_config,
-        n_outputs: N_OUTPUTS,
-        preprocessed_column_ids: multiverifier_preprocessed_column_log_sizes()
-            .keys()
-            .cloned()
-            .collect(),
+    let cairo_input = bundle.into_multiverifier_input();
+    let preprocessed_column_ids: Vec<_> = multiverifier_preprocessed_column_log_sizes()
+        .keys()
+        .cloned()
+        .collect();
+    let common_config = CommonConfig {
+        proof_config: ProofConfig::new(
+            &all_circuit_components::<QM31>(),
+            vec![true; all_circuit_components::<QM31>().len()],
+            preprocessed_column_ids.len(),
+            &subcircuit_pcs_config,
+            INTERACTION_POW_BITS,
+        ),
+        preprocessed_column_ids,
     };
     let mut context = build_multiverifier_circuit::<QM31>(
         multi_input,
         cairo_input,
-        subcircuit_config,
+        common_config,
         metadata_tree,
     );
 
