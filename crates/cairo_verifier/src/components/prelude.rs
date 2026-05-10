@@ -8,6 +8,7 @@ pub use circuits::ops::eq;
 pub use circuits_stark_verifier::constraint_eval::{
     CircuitEval, ComponentData, ComponentDataTrait, CompositionConstraintAccumulator, RelationUse,
 };
+pub use circuits_stark_verifier::order_hash_map::OrderedHashMap;
 pub use itertools::chain;
 pub use num_traits::One;
 pub use num_traits::Zero;

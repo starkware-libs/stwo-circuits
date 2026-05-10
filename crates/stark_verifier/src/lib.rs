@@ -7,6 +7,7 @@ pub mod fri_proof;
 pub mod logup;
 pub mod merkle;
 pub mod oods;
+pub mod order_hash_map;
 pub mod proof;
 pub mod proof_from_stark_proof;
 pub mod select_queries;

@@ -4,7 +4,6 @@ use crate::components::{
     verify_bitwise_xor_9, verify_bitwise_xor_12,
 };
 use crate::relations::GATE_RELATION_ID;
-use circuit_common::order_hash_map::OrderedHashMap;
 use circuits::blake::HashValue;
 use circuits::context::{Context, Var};
 use circuits::eval;
@@ -14,6 +13,7 @@ use circuits::simd::Simd;
 use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
 use circuits_stark_verifier::logup::logup_use_term;
+use circuits_stark_verifier::order_hash_map::OrderedHashMap;
 use circuits_stark_verifier::statement::Statement;
 use indexmap::IndexMap;
 use itertools::{Itertools, zip_eq};

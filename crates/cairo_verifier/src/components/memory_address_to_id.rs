@@ -59,4 +59,11 @@ impl<Value: IValue> CircuitEval<Value> for Component {
         // This component does only yields
         &[]
     }
+
+    fn log_size(
+        &self,
+        _preprocessed_column_log_sizes: &OrderedHashMap<PreProcessedColumnId, u32>,
+    ) -> Option<u32> {
+        None
+    }
 }
