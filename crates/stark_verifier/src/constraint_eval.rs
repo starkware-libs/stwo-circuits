@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use crate::circle::denom_inverse;
 use crate::logup::{LogupTerm, logup_term, pair_logup_constraint, single_logup_constraint};
+use crate::order_hash_map::OrderedHashMap;
 use crate::proof::{InteractionAtOods, ProofConfig};
 use crate::statement::{EvaluateArgs, Statement};
 use circuits::context::{Context, Var};
@@ -226,6 +227,11 @@ pub trait CircuitEval<Value: IValue> {
     fn interaction_columns(&self) -> usize;
 
     fn relation_uses_per_row(&self) -> &[RelationUse];
+
+    fn log_size(
+        &self,
+        preprocessed_column_log_sizes: OrderedHashMap<PreProcessedColumnId, u32>,
+    ) -> Option<u32>;
 }
 
 pub fn get_n_columns<'a, T>(columns: &mut &'a [T], n: usize) -> &'a [T] {
