@@ -16,12 +16,16 @@ use circuits::context::Context;
 use circuits::ivalue::IValue;
 use circuits::ops::{add, eq};
 
+use crate::test_utils::ComponentSizes;
+
 pub fn pad_components_to_target_counts<Value: IValue>(
     context: &mut Context<Value>,
-    target_eq: usize,
-    target_qm31_ops: usize,
-    target_n_blake_gates: usize,
-    target_n_blake_compress_rows: usize,
+    ComponentSizes {
+        eq: target_eq,
+        qm31_ops: target_qm31_ops,
+        n_blake_gates: target_n_blake_gates,
+        n_blake_updates: target_n_blake_updates,
+    }: ComponentSizes,
 ) {
     let zero = context.zero();
 
@@ -36,9 +40,6 @@ pub fn pad_components_to_target_counts<Value: IValue>(
     for _ in 0..(target_qm31_ops - current_qm31_ops) {
         add(context, zero, zero);
     }
-    // TODO: make padding correct + be sure that a subsequent call to finalize context won't change
-    // anything in the counts.
-
     // The purpose is to add a certain number of blake gates so that after the addition we have
     // n_blake_gates \in `(target_n_blake_gates / 2, target_n_blake_gates]`
     // n_blake_updates \in `(target_n_blake_updates / 2, target_n_blake_updates]`
@@ -46,10 +47,10 @@ pub fn pad_components_to_target_counts<Value: IValue>(
     let current_blake_gates = context.circuit.blake.len();
     let mut current_blake_updates = context.stats.blake_updates;
     assert!(current_blake_gates <= target_n_blake_gates);
-    assert!(current_blake_updates <= target_n_blake_compress_rows);
+    assert!(current_blake_updates <= target_n_blake_updates);
 
     let lower_bound_blake_gates = (target_n_blake_gates / 2) + 1;
-    let lower_bound_blake_updates = (target_n_blake_compress_rows / 2) + 1;
+    let lower_bound_blake_updates = (target_n_blake_updates / 2) + 1;
 
     if lower_bound_blake_gates <= current_blake_gates
         && lower_bound_blake_updates <= current_blake_updates
@@ -69,11 +70,10 @@ pub fn pad_components_to_target_counts<Value: IValue>(
         }
     }
 
-    if current_blake_updates > target_n_blake_compress_rows {
+    if current_blake_updates > target_n_blake_updates {
         panic!("Unable to pad blake.")
     }
-    let need_compress =
-        ((target_n_blake_compress_rows / 2) + 1).saturating_sub(current_blake_updates);
+    let need_compress = ((target_n_blake_updates / 2) + 1).saturating_sub(current_blake_updates);
     if need_compress > 0 {
         blake(context, &vec![zero; need_compress * 4], need_compress * 64);
     }

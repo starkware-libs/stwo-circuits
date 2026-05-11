@@ -217,28 +217,16 @@ pub struct ComponentShape {
 /// Represents the structure of a proof.
 #[derive(Debug, PartialEq)]
 pub struct ProofConfig {
-    // TODO(lior): Add a check on the total security bits of the protocol given parameters
-    //   such as `n_pow_bits`, `fri.n_queries`, etc.
     pub n_pow_bits: u32,
     pub n_interaction_pow_bits: u32,
-
     // AIR structure.
     pub n_preprocessed_columns: usize,
     pub n_trace_columns: usize,
     pub n_interaction_columns: usize,
     pub component_shapes: Vec<ComponentShape>,
-
-    // Per column in the interaction trace, an indicator of whether it is a cumulative sum column.
-    // This is used to determine whether to include a sample point at the previous point in the
-    // OODS response.
     pub cumulative_sum_columns: Vec<bool>,
-
-    // Per component in the full list of components, an indicator of whether it is enabled.
-    // This field is used for compatibility with the Cairo1 verifier where the set of components in
-    // the AIR can be set dynamically. In the Circuit verifier, the set of components is static
-    // and we always have enabled_bits.len() >= n_components.
     pub enabled_bits: Vec<bool>,
-
+    // FriConfig
     pub fri: FriConfig,
 }
 impl ProofConfig {

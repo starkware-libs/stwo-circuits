@@ -15,7 +15,7 @@ use circuits_stark_verifier::proof::{ProofConfig, empty_proof};
 use num_traits::{One, Zero};
 use stwo::core::{fields::qm31::QM31, pcs::PcsConfig};
 
-use crate::verify::{Metadata, empty_metadata};
+use crate::verify::{ClaimedParams, empty_claimed_params};
 
 use super::{CommonConfig, MetadataTree, MultiverifierInput, build_multiverifier_circuit};
 
@@ -60,7 +60,7 @@ fn build_novalue_input() -> MultiverifierInput<NoValue> {
     let proof = empty_proof(&proof_config);
     MultiverifierInput {
         proof,
-        metadata: Metadata::from_config(&config),
+        claimed_params: ClaimedParams::from_config(&config),
         unconstrained_outputs: [QM31::zero(); 2],
         is_multiverifier: false,
     }
@@ -87,10 +87,10 @@ fn test_novalue_multiverifier_circuit() {
 
     // Build a placeholder MetadataTree; for `NoValue` topology only the
     // structure matters, not the actual hashes.
-    let empty_metadata = empty_metadata(N_OUTPUTS);
-    let metadata_tree = MetadataTree::<NoValue>::commit(empty_metadata.clone(), empty_metadata);
+    let empty_claimed_params = empty_claimed_params(N_OUTPUTS);
+    let metadata_tree = MetadataTree::<NoValue>::commit(empty_claimed_params.clone(), empty_claimed_params);
 
-    let context = build_multiverifier_circuit::<NoValue>(p1, p2, common_config, metadata_tree);
+    let context = build_multiverifier_circuit::<NoValue>(p1, p2, &common_config, metadata_tree);
 
     context.check_vars_used();
     context.circuit.check_yields();

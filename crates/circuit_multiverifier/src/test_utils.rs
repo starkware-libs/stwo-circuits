@@ -14,8 +14,8 @@ use stwo::core::{fields::qm31::QM31, pcs::PcsConfig};
 use crate::{
     padding::{pad_components_to_target_counts, qm31_ops_n_rows},
     verify::{
-        CommonConfig, Metadata, MetadataTree, MultiverifierInput, build_multiverifier_circuit,
-        empty_metadata,
+        CommonConfig, ClaimedParams, MetadataTree, MultiverifierInput, build_multiverifier_circuit,
+        empty_claimed_params,
     },
 };
 
@@ -46,7 +46,7 @@ pub fn pp_multiverifier_circuit_from_subcircuit(
     // Use a closure to bypass lack of Clone
     let make_input = || MultiverifierInput {
         proof: empty_proof(&proof_config),
-        metadata: Metadata::from_config(&subcircuit_config),
+        claimed_params: ClaimedParams::from_config(&subcircuit_config),
         unconstrained_outputs: [QM31::from(0); 2],
         is_multiverifier: false,
     };
@@ -64,22 +64,16 @@ pub fn pp_multiverifier_circuit_from_subcircuit(
             .cloned()
             .collect(),
     };
-    let empty_metadata = empty_metadata(N_OUTPUTS);
-    let metadata_tree = MetadataTree::<NoValue>::commit(empty_metadata.clone(), empty_metadata);
+    let empty_claimed_params = empty_claimed_params(N_OUTPUTS);
+    let metadata_tree = MetadataTree::<NoValue>::commit(empty_claimed_params.clone(), empty_claimed_params);
     let mut multiverifier_context = build_multiverifier_circuit::<NoValue>(
         make_input(),
         make_input(),
-        common_config,
+        &common_config,
         metadata_tree,
     );
-    if let Some(ComponentSizes { eq, qm31_ops, n_blake_gates, n_blake_updates }) = target_padding {
-        pad_components_to_target_counts(
-            &mut multiverifier_context,
-            eq,
-            qm31_ops,
-            n_blake_gates,
-            n_blake_updates,
-        );
+    if let Some(target_padding) = target_padding {
+        pad_components_to_target_counts(&mut multiverifier_context, target_padding);
     }
     let pp = PreprocessedCircuit::preprocess_circuit(&mut multiverifier_context);
     (pp, multiverifier_context)
@@ -118,9 +112,9 @@ pub fn get_preprocessed_root(pp: &PreprocessedCircuit, log_blowup_factor: u32) -
     use stwo::core::poly::circle::CanonicCoset;
     use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
     use stwo::prover::CommitmentTreeProver;
-    use stwo::prover::poly::circle::PolyOps;
-    use stwo::prover::mempool::BaseColumnPool;
     use stwo::prover::backend::simd::SimdBackend;
+    use stwo::prover::mempool::BaseColumnPool;
+    use stwo::prover::poly::circle::PolyOps;
 
     assert!(log_blowup_factor > 0);
     let lifting_log_size = pp.params.trace_log_size + log_blowup_factor;

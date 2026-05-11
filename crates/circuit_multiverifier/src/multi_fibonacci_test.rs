@@ -20,7 +20,7 @@ use stwo::core::{fields::qm31::QM31, pcs::PcsConfig};
 
 use super::verify_test::build_fibonacci_context_with_5_outputs;
 use super::{
-    CommonConfig, Metadata, MetadataTree, MultiverifierInput, build_multiverifier_circuit,
+    CommonConfig, ClaimedParams, MetadataTree, MultiverifierInput, build_multiverifier_circuit,
 };
 
 /// Result of proving a single Fibonacci circuit, bundled so the caller can derive
@@ -53,8 +53,7 @@ fn prove_fibonacci_and_prepare() -> ProofBundle {
     // The actual preprocessed root that was committed during proving — read it back
     // from `commitments[0]` rather than relying on a stale hardcoded constant, since
     // the modified Fibonacci context (5 outputs) changes the trace shape.
-    let preprocessed_root: HashValue<QM31> =
-        circuit_proof.stark_proof.proof.commitments[0].into();
+    let preprocessed_root: HashValue<QM31> = circuit_proof.stark_proof.proof.commitments[0].into();
 
     let preprocessed_column_log_sizes = preprocessed_circuit.preprocessed_trace.log_sizes();
     let proof_config = ProofConfig::new(
@@ -79,15 +78,15 @@ fn prove_fibonacci_and_prepare() -> ProofBundle {
     ProofBundle { proof, public_data, config }
 }
 
-/// Builds a `Metadata<QM31>` for the multiverifier circuit given its
+/// Builds a `ClaimedParams<QM31>` for the multiverifier circuit given its
 /// preprocessed shape and root. (Used as the leaf-1 entry of the metadata
 /// Merkle tree.)
 fn multiverifier_metadata(
     output_addresses: &[usize],
     n_blake_gates: usize,
     preprocessed_root: HashValue<QM31>,
-) -> Metadata<QM31> {
-    Metadata {
+) -> ClaimedParams<QM31> {
+    ClaimedParams {
         n_blake_gates_pow_two: M31Wrapper::new_unsafe(QM31::from(
             n_blake_gates.next_power_of_two(),
         )),
@@ -139,7 +138,7 @@ fn extract_multi_metadata(
     );
     let make_novalue_input = || MultiverifierInput {
         proof: empty_proof(&proof_config),
-        metadata: Metadata::from_config(fib_config),
+        claimed_params: ClaimedParams::from_config(fib_config),
         unconstrained_outputs: [QM31::zero(); 2],
         is_multiverifier: false,
     };
@@ -151,24 +150,20 @@ fn extract_multi_metadata(
             &inner_pcs_config,
             INTERACTION_POW_BITS,
         ),
-        preprocessed_column_ids: fib_config
-            .preprocessed_column_log_sizes
-            .keys()
-            .cloned()
-            .collect(),
+        preprocessed_column_ids: fib_config.preprocessed_column_log_sizes.keys().cloned().collect(),
     };
     // For `extract_multi_metadata` we only care about the *topology* of the
     // multi (its preprocessed columns / root). The metadata-tree contents
     // don't affect that, so a tree built from two copies of the leaf
-    // `Metadata` is fine.
-    let placeholder_metadata = Metadata::from_config(fib_config);
-    let placeholder_metadata_clone = Metadata::from_config(fib_config);
+    // `ClaimedParams` is fine.
+    let placeholder_metadata = ClaimedParams::from_config(fib_config);
+    let placeholder_metadata_clone = ClaimedParams::from_config(fib_config);
     let metadata_tree =
         MetadataTree::<NoValue>::commit(placeholder_metadata, placeholder_metadata_clone);
     let mut multi_ctx = build_multiverifier_circuit::<NoValue>(
         make_novalue_input(),
         make_novalue_input(),
-        common_config,
+        &common_config,
         metadata_tree,
     );
     let pp_multi = PreprocessedCircuit::preprocess_circuit(&mut multi_ctx);
@@ -246,7 +241,7 @@ fn measure_multi_trace_log_size_at_inner_lifting(inner_lifting_log_size: u32) ->
 
     let make_input = || MultiverifierInput {
         proof: empty_proof(&proof_config),
-        metadata: Metadata::from_config(&fib_config),
+        claimed_params: ClaimedParams::from_config(&fib_config),
         unconstrained_outputs: [QM31::zero(); 2],
         is_multiverifier: false,
     };
@@ -258,14 +253,10 @@ fn measure_multi_trace_log_size_at_inner_lifting(inner_lifting_log_size: u32) ->
             &inner_pcs_config,
             INTERACTION_POW_BITS,
         ),
-        preprocessed_column_ids: fib_config
-            .preprocessed_column_log_sizes
-            .keys()
-            .cloned()
-            .collect(),
+        preprocessed_column_ids: fib_config.preprocessed_column_log_sizes.keys().cloned().collect(),
     };
-    let placeholder_meta = Metadata::from_config(&fib_config);
-    let placeholder_meta_clone = Metadata::from_config(&fib_config);
+    let placeholder_meta = ClaimedParams::from_config(&fib_config);
+    let placeholder_meta_clone = ClaimedParams::from_config(&fib_config);
     let metadata_tree = MetadataTree::<NoValue>::commit(placeholder_meta, placeholder_meta_clone);
     let mut multi_ctx = build_multiverifier_circuit::<NoValue>(
         make_input(),
@@ -408,7 +399,7 @@ fn test_a_prove_multiverifier_of_fibs_and_save() {
 
     // 2. Build the metadata Merkle tree over the two valid descriptors: leaf 0 = fib (variant A),
     //    leaf 1 = multiverifier (variant B).
-    let m_fib = Metadata::<QM31>::from_config(&bundle1.config);
+    let m_fib = ClaimedParams::<QM31>::from_config(&bundle1.config);
     let multi_meta = extract_multi_metadata(&bundle1.config, pcs_config);
     let m_multi = multiverifier_metadata(
         &multi_meta.output_addresses,
@@ -435,7 +426,7 @@ fn test_a_prove_multiverifier_of_fibs_and_save() {
     };
     let p1 = MultiverifierInput {
         proof: bundle1.proof,
-        metadata: Metadata::from_config(&bundle1.config),
+        claimed_params: ClaimedParams::from_config(&bundle1.config),
         unconstrained_outputs: [
             bundle1.public_data.output_values[0],
             bundle1.public_data.output_values[1],
@@ -444,15 +435,14 @@ fn test_a_prove_multiverifier_of_fibs_and_save() {
     };
     let p2 = MultiverifierInput {
         proof: bundle2.proof,
-        metadata: Metadata::from_config(&bundle2.config),
+        claimed_params: ClaimedParams::from_config(&bundle2.config),
         unconstrained_outputs: [
             bundle2.public_data.output_values[0],
             bundle2.public_data.output_values[1],
         ],
         is_multiverifier: false,
     };
-    let mut multi_ctx =
-        build_multiverifier_circuit::<QM31>(p1, p2, common_config, metadata_tree);
+    let mut multi_ctx = build_multiverifier_circuit::<QM31>(p1, p2, common_config, metadata_tree);
     multi_ctx.validate_circuit();
 
     // 6. Prove the multiverifier circuit itself. `prove_circuit_assignment` auto-lifts to
@@ -513,7 +503,7 @@ fn test_b_verify_multi_proof_and_fibonacci_proof_with_multiverifier() {
     let inner_pcs_config = fib_bundle.config.config; // lifting=21
 
     // 2. Re-derive the metadata tree deterministically (same shape as Test A).
-    let m_fib = Metadata::<QM31>::from_config(&fib_bundle.config);
+    let m_fib = ClaimedParams::<QM31>::from_config(&fib_bundle.config);
     let multi_meta = extract_multi_metadata(&fib_bundle.config, inner_pcs_config);
     let m_multi = multiverifier_metadata(
         &multi_meta.output_addresses,
@@ -524,10 +514,9 @@ fn test_b_verify_multi_proof_and_fibonacci_proof_with_multiverifier() {
     let metadata_root = metadata_tree.root;
 
     // 3. Reconstruct the multi's `CircuitPublicData`. The multi's outputs are
-    //    `[hash_of_payloads_lo, hash_of_payloads_hi, H_lo, H_hi, u]`, where
-    //    `hash_of_payloads = blake([fib_a, fib_b, fib_a, fib_b], 64)` over the two
-    //    Fibonacci payload pairs (Test A's two fibs are identical, since Fibonacci is
-    //    deterministic — so so are this Test's).
+    //    `[hash_of_payloads_lo, hash_of_payloads_hi, H_lo, H_hi, u]`, where `hash_of_payloads =
+    //    blake([fib_a, fib_b, fib_a, fib_b], 64)` over the two Fibonacci payload pairs (Test A's
+    //    two fibs are identical, since Fibonacci is deterministic — so so are this Test's).
     let fib_payload_lo = fib_bundle.public_data.output_values[0];
     let fib_payload_hi = fib_bundle.public_data.output_values[1];
     let hash_of_payloads =
@@ -578,7 +567,7 @@ fn test_b_verify_multi_proof_and_fibonacci_proof_with_multiverifier() {
     //    lifting, which is also fib's natural lifting).
     let multi_input = MultiverifierInput {
         proof: multi_proof,
-        metadata: Metadata::from_config(&multi_config),
+        claimed_params: ClaimedParams::from_config(&multi_config),
         unconstrained_outputs: [
             multi_public_data.output_values[0],
             multi_public_data.output_values[1],
@@ -587,7 +576,7 @@ fn test_b_verify_multi_proof_and_fibonacci_proof_with_multiverifier() {
     };
     let fib_input = MultiverifierInput {
         proof: fib_bundle.proof,
-        metadata: Metadata::from_config(&fib_bundle.config),
+        claimed_params: ClaimedParams::from_config(&fib_bundle.config),
         unconstrained_outputs: [
             fib_bundle.public_data.output_values[0],
             fib_bundle.public_data.output_values[1],
@@ -608,12 +597,8 @@ fn test_b_verify_multi_proof_and_fibonacci_proof_with_multiverifier() {
         ),
         preprocessed_column_ids: multi_meta.preprocessed_column_ids.clone(),
     };
-    let context = build_multiverifier_circuit::<QM31>(
-        multi_input,
-        fib_input,
-        common_config,
-        metadata_tree,
-    );
+    let context =
+        build_multiverifier_circuit::<QM31>(multi_input, fib_input, common_config, metadata_tree);
 
     context.check_vars_used();
     context.circuit.check_yields();
@@ -647,8 +632,8 @@ fn test_multiverifier_verifies_two_fibonacci_proofs() {
     // = 0), they sit at leaf 0 of the tree, so the leaf-1 entry is unused at
     // the *bit* level — but the Merkle equation still has to hash up to the
     // committed root, so we just put the fib metadata in both slots.
-    let m_fib = Metadata::<QM31>::from_config(&bundle1.config);
-    let m_fib_clone = Metadata::<QM31>::from_config(&bundle1.config);
+    let m_fib = ClaimedParams::<QM31>::from_config(&bundle1.config);
+    let m_fib_clone = ClaimedParams::<QM31>::from_config(&bundle1.config);
     let metadata_tree = MetadataTree::<QM31>::commit(m_fib, m_fib_clone);
 
     let common_config = CommonConfig {
@@ -668,7 +653,7 @@ fn test_multiverifier_verifies_two_fibonacci_proofs() {
     };
     let p1 = MultiverifierInput {
         proof: bundle1.proof,
-        metadata: Metadata::from_config(&bundle1.config),
+        claimed_params: ClaimedParams::from_config(&bundle1.config),
         unconstrained_outputs: [
             bundle1.public_data.output_values[0],
             bundle1.public_data.output_values[1],
@@ -677,7 +662,7 @@ fn test_multiverifier_verifies_two_fibonacci_proofs() {
     };
     let p2 = MultiverifierInput {
         proof: bundle2.proof,
-        metadata: Metadata::from_config(&bundle2.config),
+        claimed_params: ClaimedParams::from_config(&bundle2.config),
         unconstrained_outputs: [
             bundle2.public_data.output_values[0],
             bundle2.public_data.output_values[1],
