@@ -24,6 +24,7 @@ use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 // TODO(ilya): Update this to the correct values.
 pub const INTERACTION_POW_BITS: u32 = 20;
+pub const U_ADDRESS: usize = 2;
 
 pub struct CircuitStatement<Value: IValue> {
     pub components: IndexMap<&'static str, Box<dyn CircuitEval<Value>>>,
@@ -80,14 +81,20 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
         interaction_elements: [Var; 2],
     ) -> Var {
         let mut sum = context.zero();
+        let zero = context.zero();
+        let one = context.one();
 
         // Output gates public logup sum contribution.
         let gate_relation_id = context.constant(GATE_RELATION_ID.into());
         for (output_address, output_value) in zip_eq(&self.output_addresses, &self.output_values) {
             let [output_value_0, output_value_1, output_value_2, output_value_3] =
-                Simd::unpack(context, &Simd::from_packed(vec![*output_value], 4))
-                    .try_into()
-                    .unwrap();
+                if output_address.get().idx == U_ADDRESS {
+                    [zero, zero, one, zero]
+                } else {
+                    Simd::unpack(context, &Simd::from_packed(vec![*output_value], 4))
+                        .try_into()
+                        .unwrap()
+                };
             let term = logup_use_term(
                 context,
                 &[
