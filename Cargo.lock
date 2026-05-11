@@ -1332,6 +1332,7 @@ dependencies = [
  "expect-test",
  "itertools 0.12.1",
  "num-traits",
+ "rand 0.8.5",
  "rayon",
  "serde",
  "stwo",

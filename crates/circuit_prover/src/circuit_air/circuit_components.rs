@@ -1,6 +1,6 @@
 use crate::circuit_air::components::{
     blake_g, blake_g_gate, blake_gate, blake_output, blake_round, blake_round_sigma, eq,
-    m_31_to_u_32, qm31_ops, range_check_15, range_check_16, triple_xor, triple_xor_32,
+    m_31_to_u_32, qm_31_ops, range_check_15, range_check_16, triple_xor, triple_xor_32,
     verify_bitwise_xor_4, verify_bitwise_xor_7, verify_bitwise_xor_8, verify_bitwise_xor_9,
     verify_bitwise_xor_12,
 };
@@ -14,7 +14,7 @@ use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 pub struct CircuitComponents {
     pub eq: eq::Component,
-    pub qm31_ops: qm31_ops::Component,
+    pub qm31_ops: qm_31_ops::Component,
     pub blake_gate: blake_gate::Component,
     pub blake_round: blake_round::Component,
     pub blake_round_sigma: blake_round_sigma::Component,
@@ -51,10 +51,12 @@ impl CircuitComponents {
             },
             interaction_claim.claimed_sums[ComponentList::Eq as usize],
         );
-        let qm31_ops_component = qm31_ops::Component::new(
+        let qm31_ops_component = qm_31_ops::Component::new(
             tree_span_provider,
-            qm31_ops::Eval {
-                log_size: circuit_claim.log_sizes[ComponentList::Qm31Ops as usize],
+            qm_31_ops::Eval {
+                claim: qm_31_ops::Claim {
+                    log_size: circuit_claim.log_sizes[ComponentList::Qm31Ops as usize],
+                },
                 common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
             },
             interaction_claim.claimed_sums[ComponentList::Qm31Ops as usize],

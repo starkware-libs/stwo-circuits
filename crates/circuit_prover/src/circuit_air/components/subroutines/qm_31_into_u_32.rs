@@ -1,5 +1,3 @@
-// This file was created by the AIR team.
-
 use crate::circuit_air::components::prelude::*;
 
 #[derive(Copy, Clone, Serialize)]

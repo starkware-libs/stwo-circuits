@@ -1,10 +1,10 @@
 // This file was created by the AIR team.
 
 use crate::circuit_air::components::prelude::*;
-use crate::circuit_air::components::subroutines::bitwise_xor_num_bits_8::BitwiseXorNumBits8;
-use crate::circuit_air::components::subroutines::split_16_low_part_size_8::Split16LowPartSize8;
+use subroutines::bitwise_xor_num_bits_8::BitwiseXorNumBits8;
+use subroutines::split_16_low_part_size_8::Split16LowPartSize8;
 
-#[derive(Copy, Clone, Serialize)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 pub struct CreateBlakeRoundInput {}
 
 impl CreateBlakeRoundInput {
@@ -12,6 +12,7 @@ impl CreateBlakeRoundInput {
     #[allow(clippy::double_parens)]
     #[allow(non_snake_case)]
     #[allow(clippy::unused_unit)]
+    #[allow(unused_variables)]
     #[allow(clippy::too_many_arguments)]
     pub fn evaluate<E: EvalAtRow>(
         [
@@ -55,20 +56,20 @@ impl CreateBlakeRoundInput {
         let M31_82 = E::F::from(M31::from(82));
         let M31_9812 = E::F::from(M31::from(9812));
 
-        let [split_16_low_part_size_8_output_tmp_4d188_1_limb_0] = Split16LowPartSize8::evaluate(
+        let [split_16_low_part_size_8_output_tmp_ca903_1_limb_0] = Split16LowPartSize8::evaluate(
             [t0.clone()],
             ms_8_bits_col0.clone(),
             common_lookup_elements,
             eval,
         );
-        let [split_16_low_part_size_8_output_tmp_4d188_3_limb_0] = Split16LowPartSize8::evaluate(
+        let [split_16_low_part_size_8_output_tmp_ca903_3_limb_0] = Split16LowPartSize8::evaluate(
             [t1.clone()],
             ms_8_bits_col1.clone(),
             common_lookup_elements,
             eval,
         );
         BitwiseXorNumBits8::evaluate(
-            [split_16_low_part_size_8_output_tmp_4d188_1_limb_0.clone(), M31_127.clone()],
+            [split_16_low_part_size_8_output_tmp_ca903_1_limb_0.clone(), M31_127.clone()],
             xor_col2.clone(),
             common_lookup_elements,
             eval,
@@ -80,7 +81,7 @@ impl CreateBlakeRoundInput {
             eval,
         );
         BitwiseXorNumBits8::evaluate(
-            [split_16_low_part_size_8_output_tmp_4d188_3_limb_0.clone(), M31_14.clone()],
+            [split_16_low_part_size_8_output_tmp_ca903_3_limb_0.clone(), M31_14.clone()],
             xor_col4.clone(),
             common_lookup_elements,
             eval,

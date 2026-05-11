@@ -1,10 +1,10 @@
 // This file was created by the AIR team.
 
 use crate::circuit_air::components::prelude::*;
-use crate::circuit_air::components::subroutines::split_16_low_part_size_7::Split16LowPartSize7;
-use crate::circuit_air::components::subroutines::split_16_low_part_size_9::Split16LowPartSize9;
+use subroutines::split_16_low_part_size_7::Split16LowPartSize7;
+use subroutines::split_16_low_part_size_9::Split16LowPartSize9;
 
-#[derive(Copy, Clone, Serialize)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 pub struct VerifyXorRot32R7 {}
 
 impl VerifyXorRot32R7 {
@@ -36,37 +36,37 @@ impl VerifyXorRot32R7 {
         let M31_62225763 = E::F::from(M31::from(62225763));
         let M31_95781001 = E::F::from(M31::from(95781001));
 
-        let [split_16_low_part_size_7_output_tmp_6c07e_1_limb_0] = Split16LowPartSize7::evaluate(
+        let [split_16_low_part_size_7_output_tmp_f88f9_1_limb_0] = Split16LowPartSize7::evaluate(
             [verify_xor_rot_32_r_7_input_limb_0.clone()],
             ms_9_bits_col0.clone(),
             common_lookup_elements,
             eval,
         );
-        let [split_16_low_part_size_7_output_tmp_6c07e_3_limb_0] = Split16LowPartSize7::evaluate(
+        let [split_16_low_part_size_7_output_tmp_f88f9_3_limb_0] = Split16LowPartSize7::evaluate(
             [verify_xor_rot_32_r_7_input_limb_1.clone()],
             ms_9_bits_col1.clone(),
             common_lookup_elements,
             eval,
         );
-        let [split_16_low_part_size_7_output_tmp_6c07e_5_limb_0] = Split16LowPartSize7::evaluate(
+        let [split_16_low_part_size_7_output_tmp_f88f9_5_limb_0] = Split16LowPartSize7::evaluate(
             [verify_xor_rot_32_r_7_input_limb_2.clone()],
             ms_9_bits_col2.clone(),
             common_lookup_elements,
             eval,
         );
-        let [split_16_low_part_size_7_output_tmp_6c07e_7_limb_0] = Split16LowPartSize7::evaluate(
+        let [split_16_low_part_size_7_output_tmp_f88f9_7_limb_0] = Split16LowPartSize7::evaluate(
             [verify_xor_rot_32_r_7_input_limb_3.clone()],
             ms_9_bits_col3.clone(),
             common_lookup_elements,
             eval,
         );
-        let [split_16_low_part_size_9_output_tmp_6c07e_9_limb_0] = Split16LowPartSize9::evaluate(
+        let [split_16_low_part_size_9_output_tmp_f88f9_9_limb_0] = Split16LowPartSize9::evaluate(
             [verify_xor_rot_32_r_7_input_limb_4.clone()],
             ms_7_bits_col4.clone(),
             common_lookup_elements,
             eval,
         );
-        let [split_16_low_part_size_9_output_tmp_6c07e_11_limb_0] = Split16LowPartSize9::evaluate(
+        let [split_16_low_part_size_9_output_tmp_f88f9_11_limb_0] = Split16LowPartSize9::evaluate(
             [verify_xor_rot_32_r_7_input_limb_5.clone()],
             ms_7_bits_col5.clone(),
             common_lookup_elements,
@@ -79,7 +79,7 @@ impl VerifyXorRot32R7 {
                 M31_95781001.clone(),
                 ms_9_bits_col0.clone(),
                 ms_9_bits_col2.clone(),
-                split_16_low_part_size_9_output_tmp_6c07e_9_limb_0.clone(),
+                split_16_low_part_size_9_output_tmp_f88f9_9_limb_0.clone(),
             ],
         ));
 
@@ -88,8 +88,8 @@ impl VerifyXorRot32R7 {
             E::EF::from(M31_1.clone()),
             &[
                 M31_62225763.clone(),
-                split_16_low_part_size_7_output_tmp_6c07e_3_limb_0.clone(),
-                split_16_low_part_size_7_output_tmp_6c07e_7_limb_0.clone(),
+                split_16_low_part_size_7_output_tmp_f88f9_3_limb_0.clone(),
+                split_16_low_part_size_7_output_tmp_f88f9_7_limb_0.clone(),
                 ms_7_bits_col4.clone(),
             ],
         ));
@@ -101,7 +101,7 @@ impl VerifyXorRot32R7 {
                 M31_95781001.clone(),
                 ms_9_bits_col1.clone(),
                 ms_9_bits_col3.clone(),
-                split_16_low_part_size_9_output_tmp_6c07e_11_limb_0.clone(),
+                split_16_low_part_size_9_output_tmp_f88f9_11_limb_0.clone(),
             ],
         ));
 
@@ -110,8 +110,8 @@ impl VerifyXorRot32R7 {
             E::EF::from(M31_1.clone()),
             &[
                 M31_62225763.clone(),
-                split_16_low_part_size_7_output_tmp_6c07e_1_limb_0.clone(),
-                split_16_low_part_size_7_output_tmp_6c07e_5_limb_0.clone(),
+                split_16_low_part_size_7_output_tmp_f88f9_1_limb_0.clone(),
+                split_16_low_part_size_7_output_tmp_f88f9_5_limb_0.clone(),
                 ms_7_bits_col5.clone(),
             ],
         ));
