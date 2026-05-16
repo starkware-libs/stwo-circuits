@@ -101,6 +101,9 @@ fn finalize_constants_with_min_base(context: &mut Context<impl IValue>, min_base
         m31_base,
         qm31_basis,
     );
+    // Build the remaining QM31 constants.
+    decompose_qm31_constants(context, &mut qm31_constants, &mut m31_cache, m31_base, qm31_basis);
+    assert!(qm31_constants.is_empty());
 }
 
 /// Finds the largest integer N such that all values in [0, N] are present as constants.
@@ -273,4 +276,34 @@ fn decompose_broadcast_constants(
         // Remove the element from qm31_constants.
         false
     });
+}
+
+fn decompose_qm31_constants(
+    context: &mut Context<impl IValue>,
+    qm31_constants: &mut IndexMap<QM31, Var>,
+    m31_cache: &mut HashMap<M31, usize>,
+    base: M31,
+    qm_basis: [Var; 3],
+) {
+    let [i_var, u_var, iu_var] = qm_basis;
+
+    for (qm31_value, qm31_var) in qm31_constants.drain(..) {
+        let limbs = qm31_value.to_m31_array();
+        let [a, b, c, d]: [Var; 4] = std::array::from_fn(|j| {
+            let m31_val = limbs[j];
+            if !m31_cache.contains_key(&m31_val) {
+                build_m31_from_base(context, m31_cache, &mut IndexMap::new(), base, m31_val);
+            }
+            Var { idx: *m31_cache.get(&m31_val).unwrap() }
+        });
+
+        // a + b*i + c*u + d*iu → output to reserved idx
+        let first_half = eval!(context, (a) + ((b) * (i_var)));
+        let second_half = eval!(context, ((c) * (u_var)) + ((d) * (iu_var)));
+        context.circuit.add.push(Add {
+            in0: first_half.idx,
+            in1: second_half.idx,
+            out: qm31_var.idx,
+        });
+    }
 }
