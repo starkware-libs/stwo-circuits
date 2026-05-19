@@ -94,7 +94,7 @@ pub fn blake_with_reserved_outputs<Value: IValue>(
     context: &mut Context<Value>,
     input: &[Var],
     n_bytes: usize,
-    (reserved0, reserved1): (ReservedVar, ReservedVar)
+    (reserved0, reserved1): (Var, Var)
 ) -> HashValue<Var> {
     // Sanity check: check the number of bytes is consistent with the number of [QM31] values.
     assert_eq!(input.len(), n_bytes.div_ceil(16));
@@ -118,17 +118,17 @@ pub fn blake_with_reserved_outputs<Value: IValue>(
         .collect_vec();
 
     context.stats.blake_updates += chunks.len();
-    let out_var0 = context.fulfill(reserved0, out.0);
-    let out_var1 = context.fulfill(reserved1, out.1);
+    context.fulfill(reserved0, out.0);
+    context.fulfill(reserved1, out.1);
 
     context.circuit.blake.push(Blake {
         input: chunks,
         n_bytes,
-        out0: out_var0.idx,
-        out1: out_var0.idx,
+        out0: reserved0.idx,
+        out1: reserved1.idx,
     });
 
-    HashValue(out0, out1)
+    HashValue(reserved0, reserved1)
 }
 
 /// Blake2s IV.

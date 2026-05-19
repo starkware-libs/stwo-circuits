@@ -111,6 +111,8 @@ fn test_verify() {
         Some(MAX_SEQUENCE_LOG_SIZE as u32 + pcs_config.fri_config.log_blowup_factor);
 
     let mut novalue_context = Context::<NoValue>::default();
+    novalue_context.reserve();
+    novalue_context.reserve();
     let output_len = 1;
     let program_len = 128;
     let flat_claim = vec![M31::zero(); PUBLIC_DATA_LEN + output_len + program_len];

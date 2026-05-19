@@ -17,20 +17,6 @@ pub mod test;
 /// Keep in sync with the registration order in `Context::default`.
 pub const U_ADDRESS: usize = 2;
 
-/// Handle to a variable allocated by [`Context::reserve`] whose value has not yet been supplied.
-///
-/// Not `Copy`/`Clone`: each reservation is fulfilled exactly once via [`Context::fulfill`].
-/// Use [`Self::var`] to obtain the underlying [`Var`] for placing in gates before fulfillment.
-pub struct ReservedVar(Var);
-
-impl ReservedVar {
-    /// The underlying [`Var`]. Safe to use as a gate input/output before fulfillment, but reading
-    /// its value via [`Context::get`] before fulfillment trips a debug assertion.
-    pub fn var(&self) -> Var {
-        self.0
-    }
-}
-
 /// Represents a variable in a [Circuit].
 ///
 /// A [Var] represents a `QM31` value.
@@ -128,23 +114,26 @@ impl<Value: IValue> Context<Value> {
     ///
     /// Reading the value before fulfillment trips a debug assertion in [`Self::get`].
     /// [`Self::finalize_guessed_vars`] panics if any reservation is still outstanding.
-    pub fn reserve(&mut self) -> ReservedVar {
-        let var = self.new_var(Value::placeholder());
-        let inserted = self.reserved_vars.insert(var.idx);
+    pub fn reserve(&mut self) -> Var {
+        let reserved = self.new_var(Value::placeholder());
+        let inserted = self.reserved_vars.insert(reserved.idx);
         debug_assert!(inserted);
-        ReservedVar(var)
+        reserved
+    }
+
+    /// Returns the currently outstanding reservations.
+    pub fn reserved(&self) -> Vec<Var> {
+        self.reserved_vars.iter().map(|&x| Var {idx: x}).collect()
     }
 
     /// Supplies the value for a previously [reserved](Self::reserve) variable and returns the
     /// underlying [`Var`] for further use.
     ///
-    /// Panics if the variable has already been fulfilled (which, because [`ReservedVar`] is not
-    /// `Copy`, can only happen if the same `idx` was somehow reserved twice — a bug).
-    pub fn fulfill(&mut self, reserved: ReservedVar, value: Value) -> Var {
-        let removed = self.reserved_vars.remove(&reserved.0.idx);
-        assert!(removed, "variable [{}] was not reserved or was already fulfilled", reserved.0.idx);
-        self.values[reserved.0.idx] = value;
-        reserved.0
+    /// Panics if the variable has already been fulfilled or was never reserved.
+    pub fn fulfill(&mut self, reserved: Var, value: Value) {
+        let removed = self.reserved_vars.remove(&reserved.idx);
+        assert!(removed, "variable [{}] was not reserved or was already fulfilled", reserved.idx);
+        self.values[reserved.idx] = value;
     }
 
     pub fn constant(&mut self, value: QM31) -> Var {

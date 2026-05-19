@@ -33,12 +33,12 @@ fn test_reserve_fulfill_round_trip() {
 
     let reserved = context.reserve();
     // Use the reserved Var as the output of an Add gate before the value is known.
-    context.circuit.add.push(Add { in0: a.idx, in1: b.idx, out: reserved.var().idx });
+    context.circuit.add.push(Add { in0: a.idx, in1: b.idx, out: reserved.idx });
     // ...later, fulfill with the value the gate forces.
-    let sum_var = context.fulfill(reserved, qm31_from_u32s(8, 0, 0, 0));
+    context.fulfill(reserved, qm31_from_u32s(8, 0, 0, 0));
 
     // The reserved idx is unchanged after fulfillment, and now readable.
-    assert_eq!(context.get(sum_var), qm31_from_u32s(8, 0, 0, 0));
+    assert_eq!(context.get(reserved), qm31_from_u32s(8, 0, 0, 0));
 
     finalize_constants(&mut context);
     context.finalize_guessed_vars();
@@ -59,7 +59,7 @@ fn test_unfulfilled_reservation_panics_at_finalize() {
 fn test_read_before_fulfill_panics_in_debug() {
     let mut context = TraceContext::default();
     let r = context.reserve();
-    let _ = context.get(r.var());
+    let _ = context.get(r);
 }
 
 /// A reserved variable that is never yielded by any gate is caught by `check_yields`.
@@ -70,7 +70,7 @@ fn test_reserved_without_yield_fails_check_yields() {
     let r = context.reserve();
     // Use the reserved var as an input, but never yield it.
     let zero = context.zero();
-    let _ = add(&mut context, r.var(), zero);
+    let _ = add(&mut context, r, zero);
     let _ = context.fulfill(r, qm31_from_u32s(0, 0, 0, 0));
     finalize_constants(&mut context);
     context.finalize_guessed_vars();
