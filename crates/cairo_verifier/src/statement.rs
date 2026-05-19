@@ -12,7 +12,7 @@ use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::extract_bits::extract_bits;
 use circuits::ivalue::{IValue, qm31_from_u32s};
-use circuits::ops::{Guess, eq, output};
+use circuits::ops::{Guess, eq};
 use circuits::simd::Simd;
 use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
@@ -319,10 +319,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         let program_len = context.constant(qm31_from_u32s(program.len() as u32, 0, 0, 0));
 
         let output_hash = blake(context, packed_outputs.get_packed(), 4 * packed_outputs.len());
-
-        // output the output hash.
-        output(context, output_hash.0);
-        output(context, output_hash.1);
+        context.output_into_reserved(&[output_hash.0, output_hash.1]);
 
         let flat_program = pack_into_qm31s(program.iter().flatten().cloned());
         let program_hash = IValue::blake(&flat_program, flat_program.len() * 16);
