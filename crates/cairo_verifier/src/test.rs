@@ -8,6 +8,7 @@ use cairo_air::flat_claims::FlatClaim;
 use cairo_air::utils::{binary_deserialize_from_file, binary_serialize_to_file};
 use cairo_air::verifier::INTERACTION_POW_BITS;
 use cairo_vm::types::layout_name::LayoutName;
+use circuit_common::N_RESERVED;
 use circuits::context::Context;
 use circuits::finalize_constants::finalize_constants;
 use circuits::ivalue::NoValue;
@@ -110,7 +111,7 @@ fn test_verify() {
     pcs_config.lifting_log_size =
         Some(MAX_SEQUENCE_LOG_SIZE as u32 + pcs_config.fri_config.log_blowup_factor);
 
-    let mut novalue_context = Context::<NoValue>::default();
+    let mut novalue_context: Context<NoValue> = Context::new::<N_RESERVED>();
     let output_len = 1;
     let program_len = 128;
     let flat_claim = vec![M31::zero(); PUBLIC_DATA_LEN + output_len + program_len];
