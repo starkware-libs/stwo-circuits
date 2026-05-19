@@ -4,6 +4,8 @@ pub mod preprocessed;
 
 // TODO(Anat): Take from somewhere stable.
 pub const N_LANES: usize = 16;
+/// The number of reserved variables in a verifier circuit.
+pub const N_RESERVED: usize = 2;
 
 #[derive(Debug, PartialEq)]
 pub struct CircuitParams {
