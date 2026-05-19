@@ -7,12 +7,13 @@ use cairo_air::components::memory_address_to_id::MEMORY_ADDRESS_TO_ID_SPLIT;
 use cairo_air::relations::{
     MEMORY_ADDRESS_TO_ID_RELATION_ID, MEMORY_ID_TO_BIG_RELATION_ID, OPCODES_RELATION_ID,
 };
+use circuit_common::outputs::copy_hash_into_reserved;
 use circuits::blake::{HashValue, blake};
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::extract_bits::extract_bits;
 use circuits::ivalue::{IValue, qm31_from_u32s};
-use circuits::ops::{Guess, eq, output};
+use circuits::ops::{Guess, eq};
 use circuits::simd::Simd;
 use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
@@ -319,10 +320,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         let program_len = context.constant(qm31_from_u32s(program.len() as u32, 0, 0, 0));
 
         let output_hash = blake(context, packed_outputs.get_packed(), 4 * packed_outputs.len());
-
-        // output the output hash.
-        output(context, output_hash.0);
-        output(context, output_hash.1);
+        copy_hash_into_reserved(context, output_hash);
 
         let flat_program = pack_into_qm31s(program.iter().flatten().cloned());
         let program_hash = IValue::blake(&flat_program, flat_program.len() * 16);
