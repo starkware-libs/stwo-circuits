@@ -17,6 +17,20 @@ pub mod test;
 /// Keep in sync with the registration order in `Context::default`.
 pub const U_ADDRESS: usize = 2;
 
+/// Handle to a variable allocated by [`Context::reserve`] whose value has not yet been supplied.
+///
+/// Not `Copy`/`Clone`: each reservation is fulfilled exactly once via [`Context::fulfill`].
+/// Use [`Self::var`] to obtain the underlying [`Var`] for placing in gates before fulfillment.
+pub struct ReservedVar(Var);
+
+impl ReservedVar {
+    /// The underlying [`Var`]. Safe to use as a gate input/output before fulfillment, but reading
+    /// its value via [`Context::get`] before fulfillment trips a debug assertion.
+    pub fn var(&self) -> Var {
+        self.0
+    }
+}
+
 /// Represents a variable in a [Circuit].
 ///
 /// A [Var] represents a `QM31` value.
@@ -57,6 +71,10 @@ pub struct Context<Value: IValue> {
     ///
     /// See [crate::ops::guess].
     pub guessed_vars: Option<Vec<usize>>,
+    /// Variables allocated by [Self::reserve] whose values have not yet been supplied by
+    /// [Self::fulfill]. Reading these via [Self::get] trips a debug assertion, and
+    /// [Self::finalize_guessed_vars] panics if any are still pending.
+    reserved_vars: HashSet<usize>,
     /// Debug only. If true, equality is asserted when adding the `eq` gate; if false, no
     /// assertion is made during construction and equality can be checked later at validation.
     pub assert_eq_on_eval: bool,
@@ -92,7 +110,41 @@ impl<Value: IValue> Context<Value> {
 
     /// Returns the value of a variable.
     pub fn get(&self, var: Var) -> Value {
+        debug_assert!(
+            !self.reserved_vars.contains(&var.idx),
+            "read of reserved variable [{}] before it was fulfilled",
+            var.idx,
+        );
         self.values[var.idx]
+    }
+
+    /// Allocates a fresh variable with no concrete value yet.
+    ///
+    /// The returned [`ReservedVar`] can be used as a gate input/output immediately — its
+    /// [`Var::idx`] is fixed at this call. The actual value must be supplied later via
+    /// [`Self::fulfill`]. The caller is responsible for arranging a gate whose `out` is the
+    /// reserved variable so that the single-yield invariant holds; [`Self::fulfill`] does not
+    /// add any gate by itself.
+    ///
+    /// Reading the value before fulfillment trips a debug assertion in [`Self::get`].
+    /// [`Self::finalize_guessed_vars`] panics if any reservation is still outstanding.
+    pub fn reserve(&mut self) -> ReservedVar {
+        let var = self.new_var(Value::placeholder());
+        let inserted = self.reserved_vars.insert(var.idx);
+        debug_assert!(inserted);
+        ReservedVar(var)
+    }
+
+    /// Supplies the value for a previously [reserved](Self::reserve) variable and returns the
+    /// underlying [`Var`] for further use.
+    ///
+    /// Panics if the variable has already been fulfilled (which, because [`ReservedVar`] is not
+    /// `Copy`, can only happen if the same `idx` was somehow reserved twice — a bug).
+    pub fn fulfill(&mut self, reserved: ReservedVar, value: Value) -> Var {
+        let removed = self.reserved_vars.remove(&reserved.0.idx);
+        assert!(removed, "variable [{}] was not reserved or was already fulfilled", reserved.0.idx);
+        self.values[reserved.0.idx] = value;
+        reserved.0
     }
 
     pub fn constant(&mut self, value: QM31) -> Var {
@@ -148,6 +200,12 @@ impl<Value: IValue> Context<Value> {
     /// For guessed value, add a trivial constraint so that the new variable appears once as
     /// a yield.
     pub fn finalize_guessed_vars(&mut self) {
+        assert!(
+            self.reserved_vars.is_empty(),
+            "{} reserved variable(s) were never fulfilled (idxs: {:?})",
+            self.reserved_vars.len(),
+            self.reserved_vars,
+        );
         for idx in self.guessed_vars.take().unwrap().iter() {
             self.circuit.add.push(Add { in0: *idx, in1: self.zero().idx, out: *idx });
         }
@@ -164,6 +222,7 @@ impl<Value: IValue> Default for Context<Value> {
             unused_vars: HashSet::new(),
             maybe_unused_vars: HashSet::new(),
             guessed_vars: Some(vec![]),
+            reserved_vars: HashSet::new(),
             assert_eq_on_eval: false,
         };
         // Register zero, one, and u as the first constants.

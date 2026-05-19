@@ -30,6 +30,14 @@ pub trait IValue:
 {
     fn from_qm31(value: QM31) -> Self;
 
+    /// A poison value used by [`Context::reserve`](crate::context::Context::reserve) for variables
+    /// whose value will be supplied later via [`Context::fulfill`](crate::context::Context::fulfill).
+    ///
+    /// Reading this through [`Context::get`](crate::context::Context::get) before fulfillment
+    /// trips a debug assertion. Choose a value unlikely to occur naturally so that any accidental
+    /// use shows up loudly during testing.
+    fn placeholder() -> Self;
+
     /// Computes pointwise multiplication of two [QM31] values.
     ///
     /// If `a = x0 + x1 * i + x2 * u + x3 * iu`, and `b = y0 + y1 * i + y2 * u + y3 * iu`,
@@ -62,6 +70,10 @@ impl IValue for QM31 {
     /// Constructs an [IValue] from the given [QM31].
     fn from_qm31(value: QM31) -> Self {
         value
+    }
+
+    fn placeholder() -> Self {
+        qm31_from_u32s(0xDEAD_BEEF, 0xDEAD_BEEF, 0xDEAD_BEEF, 0xDEAD_BEEF)
     }
 
     fn pointwise_mul(x: Self, y: Self) -> Self {
@@ -110,6 +122,10 @@ pub struct NoValue;
 
 impl IValue for NoValue {
     fn from_qm31(_: QM31) -> Self {
+        Self
+    }
+
+    fn placeholder() -> Self {
         Self
     }
 
