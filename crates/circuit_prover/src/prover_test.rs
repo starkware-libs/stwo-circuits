@@ -57,21 +57,21 @@ pub fn build_permutation_context() -> Context<QM31> {
     context
 }
 
-pub fn build_blake_gate_context() -> Context<QM31> {
+pub fn build_blake_context() -> Context<QM31> {
     let mut context = Context::<QM31>::default();
     context.enable_assert_eq_on_eval();
 
     let mut inputs: Vec<Var> = vec![];
     let n_inputs = 9;
     let n_bytes = n_inputs * 16;
-    let n_blake_gates = 15;
+    let n_blakes = 15;
     for i in 0..n_inputs {
         inputs.push(guess(
             &mut context,
             qm31_from_u32s(4 * i + 82, 4 * i + 83, 4 * i + 84, 4 * i + 85),
         ));
     }
-    for _ in 0..n_blake_gates {
+    for _ in 0..n_blakes {
         let output = blake(&mut context, &inputs, n_bytes as usize);
         eval!(&mut context, (output.0) + (output.1));
     }
@@ -240,7 +240,6 @@ fn stwo_verify(
             &interaction_claim,
             &interaction_elements,
             &preprocessed_circuit.params.output_addresses,
-            preprocessed_circuit.params.n_blake_gates,
         ),
         QM31::zero()
     );
@@ -248,14 +247,14 @@ fn stwo_verify(
 
 #[test]
 fn test_prove_and_stark_verify_blake_gate_context() {
-    let mut blake_gate_context = build_blake_gate_context();
-    finalize_constants(&mut blake_gate_context);
-    blake_gate_context.finalize_guessed_vars();
-    blake_gate_context.validate_circuit();
+    let mut blake_context = build_blake_context();
+    finalize_constants(&mut blake_context);
+    blake_context.finalize_guessed_vars();
+    blake_context.validate_circuit();
 
-    let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut blake_gate_context);
+    let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut blake_context);
     let circuit_proof = prove_circuit_assignment(
-        blake_gate_context.values(),
+        blake_context.values(),
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
         PcsConfig::default(),
@@ -373,7 +372,6 @@ fn circuit_verify(
     let circuit_config = CircuitConfig {
         config: circuit_proof.pcs_config,
         output_addresses: preprocessed_circuit.params.output_addresses.clone(),
-        n_blake_gates: preprocessed_circuit.params.n_blake_gates,
         preprocessed_column_log_sizes: preprocessed_circuit.preprocessed_trace.log_sizes(),
         preprocessed_root: preprocessed_root.into(),
     };
@@ -398,7 +396,7 @@ fn test_prove_and_circuit_verify_triple_xor_context() {
     )
     .unwrap();
     let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);
-    expect!["[1171063850, 1111600624, 1633001715, 1807620201, 319861310, 456396523, 1450019685, 1107101120]"]
+    expect!["[2146378054, 973986450, 1776844881, 1889477560, 1024680502, 816863601, 1249954554, 8807530]"]
     .assert_eq(&format!("{preprocessed_root:?}"));
     circuit_verify(circuit_proof, &preprocessed_circuit, preprocessed_root);
 }
@@ -426,7 +424,7 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     )
     .unwrap();
     let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);
-    expect!["[1652958260, 1473705547, 1322148911, 426200657, 1375192488, 2052166177, 2061891994, 1346989032]"]
+    expect!["[785464727, 597140330, 1570038302, 1439548967, 701310801, 1977460503, 1177725507, 477514812]"]
     .assert_eq(&format!("{preprocessed_root:?}"));
     circuit_verify(circuit_proof, &preprocessed_circuit, preprocessed_root);
 }
@@ -448,7 +446,7 @@ fn test_prove_and_circuit_verify_m31_to_u32_context() {
     .unwrap();
     let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);
     expect![
-        "[938872239, 1375737105, 1191518666, 1663828004, 7943535, 657469305, 191549109, 752041387]"
+        "[346206255, 1209576432, 1898987739, 1223089644, 1907241678, 77461064, 1650292479, 1497625158]"
     ]
     .assert_eq(&format!("{preprocessed_root:?}"));
     circuit_verify(circuit_proof, &preprocessed_circuit, preprocessed_root);
@@ -470,7 +468,9 @@ fn test_prove_and_circuit_verify_blake_g_gate_context() {
     )
     .unwrap();
     let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);
-    expect!["[1600972583, 323912908, 1627322779, 821304140, 535689503, 707220338, 1484882728, 1361575593]"]
+    expect![
+        "[835379522, 381567572, 1733068343, 395844384, 1090109053, 285173959, 1664592836, 28935595]"
+    ]
     .assert_eq(&format!("{preprocessed_root:?}"));
     circuit_verify(circuit_proof, &preprocessed_circuit, preprocessed_root);
 }
