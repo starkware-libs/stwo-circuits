@@ -123,7 +123,7 @@ impl<Value: IValue> Context<Value> {
 
     /// Returns the currently outstanding reservations.
     pub fn reserved(&self) -> Vec<Var> {
-        self.reserved_vars.iter().map(|&x| Var {idx: x}).collect()
+        self.reserved_vars.iter().map(|&x| Var { idx: x }).collect()
     }
 
     /// Supplies the value for a previously [reserved](Self::reserve) variable and returns the
@@ -134,6 +134,14 @@ impl<Value: IValue> Context<Value> {
         let removed = self.reserved_vars.shift_remove(&reserved.idx);
         assert!(removed, "variable [{}] was not reserved or was already fulfilled", reserved.idx);
         self.values[reserved.idx] = value;
+    }
+
+    pub fn copy_into_reserved(&mut self, reserved: Var, var: Var) {
+        let value = self.get(var);
+        self.fulfill(reserved, value);
+        let zero = self.zero();
+        // Yield and constrain the reserved var.
+        self.circuit.add.push(Add { in0: var.idx, in1: zero.idx, out: reserved.idx });
     }
 
     pub fn constant(&mut self, value: QM31) -> Var {

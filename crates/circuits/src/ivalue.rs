@@ -31,7 +31,8 @@ pub trait IValue:
     fn from_qm31(value: QM31) -> Self;
 
     /// A poison value used by [`Context::reserve`](crate::context::Context::reserve) for variables
-    /// whose value will be supplied later via [`Context::fulfill`](crate::context::Context::fulfill).
+    /// whose value will be supplied later via
+    /// [`Context::fulfill`](crate::context::Context::fulfill).
     ///
     /// Reading this through [`Context::get`](crate::context::Context::get) before fulfillment
     /// trips a debug assertion. Choose a value unlikely to occur naturally so that any accidental

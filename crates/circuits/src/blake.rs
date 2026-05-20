@@ -84,53 +84,6 @@ pub fn blake_qm31(input: &[QM31], n_bytes: usize) -> HashValue<QM31> {
     HashValue(res0, res1)
 }
 
-/// Adds a blake hash gate to the circuit, and returns the two output variables as [HashValue].
-///
-/// NOTE: If the number of bytes is not a multiple of 16, the caller must make sure that the
-/// remaining bytes are zero.
-/// For example, if `n_bytes` is 4, only the first coordinate of the [QM31] may be non-zero.
-/// If `n_bytes` is 1, that coordinate must be < 256.
-pub fn blake_with_reserved_outputs<Value: IValue>(
-    context: &mut Context<Value>,
-    input: &[Var],
-    n_bytes: usize,
-    (reserved0, reserved1): (Var, Var)
-) -> HashValue<Var> {
-    // Sanity check: check the number of bytes is consistent with the number of [QM31] values.
-    assert_eq!(input.len(), n_bytes.div_ceil(16));
-
-    // Compute the hash.
-    let out = Value::blake(&input.iter().map(|v| context.get(*v)).collect::<Vec<_>>(), n_bytes);
-
-    // Pad input with zeros and split into chunks of 4 [QM31] values.
-    let zero_idx = context.zero().idx;
-    let chunks = input
-        .iter()
-        .chunks(4)
-        .into_iter()
-        .map(|chunk| {
-            let mut res = [zero_idx; 4];
-            for (i, v) in chunk.enumerate() {
-                res[i] = v.idx;
-            }
-            res
-        })
-        .collect_vec();
-
-    context.stats.blake_updates += chunks.len();
-    context.fulfill(reserved0, out.0);
-    context.fulfill(reserved1, out.1);
-
-    context.circuit.blake.push(Blake {
-        input: chunks,
-        n_bytes,
-        out0: reserved0.idx,
-        out1: reserved1.idx,
-    });
-
-    HashValue(reserved0, reserved1)
-}
-
 /// Blake2s IV.
 pub const BLAKE2S_IV: [u32; 8] = [
     0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19,

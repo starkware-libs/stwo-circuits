@@ -7,7 +7,7 @@ use cairo_air::components::memory_address_to_id::MEMORY_ADDRESS_TO_ID_SPLIT;
 use cairo_air::relations::{
     MEMORY_ADDRESS_TO_ID_RELATION_ID, MEMORY_ID_TO_BIG_RELATION_ID, OPCODES_RELATION_ID,
 };
-use circuits::blake::{HashValue, blake_into_reserved};
+use circuits::blake::{HashValue, blake};
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::extract_bits::extract_bits;
@@ -318,12 +318,16 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         } = self;
         let program_len = context.constant(qm31_from_u32s(program.len() as u32, 0, 0, 0));
 
-        let [reserved0, reserved1] = context.reserved().try_into().unwrap();
-        let output_hash = blake_into_reserved(context, packed_outputs.get_packed(), 4 * packed_outputs.len(), (reserved0, reserved1));
+        let output_hash = blake(context, packed_outputs.get_packed(), 4 * packed_outputs.len());
+        // Copy the resulting hash into the reserved variables
+        let [reserved0, reserved1] = context.reserved().try_into().expect("The cairo circuit should reserve exactly 2 vars at the beginning.");
+        context.copy_into_reserved(reserved0, output_hash.0);
+        context.copy_into_reserved(reserved1, output_hash.1);
+        
 
         // output the output hash.
-        output(context, output_hash.0);
-        output(context, output_hash.1);
+        output(context, reserved0);
+        output(context, reserved1);
 
         let flat_program = pack_into_qm31s(program.iter().flatten().cloned());
         let program_hash = IValue::blake(&flat_program, flat_program.len() * 16);
