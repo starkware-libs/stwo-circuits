@@ -373,7 +373,6 @@ fn circuit_verify(
     let circuit_config = CircuitConfig {
         config: circuit_proof.pcs_config,
         output_addresses: preprocessed_circuit.params.output_addresses.clone(),
-        n_blakes: preprocessed_circuit.params.n_blakes,
         preprocessed_column_log_sizes: preprocessed_circuit.preprocessed_trace.log_sizes(),
         preprocessed_root: preprocessed_root.into(),
     };

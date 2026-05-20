@@ -30,8 +30,6 @@ pub struct CircuitStatement<Value: IValue> {
     pub output_addresses: Vec<M31Wrapper<Var>>,
     /// The values of the output gates.
     pub output_values: Vec<Var>,
-    /// The number of blake calls in the circuit.
-    pub n_blakes: usize,
     /// Maps preprocessed column ids to their log sizes.
     /// The order of the keys is the same as the order of the columns in the prover's preprocessed
     /// trace.
@@ -44,7 +42,6 @@ impl<Value: IValue> CircuitStatement<Value> {
         context: &mut Context<Value>,
         output_addresses: &[usize],
         output_values: &[QM31],
-        n_blakes: usize,
         preprocessed_column_log_sizes: OrderedHashMap<PreProcessedColumnId, u32>,
         preprocessed_root: HashValue<QM31>,
     ) -> Self {
@@ -58,7 +55,6 @@ impl<Value: IValue> CircuitStatement<Value> {
             components: all_circuit_components(),
             output_addresses,
             output_values,
-            n_blakes,
             preprocessed_column_log_sizes,
             preprocessed_root,
         }
@@ -101,31 +97,6 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
             );
             sum = eval!(context, (sum) + (term));
         }
-
-        // Blake IV public logup sum contribution.
-        if self.n_blakes > 0 {
-            let initial_state = blake2s_initial_state();
-            let blake_state_relation_id = context.constant(BLAKE_STATE_RELATION_ID.into());
-            let iv_state_address = context.zero();
-            let mut logup_terms = vec![blake_state_relation_id, iv_state_address];
-            for &word in &initial_state {
-                let low = context.constant((word & 0xffff).into());
-                let high = context.constant((word >> 16).into());
-                logup_terms.push(low);
-                logup_terms.push(high);
-            }
-            let blake_iv_denom = combine_term(context, &logup_terms, interaction_elements);
-
-            // There are `self.n_blakes.next_power_of_two()` BlakeOutput rows, each one uses
-            // the same IV state, either indirectly through a blakeGate or directly in padding rows
-            // of the BlakeOutput component.
-            let n_iv_uses = self.n_blakes.next_power_of_two();
-
-            let n_blakes = context.constant((n_iv_uses as u32).into());
-            let blake_iv_yield = div(context, n_blakes, blake_iv_denom);
-            sum = eval!(context, (sum) - (blake_iv_yield));
-        }
-
         sum
     }
 

@@ -150,5 +150,5 @@ pub fn lookup_sum(
     let blake_iv_sum =
         blake_iv_public_logup_sum(n_blakes, &interaction_elements.common_lookup_elements);
 
-    component_sum + output_sum - blake_iv_sum
+    component_sum + output_sum
 }
