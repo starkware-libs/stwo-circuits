@@ -10,7 +10,7 @@ pub const N_LANES: usize = 16;
 pub struct CircuitParams {
     pub trace_log_size: u32,
     pub first_permutation_row: usize,
-    pub n_blake_gates: usize,
+    pub n_blakes: usize,
     pub output_addresses: Vec<usize>,
 }
 

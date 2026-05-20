@@ -1,4 +1,3 @@
-pub mod blake2s_consts;
 pub mod circuit_claim;
 pub mod circuit_components;
 pub mod circuit_proof;

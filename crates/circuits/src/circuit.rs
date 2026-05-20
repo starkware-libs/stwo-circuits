@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use itertools::chain;
 use stwo::core::fields::qm31::QM31;
 
-use crate::blake::{blake_qm31, blake2s_g};
+use crate::blake::blake2s_g;
 use crate::ivalue::IValue;
 
 #[cfg(test)]
@@ -159,48 +159,6 @@ impl Gate for Eq {
 impl std::fmt::Debug for Eq {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "[{}] = [{}]", self.in0, self.in1)
-    }
-}
-
-/// Represents a blake hash gate in the circuit: `([out0], [out1]) = blake([input]; n_bytes)`.
-#[derive(PartialEq, Eq)]
-pub struct Blake {
-    pub input: Vec<[usize; 4]>,
-    pub n_bytes: usize,
-    pub out0: usize,
-    pub out1: usize,
-}
-impl Gate for Blake {
-    fn check(&self, values: &[QM31]) -> Result<(), String> {
-        let input = self.input.iter().flatten().map(|idx| values[*idx]).collect::<Vec<_>>();
-        let n_effective_vars = self.n_bytes.div_ceil(16);
-        let main_part = &input[..n_effective_vars];
-        let remaining_part = &input[n_effective_vars..];
-
-        let expected_output = blake_qm31(main_part, self.n_bytes);
-        check_eq(values[self.out0], expected_output.0)?;
-        check_eq(values[self.out1], expected_output.1)?;
-
-        // Sanity check: Check that the remaining input is zero.
-        for val in remaining_part {
-            check_eq(*val, 0.into())?;
-        }
-
-        Ok(())
-    }
-
-    fn uses(&self) -> Vec<usize> {
-        self.input.iter().flatten().copied().collect()
-    }
-
-    fn yields(&self) -> Vec<usize> {
-        vec![self.out0, self.out1]
-    }
-}
-
-impl std::fmt::Debug for Blake {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "([{}], [{}]) = blake({:?}; {})", self.out0, self.out1, self.input, self.n_bytes)
     }
 }
 
@@ -431,12 +389,12 @@ impl std::fmt::Debug for BlakeGGate {
 #[derive(Default, PartialEq, Eq)]
 pub struct Circuit {
     pub n_vars: usize,
+    pub n_blakes: usize,
     pub add: Vec<Add>,
     pub sub: Vec<Sub>,
     pub mul: Vec<Mul>,
     pub pointwise_mul: Vec<PointwiseMul>,
     pub eq: Vec<Eq>,
-    pub blake: Vec<Blake>,
     pub triple_xor: Vec<TripleXor>,
     pub m31_to_u32: Vec<M31ToU32>,
     pub blake_g_gate: Vec<BlakeGGate>,
@@ -449,12 +407,12 @@ impl Circuit {
     pub fn all_gates(&self) -> impl Iterator<Item = &dyn Gate> {
         let Circuit {
             n_vars: _,
+            n_blakes: _,
             add,
             sub,
             mul,
             pointwise_mul,
             eq,
-            blake,
             triple_xor,
             m31_to_u32,
             blake_g_gate,
@@ -467,7 +425,6 @@ impl Circuit {
             mul.iter().map(|g| g as &dyn Gate),
             pointwise_mul.iter().map(|g| g as &dyn Gate),
             eq.iter().map(|g| g as &dyn Gate),
-            blake.iter().map(|g| g as &dyn Gate),
             blake_g_gate.iter().map(|g| g as &dyn Gate),
             triple_xor.iter().map(|g| g as &dyn Gate),
             m31_to_u32.iter().map(|g| g as &dyn Gate),

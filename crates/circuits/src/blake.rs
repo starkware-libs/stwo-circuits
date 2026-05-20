@@ -1,11 +1,10 @@
 use blake2::{Blake2s256, Digest};
-use itertools::Itertools;
 use stwo::core::fields::m31::M31;
 use stwo::core::vcs::blake2_hash::Blake2sHash;
 use stwo::core::{fields::qm31::QM31, vcs::blake2_hash::reduce_to_m31};
 use stwo_cairo_common::preprocessed_columns::blake::BLAKE_SIGMA;
 
-use crate::circuit::{Blake, BlakeGGate, M31ToU32, TripleXor};
+use crate::circuit::{BlakeGGate, M31ToU32, TripleXor};
 use crate::context::{Context, Var};
 use crate::eval;
 use crate::ivalue::{IValue, qm31_from_u32s};
@@ -85,52 +84,6 @@ pub fn blake_qm31(input: &[QM31], n_bytes: usize) -> HashValue<QM31> {
     HashValue(res0, res1)
 }
 
-/// Adds a blake hash gate to the circuit, and returns the two output variables as [HashValue].
-///
-/// NOTE: If the number of bytes is not a multiple of 16, the caller must make sure that the
-/// remaining bytes are zero.
-/// For example, if `n_bytes` is 4, only the first coordinate of the [QM31] may be non-zero.
-/// If `n_bytes` is 1, that coordinate must be < 256.
-pub fn blake<Value: IValue>(
-    context: &mut Context<Value>,
-    input: &[Var],
-    n_bytes: usize,
-) -> HashValue<Var> {
-    // Sanity check: check the number of bytes is consistent with the number of [QM31] values.
-    assert_eq!(input.len(), n_bytes.div_ceil(16));
-
-    // Compute the hash.
-    let out = Value::blake(&input.iter().map(|v| context.get(*v)).collect::<Vec<_>>(), n_bytes);
-
-    // Pad input with zeros and split into chunks of 4 [QM31] values.
-    let zero_idx = context.zero().idx;
-    let chunks = input
-        .iter()
-        .chunks(4)
-        .into_iter()
-        .map(|chunk| {
-            let mut res = [zero_idx; 4];
-            for (i, v) in chunk.enumerate() {
-                res[i] = v.idx;
-            }
-            res
-        })
-        .collect_vec();
-
-    context.stats.blake_updates += chunks.len();
-    let out_var0 = context.new_var(out.0);
-    let out_var1 = context.new_var(out.1);
-
-    context.circuit.blake.push(Blake {
-        input: chunks,
-        n_bytes,
-        out0: out_var0.idx,
-        out1: out_var1.idx,
-    });
-
-    HashValue(out_var0, out_var1)
-}
-
 /// Blake2s IV.
 pub const BLAKE2S_IV: [u32; 8] = [
     0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19,
@@ -155,7 +108,7 @@ const G_STATE_INDICES: [(usize, usize, usize, usize); 8] = [
 /// remaining bytes are zero.
 /// For example, if `n_bytes` is 4, only the first coordinate of the [`QM31`] may be non-zero.
 /// If `n_bytes` is 1, that coordinate must be < 256.
-pub fn blake_from_gates<Value: IValue>(
+pub fn blake<Value: IValue>(
     ctx: &mut Context<Value>,
     input: &[Var],
     n_bytes: usize,
@@ -250,6 +203,8 @@ pub fn blake_from_gates<Value: IValue>(
     let out0 = from_partial_evals(ctx, [reduced[0], reduced[1], reduced[2], reduced[3]]);
     let out1 = from_partial_evals(ctx, [reduced[4], reduced[5], reduced[6], reduced[7]]);
 
+    ctx.circuit.n_blakes += 1;
+    ctx.stats.blake_updates += 1;
     HashValue(out0, out1)
 }
 

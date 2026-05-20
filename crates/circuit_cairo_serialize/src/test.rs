@@ -75,34 +75,22 @@ fn test_serialize_deserialize_claim_and_interaction_claim() {
         output_values: vec![qm31(1, 2, 3, 4), qm31(5, 6, 7, 8)],
         eq_log_size: 10,
         qm31_ops_log_size: 11,
-        blake_gate_log_size: 12,
-        blake_round_log_size: 13,
-        blake_g_log_size: 14,
-        blake_output_log_size: 15,
-        triple_xor_32_log_size: 16,
-        triple_xor_log_size: 17,
-        m_31_to_u_32_log_size: 18,
-        blake_g_gate_log_size: 19,
+        triple_xor_log_size: 12,
+        m_31_to_u_32_log_size: 13,
+        blake_g_gate_log_size: 14,
     };
     let interaction = CairoCircuitInteractionClaim {
         eq: qm31(1, 0, 0, 0),
         qm31_ops: qm31(2, 0, 0, 0),
-        blake_gate: qm31(3, 0, 0, 0),
-        blake_round: qm31(4, 0, 0, 0),
-        blake_round_sigma: qm31(5, 0, 0, 0),
-        blake_g: qm31(6, 0, 0, 0),
-        blake_output: qm31(7, 0, 0, 0),
-        triple_xor_32: qm31(8, 0, 0, 0),
-        triple_xor: qm31(9, 0, 0, 0),
-        m_31_to_u_32: qm31(10, 0, 0, 0),
-        blake_g_gate: qm31(11, 0, 0, 0),
-        verify_bitwise_xor_8: qm31(12, 0, 0, 0),
-        verify_bitwise_xor_12: qm31(13, 0, 0, 0),
-        verify_bitwise_xor_4: qm31(14, 0, 0, 0),
-        verify_bitwise_xor_7: qm31(15, 0, 0, 0),
-        verify_bitwise_xor_9: qm31(16, 0, 0, 0),
-        range_check_15: qm31(17, 0, 0, 0),
-        range_check_16: qm31(18, 0, 0, 0),
+        triple_xor: qm31(3, 0, 0, 0),
+        m_31_to_u_32: qm31(4, 0, 0, 0),
+        blake_g_gate: qm31(5, 0, 0, 0),
+        verify_bitwise_xor_8: qm31(6, 0, 0, 0),
+        verify_bitwise_xor_12: qm31(7, 0, 0, 0),
+        verify_bitwise_xor_4: qm31(8, 0, 0, 0),
+        verify_bitwise_xor_7: qm31(9, 0, 0, 0),
+        verify_bitwise_xor_9: qm31(10, 0, 0, 0),
+        range_check_16: qm31(11, 0, 0, 0),
     };
 
     // Roundtrip claim
@@ -128,14 +116,9 @@ fn test_claim_field_order_matches_component_list() {
     // indices: drop different sentinels into each of the 16 log_sizes and confirm only
     // the variable-size ones survive (in the right slot).
     use circuit_verifier::circuit_claim::CircuitClaim;
-    let mut log_sizes = [0u32; 18];
+    let mut log_sizes = [0u32; 11];
     log_sizes[ComponentList::Eq as usize] = 100;
     log_sizes[ComponentList::Qm31Ops as usize] = 101;
-    log_sizes[ComponentList::BlakeGate as usize] = 102;
-    log_sizes[ComponentList::BlakeRound as usize] = 103;
-    log_sizes[ComponentList::BlakeG as usize] = 105;
-    log_sizes[ComponentList::BlakeOutput as usize] = 106;
-    log_sizes[ComponentList::TripleXor32 as usize] = 107;
     log_sizes[ComponentList::TripleXor as usize] = 108;
     log_sizes[ComponentList::M31ToU32 as usize] = 109;
     log_sizes[ComponentList::BlakeGGate as usize] = 110;
@@ -144,11 +127,6 @@ fn test_claim_field_order_matches_component_list() {
     let cairo_claim = CairoCircuitClaim::from(&rust_claim);
     assert_eq!(cairo_claim.eq_log_size, 100);
     assert_eq!(cairo_claim.qm31_ops_log_size, 101);
-    assert_eq!(cairo_claim.blake_gate_log_size, 102);
-    assert_eq!(cairo_claim.blake_round_log_size, 103);
-    assert_eq!(cairo_claim.blake_g_log_size, 105);
-    assert_eq!(cairo_claim.blake_output_log_size, 106);
-    assert_eq!(cairo_claim.triple_xor_32_log_size, 107);
     assert_eq!(cairo_claim.triple_xor_log_size, 108);
     assert_eq!(cairo_claim.m_31_to_u_32_log_size, 109);
     assert_eq!(cairo_claim.blake_g_gate_log_size, 110);

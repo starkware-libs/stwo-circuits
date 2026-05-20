@@ -9,7 +9,7 @@
 //!
 //! and uses the standard `#[derive(Serde)]` to deserialize the proof from the felt252
 //! input stream produced by `scarb execute --arguments-file`. The verifier-config
-//! constants (output addresses, n_blake_gates, preprocessed root, lifting log size,
+//! constants (output addresses, preprocessed root, lifting log size,
 //! preprocessed column log sizes) are hardcoded inside the Cairo verifier binary for a
 //! specific circuit topology and are NOT carried on the wire.
 

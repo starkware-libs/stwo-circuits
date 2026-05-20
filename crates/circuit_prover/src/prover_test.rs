@@ -57,21 +57,21 @@ pub fn build_permutation_context() -> Context<QM31> {
     context
 }
 
-pub fn build_blake_gate_context() -> Context<QM31> {
+pub fn build_blake_context() -> Context<QM31> {
     let mut context = Context::<QM31>::default();
     context.enable_assert_eq_on_eval();
 
     let mut inputs: Vec<Var> = vec![];
     let n_inputs = 9;
     let n_bytes = n_inputs * 16;
-    let n_blake_gates = 15;
+    let n_blakes = 15;
     for i in 0..n_inputs {
         inputs.push(guess(
             &mut context,
             qm31_from_u32s(4 * i + 82, 4 * i + 83, 4 * i + 84, 4 * i + 85),
         ));
     }
-    for _ in 0..n_blake_gates {
+    for _ in 0..n_blakes {
         let output = blake(&mut context, &inputs, n_bytes as usize);
         eval!(&mut context, (output.0) + (output.1));
     }
@@ -240,7 +240,6 @@ fn stwo_verify(
             &interaction_claim,
             &interaction_elements,
             &preprocessed_circuit.params.output_addresses,
-            preprocessed_circuit.params.n_blake_gates,
         ),
         QM31::zero()
     );
@@ -248,14 +247,14 @@ fn stwo_verify(
 
 #[test]
 fn test_prove_and_stark_verify_blake_gate_context() {
-    let mut blake_gate_context = build_blake_gate_context();
-    finalize_constants(&mut blake_gate_context);
-    blake_gate_context.finalize_guessed_vars();
-    blake_gate_context.validate_circuit();
+    let mut blake_context = build_blake_context();
+    finalize_constants(&mut blake_context);
+    blake_context.finalize_guessed_vars();
+    blake_context.validate_circuit();
 
-    let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut blake_gate_context);
+    let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut blake_context);
     let circuit_proof = prove_circuit_assignment(
-        blake_gate_context.values(),
+        blake_context.values(),
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
         PcsConfig::default(),
@@ -373,7 +372,7 @@ fn circuit_verify(
     let circuit_config = CircuitConfig {
         config: circuit_proof.pcs_config,
         output_addresses: preprocessed_circuit.params.output_addresses.clone(),
-        n_blake_gates: preprocessed_circuit.params.n_blake_gates,
+        n_blakes: preprocessed_circuit.params.n_blakes,
         preprocessed_column_log_sizes: preprocessed_circuit.preprocessed_trace.log_sizes(),
         preprocessed_root: preprocessed_root.into(),
     };
