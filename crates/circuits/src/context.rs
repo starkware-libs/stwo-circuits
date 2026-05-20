@@ -130,7 +130,7 @@ impl<Value: IValue> Context<Value> {
     /// underlying [`Var`] for further use.
     ///
     /// Panics if the variable has already been fulfilled or was never reserved.
-    pub fn fulfill(&mut self, reserved: Var, value: Value) {
+    fn fill_reserved(&mut self, reserved: Var, value: Value) {
         let removed = self.reserved_vars.shift_remove(&reserved.idx);
         assert!(removed, "variable [{}] was not reserved or was already fulfilled", reserved.idx);
         self.values[reserved.idx] = value;
@@ -138,7 +138,7 @@ impl<Value: IValue> Context<Value> {
 
     pub fn copy_into_reserved(&mut self, reserved: Var, var: Var) {
         let value = self.get(var);
-        self.fulfill(reserved, value);
+        self.fill_reserved(reserved, value);
         let zero = self.zero();
         // Yield and constrain the reserved var.
         self.circuit.add.push(Add { in0: var.idx, in1: zero.idx, out: reserved.idx });

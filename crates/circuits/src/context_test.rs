@@ -35,7 +35,7 @@ fn test_reserve_fulfill_round_trip() {
     // Use the reserved Var as the output of an Add gate before the value is known.
     context.circuit.add.push(Add { in0: a.idx, in1: b.idx, out: reserved.idx });
     // ...later, fulfill with the value the gate forces.
-    context.fulfill(reserved, qm31_from_u32s(8, 0, 0, 0));
+    context.fill_reserved(reserved, qm31_from_u32s(8, 0, 0, 0));
 
     // The reserved idx is unchanged after fulfillment, and now readable.
     assert_eq!(context.get(reserved), qm31_from_u32s(8, 0, 0, 0));
@@ -71,7 +71,7 @@ fn test_reserved_without_yield_fails_check_yields() {
     // Use the reserved var as an input, but never yield it.
     let zero = context.zero();
     let _ = add(&mut context, r, zero);
-    let _ = context.fulfill(r, qm31_from_u32s(0, 0, 0, 0));
+    let _ = context.fill_reserved(r, qm31_from_u32s(0, 0, 0, 0));
     finalize_constants(&mut context);
     context.finalize_guessed_vars();
     context.circuit.check_yields();
