@@ -3,7 +3,6 @@ use crate::N_LANES;
 use crate::Qm31OpsTraceGenerator;
 use crate::finalize::finalize_context;
 use crate::order_hash_map::OrderedHashMap;
-use circuits::circuit::Blake;
 use circuits::circuit::Gate;
 use circuits::circuit::M31ToU32;
 use circuits::circuit::{Circuit, Permutation};
@@ -169,192 +168,6 @@ fn add_eq_to_preprocessed_trace(circuit: &Circuit, pp_trace: &mut PreProcessedTr
 
     pp_trace.push_column(PreProcessedColumnId { id: "eq_in0_address".to_owned() }, eq_in0_address);
     pp_trace.push_column(PreProcessedColumnId { id: "eq_in1_address".to_owned() }, eq_in1_address);
-}
-
-// TODO(alonf): Parallelize.
-fn add_blake_columns(blake: &[Blake], multiplicities: &[usize], pp_trace: &mut PreProcessedTrace) {
-    let mut t0 = vec![];
-    let mut t1 = vec![];
-    let mut finalize_flag = vec![];
-    let mut state_before_addr = vec![];
-    let mut state_after_addr = vec![];
-    let mut message0_addr = vec![];
-    let mut message1_addr = vec![];
-    let mut message2_addr = vec![];
-    let mut message3_addr = vec![];
-    let mut compress_enabler = vec![];
-    let mut final_state_addr = vec![];
-    let mut blake_output0_addr = vec![];
-    let mut blake_output1_addr = vec![];
-    let mut blake_output0_mults = vec![];
-    let mut blake_output1_mults = vec![];
-
-    // IV should be in state_address 0.
-    let mut state_address = 1;
-    for gate in blake.iter() {
-        let mut message_length = 0;
-        for (i, [in0, in1, in2, in3]) in gate.input.iter().enumerate() {
-            // The current message length split to 2 u16.
-            message_length = gate.n_bytes.min(message_length + 16 * 4);
-            t0.push(message_length & 0xffff);
-            t1.push((message_length >> 16) & 0xffff);
-
-            // Finalize flag.
-            finalize_flag.push(0);
-
-            // State before and after addresses.
-            let is_first_compression = i == 0;
-            let state_address_before = if is_first_compression {
-                // First compression starts from IV at address 0.
-                0
-            } else {
-                state_address
-            };
-            state_before_addr.push(state_address_before);
-
-            if !is_first_compression {
-                state_address += 1;
-            }
-            state_after_addr.push(state_address);
-
-            // Message addresses.
-            message0_addr.push(*in0);
-            message1_addr.push(*in1);
-            message2_addr.push(*in2);
-            message3_addr.push(*in3);
-
-            // Enable
-            compress_enabler.push(1);
-        }
-
-        // Set the finalize flag to 1 for the last compression of the gate.
-        *finalize_flag.last_mut().unwrap() = 1;
-
-        // Fill the preprocessed column needed by the blake_output component.
-        // Set final state address.
-        final_state_addr.push(state_address);
-
-        let [out0, out1] = gate.yields()[..] else { panic!("Expected 2 yields for gate") };
-        blake_output0_addr.push(out0);
-        blake_output1_addr.push(out1);
-        blake_output0_mults.push(multiplicities[out0]);
-        blake_output1_mults.push(multiplicities[out1]);
-
-        // Start a new blake chain.
-        state_address += 1;
-    }
-
-    // Pad the preprocessed columns used in blake compress.
-    let n_blake_compress = t0.len();
-    let blake_compress_padding = std::cmp::max(n_blake_compress.next_power_of_two(), N_LANES);
-
-    // TODO(Leo): remove after we remove the circuit gates padding.
-    assert_eq!(
-        n_blake_compress % N_LANES,
-        0,
-        "Only padding to multiple of N_LANES through circuit gates for now."
-    );
-
-    // Pad with the first element.
-    for col in [
-        &mut t0,
-        &mut t1,
-        &mut finalize_flag,
-        &mut state_before_addr,
-        &mut state_after_addr,
-        &mut message0_addr,
-        &mut message1_addr,
-        &mut message2_addr,
-        &mut message3_addr,
-    ] {
-        col.resize(blake_compress_padding, *col.first().unwrap());
-    }
-    compress_enabler.resize(blake_compress_padding, 0); // Enabler columns.
-
-    // Pad the preprocessed columns used in blake output
-    let n_blake_output = final_state_addr.len();
-    let blake_output_padding = std::cmp::max(n_blake_output.next_power_of_two(), N_LANES);
-
-    // Pad final_state_addr with zeros, so padding rows read the Blake initial state as the final
-    // state
-    final_state_addr.resize(blake_output_padding, 0);
-    blake_output0_addr.resize(blake_output_padding, *blake_output0_addr.first().unwrap());
-    blake_output1_addr.resize(blake_output_padding, *blake_output1_addr.first().unwrap());
-
-    // Multiplicity columns.
-    blake_output0_mults.resize(blake_output_padding, 0);
-    blake_output1_mults.resize(blake_output_padding, 0);
-
-    pp_trace.push_column(PreProcessedColumnId { id: "t0".to_owned() }, t0);
-    pp_trace.push_column(PreProcessedColumnId { id: "t1".to_owned() }, t1);
-    pp_trace.push_column(PreProcessedColumnId { id: "finalize_flag".to_owned() }, finalize_flag);
-    pp_trace.push_column(
-        PreProcessedColumnId { id: "state_before_addr".to_owned() },
-        state_before_addr,
-    );
-    pp_trace
-        .push_column(PreProcessedColumnId { id: "state_after_addr".to_owned() }, state_after_addr);
-    pp_trace.push_column(PreProcessedColumnId { id: "message0_addr".to_owned() }, message0_addr);
-    pp_trace.push_column(PreProcessedColumnId { id: "message1_addr".to_owned() }, message1_addr);
-    pp_trace.push_column(PreProcessedColumnId { id: "message2_addr".to_owned() }, message2_addr);
-    pp_trace.push_column(PreProcessedColumnId { id: "message3_addr".to_owned() }, message3_addr);
-    pp_trace
-        .push_column(PreProcessedColumnId { id: "compress_enabler".to_owned() }, compress_enabler);
-    pp_trace
-        .push_column(PreProcessedColumnId { id: "final_state_addr".to_owned() }, final_state_addr);
-    pp_trace.push_column(
-        PreProcessedColumnId { id: "blake_output0_addr".to_owned() },
-        blake_output0_addr,
-    );
-    pp_trace.push_column(
-        PreProcessedColumnId { id: "blake_output1_addr".to_owned() },
-        blake_output1_addr,
-    );
-    pp_trace.push_column(
-        PreProcessedColumnId { id: "blake_output0_mults".to_owned() },
-        blake_output0_mults,
-    );
-    pp_trace.push_column(
-        PreProcessedColumnId { id: "blake_output1_mults".to_owned() },
-        blake_output1_mults,
-    );
-}
-
-/// Builds the fixed preprocessed table for BLAKE sigma lookups.
-///
-/// Returns 16 columns (`blake_sigma_0..blake_sigma_15`), each with 16 rows (`LOG_SIZE = 4`).
-/// For each column `i`:
-/// - rows `0..10` hold `BLAKE_SIGMA[round][i]` for rounds `0..9`.
-/// - rows `10..16` are padded with `BLAKE_SIGMA[0][i]`.
-///
-/// The padding keeps the table at a power-of-two height while preserving a valid sigma row.
-fn gen_blake_sigma_columns() -> [Vec<usize>; 16] {
-    std::array::from_fn(|i| {
-        let mut col = Vec::with_capacity(16);
-        for sigma_row in BLAKE_SIGMA.iter().take(10) {
-            col.push(sigma_row[i] as usize);
-        }
-        // Pad rows 10..15 with round 0 values.
-        for _ in 10..16 {
-            col.push(BLAKE_SIGMA[0][i] as usize);
-        }
-        col
-    })
-}
-
-fn add_blake_to_preprocessed_trace(
-    circuit: &Circuit,
-    multiplicities: &[usize],
-    pp_trace: &mut PreProcessedTrace,
-) {
-    let Circuit { blake, .. } = circuit;
-    add_blake_columns(blake, multiplicities, pp_trace);
-
-    // Add blake sigma columns (16 columns of 16 rows each).
-    let blake_sigma = gen_blake_sigma_columns();
-    for (i, column) in blake_sigma.into_iter().enumerate() {
-        pp_trace.push_column(PreProcessedColumnId { id: format!("blake_sigma_{i}") }, column);
-    }
 }
 
 /// Adds TripleXor gates to the preprocessed trace. Preprocessed columns are in the format:
@@ -653,12 +466,6 @@ impl PreprocessedCircuit {
         // Add QM31 operations columns.
         let qm31_ops_trace_generator =
             add_qm31_ops_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
-        // Add Blake columns.
-        add_blake_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
-        let log_n_blake_updates = pp_trace
-            .get_column(&PreProcessedColumnId { id: "finalize_flag".to_owned() })
-            .len()
-            .ilog2();
         // Add TripleXor columns.
         add_triple_xor_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
         // Add M31ToU32 columns.
@@ -667,13 +474,8 @@ impl PreprocessedCircuit {
         add_blake_g_gate_to_preprocessed_trace(circuit, &multiplicities, &mut pp_trace);
 
         // Generate seq columns for sizes needed by circuit components:
-        // - 15, 16: needed by range_check_15 and range_check_16.
-        // - 4: needed by blake_sigma.
-        // - log_n_blake_updates: needed by blake_gate component which uses seq_of_component_size.
-        let mut log_seq_sizes = vec![log_n_blake_updates, 4, 15, 16];
-        log_seq_sizes.sort();
-        log_seq_sizes.dedup();
-
+        // - 16: needed by range_check_16.
+        let log_seq_sizes = vec![16];
         PreProcessedTrace::add_non_circuit_preprocessed_columns(&mut pp_trace, &log_seq_sizes);
         pp_trace.sort_by_size();
 
@@ -681,13 +483,13 @@ impl PreprocessedCircuit {
         // 1. The largest preprocessed column size.
         // 2. BlakeG trace size (= number of blake updates * 2^7).
         let max_pp_trace_log_size = pp_trace.log_sizes().values().copied().max().unwrap();
-        let blake_g_log_size = log_n_blake_updates + 7;
+        let blake_g_log_size = circuit.blake_g_gate.len().ilog2();
         let trace_log_size = std::cmp::max(max_pp_trace_log_size, blake_g_log_size);
 
         let params = CircuitParams {
             trace_log_size,
             first_permutation_row: qm31_ops_trace_generator.first_permutation_row,
-            n_blake_gates: circuit.blake.len(),
+            n_blakes: circuit.n_blakes,
             output_addresses: circuit.output.iter().map(|out| out.in0).collect(),
         };
 

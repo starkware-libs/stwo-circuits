@@ -73,13 +73,13 @@ impl CircuitInteractionClaim {
 }
 
 fn blake_iv_public_logup_sum(
-    n_blake_gates: usize,
+    n_blakes: usize,
     common_lookup_elements: &CommonLookupElements,
 ) -> QM31 {
     // Each Blake gate uses the initial state once and creates one row in blake_output.
     // Then blake_output is padded to a power of two, and each padding row uses the
-    // initial state once. In total we have n_blake_gates.next_power_of_two() uses.
-    let initial_state_uses = n_blake_gates.next_power_of_two();
+    // initial state once. In total we have n_blakes uses.
+    let initial_state_uses = n_blakes;
 
     let state_relation_id = M31::from(BLAKE_STATE_RELATION_ID);
     let initial_state = blake2s_initial_state();
@@ -131,7 +131,7 @@ pub fn lookup_sum(
     interaction_claim: &CircuitInteractionClaim,
     interaction_elements: &CircuitInteractionElements,
     output_addresses: &[usize],
-    n_blake_gates: usize,
+    n_blakes: usize,
 ) -> QM31 {
     let CircuitInteractionClaim { claimed_sums } = interaction_claim;
     let component_sum: QM31 = claimed_sums.iter().sum();
@@ -148,7 +148,7 @@ pub fn lookup_sum(
 
     // Subtract the blake IV public logup sum (blake IV state is used but never yielded).
     let blake_iv_sum =
-        blake_iv_public_logup_sum(n_blake_gates, &interaction_elements.common_lookup_elements);
+        blake_iv_public_logup_sum(n_blakes, &interaction_elements.common_lookup_elements);
 
     component_sum + output_sum - blake_iv_sum
 }

@@ -45,7 +45,7 @@ fn verify_circuit_proof(
     let circuit_config = CircuitConfig {
         config: circuit_proof.pcs_config,
         output_addresses: preprocessed_circuit.params.output_addresses.clone(),
-        n_blake_gates: preprocessed_circuit.params.n_blake_gates,
+        n_blakes: preprocessed_circuit.params.n_blakes,
         preprocessed_column_log_sizes: preprocessed_circuit.preprocessed_trace.log_sizes(),
         preprocessed_root,
     };
@@ -238,7 +238,7 @@ fn test_privacy_proof_info() {
     let circuit_config = CircuitConfig {
         config: pcs_config,
         output_addresses: preprocessed_circuit.params.output_addresses.clone(),
-        n_blake_gates: preprocessed_circuit.params.n_blake_gates,
+        n_blakes: preprocessed_circuit.params.n_blakes,
         preprocessed_column_log_sizes: preprocessed_circuit.preprocessed_trace.log_sizes(),
         preprocessed_root,
     };
@@ -250,7 +250,7 @@ fn test_privacy_proof_info() {
         &mut context,
         &circuit_config.output_addresses,
         &public_data.output_values,
-        circuit_config.n_blake_gates,
+        circuit_config.n_blakes,
         circuit_config.preprocessed_column_log_sizes.clone(),
         circuit_config.preprocessed_root,
     );
@@ -266,5 +266,5 @@ fn test_privacy_proof_info() {
     let proof_info = ProofInfo::from_config(&proof_config);
     println!("{proof_info}");
     // Assert the total size in bytes.
-    assert_eq!(proof_info.total_bytes(), 373108);
+    assert_eq!(proof_info.total_bytes(), 263808);
 }

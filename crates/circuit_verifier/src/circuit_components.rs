@@ -10,12 +10,6 @@ macro_rules! define_component_list {
 define_component_list! {
     Eq,
     Qm31Ops,
-    BlakeGate,
-    BlakeRound,
-    BlakeRoundSigma,
-    BlakeG,
-    BlakeOutput,
-    TripleXor32,
     TripleXor,
     M31ToU32,
     BlakeGGate,
@@ -24,6 +18,5 @@ define_component_list! {
     VerifyBitwiseXor4,
     VerifyBitwiseXor7,
     VerifyBitwiseXor9,
-    RangeCheck15,
     RangeCheck16,
 }

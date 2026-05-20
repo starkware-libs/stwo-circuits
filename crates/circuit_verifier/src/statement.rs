@@ -1,9 +1,8 @@
 use crate::blake2s_consts::blake2s_initial_state;
 use crate::components::{
-    blake_g, blake_g_gate, blake_gate, blake_output, blake_round, blake_round_sigma,
-    eq::CircuitEqComponent, m_31_to_u_32, qm31_ops::CircuitQm31OpsComponent, range_check_15,
-    range_check_16, triple_xor, triple_xor_32, verify_bitwise_xor_4, verify_bitwise_xor_7,
-    verify_bitwise_xor_8, verify_bitwise_xor_9, verify_bitwise_xor_12,
+    blake_g_gate, eq::CircuitEqComponent, m_31_to_u_32, qm31_ops::CircuitQm31OpsComponent,
+    range_check_16, triple_xor, verify_bitwise_xor_4, verify_bitwise_xor_7, verify_bitwise_xor_8,
+    verify_bitwise_xor_9, verify_bitwise_xor_12,
 };
 use crate::relations::{BLAKE_STATE_RELATION_ID, GATE_RELATION_ID};
 use circuit_common::order_hash_map::OrderedHashMap;
@@ -31,8 +30,8 @@ pub struct CircuitStatement<Value: IValue> {
     pub output_addresses: Vec<M31Wrapper<Var>>,
     /// The values of the output gates.
     pub output_values: Vec<Var>,
-    /// The number of blake gates in the circuit.
-    pub n_blake_gates: usize,
+    /// The number of blake calls in the circuit.
+    pub n_blakes: usize,
     /// Maps preprocessed column ids to their log sizes.
     /// The order of the keys is the same as the order of the columns in the prover's preprocessed
     /// trace.
@@ -45,7 +44,7 @@ impl<Value: IValue> CircuitStatement<Value> {
         context: &mut Context<Value>,
         output_addresses: &[usize],
         output_values: &[QM31],
-        n_blake_gates: usize,
+        n_blakes: usize,
         preprocessed_column_log_sizes: OrderedHashMap<PreProcessedColumnId, u32>,
         preprocessed_root: HashValue<QM31>,
     ) -> Self {
@@ -59,7 +58,7 @@ impl<Value: IValue> CircuitStatement<Value> {
             components: all_circuit_components(),
             output_addresses,
             output_values,
-            n_blake_gates,
+            n_blakes,
             preprocessed_column_log_sizes,
             preprocessed_root,
         }
@@ -104,7 +103,7 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
         }
 
         // Blake IV public logup sum contribution.
-        if self.n_blake_gates > 0 {
+        if self.n_blakes > 0 {
             let initial_state = blake2s_initial_state();
             let blake_state_relation_id = context.constant(BLAKE_STATE_RELATION_ID.into());
             let iv_state_address = context.zero();
@@ -117,10 +116,10 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
             }
             let blake_iv_denom = combine_term(context, &logup_terms, interaction_elements);
 
-            // There are `self.n_blake_gates.next_power_of_two()` BlakeOutput rows, each one uses
+            // There are `self.n_blakes.next_power_of_two()` BlakeOutput rows, each one uses
             // the same IV state, either indirectly through a blakeGate or directly in padding rows
             // of the BlakeOutput component.
-            let n_iv_uses = self.n_blake_gates.next_power_of_two();
+            let n_iv_uses = self.n_blakes.next_power_of_two();
 
             let n_blakes = context.constant((n_iv_uses as u32).into());
             let blake_iv_yield = div(context, n_blakes, blake_iv_denom);
@@ -147,15 +146,6 @@ pub fn all_circuit_components<Value: IValue>() -> IndexMap<&'static str, Box<dyn
     IndexMap::from([
         ("eq", Box::new(CircuitEqComponent {}) as Box<dyn CircuitEval<Value>>),
         ("qm31_ops", Box::new(CircuitQm31OpsComponent {}) as Box<dyn CircuitEval<Value>>),
-        ("blake_gate", Box::new(blake_gate::Component {}) as Box<dyn CircuitEval<Value>>),
-        ("blake_round", Box::new(blake_round::Component {}) as Box<dyn CircuitEval<Value>>),
-        (
-            "blake_round_sigma",
-            Box::new(blake_round_sigma::Component {}) as Box<dyn CircuitEval<Value>>,
-        ),
-        ("blake_g", Box::new(blake_g::Component {}) as Box<dyn CircuitEval<Value>>),
-        ("blake_output", Box::new(blake_output::Component {}) as Box<dyn CircuitEval<Value>>),
-        ("triple_xor_32", Box::new(triple_xor_32::Component {}) as Box<dyn CircuitEval<Value>>),
         ("triple_xor", Box::new(triple_xor::Component {}) as Box<dyn CircuitEval<Value>>),
         ("m_31_to_u_32", Box::new(m_31_to_u_32::Component {}) as Box<dyn CircuitEval<Value>>),
         ("blake_g_gate", Box::new(blake_g_gate::Component {}) as Box<dyn CircuitEval<Value>>),
@@ -179,7 +169,6 @@ pub fn all_circuit_components<Value: IValue>() -> IndexMap<&'static str, Box<dyn
             "verify_bitwise_xor_9",
             Box::new(verify_bitwise_xor_9::Component {}) as Box<dyn CircuitEval<Value>>,
         ),
-        ("range_check_15", Box::new(range_check_15::Component {}) as Box<dyn CircuitEval<Value>>),
         ("range_check_16", Box::new(range_check_16::Component {}) as Box<dyn CircuitEval<Value>>),
     ])
 }

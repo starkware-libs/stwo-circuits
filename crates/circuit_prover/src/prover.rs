@@ -45,12 +45,6 @@ pub fn to_component_provers(
     chain!([
         &components.eq as &dyn ComponentProver<SimdBackend>,
         &components.qm31_ops as &dyn ComponentProver<SimdBackend>,
-        &components.blake_gate as &dyn ComponentProver<SimdBackend>,
-        &components.blake_round as &dyn ComponentProver<SimdBackend>,
-        &components.blake_round_sigma as &dyn ComponentProver<SimdBackend>,
-        &components.blake_g as &dyn ComponentProver<SimdBackend>,
-        &components.blake_output as &dyn ComponentProver<SimdBackend>,
-        &components.triple_xor_32 as &dyn ComponentProver<SimdBackend>,
         &components.triple_xor as &dyn ComponentProver<SimdBackend>,
         &components.m_31_to_u_32 as &dyn ComponentProver<SimdBackend>,
         &components.blake_g_gate as &dyn ComponentProver<SimdBackend>,
@@ -59,7 +53,6 @@ pub fn to_component_provers(
         &components.verify_bitwise_xor_4 as &dyn ComponentProver<SimdBackend>,
         &components.verify_bitwise_xor_7 as &dyn ComponentProver<SimdBackend>,
         &components.verify_bitwise_xor_9 as &dyn ComponentProver<SimdBackend>,
-        &components.range_check_15 as &dyn ComponentProver<SimdBackend>,
         &components.range_check_16 as &dyn ComponentProver<SimdBackend>,
     ])
     .collect()
@@ -144,7 +137,7 @@ where
     SimdBackend: stwo::prover::backend::BackendForChannel<MC>,
 {
     let PreprocessedCircuit { preprocessed_trace, params } = preprocessed_circuit;
-    let CircuitParams { first_permutation_row, n_blake_gates, output_addresses, .. } = params;
+    let CircuitParams { first_permutation_row, n_blakes, output_addresses, .. } = params;
     let trace_generator = TraceGenerator {
         qm31_ops_trace_generator: Qm31OpsTraceGenerator {
             first_permutation_row: *first_permutation_row,
@@ -199,13 +192,7 @@ where
 
     // Validate lookup argument.
     assert_eq!(
-        lookup_sum(
-            &claim,
-            &interaction_claim,
-            &interaction_elements,
-            output_addresses,
-            *n_blake_gates
-        ),
+        lookup_sum(&claim, &interaction_claim, &interaction_elements, output_addresses, *n_blakes),
         QM31::zero()
     );
 
