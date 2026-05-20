@@ -11,6 +11,9 @@ use crate::stats::Stats;
 #[path = "context_test.rs"]
 pub mod test;
 
+/// The address of the `u` variable.
+pub const U_VAR_IDX: usize = 2;
+
 /// Represents a variable in a [Circuit].
 ///
 /// A [Var] represents a `QM31` value.
@@ -77,7 +80,7 @@ impl<Value: IValue> Context<Value> {
     }
 
     pub fn u(&self) -> Var {
-        Var { idx: 2 }
+        Var { idx: U_VAR_IDX }
     }
 
     /// Creates a new variable.

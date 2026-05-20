@@ -1,6 +1,12 @@
-use circuit_common::order_hash_map::OrderedHashMap;
+use circuit_common::{
+    order_hash_map::OrderedHashMap,
+    outputs::{copy_hash_into_reserved, new_verifier_context},
+};
 use circuits::{
-    blake::HashValue, context::Context, finalize_constants::finalize_constants, ivalue::IValue,
+    blake::{HashValue, blake},
+    context::Context,
+    finalize_constants::finalize_constants,
+    ivalue::IValue,
     ops::Guess,
 };
 use circuits_stark_verifier::{
@@ -30,7 +36,7 @@ pub fn build_verification_circuit<Value: IValue>(
     proof: Proof<Value>,
     public_data: CircuitPublicData,
 ) -> Result<Context<Value>, String> {
-    let mut context = Context::default();
+    let mut context = new_verifier_context();
     let statement = CircuitStatement::new(
         &mut context,
         &circuit_config.output_addresses,
@@ -49,6 +55,19 @@ pub fn build_verification_circuit<Value: IValue>(
     let proof_vars = proof.guess(&mut context);
 
     verify(&mut context, &proof_vars, &proof_config, &statement);
+
+    // Deal with the outputs: hash the preprocessed root and all the output values except `u` (= the
+    // last one).
+    let preprocessed_root = statement.get_preprocessed_root(&mut context);
+    let (_, output_preimage_skip_last) = statement.get_output_values().split_last().unwrap();
+    let output_preimage: Vec<_> = [preprocessed_root.0, preprocessed_root.1]
+        .into_iter()
+        .chain(output_preimage_skip_last.iter().copied())
+        .collect();
+    let output_hash = blake(&mut context, &output_preimage, 16 * output_preimage.len());
+    // Copy the resulting hash into the wires 3 and 4, and mark them as outputs.
+    copy_hash_into_reserved(&mut context, output_hash);
+
     finalize_constants(&mut context);
     context.finalize_guessed_vars();
     #[cfg(test)]
