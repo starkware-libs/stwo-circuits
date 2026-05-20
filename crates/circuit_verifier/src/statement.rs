@@ -1,20 +1,19 @@
-use crate::blake2s_consts::blake2s_initial_state;
 use crate::components::{
     blake_g_gate, eq::CircuitEqComponent, m_31_to_u_32, qm31_ops::CircuitQm31OpsComponent,
     range_check_16, triple_xor, verify_bitwise_xor_4, verify_bitwise_xor_7, verify_bitwise_xor_8,
     verify_bitwise_xor_9, verify_bitwise_xor_12,
 };
-use crate::relations::{BLAKE_STATE_RELATION_ID, GATE_RELATION_ID};
+use crate::relations::GATE_RELATION_ID;
 use circuit_common::order_hash_map::OrderedHashMap;
 use circuits::blake::HashValue;
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::ivalue::IValue;
-use circuits::ops::{Guess, div};
+use circuits::ops::Guess;
 use circuits::simd::Simd;
 use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
-use circuits_stark_verifier::logup::{combine_term, logup_use_term};
+use circuits_stark_verifier::logup::logup_use_term;
 use circuits_stark_verifier::statement::Statement;
 use indexmap::IndexMap;
 use itertools::{Itertools, zip_eq};

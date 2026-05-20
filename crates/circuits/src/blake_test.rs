@@ -41,7 +41,19 @@ fn test_blake(#[case] wrong_output: bool) {
     eq(&mut context, output.0, out0);
     eq(&mut context, output.1, out1);
 
-    assert_eq!(context.stats, Stats { blake_updates: 2, guess: 7, equals: 2, ..Stats::default() });
+    assert_eq!(
+        context.stats,
+        Stats {
+            equals: 2,
+            add: 14,
+            mul: 37,
+            pointwise_mul: 36,
+            guess: 7,
+            triple_xor: 16,
+            m31_to_u32: 20,
+            ..Stats::default()
+        }
+    );
 
     crate::finalize_constants::finalize_constants(&mut context);
     context.finalize_guessed_vars();
