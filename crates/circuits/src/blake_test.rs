@@ -2,7 +2,7 @@ use blake2::{Blake2s256, Digest};
 use rstest::rstest;
 use stwo::core::vcs::blake2_hash::reduce_to_m31;
 
-use crate::blake::{blake, blake_from_gates, blake_qm31, qm31_from_bytes};
+use crate::blake::{blake, blake_qm31, qm31_from_bytes};
 use crate::context::TraceContext;
 use crate::finalize_constants::finalize_constants;
 use crate::ivalue::qm31_from_u32s;
@@ -41,7 +41,23 @@ fn test_blake(#[case] wrong_output: bool) {
     eq(&mut context, output.0, out0);
     eq(&mut context, output.1, out1);
 
-    assert_eq!(context.stats, Stats { blake_updates: 2, guess: 7, equals: 2, ..Stats::default() });
+    assert_eq!(
+        context.stats,
+        Stats {
+            equals: 2,
+            add: 14,
+            sub: 0,
+            mul: 37,
+            div: 0,
+            pointwise_mul: 36,
+            guess: 7,
+            blake_updates: 1,
+            permutation_inputs: 0,
+            outputs: 0,
+            triple_xor: 16,
+            m31_to_u32: 20
+        }
+    );
 
     crate::finalize_constants::finalize_constants(&mut context);
     context.finalize_guessed_vars();
@@ -51,33 +67,7 @@ fn test_blake(#[case] wrong_output: bool) {
 }
 
 #[test]
-fn test_blake_from_gates_equal_old_blake() {
-    let mut context = TraceContext::default();
-
-    let input_values = [
-        qm31_from_u32s(1, 2, 3, 4),
-        qm31_from_u32s(5, 6, 7, 8),
-        qm31_from_u32s(9, 10, 11, 12),
-        qm31_from_u32s(13, 14, 15, 16),
-        qm31_from_u32s(17, 0, 0, 0),
-    ];
-
-    let input = input_values.guess(&mut context);
-
-    let out_mono = blake(&mut context, &input, 66);
-    let out_decomposed = blake_from_gates(&mut context, &input, 66);
-
-    eq(&mut context, out_mono.0, out_decomposed.0);
-    eq(&mut context, out_mono.1, out_decomposed.1);
-
-    finalize_constants(&mut context);
-    context.finalize_guessed_vars();
-    context.circuit.check_yields();
-    assert!(context.is_circuit_valid());
-}
-
-#[test]
-fn test_blake_from_gates_independent() {
+fn test_blake_qm31() {
     let mut context = TraceContext::default();
 
     let message: [u32; 16] = [
@@ -97,7 +87,7 @@ fn test_blake_from_gates_independent() {
     let expected = blake_qm31(&input_values, n_bytes);
 
     let input = input_values.guess(&mut context);
-    let output = blake_from_gates(&mut context, &input, n_bytes);
+    let output = blake(&mut context, &input, n_bytes);
 
     let out0 = guess(&mut context, expected.0);
     let out1 = guess(&mut context, expected.1);
