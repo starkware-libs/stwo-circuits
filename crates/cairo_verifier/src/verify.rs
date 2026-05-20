@@ -6,7 +6,7 @@ use cairo_air::CairoProof;
 use cairo_air::air::PublicData;
 use cairo_air::flat_claims::FlatClaim;
 use circuits::blake::HashValue;
-use circuits::context::{Context, TraceContext};
+use circuits::context::{Context};
 use circuits::finalize_constants::finalize_constants;
 use circuits::ivalue::{IValue, NoValue};
 use circuits::ops::Guess;
@@ -65,6 +65,14 @@ pub struct CairoVerifierConfig {
     pub preprocessed_trace_variant: PreProcessedTraceVariant,
 }
 
+pub fn initial_cairo_circuit<Value: IValue>() -> Context<Value> {
+    let mut context = Context::<Value>::default();
+    // Reserve addresses 3 and 4 for the output wires.
+    context.reserve();
+    context.reserve();
+    context
+} 
+
 /// Verifies a [Proof] for a fixed [CairoVerifierConfig].
 pub fn verify_fixed_cairo_circuit(
     verifier_config: &CairoVerifierConfig,
@@ -112,10 +120,7 @@ pub fn build_fixed_cairo_circuit(
     let components = enabled_components(&config.enabled_bits);
 
     let public_claim = public_claim.iter().map(|u32| M31::from(*u32)).collect_vec();
-    let mut context = TraceContext::default();
-    // Reserve addresses 3 and 4 for the output wires.
-    context.reserve();
-    context.reserve();
+    let mut context = initial_cairo_circuit::<QM31>();
     let statement = CairoStatement::<QM31>::new(
         &mut context,
         public_claim,
@@ -147,10 +152,7 @@ pub fn build_cairo_verifier_circuit(verifier_config: &CairoVerifierConfig) -> Co
     let public_data = vec![M31::zero(); PUBLIC_DATA_LEN + n_outputs + program_len];
     let outputs = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; n_outputs];
 
-    let mut context = Context::<NoValue>::default();
-        // Reserve addresses 3 and 4 for the output wires.
-    context.reserve();
-    context.reserve();
+    let mut context = initial_cairo_circuit::<NoValue>();
     let statement = CairoStatement::<NoValue>::new(
         &mut context,
         public_data,

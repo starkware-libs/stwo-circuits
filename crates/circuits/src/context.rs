@@ -1,5 +1,5 @@
 use hashbrown::HashSet;
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 use num_traits::{One, Zero};
 use stwo::core::fields::qm31::QM31;
 
@@ -60,7 +60,7 @@ pub struct Context<Value: IValue> {
     /// Variables allocated by [Self::reserve] whose values have not yet been supplied by
     /// [Self::fulfill]. Reading these via [Self::get] trips a debug assertion, and
     /// [Self::finalize_guessed_vars] panics if any are still pending.
-    reserved_vars: HashSet<usize>,
+    reserved_vars: IndexSet<usize>,
     /// Debug only. If true, equality is asserted when adding the `eq` gate; if false, no
     /// assertion is made during construction and equality can be checked later at validation.
     pub assert_eq_on_eval: bool,
@@ -131,7 +131,7 @@ impl<Value: IValue> Context<Value> {
     ///
     /// Panics if the variable has already been fulfilled or was never reserved.
     pub fn fulfill(&mut self, reserved: Var, value: Value) {
-        let removed = self.reserved_vars.remove(&reserved.idx);
+        let removed = self.reserved_vars.shift_remove(&reserved.idx);
         assert!(removed, "variable [{}] was not reserved or was already fulfilled", reserved.idx);
         self.values[reserved.idx] = value;
     }
@@ -211,7 +211,7 @@ impl<Value: IValue> Default for Context<Value> {
             unused_vars: HashSet::new(),
             maybe_unused_vars: HashSet::new(),
             guessed_vars: Some(vec![]),
-            reserved_vars: HashSet::new(),
+            reserved_vars: IndexSet::new(),
             assert_eq_on_eval: false,
         };
         // Register zero, one, and u as the first constants.
