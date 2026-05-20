@@ -1,6 +1,7 @@
 use std::fs::File;
 
 use cairo_air::utils::binary_deserialize_from_file;
+use circuit_common::N_RESERVED;
 use circuit_common::finalize::{add_zk_blinding, finalize_context};
 use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_prover::prover::{
@@ -243,7 +244,7 @@ fn test_privacy_proof_info() {
     let public_data = CircuitPublicData {
         output_values: vec![QM31::zero(); preprocessed_circuit.params.output_addresses.len()],
     };
-    let mut context = Context::<NoValue>::default();
+    let mut context: Context<NoValue> = Context::new(N_RESERVED);
     let statement = CircuitStatement::new(
         &mut context,
         &circuit_config.output_addresses,

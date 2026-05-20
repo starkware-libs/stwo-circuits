@@ -2,16 +2,22 @@ use hashbrown::HashSet;
 use indexmap::IndexMap;
 use itertools::zip_eq;
 use num_traits::{One, Zero};
+use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 
 use crate::circuit::{Add, Circuit};
-use crate::ivalue::{IValue, qm31_from_u32s};
+use crate::ivalue::IValue;
 use crate::ops::output;
 use crate::stats::Stats;
 
 #[cfg(test)]
 #[path = "context_test.rs"]
 pub mod test;
+
+/// The address of the `u` variable.
+pub const U_VAR_IDX: usize = 2;
+/// The value of `u`.
+pub const U_VALUE: QM31 = QM31::from_m31(M31(0), M31(0), M31(1), M31(0));
 
 /// Represents a variable in a [Circuit].
 ///
@@ -89,7 +95,7 @@ impl<Value: IValue> Context<Value> {
     }
 
     pub fn u(&self) -> Var {
-        Var { idx: 2 }
+        Var { idx: U_VAR_IDX }
     }
 
     /// Creates a new variable.
@@ -211,7 +217,7 @@ impl<Value: IValue> Default for Context<Value> {
         // Register zero, one, and u as the first constants.
         res.constant(QM31::zero());
         res.constant(QM31::one());
-        res.constant(qm31_from_u32s(0, 0, 1, 0)); // u at idx 2
+        res.constant(U_VALUE); // u at idx 2
 
         res
     }

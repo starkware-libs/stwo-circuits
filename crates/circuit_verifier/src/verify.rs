@@ -1,5 +1,9 @@
+use circuit_common::N_RESERVED;
 use circuits::{
-    blake::HashValue, context::Context, finalize_constants::finalize_constants, ivalue::IValue,
+    blake::{HashValue, blake},
+    context::Context,
+    finalize_constants::finalize_constants,
+    ivalue::IValue,
     ops::Guess,
 };
 use circuits_stark_verifier::order_hash_map::OrderedHashMap;
@@ -25,12 +29,23 @@ pub struct CircuitConfig {
     pub preprocessed_root: HashValue<QM31>,
 }
 
+/// Builds the circuit that verifies a proof of execution of another circuit.
+///
+/// The circuit:
+/// 1. Builds a [`CircuitStatement`] from the output addresses, output values, preprocessed column
+///    log sizes, and preprocessed root.
+/// 2. Guesses the proof values into the circuit and runs the STARK verification.
+/// 3. Hashes the preprocessed root together with all output values except the last (`u`) via Blake,
+///    and copies the resulting hash into the reserved output wires (3 and 4). To ensure soundness
+///    in a recursive setup, the outer-most verifier (assumed honest) must reconstruct the whole
+///    chain of output hashes computed during the recursive steps.
+/// 4. Finalizes constants and guessed variables.
 pub fn build_verification_circuit<Value: IValue>(
     circuit_config: CircuitConfig,
     proof: Proof<Value>,
     public_data: CircuitPublicData,
 ) -> Result<Context<Value>, String> {
-    let mut context = Context::default();
+    let mut context = Context::new(N_RESERVED);
     let statement = CircuitStatement::new(
         &mut context,
         &circuit_config.output_addresses,
@@ -49,6 +64,19 @@ pub fn build_verification_circuit<Value: IValue>(
     let proof_vars = proof.guess(&mut context);
 
     verify(&mut context, &proof_vars, &proof_config, &statement);
+
+    // Deal with the outputs: hash the preprocessed root and all the output values except `u` (= the
+    // last one). This is fine for soundness because `u` is checked as part of the logup sum.
+    let preprocessed_root = statement.get_preprocessed_root(&mut context);
+    let (_, output_preimage_skip_last) = statement.get_output_values().split_last().unwrap();
+    let output_preimage: Vec<_> = [preprocessed_root.0, preprocessed_root.1]
+        .into_iter()
+        .chain(output_preimage_skip_last.iter().copied())
+        .collect();
+    let output_hash = blake(&mut context, &output_preimage, 16 * output_preimage.len());
+    // Copy the resulting hash into the wires 3 and 4, and mark them as outputs.
+    context.output_into_reserved(&[output_hash.0, output_hash.1]);
+
     finalize_constants(&mut context);
     context.finalize_guessed_vars();
     #[cfg(test)]
