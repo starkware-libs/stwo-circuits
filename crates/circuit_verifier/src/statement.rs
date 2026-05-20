@@ -6,7 +6,7 @@ use crate::components::{
 use crate::relations::GATE_RELATION_ID;
 use circuit_common::order_hash_map::OrderedHashMap;
 use circuits::blake::HashValue;
-use circuits::context::{Context, Var};
+use circuits::context::{Context, U_VALUE, U_VAR_IDX, Var};
 use circuits::eval;
 use circuits::ivalue::IValue;
 use circuits::ops::Guess;
@@ -26,15 +26,15 @@ pub const INTERACTION_POW_BITS: u32 = 20;
 pub struct CircuitStatement<Value: IValue> {
     pub components: IndexMap<&'static str, Box<dyn CircuitEval<Value>>>,
     /// The variable indices (addresses) of the output gates.
-    pub output_addresses: Vec<M31Wrapper<Var>>,
+    output_addresses: Vec<M31Wrapper<Var>>,
     /// The values of the output gates.
-    pub output_values: Vec<Var>,
+    output_values: Vec<Var>,
     /// Maps preprocessed column ids to their log sizes.
     /// The order of the keys is the same as the order of the columns in the prover's preprocessed
     /// trace.
     pub preprocessed_column_log_sizes: OrderedHashMap<PreProcessedColumnId, u32>,
     /// The preprocessed trace root.
-    pub preprocessed_root: HashValue<QM31>,
+    pub preprocessed_root: HashValue<Var>,
 }
 impl<Value: IValue> CircuitStatement<Value> {
     pub fn new(
@@ -44,12 +44,32 @@ impl<Value: IValue> CircuitStatement<Value> {
         preprocessed_column_log_sizes: OrderedHashMap<PreProcessedColumnId, u32>,
         preprocessed_root: HashValue<QM31>,
     ) -> Self {
-        let output_addresses = output_addresses
+        // The circuit being verified should have `U_VAR_IDX` as the last output wire (see
+        // `circuits::finalize_constants`: the call to `finalize_constants` should always be the
+        // last to add outputs to the circuit).
+        // The assert is a sanity check, so that we catch inconsistencies here, rather than when
+        // checking the logup sum.
+        assert_eq!(*output_addresses.last().unwrap(), U_VAR_IDX);
+        let (_, output_addresses) = output_addresses.split_last().unwrap();
+        let mut output_addresses = output_addresses
             .iter()
             .map(|&addr| M31Wrapper::new_unsafe(context.constant(addr.into())))
             .collect_vec();
-        let output_values =
+        output_addresses.push(M31Wrapper::new_unsafe(context.constant(U_VAR_IDX.into())));
+        // The last output value (corresponding to wire `U_VAR_IDX`) should have `U_VALUE` as value.
+        // We ensure that the pair of constants `(U_VAR_IDX, U_VALUE)` will be added as a logup term in
+        // [`Statement::public_logup_sum`] of the current verifier.
+        let (_, output_values) = output_values.split_last().unwrap();
+        let mut output_values =
             output_values.iter().map(|value| Value::from_qm31(*value).guess(context)).collect_vec();
+        output_values.push(context.constant(U_VALUE));
+        // Guess the preprocessed root. The guessed wires enter the hash that will be output by
+        // this verifier. To ensure soundness in a recursive setup, it is *critical* that this hash
+        // is reconstructed by the last verifier, which we can assume honest.
+        let preprocessed_root =
+            HashValue(Value::from_qm31(preprocessed_root.0), Value::from_qm31(preprocessed_root.1))
+                .guess(context);
+
         Self {
             components: all_circuit_components(),
             output_addresses,
@@ -57,6 +77,10 @@ impl<Value: IValue> CircuitStatement<Value> {
             preprocessed_column_log_sizes,
             preprocessed_root,
         }
+    }
+
+    pub fn get_output_values(&self) -> &[Var] {
+        &self.output_values
     }
 }
 impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
@@ -104,11 +128,8 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
         self.preprocessed_column_log_sizes.keys().cloned().collect()
     }
 
-    fn get_preprocessed_root(&self, context: &mut Context<Value>) -> HashValue<Var> {
-        HashValue(
-            context.constant(self.preprocessed_root.0),
-            context.constant(self.preprocessed_root.1),
-        )
+    fn get_preprocessed_root(&self, _context: &mut Context<Value>) -> HashValue<Var> {
+        self.preprocessed_root
     }
 }
 
