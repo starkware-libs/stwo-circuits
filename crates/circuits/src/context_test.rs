@@ -21,6 +21,53 @@ fn test_constants() {
 }
 
 #[test]
+fn test_copy_into_reserved() {
+    let mut context = TraceContext::default();
+
+    let a = context.constant(qm31_from_u32s(3, 0, 0, 0));
+
+    let reserved = context.reserve();
+    context.copy_into_reserved(reserved, a);
+    assert_eq!(context.get(reserved), qm31_from_u32s(3, 0, 0, 0));
+
+    finalize_constants(&mut context);
+    context.finalize_guessed_vars();
+    context.circuit.check_yields();
+
+    context.validate_circuit();
+}
+
+#[test]
+#[should_panic(expected = "were never assigned")]
+fn test_unfulfilled_reservation_panics_at_finalize() {
+    let mut context = TraceContext::default();
+    let _r = context.reserve();
+    context.finalize_guessed_vars();
+}
+
+#[test]
+#[cfg(debug_assertions)]
+#[should_panic(expected = "read of reserved variable")]
+fn test_read_before_fulfill_panics_in_debug() {
+    let mut context = TraceContext::default();
+    let r = context.reserve();
+    let _ = context.get(r);
+}
+
+/// A reserved variable that is never yielded by any gate is caught by `check_yields`.
+#[test]
+#[should_panic(expected = "as a yield")]
+fn test_reserved_without_yield_fails_check_yields() {
+    let mut context = TraceContext::default();
+    let r = context.reserve();
+
+    context.fill_reserved(r, qm31_from_u32s(0, 0, 0, 0));
+    finalize_constants(&mut context);
+    context.finalize_guessed_vars();
+    context.circuit.check_yields();
+}
+
+#[test]
 fn test_zero_and_one() {
     let mut context = TraceContext::default();
 

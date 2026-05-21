@@ -1,5 +1,5 @@
 use hashbrown::HashSet;
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 use num_traits::{One, Zero};
 use stwo::core::fields::qm31::QM31;
 
@@ -51,6 +51,10 @@ pub struct Context<Value: IValue> {
     ///
     /// See [crate::ops::guess].
     pub guessed_vars: Option<Vec<usize>>,
+    /// Variables allocated by [Self::reserve] whose values have not been supplied yet.
+    /// Reading a reserved variable via [Self::get] triggers a debug assertion. Once a value is
+    /// assigned to a reserved variable, it's removed from the set.
+    reserved_vars: IndexSet<usize>,
     /// Debug only. If true, equality is asserted when adding the `eq` gate; if false, no
     /// assertion is made during construction and equality can be checked later at validation.
     pub assert_eq_on_eval: bool,
@@ -86,7 +90,47 @@ impl<Value: IValue> Context<Value> {
 
     /// Returns the value of a variable.
     pub fn get(&self, var: Var) -> Value {
+        debug_assert!(
+            !self.reserved_vars.contains(&var.idx),
+            "read of reserved variable [{}] before it was filled",
+            var.idx,
+        );
         self.values[var.idx]
+    }
+
+    /// Allocates a fresh variable with no concrete value yet.
+    ///
+    /// Reading the value before assignment triggers a debug assertion in [`Self::get`].
+    pub fn reserve(&mut self) -> Var {
+        let reserved = self.new_var(Value::placeholder());
+        let inserted = self.reserved_vars.insert(reserved.idx);
+        debug_assert!(inserted);
+        reserved
+    }
+
+    /// Returns the currently outstanding reservations.
+    pub fn reserved(&self) -> Vec<Var> {
+        self.reserved_vars.iter().map(|&x| Var { idx: x }).collect()
+    }
+
+    /// Supplies the value for a previously [reserved](Self::reserve) variable. This method is
+    /// private and is only used by [`Self::copy_into_reserved`].
+    ///
+    /// Panics if `reserved` was not previously reserved or was already filled.
+    fn fill_reserved(&mut self, reserved: Var, value: Value) {
+        let removed = self.reserved_vars.shift_remove(&reserved.idx);
+        assert!(removed, "variable [{}] was not reserved or was already filled", reserved.idx);
+        self.values[reserved.idx] = value;
+    }
+
+    /// Copies the value of `var` into a reserved variable and adds an `Add` gate  `reserved = var +
+    /// 0` that yields `reserved` and constrains it.
+    ///
+    /// Panics if `reserved` was not previously reserved or was already filled.
+    pub fn copy_into_reserved(&mut self, reserved: Var, var: Var) {
+        let value = self.get(var);
+        self.fill_reserved(reserved, value);
+        self.circuit.add.push(Add { in0: var.idx, in1: self.zero().idx, out: reserved.idx });
     }
 
     pub fn constant(&mut self, value: QM31) -> Var {
@@ -142,6 +186,13 @@ impl<Value: IValue> Context<Value> {
     /// For guessed value, add a trivial constraint so that the new variable appears once as
     /// a yield.
     pub fn finalize_guessed_vars(&mut self) {
+        // TODO(Leo): move the assertion to a new finalize method which calls finalize_constants and
+        // finalize_guessed_vars.
+        assert!(
+            self.reserved_vars.is_empty(),
+            "Some reserved variables were never assigned (idxs: {:?})",
+            self.reserved_vars,
+        );
         for idx in self.guessed_vars.take().unwrap().iter() {
             self.circuit.add.push(Add { in0: *idx, in1: self.zero().idx, out: *idx });
         }
@@ -158,6 +209,7 @@ impl<Value: IValue> Default for Context<Value> {
             unused_vars: HashSet::new(),
             maybe_unused_vars: HashSet::new(),
             guessed_vars: Some(vec![]),
+            reserved_vars: IndexSet::new(),
             assert_eq_on_eval: false,
         };
         // Register zero, one, and u as the first constants.
