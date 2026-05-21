@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 use crate::context::{Context, TraceContext};
 use crate::finalize_constants::finalize_constants;
 use crate::ivalue::qm31_from_u32s;
@@ -18,6 +20,45 @@ fn test_constants() {
     finalize_constants(&mut context);
     context.finalize_guessed_vars();
     context.validate_circuit();
+}
+
+#[test]
+fn test_output_into_reserved() {
+    let mut context = TraceContext::default();
+
+    let a = context.constant(qm31_from_u32s(3, 0, 0, 0));
+
+    let reserved0 = context.reserve();
+    let reserved1 = context.reserve();
+    context.output_into_reserved(&[a, a]);
+    assert_eq!(context.get(reserved0), qm31_from_u32s(3, 0, 0, 0));
+    assert_eq!(context.get(reserved1), qm31_from_u32s(3, 0, 0, 0));
+
+    for (actual, expected) in context.circuit.output.iter().zip_eq([reserved0.idx, reserved1.idx]) {
+        assert_eq!(actual.in0, expected);
+    }
+    finalize_constants(&mut context);
+    context.finalize_guessed_vars();
+    context.circuit.check_yields();
+
+    context.validate_circuit();
+}
+
+#[test]
+#[should_panic(expected = "were never assigned")]
+fn test_unfulfilled_reservation_panics_at_finalize() {
+    let mut context = TraceContext::default();
+    context.reserve();
+    context.finalize_guessed_vars();
+}
+
+#[test]
+#[cfg(debug_assertions)]
+#[should_panic(expected = "read of reserved variable")]
+fn test_read_before_fulfill_panics_in_debug() {
+    let mut context = TraceContext::default();
+    let r = context.reserve();
+    context.get(r);
 }
 
 #[test]
