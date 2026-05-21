@@ -1,10 +1,12 @@
 use hashbrown::HashSet;
 use indexmap::IndexMap;
+use itertools::zip_eq;
 use num_traits::{One, Zero};
 use stwo::core::fields::qm31::QM31;
 
 use crate::circuit::{Add, Circuit};
 use crate::ivalue::{IValue, qm31_from_u32s};
+use crate::ops::output;
 use crate::stats::Stats;
 
 #[cfg(test)]
@@ -51,11 +53,23 @@ pub struct Context<Value: IValue> {
     ///
     /// See [crate::ops::guess].
     pub guessed_vars: Option<Vec<usize>>,
+    /// Variables allocated by [Self::reserve] whose values have not been supplied yet. Assignment
+    /// happens through method [Self::output_into_reserved]. Reading a reserved variable via
+    /// [Self::get] triggers a debug assertion.
+    reserved_vars: Vec<usize>,
     /// Debug only. If true, equality is asserted when adding the `eq` gate; if false, no
     /// assertion is made during construction and equality can be checked later at validation.
     pub assert_eq_on_eval: bool,
 }
 impl<Value: IValue> Context<Value> {
+    pub fn new<const N: usize>() -> Self {
+        let mut context = Context::default();
+        for _ in 0..N {
+            context.reserve();
+        }
+        context
+    }
+
     pub fn values(&self) -> &Vec<Value> {
         &self.values
     }
@@ -86,7 +100,32 @@ impl<Value: IValue> Context<Value> {
 
     /// Returns the value of a variable.
     pub fn get(&self, var: Var) -> Value {
+        debug_assert!(!self.reserved_vars.contains(&var.idx), "read of reserved variable",);
         self.values[var.idx]
+    }
+
+    /// Allocates a fresh variable with no concrete value yet.
+    ///
+    /// Reading the value before assignment triggers a debug assertion in [`Self::get`].
+    pub fn reserve(&mut self) -> Var {
+        let reserved = self.new_var(Value::placeholder());
+        self.reserved_vars.push(reserved.idx);
+        reserved
+    }
+
+    /// Given a vector of variables, it copies their values into the reserved variables and marks
+    /// the reserved variables as outputs. It also adds an `Add` gate to yield and constrain the
+    /// reserved vars.
+    ///
+    /// Panics if `vars` has a different length than the number of the currently reserved variables.
+    pub fn output_into_reserved(&mut self, vars: &[Var]) {
+        for (reserved, var) in zip_eq(self.reserved_vars.clone().iter(), vars) {
+            let value = self.get(*var);
+            self.values[*reserved] = value;
+            self.circuit.add.push(Add { in0: var.idx, in1: self.zero().idx, out: *reserved });
+            output(self, Var { idx: *reserved });
+        }
+        self.reserved_vars.clear()
     }
 
     pub fn constant(&mut self, value: QM31) -> Var {
@@ -142,6 +181,13 @@ impl<Value: IValue> Context<Value> {
     /// For guessed value, add a trivial constraint so that the new variable appears once as
     /// a yield.
     pub fn finalize_guessed_vars(&mut self) {
+        // TODO(Leo): move the assertion to a new finalize method which calls finalize_constants and
+        // finalize_guessed_vars.
+        assert!(
+            self.reserved_vars.is_empty(),
+            "Some reserved variables were never assigned (idxs: {:?})",
+            self.reserved_vars,
+        );
         for idx in self.guessed_vars.take().unwrap().iter() {
             self.circuit.add.push(Add { in0: *idx, in1: self.zero().idx, out: *idx });
         }
@@ -158,6 +204,7 @@ impl<Value: IValue> Default for Context<Value> {
             unused_vars: HashSet::new(),
             maybe_unused_vars: HashSet::new(),
             guessed_vars: Some(vec![]),
+            reserved_vars: vec![],
             assert_eq_on_eval: false,
         };
         // Register zero, one, and u as the first constants.
