@@ -35,24 +35,6 @@ fn pad_eq(context: &mut Context<impl IValue>) {
     }
 }
 
-fn blake_padding_count(n_blake_compress_rows: usize) -> usize {
-    let target_blake_compress_rows =
-        std::cmp::max(n_blake_compress_rows.next_multiple_of(N_LANES), N_LANES);
-
-    target_blake_compress_rows - n_blake_compress_rows
-}
-
-fn pad_blake(context: &mut Context<impl IValue>) {
-    let n_blake_compress_rows: usize =
-        context.circuit.blake.iter().map(|gate| gate.input.len()).sum();
-    let n_single_block_padding_gates = blake_padding_count(n_blake_compress_rows);
-
-    let zero = context.zero();
-    for _ in 0..n_single_block_padding_gates {
-        circuits::blake::blake(context, &[zero], 1);
-    }
-}
-
 fn pad_triple_xor(context: &mut Context<impl IValue>) {
     let n_rows = context.circuit.triple_xor.len();
     let padded = std::cmp::max(n_rows.next_power_of_two(), N_LANES);
@@ -89,7 +71,6 @@ pub fn finalize_context(context: &mut Context<impl IValue>) {
     // Padding the components to a power of two.
     pad_eq(context);
     pad_qm31_ops(context);
-    pad_blake(context);
     pad_triple_xor(context);
     pad_m31_to_u32(context);
     pad_blake_g_gate(context);

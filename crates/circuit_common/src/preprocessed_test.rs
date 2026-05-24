@@ -1,6 +1,6 @@
 use crate::preprocessed::PreprocessedCircuit;
 use circuits::circuit::{
-    Add, Blake, BlakeGGate, Circuit, Eq, M31ToU32, Mul, PointwiseMul, Sub, TripleXor,
+    Add, BlakeGGate, Circuit, Eq, M31ToU32, Mul, PointwiseMul, Sub, TripleXor,
 };
 use expect_test::expect;
 use itertools::Itertools;
@@ -20,18 +20,6 @@ fn test_preprocess_circuit() {
     circuit.pointwise_mul.push(PointwiseMul { in0: 21, in1: 22, out: 23 });
     circuit.eq.push(Eq { in0: 0, in1: 1 });
     circuit.eq.push(Eq { in0: 0, in1: 2 });
-    for i in 0..16 {
-        let in0 = (i * 4) % 24;
-        let in1 = (i * 4 + 1) % 24;
-        let in2 = (i * 4 + 2) % 24;
-        let in3 = (i * 4 + 3) % 24;
-        circuit.blake.push(Blake {
-            input: vec![[in0, in1, in2, in3]],
-            n_bytes: 64,
-            out0: 24 + 2 * i,
-            out1: 24 + 2 * i + 1,
-        });
-    }
     for i in 0..16 {
         circuit.triple_xor.push(TripleXor { input_a: 0, input_b: 1, input_c: 2, out: 56 + i });
     }
@@ -59,7 +47,7 @@ fn test_preprocess_circuit() {
         .preprocessed_trace
         .get_trace::<SimdBackend>();
 
-    assert_eq!(preprocessed_trace.len(), 78);
+    assert_eq!(preprocessed_trace.len(), 45);
     let lengths = preprocessed_trace.iter().map(|column| column.values.len()).collect_vec();
     expect![[r#"
         [
@@ -92,45 +80,12 @@ fn test_preprocess_circuit() {
             16,
             16,
             16,
-            16,
-            16,
-            16,
-            16,
-            16,
-            16,
-            16,
-            16,
-            16,
-            16,
-            16,
-            16,
-            16,
-            16,
-            16,
-            16,
-            16,
-            16,
-            16,
-            16,
-            16,
-            16,
-            16,
-            16,
-            16,
-            16,
-            16,
-            16,
-            16,
-            16,
-            16,
-            16,
             256,
             256,
             256,
             16384,
             16384,
             16384,
-            32768,
             65536,
             65536,
             65536,
