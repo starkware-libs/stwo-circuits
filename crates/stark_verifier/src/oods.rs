@@ -365,9 +365,18 @@ pub fn compute_fri_input(
             aux_dict.entry(key).or_insert_with(|| OodsPointAuxiliary::new(context, r.pt.x, r.pt.y));
         entry.accumulate(context, alpha_pow, r);
     }
-    for aux in aux_dict.values_mut() {
+    let mut prod = context.one();
+    for (i, aux) in aux_dict.values_mut().enumerate() {
         aux.finalize(context);
+        if i == 0 {
+            prod = aux.d;
+        } else {
+            prod = eval!(context, (prod) * (aux.d));
+        }
     }
+    // Constraints that d = im(r.pt.y) is non-zero for all OODS points r.
+    // This ensures that all quotients below have non-zero denominators and are thus sound.
+    div(context, context.one(), prod);
 
     let query_point_x = Simd::unpack(context, &queries.points.x);
     let query_point_y = Simd::unpack(context, &queries.points.y);
