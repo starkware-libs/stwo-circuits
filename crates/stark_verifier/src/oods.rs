@@ -365,9 +365,25 @@ pub fn compute_fri_input(
             aux_dict.entry(key).or_insert_with(|| OodsPointAuxiliary::new(context, r.pt.x, r.pt.y));
         entry.accumulate(context, alpha_pow, r);
     }
-    for aux in aux_dict.values_mut() {
+    let mut prod = context.one();
+    for (i, aux) in aux_dict.values_mut().enumerate() {
         aux.finalize(context);
+        if i == 0 {
+            prod = aux.d;
+        } else {
+            prod = eval!(context, (prod) * (aux.d));
+        }
     }
+    // Constrains that d = im(r.pt.y) is non-zero for all OODS points r.
+    // This ensures that all quotients below have non-zero denominators and are thus sound.
+    // This is because the denominator function `d * x - e * y + f` vanishes (on the circle)
+    // only at the points (pt.x, pt.y) and conj(pt.x, pt.y), by construction.
+    // The query points q are M31 points and in particular satisfy im(q.y) = 0.
+    // Thus d != 0 implies q != pt, cnj(pt) and the denominators cannot vanish.
+    // The coefficients of query_value in the numerators of the quotients are also multiples of d,
+    // thus d != 0 is required for the quotient to actually constrain the value of f at r.pt to
+    // be equal to r.value; otherwise, the numerator would be 0 at pt trivially.
+    div(context, context.one(), prod);
 
     let query_point_x = Simd::unpack(context, &queries.points.x);
     let query_point_y = Simd::unpack(context, &queries.points.y);
