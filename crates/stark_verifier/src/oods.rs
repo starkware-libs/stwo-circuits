@@ -365,9 +365,25 @@ pub fn compute_fri_input(
             aux_dict.entry(key).or_insert_with(|| OodsPointAuxiliary::new(context, r.pt.x, r.pt.y));
         entry.accumulate(context, alpha_pow, r);
     }
-    for aux in aux_dict.values_mut() {
+    let mut prod = context.one();
+    for (i, aux) in aux_dict.values_mut().enumerate() {
         aux.finalize(context);
+        if i == 0 {
+            prod = aux.d;
+        } else {
+            prod = eval!(context, (prod) * (aux.d));
+        }
     }
+    // Assert d = im(r.pt.y) != 0 for all OODS points r. This assert guarantees:
+    //
+    // 1. Non-zero query_value coefficients: The coefficient of `query_value` in each quotient
+    //    numerator is d. If d = 0 the numerator vanishes regardless of the column value,
+    //    breaking the binding between the committed column values and the OODS evaluations.
+    //
+    // 2. Non-zero denominators: The denominator `d * x - e * y + f` vanishes on the circle
+    //    only at pt and conj(pt). Query points (q.x, q.y) are M31 points with im(q.y) = 0, so
+    //    d != 0 ensures q is neither pt nor conj(pt), and the denominators are non-zero.
+    div(context, context.one(), prod);
 
     let query_point_x = Simd::unpack(context, &queries.points.x);
     let query_point_y = Simd::unpack(context, &queries.points.y);
