@@ -7,10 +7,8 @@ edition.workspace = true
 prover = ["stwo/parallel", "stwo/prover", "stwo-constraint-framework/parallel", "stwo-constraint-framework/prover"]
 
 [dependencies]
-indexmap = { workspace = true, features = ["serde"] }
 itertools.workspace = true
 rand_chacha.workspace = true
-serde.workspace = true
 
 stwo.workspace = true
 stwo-constraint-framework.workspace = true

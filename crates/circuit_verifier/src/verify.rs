@@ -1,8 +1,8 @@
-use circuit_common::order_hash_map::OrderedHashMap;
 use circuits::{
     blake::HashValue, context::Context, finalize_constants::finalize_constants, ivalue::IValue,
     ops::Guess,
 };
+use circuits_stark_verifier::order_hash_map::OrderedHashMap;
 use circuits_stark_verifier::{
     proof::{Proof, ProofConfig},
     statement::Statement,

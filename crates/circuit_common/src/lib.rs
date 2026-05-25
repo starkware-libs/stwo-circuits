@@ -1,6 +1,5 @@
 pub mod component_utils;
 pub mod finalize;
-pub mod order_hash_map;
 pub mod preprocessed;
 
 // TODO(Anat): Take from somewhere stable.

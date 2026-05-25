@@ -1,7 +1,9 @@
 use crate::constraint_eval::{
     CircuitEval, ComponentDataTrait, CompositionConstraintAccumulator, RelationUse,
 };
+use crate::order_hash_map::OrderedHashMap;
 use circuits::{context::Context, ivalue::IValue};
+use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 // An empty component that can be used when a component is disabled.
 pub struct EmptyComponent {}
@@ -20,6 +22,13 @@ impl<Value: IValue> CircuitEval<Value> for EmptyComponent {
 
     fn relation_uses_per_row(&self) -> &[RelationUse] {
         &[]
+    }
+
+    fn log_size(
+        &self,
+        _preprocessed_column_log_sizes: &OrderedHashMap<PreProcessedColumnId, u32>,
+    ) -> Option<u32> {
+        None
     }
 
     fn evaluate(
