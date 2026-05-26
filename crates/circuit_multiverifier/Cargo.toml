@@ -1,0 +1,13 @@
+[package]
+name = "circuit-multiverifier"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+itertools.workspace = true
+stwo.workspace = true
+stwo-constraint-framework.workspace = true
+circuits.workspace = true
+circuits-stark-verifier.workspace = true
+circuit-verifier.workspace = true
+circuit-common.workspace = true
