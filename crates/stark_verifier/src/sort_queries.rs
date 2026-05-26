@@ -19,7 +19,7 @@ const COLUMN_IDX_BOUND: u32 = 1 << COLUMN_IDX_BITS;
 use circuits::extract_bits::extract_bits;
 
 /// Generates the column indices for the columns.
-/// The column indices are the values 1..n_columns.
+/// The column indices are the values 0..n_columns.
 pub fn generate_column_indices<Value: IValue>(
     context: &mut Context<Value>,
     n_columns: usize,
@@ -37,7 +37,7 @@ pub fn generate_column_indices<Value: IValue>(
 /// the key for the i'th column is (log_size * COLUMN_IDX_BOUND + column_idx) * u.
 /// Those keys guarantee a stable sort of the query values by the column indices and log sizes.
 ///
-/// column_indices hold the values 1..N, where N >= column_log_sizes.len().
+/// column_indices hold the values 0..N, where N >= column_log_sizes.len().
 /// column_log_sizes hold the log sizes of the columns.
 fn generate_sort_keys<Value: IValue>(
     context: &mut Context<Value>,
