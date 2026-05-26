@@ -5,6 +5,7 @@ members = [
     "crates/circuit_verifier",
     "crates/circuit_cairo_serialize",
     "crates/circuit_common",
+    "crates/circuit_multiverifier",
     "crates/circuit_serialize",
     "crates/circuit_prover",
     "crates/stark_verifier",
@@ -56,6 +57,7 @@ starknet-ff = "0.3"
 circuits = { path = "crates/circuits"}
 circuit-verifier = { path = "crates/circuit_verifier"}
 circuit-common = { path = "crates/circuit_common" }
+circuit-multiverifier = { path = "crates/circuit_multiverifier"}
 circuit-prover = { path = "crates/circuit_prover"}
 circuits-stark-verifier = { path = "crates/stark_verifier"}
 circuits-stark-verifier-examples = { path = "crates/stark_verifier_examples"}
