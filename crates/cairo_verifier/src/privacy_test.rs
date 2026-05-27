@@ -23,9 +23,8 @@ use stwo::core::pcs::PcsConfig;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 
 use crate::privacy::{privacy_cairo_verifier_config, privacy_components};
-use crate::test::verify_cairo_with_component_set;
 use crate::utils::get_proof_file_path;
-use crate::verify::build_cairo_verifier_circuit;
+use crate::verify::{build_cairo_verifier_circuit, verify_cairo_with_component_set};
 
 /// Verifies with a circuit a proof of execution of another circuit.
 fn verify_circuit_proof(

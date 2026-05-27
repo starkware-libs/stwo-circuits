@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use crate::all_components::all_components;
@@ -16,12 +17,13 @@ use circuits_stark_verifier::proof::{Proof, ProofConfig, empty_proof};
 use circuits_stark_verifier::proof_from_stark_proof::proof_from_stark_proof;
 use circuits_stark_verifier::verify::verify;
 use indexmap::IndexMap;
-use itertools::zip_eq;
+use itertools::{Itertools, zip_eq};
 use num_traits::Zero;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 use stwo_cairo_common::preprocessed_columns::preprocessed_trace::PreProcessedTraceVariant;
+use stwo_cairo_common::prover_types::felt::split_f252;
 
 /// Logup security is defined by the `QM31` space (~124 bits) + `INTERACTION_POW_BITS` -
 /// log2(number of relation terms).
@@ -217,4 +219,57 @@ pub fn prepare_cairo_proof_for_circuit_verifier(
     let serialized_aux_data = serialize_aux_data(&flat_claim);
 
     (proof, serialized_aux_data)
+}
+
+/// Verifies a [CairoProof] with a given set of components.
+pub fn verify_cairo_with_component_set(
+    cairo_proof: &CairoProof<Blake2sM31MerkleHasher>,
+    component_set: HashSet<&str>,
+) -> Result<FinalizedContext<QM31>, String> {
+    let FlatClaim { component_enable_bits, component_log_sizes: _, public_data } =
+        cairo_proof.claim.flatten_claim();
+    let components: indexmap::IndexMap<&'static str, Box<dyn CircuitEval<QM31>>> =
+        zip_eq(all_components::<QM31>().into_iter(), &component_enable_bits)
+            .filter_map(|((component_name, component), &enable_bit)| {
+                let component_in_set = component_set.contains(component_name);
+                if component_in_set != enable_bit {
+                    return Some(Err(format!(
+                        "Proof was produced with the wrong components set: expected the component '{}' to be {} according to the component set, but it is {} in the proof.",
+                        component_name,
+                        if component_in_set { "enabled" } else { "disabled" },
+                        if enable_bit { "enabled" } else { "disabled" }
+                    )));
+                }
+                if enable_bit { Some(Ok((component_name, component))) } else { None }
+            })
+            .try_collect()?;
+
+    let (proof, serialized_aux_data) =
+        prepare_cairo_proof_for_circuit_verifier(cairo_proof, &component_enable_bits);
+    let outputs = public_data
+        .public_memory
+        .output
+        .iter()
+        .map(|(_id, value)| split_f252(*value))
+        .collect_vec();
+    let program =
+        public_data.public_memory.program.iter().map(|(_id, value)| split_f252(*value)).collect();
+
+    let ppt_root = cairo_proof.extended_stark_proof.proof.commitments[0];
+    let proof_config = ProofConfig::new(
+        &components,
+        cairo_proof.preprocessed_trace_variant.n_columns(),
+        &cairo_proof.extended_stark_proof.proof.config,
+        INTERACTION_POW_BITS,
+    );
+    let verifier_config = CairoVerifierConfig {
+        preprocessed_root: ppt_root.into(),
+        proof_config,
+        enabled_bits: component_enable_bits,
+        program,
+        n_outputs: cairo_proof.claim.public_data.public_memory.output.len(),
+        preprocessed_trace_variant: cairo_proof.preprocessed_trace_variant,
+    };
+
+    verify_fixed_cairo_circuit(&verifier_config, proof, serialized_aux_data, outputs)
 }
