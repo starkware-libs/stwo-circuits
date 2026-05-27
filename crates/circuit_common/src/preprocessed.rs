@@ -196,16 +196,18 @@ fn fill_blake_columns(
 ) {
     // IV should be in state_address 0.
     let mut state_address = 1;
-    for gate in blake.iter() {
+    for Blake { input, n_bytes, out0, out1 } in blake.iter() {
         let mut message_length = 0;
-        for (i, [in0, in1, in2, in3]) in gate.input.iter().enumerate() {
+        for (i, [in0, in1, in2, in3]) in input.iter().enumerate() {
             // The current message length split to 2 u16.
-            message_length = gate.n_bytes.min(message_length + 16 * 4);
+            message_length = (*n_bytes).min(message_length + 16 * 4);
             columns[0].push(message_length & 0xffff);
             columns[1].push((message_length >> 16) & 0xffff);
 
             // Finalize flag.
-            columns[2].push(0);
+            columns[2].push(if message_length == *n_bytes { 1 } else { 0 });
+
+            // TODO(audit): Use one `if is_first_compression` with the pushes inside it.
 
             // State before and after addresses.
             let is_first_compression = i == 0;
@@ -232,18 +234,14 @@ fn fill_blake_columns(
             columns[9].push(1);
         }
 
-        // Set the finalize flag to 1 for the last compression of the gate.
-        *columns[2].last_mut().unwrap() = 1;
-
         // Fill the preprocessed column needed by the blake_output component.
         // Set final state address.
         columns[10].push(state_address);
 
-        let [out0, out1] = gate.yields()[..] else { panic!("Expected 2 yields for gate") };
-        columns[11].push(out0);
-        columns[12].push(out1);
-        columns[13].push(multiplicities[out0]);
-        columns[14].push(multiplicities[out1]);
+        columns[11].push(*out0);
+        columns[12].push(*out1);
+        columns[13].push(multiplicities[*out0]);
+        columns[14].push(multiplicities[*out1]);
 
         // Start a new blake chain.
         state_address += 1;
@@ -271,7 +269,7 @@ fn fill_blake_columns(
     // Pad final_state_addr with zeros, so padding rows read the Blake initial state as the final
     // state
     columns[10].resize(blake_output_padding, 0);
-    (11..13).for_each(|i| columns[i].resize(blake_output_padding, *columns[i].first().unwrap()));
+    (11..13).for_each(|i| columns[i].resize(blake_output_padding, 0));
     (13..15).for_each(|i| columns[i].resize(blake_output_padding, 0)); // Multiplicity columns.
 }
 

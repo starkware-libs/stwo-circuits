@@ -65,8 +65,11 @@ pub fn fri_decommit<Value: IValue>(
     assert!(config.log_trace_size >= step);
     assert_eq!(config.log_n_last_layer_coefs, 0);
 
-    // Translate base_point to the base of the current circle domain.
+    
     let mut packed_lowest_bits = packed_bits.split_off(..step).unwrap();
+    let mut lowest_bits =  bits.split_off(..step).unwrap();
+    
+    // Translate base_point to the base of the current circle domain.
     base_point = circle_translate_to_base_point(context, base_point, packed_lowest_bits);
     // Compute twiddles.
     let mut twiddles_per_fold = circle_compute_twiddles_from_base_point(context, &base_point, step);
@@ -77,15 +80,13 @@ pub fn fri_decommit<Value: IValue>(
     for (tree_idx, (root, witness_per_query)) in
         zip_eq(layer_commitments, witness_per_query_per_tree).enumerate()
     {
-        let log_layer_size = bits.len();
-
         // Validate that the fri query is in the correct position inside the guessed
         // `witness_per_query`.
         validate_query_position_in_coset(
             context,
             witness_per_query,
             &layer_values,
-            bits.split_off(..step).unwrap(),
+            lowest_bits,
         );
 
         // Check merkle decommitment.
@@ -146,6 +147,8 @@ pub fn fri_decommit<Value: IValue>(
             })
             .collect();
 
+        // TODO(audit): consider renaming twiddles_at_fold -> twiddles_at_layer.
+
         // Compute the next layer.
         layer_values = zip_eq(witness_per_query, twiddles_per_query)
             .map(|(witness, twiddles_per_fold)| {
@@ -153,7 +156,7 @@ pub fn fri_decommit<Value: IValue>(
             })
             .collect();
 
-        log_degree_bound = log_degree_bound.saturating_sub(step);
+        log_degree_bound = log_degree_bound.checked_sub(step).unwrap();
         if log_degree_bound == 0 {
             break;
         }
@@ -163,11 +166,12 @@ pub fn fri_decommit<Value: IValue>(
         // points are not needed after we exit the loop.
         let query_domain_point = repeated_double_point_simd(context, &base_point, n_doubles);
 
+        step = std::cmp::min(step, log_degree_bound);
         // Update the number of times to double the base point for the next step.
         n_doubles = step;
-        step = std::cmp::min(step, log_degree_bound);
 
         packed_lowest_bits = packed_bits.split_off(..step).unwrap();
+        lowest_bits = bits.split_off(..step).unwrap();
 
         // Translate query_domain_point to the base of the current coset.
         base_point = translate_to_base_point(context, query_domain_point, packed_lowest_bits);
@@ -175,6 +179,9 @@ pub fn fri_decommit<Value: IValue>(
         // Compute twiddles for the next step.
         twiddles_per_fold = compute_twiddles_from_base_point(context, &base_point, step);
     }
+
+    // TODO(audit): Add assert on the length of the bits and packed_lowest_bits.
+
     // The last base point's y-coords hasn't been used by `compute_twiddles_from_base_point` if the
     // last step was = 1.
     if step == 1 {
@@ -201,6 +208,7 @@ fn fold_coset<Value: IValue>(
     assert_eq!(coset_values.len(), 1 << twiddles_per_fold.len());
     let mut values = coset_values.to_vec();
 
+    // TODO(audit): Iterate over zip_eq(alphas, twiddles_per_fold) the alphas, remove `i` and the assert_eq.
     for (i, twiddles) in twiddles_per_fold.iter().enumerate() {
         for (j, t) in twiddles.iter().enumerate() {
             let (even, odd) = (values[2 * j], values[2 * j + 1]);
@@ -247,6 +255,7 @@ fn circle_compute_twiddles_from_base_point<Value: IValue>(
     assert!(fold_step > 0);
     let n_queries = base_point.x.len();
 
+    // TODO(audit): Check if this is necessary.
     if fold_step == 1 {
         return vec![vec![base_point.y.inv(context)]];
     }

@@ -352,6 +352,8 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         // TODO(audit): Consider fixing m31::from_u32 to panic instead of reduce.
         let program_len = context.constant(qm31_from_u32s(program.len().try_into().unwrap(), 0, 0, 0));
 
+
+        // TODO(audit): Consider moving to the statement construction.
         let output_hash = blake(context, packed_outputs.get_packed(), 4 * packed_outputs.len());
 
         // output the output hash.

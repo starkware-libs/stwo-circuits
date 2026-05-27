@@ -36,6 +36,8 @@ pub fn accumulate_constraints<Value: IValue>(
             acc.add_to_relation(context, numerator, &tuple);
         }
     }
+
+    assert!(multiplicities.next().is_none());
 }
 
 pub struct Component {}

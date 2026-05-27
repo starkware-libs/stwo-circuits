@@ -159,6 +159,8 @@ impl<Value: IValue> CircuitEval<Value> for Component {
         );
 
         // Verify size <= ID_TO_BIG_MAX_ROWS (otherwise it will overlap with the next component)
+
+        // Don't use MAX_SEQUENCE_LOG_SIZE, use ID_TO_BIG_LOG_MAX_ROWS.
         for bit_pos in (MAX_SEQUENCE_LOG_SIZE + 1)..component_data.max_component_size_bits() {
             let bit = component_data.get_n_instances_bit(context, bit_pos);
             eq(context, bit, context.zero());
