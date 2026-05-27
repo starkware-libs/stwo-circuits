@@ -1,5 +1,3 @@
-use std::iter::zip;
-
 use itertools::{Itertools, zip_eq};
 use stwo::core::fields::FieldExpOps;
 
@@ -18,39 +16,19 @@ const COLUMN_IDX_BOUND: u32 = 1 << COLUMN_IDX_BITS;
 
 use circuits::extract_bits::extract_bits;
 
-/// Generates the column indices for the columns.
-/// The column indices are the values 1..n_columns.
-pub fn generate_column_indices<Value: IValue>(
-    context: &mut Context<Value>,
-    n_columns: usize,
-) -> Vec<Var> {
-    let mut column_idx = context.zero();
-    let mut column_indices = vec![column_idx];
-    for _ in 1..n_columns {
-        column_idx = eval!(context, (column_idx) + (context.one()));
-        column_indices.push(column_idx);
-    }
-    column_indices
-}
-
 /// Generates the keys for sorting the query values by the column indices and log sizes.
 /// the key for the i'th column is (log_size * COLUMN_IDX_BOUND + column_idx) * u.
 /// Those keys guarantee a stable sort of the query values by the column indices and log sizes.
-///
-/// column_indices hold the values 1..N, where N >= column_log_sizes.len().
-/// column_log_sizes hold the log sizes of the columns.
 fn generate_sort_keys<Value: IValue>(
     context: &mut Context<Value>,
-    column_indices: &[Var],
     column_log_sizes: &[Var],
 ) -> Vec<Var> {
-    assert!(column_indices.len() >= column_log_sizes.len());
     let u = context.constant(qm31_from_u32s(0, 0, 1, 0));
     let shift = context.constant(COLUMN_IDX_BOUND.into());
     let mut sort_keys = Vec::with_capacity(column_log_sizes.len());
-    for (log_size, column_idx) in zip(column_log_sizes, column_indices) {
+    for (column_idx, log_size) in column_log_sizes.iter().enumerate() {
         let shifted_log_size = eval!(context, (*log_size) * (shift));
-        let tag = eval!(context, (shifted_log_size) + (*column_idx));
+        let tag = eval!(context, (shifted_log_size) + (context.constant(column_idx.into())));
         let sort_key = eval!(context, (u) * (tag));
         sort_keys.push(sort_key);
     }
@@ -107,12 +85,8 @@ pub struct QuerySorter {
     sorted_keys: Vec<Var>,
 }
 impl QuerySorter {
-    pub fn new(
-        context: &mut Context<impl IValue>,
-        column_indices: &[Var],
-        column_log_sizes: &[Var],
-    ) -> Self {
-        let sort_keys = generate_sort_keys(context, column_indices, column_log_sizes);
+    pub fn new(context: &mut Context<impl IValue>, column_log_sizes: &[Var]) -> Self {
+        let sort_keys = generate_sort_keys(context, column_log_sizes);
         Self { sort_keys, sorted_keys: vec![] }
     }
 

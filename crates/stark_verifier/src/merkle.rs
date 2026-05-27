@@ -3,7 +3,7 @@ use stwo::core::vcs_lifted::verifier::PACKED_LEAF_SIZE;
 
 use crate::oods::EvalDomainSamples;
 use crate::proof::N_TRACES;
-use crate::sort_queries::{QuerySorter, generate_column_indices};
+use crate::sort_queries::QuerySorter;
 use circuits::blake::{HashValue, blake};
 use circuits::context::{Context, Var};
 use circuits::ivalue::IValue;
@@ -140,20 +140,12 @@ pub fn decommit_eval_domain_samples<Value: IValue>(
     assert_eq!(eval_domain_samples.n_traces(), roots.len());
     assert_eq!(auth_paths.n_trees(), roots.len());
 
-    let max_n_columns_per_trace =
-        column_log_sizes_by_trace.iter().map(|log_sizes| log_sizes.len()).max().unwrap_or(0);
-    let column_indices = generate_column_indices(context, max_n_columns_per_trace);
-
     for (trace_idx, root) in roots.iter().enumerate() {
         let data = eval_domain_samples.data_for_trace(trace_idx);
 
         let mut query_sorter = match trace_idx {
             // Only the trace and interaction columns require sorting.
-            1 | 2 => QuerySorter::new(
-                context,
-                &column_indices,
-                &column_log_sizes_by_trace[trace_idx - 1],
-            ),
+            1 | 2 => QuerySorter::new(context, &column_log_sizes_by_trace[trace_idx - 1]),
             _ => QuerySorter::skip_sorting(),
         };
 
