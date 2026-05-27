@@ -60,7 +60,6 @@ pub fn get_preprocessed_multiverifier_from_circuit(
 }
 
 /// Computes the Merkle root of a circuit's preprocessed trace.
-#[expect(dead_code)]
 pub fn get_preprocessed_root(
     preprocessed_circuit: &PreprocessedCircuit,
     log_blowup_factor: u32,
