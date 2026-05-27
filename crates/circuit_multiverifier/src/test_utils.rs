@@ -1,4 +1,7 @@
-use circuit_common::preprocessed::PreprocessedCircuit;
+use circuit_common::{
+    finalize::{ComponentSizes, pad_to_targets},
+    preprocessed::PreprocessedCircuit,
+};
 use circuit_verifier::{
     statement::{INTERACTION_POW_BITS, all_circuit_components},
     verify::CircuitConfig,
@@ -17,10 +20,10 @@ use stwo::prover::poly::circle::PolyOps;
 
 /// Builds a `NoValue` multiverifier and preprocesses it. The multiverifier is built by feeding it
 /// two identical proofs of a circuit.
-#[expect(dead_code)]
 pub fn get_preprocessed_multiverifier_from_circuit(
     preprocessed_leaf_circuit: &PreprocessedCircuit,
     pcs_config: PcsConfig,
+    target_padding: Option<ComponentSizes>,
 ) -> (PreprocessedCircuit, FinalizedContext<NoValue>) {
     assert_eq!(
         pcs_config.lifting_log_size.unwrap(),
@@ -51,6 +54,9 @@ pub fn get_preprocessed_multiverifier_from_circuit(
     };
     let mut multiverifier_context =
         build_multiverifier_circuit::<NoValue>(empty_input(), empty_input(), &shared_config);
+    if let Some(target_padding) = target_padding {
+        pad_to_targets(&mut multiverifier_context, target_padding);
+    }
     let preprocessed_multiverifier_circuit =
         PreprocessedCircuit::preprocess_circuit(&mut multiverifier_context);
     (preprocessed_multiverifier_circuit, multiverifier_context)
