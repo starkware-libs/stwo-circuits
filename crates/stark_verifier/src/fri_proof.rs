@@ -6,7 +6,7 @@ use circuits::ops::Guess;
 use itertools::zip_eq;
 
 /// Represents the structure of a FRI proof.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct FriConfig {
     /// Log2 of the trace size.
     pub log_trace_size: usize,
