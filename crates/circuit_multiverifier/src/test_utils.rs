@@ -5,7 +5,7 @@ use circuit_verifier::{
 };
 use circuits::{blake::HashValue, context::Context, ivalue::NoValue};
 use circuits_stark_verifier::proof::{ProofConfig, empty_proof};
-use stwo::core::{fields::qm31::QM31, pcs::PcsConfig};
+use stwo::core::{fields::qm31::QM31, fri::FriConfig, pcs::PcsConfig};
 
 use crate::verify::{MultiverifierInput, SharedConfig, build_multiverifier_circuit};
 use stwo::core::poly::circle::CanonicCoset;
@@ -17,7 +17,6 @@ use stwo::prover::poly::circle::PolyOps;
 
 /// Builds a `NoValue` multiverifier and preprocesses it. The multiverifier is build by feeding it
 /// two identical proofs of a circuit.
-#[expect(dead_code)]
 pub fn get_preprocessed_multiverifier_from_circuit(
     preprocessed_leaf_circuit: &PreprocessedCircuit,
     pcs_config: PcsConfig,
@@ -80,4 +79,16 @@ pub fn get_preprocessed_root(
         &BaseColumnPool::<SimdBackend>::new(),
     );
     preprocessed_tree.commitment.root().into()
+}
+
+pub const fn get_pcs_config(trace_log_size: u32, log_blowup_factor: u32) -> PcsConfig {
+    let (pow_bits, n_queries) = match log_blowup_factor {
+        1 => (26, 70),
+        2 => (26, 35),
+        3 => (27, 23),
+        _ => panic!("Unsupported log blowup factor."),
+    };
+    let fri_config =
+        FriConfig { log_blowup_factor, log_last_layer_degree_bound: 0, n_queries, fold_step: 4 };
+    PcsConfig { pow_bits, fri_config, lifting_log_size: Some(trace_log_size + log_blowup_factor) }
 }
