@@ -12,7 +12,10 @@ use circuits::{
 use circuits_stark_verifier::proof::{ProofConfig, empty_proof};
 use stwo::core::{fields::qm31::QM31, fri::FriConfig, pcs::PcsConfig};
 
-use crate::verify::{MultiverifierInput, SharedConfig, build_multiverifier_circuit};
+use crate::{
+    padding::pad_components_to_target_log_sizes,
+    verify::{MultiverifierInput, SharedConfig, build_multiverifier_circuit},
+};
 use stwo::core::poly::circle::CanonicCoset;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::prover::CommitmentTreeProver;
@@ -25,6 +28,7 @@ use stwo::prover::poly::circle::PolyOps;
 pub fn get_preprocessed_multiverifier_from_circuit(
     preprocessed_leaf_circuit: &PreprocessedCircuit,
     pcs_config: PcsConfig,
+    target_padding: Option<ComponentLogSizes>,
 ) -> (PreprocessedCircuit, Context<NoValue>) {
     let all_circuit_components = &all_circuit_components::<NoValue>();
     let proof_config = ProofConfig::new(
@@ -58,6 +62,9 @@ pub fn get_preprocessed_multiverifier_from_circuit(
     };
     let mut multiverifier_context =
         build_multiverifier_circuit::<NoValue>(empty_input(), empty_input(), &shared_config);
+    if let Some(target_padding) = target_padding {
+        pad_components_to_target_log_sizes(&mut multiverifier_context, target_padding);
+    }
     let preprocessed_multiverifier_circuit =
         PreprocessedCircuit::preprocess_circuit(&mut multiverifier_context);
     (preprocessed_multiverifier_circuit, multiverifier_context)
