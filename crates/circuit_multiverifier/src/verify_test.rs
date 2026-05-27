@@ -17,11 +17,12 @@ use circuit_serialize::deserialize::deserialize_proof_with_config;
 use circuit_serialize::serialize::CircuitSerialize;
 use circuit_verifier::statement::{INTERACTION_POW_BITS, all_circuit_components};
 use circuit_verifier::verify::CircuitPublicData;
-use circuits::blake::HashValue;
+use circuits::blake::{HashValue, blake_qm31};
 use circuits::context::Context;
 use circuits::ivalue::NoValue;
 use circuits_stark_verifier::order_hash_map::OrderedHashMap;
 use circuits_stark_verifier::proof::{Proof, ProofConfig};
+use itertools::chain;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::PcsConfig;
 use stwo::prover::backend::simd::SimdBackend;
@@ -47,6 +48,8 @@ const TARGET_PADDING_SIZES: ComponentSizes = ComponentSizes {
 
 const PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT: [u32; 8] =
     [1479487138, 376564860, 984037140, 1666910367, 1092593502, 1950550748, 1979964291, 149269893];
+const MULTIVERIFIER_PREPROCESSED_ROOT: [u32; 8] =
+    [2051107375, 1206008881, 1991904478, 1986879017, 1158602081, 1146905389, 954414580, 878264537];
 const MULTIVERIFIER_N_PREPROCESSED_COLUMNS: usize = 45;
 const N_OUTPUTS: usize = 2;
 const MULTIVERIFIER_OF_TWO_CAIRO_PROOFS_PATH: &str =
@@ -307,4 +310,62 @@ fn test_prove_multiverifier_of_two_cairo_subcircuits() {
         let mut file = File::create(MULTIVERIFIER_OF_TWO_CAIRO_PROOFS_PATH).unwrap();
         file.write_all(&serialized).unwrap();
     }
+}
+
+#[test]
+fn test_verify_cairo_proof_and_multiverifier_proof() {
+    use circuit_serialize::deserialize::deserialize_proof_with_config;
+    // Build a Cairo verifier proof.
+    let (proof, public_data) = prove_privacy_with_recursion_and_prepare();
+    // Build common config.
+    let common_config = SharedConfig {
+        pcs_config: PCS_CONFIG,
+        proof_config: ProofConfig::new(
+            &all_circuit_components::<QM31>(),
+            vec![true; all_circuit_components::<QM31>().len()],
+            MULTIVERIFIER_N_PREPROCESSED_COLUMNS,
+            &PCS_CONFIG,
+            INTERACTION_POW_BITS,
+        ),
+        preprocessed_column_log_sizes: multiverifier_preprocessed_column_log_sizes(),
+        n_outputs: N_OUTPUTS,
+    };
+
+    // Read the multiverifier proof of two cairo proofs.
+    let bytes = std::fs::read(MULTIVERIFIER_OF_TWO_CAIRO_PROOFS_PATH).unwrap();
+    let multiverifier_proof =
+        deserialize_proof_with_config(&mut bytes.as_slice(), &common_config.proof_config).unwrap();
+    let preprocessed_root_cairo_verifier: HashValue<QM31> =
+        PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT.into();
+    let output_preimage = [
+        preprocessed_root_cairo_verifier.0,
+        preprocessed_root_cairo_verifier.1,
+        public_data.output_values[0],
+        public_data.output_values[1],
+    ];
+    let payload: Vec<QM31> = chain!(output_preimage, output_preimage).collect();
+    let hash_of_payload = blake_qm31(&payload, 16 * payload.len());
+
+    let multiverifier_of_two_cairo_input = MultiverifierInput {
+        proof: multiverifier_proof,
+        output_values: [hash_of_payload.0, hash_of_payload.1],
+        preprocessed_root: MULTIVERIFIER_PREPROCESSED_ROOT.into(),
+    };
+
+    let mut context = build_multiverifier_circuit::<QM31>(
+        multiverifier_of_two_cairo_input,
+        build_cairo_input(&proof, &public_data, &common_config.proof_config),
+        &common_config,
+    );
+    pad_to_targets(&mut context, TARGET_PADDING_SIZES);
+    context.circuit.check_yields();
+    context.validate_circuit();
+
+    // Check that the circuit hasn't changed. The `MULTIVERIFIER_PREPROCESSED_ROOT` is computed by
+    // building the multiverifer on two cairo verifier proofs. The current test builds it on a
+    // multiverifier proof and a cairo verifier proof.
+    let preprocessed_multiverifier = PreprocessedCircuit::preprocess_circuit(&mut context);
+    let preprocessed_root_multiverifier =
+        get_preprocessed_root(&preprocessed_multiverifier, PCS_CONFIG.fri_config.log_blowup_factor);
+    assert_eq!(preprocessed_root_multiverifier, HashValue::from(MULTIVERIFIER_PREPROCESSED_ROOT));
 }
