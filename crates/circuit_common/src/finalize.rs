@@ -174,7 +174,7 @@ pub fn add_zk_blinding(
 }
 
 /// Helper struct containing the sizes of the AIR components of a circuit.
-#[derive(Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ComponentSizes {
     pub eq: usize,
     pub qm31_ops: usize,
