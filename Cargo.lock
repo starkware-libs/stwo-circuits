@@ -1337,6 +1337,8 @@ dependencies = [
  "cairo-air",
  "circuit-cairo-verifier",
  "circuit-common",
+ "circuit-prover",
+ "circuit-serialize",
  "circuit-verifier",
  "circuits",
  "circuits-stark-verifier",
