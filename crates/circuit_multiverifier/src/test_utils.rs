@@ -8,6 +8,12 @@ use circuits_stark_verifier::proof::{ProofConfig, empty_proof};
 use stwo::core::{fields::qm31::QM31, pcs::PcsConfig};
 
 use crate::verify::{MultiverifierInput, SharedConfig, build_multiverifier_circuit};
+use stwo::core::poly::circle::CanonicCoset;
+use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
+use stwo::prover::CommitmentTreeProver;
+use stwo::prover::backend::simd::SimdBackend;
+use stwo::prover::mempool::BaseColumnPool;
+use stwo::prover::poly::circle::PolyOps;
 
 /// Builds a `NoValue` multiverifier and preprocesses it. The multiverifier is build by feeding it
 /// two identical proofs of a circuit.
@@ -52,4 +58,26 @@ pub fn get_preprocessed_multiverifier_from_circuit(
     let preprocessed_multiverifier_circuit =
         PreprocessedCircuit::preprocess_circuit(&mut multiverifier_context);
     (preprocessed_multiverifier_circuit, multiverifier_context)
+}
+
+#[expect(dead_code)]
+pub fn get_preprocessed_root(
+    preprocessed_circuit: &PreprocessedCircuit,
+    log_blowup_factor: u32,
+) -> HashValue<QM31> {
+    let lifting_log_size = preprocessed_circuit.params.trace_log_size + log_blowup_factor;
+    let twiddles = SimdBackend::precompute_twiddles(
+        CanonicCoset::new(lifting_log_size).circle_domain().half_coset,
+    );
+    let preprocessed_trace = preprocessed_circuit.preprocessed_trace.get_trace::<SimdBackend>();
+    let preprocessed_trace_polys = SimdBackend::interpolate_columns(preprocessed_trace, &twiddles);
+    let preprocessed_tree = CommitmentTreeProver::<SimdBackend, Blake2sM31MerkleChannel>::new(
+        preprocessed_trace_polys,
+        log_blowup_factor,
+        &twiddles,
+        true,
+        Some(lifting_log_size),
+        &BaseColumnPool::<SimdBackend>::new(),
+    );
+    preprocessed_tree.commitment.root().into()
 }
