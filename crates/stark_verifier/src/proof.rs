@@ -206,14 +206,14 @@ impl std::fmt::Display for ProofInfo {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct ComponentShape {
     pub trace_columns: usize,
     pub interaction_columns: usize,
 }
 
 /// Represents the structure of a proof.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct ProofConfig {
     // TODO(lior): Add a check on the total security bits of the protocol given parameters
     //   such as `n_pow_bits`, `fri.n_queries`, etc.
