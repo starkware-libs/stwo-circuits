@@ -18,6 +18,10 @@ use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::PcsConfig;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
+#[cfg(test)]
+#[path = "verify_test.rs"]
+mod verify_test;
+
 /// A circuit proof together with metadata needed to build the [`CircuitStatement`] against which
 /// the proof will be verified. The multiverifier expects that output values of an input circuit
 /// consist of 2 QM31 (usually representing an hash) + 1 QM31 equal to
