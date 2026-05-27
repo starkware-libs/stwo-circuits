@@ -1,3 +1,5 @@
+use std::array;
+use std::collections::HashSet;
 use std::sync::Arc;
 
 use crate::all_components::all_components;
@@ -193,4 +195,59 @@ pub fn prepare_cairo_proof_for_circuit_verifier(
     );
 
     (proof, public_data)
+}
+
+/// Verifies a [CairoProof] with a given set of components.
+pub fn verify_cairo_with_component_set(
+    cairo_proof: &CairoProof<Blake2sM31MerkleHasher>,
+    component_set: HashSet<&str>,
+) -> Result<Context<QM31>, String> {
+    let FlatClaim { component_enable_bits, component_log_sizes, public_data: _ } =
+        cairo_proof.claim.flatten_claim();
+    let components: indexmap::IndexMap<&'static str, Box<dyn CircuitEval<QM31>>> =
+        zip_eq(all_components::<QM31>().into_iter(), &component_enable_bits)
+            .filter_map(|((component_name, component), &enable_bit)| {
+                let component_in_set = component_set.contains(component_name);
+                if component_in_set != enable_bit {
+                    return Some(Err(format!(
+                        "Proof was produced with the wrong components set: expected the component '{}' to be {} according to the component set, but it is {} in the proof.",
+                        component_name,
+                        if component_in_set { "enabled" } else { "disabled" },
+                        if enable_bit { "enabled" } else { "disabled" }
+                    )));
+                }
+                if enable_bit { Some(Ok((component_name, component))) } else { None }
+            })
+            .try_collect()?;
+
+    let proof_config = ProofConfig::new(
+        &components,
+        component_enable_bits,
+        cairo_proof.preprocessed_trace_variant.n_columns(),
+        &cairo_proof.extended_stark_proof.proof.config,
+        INTERACTION_POW_BITS,
+    );
+
+    let (proof, public_data) = prepare_cairo_proof_for_circuit_verifier(cairo_proof, &proof_config);
+    let (mut public_claim, outputs, program) = public_data.pack_into_u32s();
+    public_claim.extend(component_log_sizes);
+    let outputs = outputs
+        .chunks_exact(MEMORY_VALUES_LIMBS)
+        .map(|chunk| array::from_fn(|i| M31::from_u32_unchecked(chunk[i])))
+        .collect_vec();
+    let program = program
+        .chunks_exact(MEMORY_VALUES_LIMBS)
+        .map(|chunk| array::from_fn(|i| M31::from_u32_unchecked(chunk[i])))
+        .collect();
+
+    let ppt_root = cairo_proof.extended_stark_proof.proof.commitments[0];
+    let verifier_config = CairoVerifierConfig {
+        preprocessed_root: ppt_root.into(),
+        proof_config,
+        program,
+        n_outputs: cairo_proof.claim.public_data.public_memory.output.len(),
+        preprocessed_trace_variant: cairo_proof.preprocessed_trace_variant,
+    };
+
+    verify_fixed_cairo_circuit(&verifier_config, proof, public_claim, outputs)
 }
