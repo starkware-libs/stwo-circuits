@@ -16,6 +16,9 @@ use crate::verify::{CairoVerifierConfig, get_preprocessed_root};
 #[path = "privacy_test.rs"]
 pub mod test;
 
+/// The log size of the trace produced by the privacy cairo circuit verifier.
+const PRIVACY_SNOS_TRACE_LOG_SIZE: u32 = 20;
+
 /// Returns a [CairoVerifierConfig] for the privacy proof setup with the given log blowup factor.
 pub fn privacy_cairo_verifier_config(log_blowup_factor: u32) -> CairoVerifierConfig {
     let preprocessed_trace_variant = PreProcessedTraceVariant::CanonicalSmall;
@@ -33,22 +36,7 @@ pub fn privacy_cairo_verifier_config(log_blowup_factor: u32) -> CairoVerifierCon
         components.into_iter().flatten().collect();
 
     // Derive proof config parameters from the log blowup factor, targeting 96-bit security.
-    let (pow_bits, n_queries) = match log_blowup_factor {
-        1 => (26, 70),
-        2 => (26, 35),
-        3 => (27, 23),
-        _ => panic!("Unsupported log blowup factor: {log_blowup_factor}"),
-    };
-    assert!(
-        pow_bits + n_queries as u32 * log_blowup_factor >= 96_u32,
-        "The config is not secure enough."
-    );
-    let lifting_log_size = 20 + log_blowup_factor;
-    let pcs_config = PcsConfig {
-        pow_bits,
-        fri_config: FriConfig::new(0, log_blowup_factor, n_queries, 4),
-        lifting_log_size: Some(lifting_log_size),
-    };
+    let pcs_config = get_pcs_config(PRIVACY_SNOS_TRACE_LOG_SIZE, log_blowup_factor);
 
     let proof_config = ProofConfig::new(
         &components,
@@ -61,7 +49,7 @@ pub fn privacy_cairo_verifier_config(log_blowup_factor: u32) -> CairoVerifierCon
     let program = load_program(&program_path);
 
     CairoVerifierConfig {
-        preprocessed_root: get_preprocessed_root(lifting_log_size),
+        preprocessed_root: get_preprocessed_root(pcs_config.lifting_log_size.unwrap()),
         proof_config,
         enabled_bits,
         program,
@@ -133,4 +121,21 @@ pub fn privacy_components() -> HashSet<&'static str> {
         "verify_bitwise_xor_8",
         "verify_bitwise_xor_9",
     ])
+}
+
+pub const fn get_pcs_config(trace_log_size: u32, log_blowup_factor: u32) -> PcsConfig {
+    let (pow_bits, n_queries) = match log_blowup_factor {
+        1 => (26, 70),
+        2 => (26, 35),
+        3 => (27, 23),
+        _ => panic!("Unsupported log blowup factor."),
+    };
+    assert!(
+        pow_bits + n_queries as u32 * log_blowup_factor >= 96_u32,
+        "The config is not secure enough."
+    );
+    // Note that `fold_step` is hardcoded to 4.
+    let fri_config =
+        FriConfig { log_blowup_factor, log_last_layer_degree_bound: 0, n_queries, fold_step: 4 };
+    PcsConfig { pow_bits, fri_config, lifting_log_size: Some(trace_log_size + log_blowup_factor) }
 }
