@@ -17,12 +17,13 @@ use circuit_serialize::deserialize::deserialize_proof_with_config;
 use circuit_serialize::serialize::CircuitSerialize;
 use circuit_verifier::statement::{INTERACTION_POW_BITS, all_circuit_components};
 use circuit_verifier::verify::CircuitPublicData;
-use circuits::blake::ReducedHashValue;
+use circuits::blake::{ReducedHashValue, blake_qm31};
 use circuits::context::FinalizedContext;
 use circuits::ivalue::NoValue;
 use circuits_stark_verifier::order_hash_map::OrderedHashMap;
 use circuits_stark_verifier::proof::{Proof, ProofConfig};
 use itertools::Itertools;
+use itertools::chain;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::PcsConfig;
@@ -348,4 +349,66 @@ fn test_prove_multiverifier_of_two_cairo_subcircuits() {
         let mut file = File::create(MULTIVERIFIER_OF_TWO_CAIRO_PROOFS_PATH).unwrap();
         file.write_all(&serialized).unwrap();
     }
+}
+
+#[test]
+fn test_verify_cairo_proof_and_multiverifier_proof() {
+    // Build common config.
+    let shared_config = SharedConfig {
+        pcs_config: PCS_CONFIG,
+        proof_config: ProofConfig::new(
+            &all_circuit_components::<QM31>(),
+            CIRCUIT_N_PREPROCESSED_COLUMNS,
+            &PCS_CONFIG,
+            INTERACTION_POW_BITS,
+        ),
+        preprocessed_column_log_sizes: multiverifier_preprocessed_column_log_sizes(),
+    };
+
+    // Read the multiverifier proof of (the verification of) two cairo proofs.
+    let bytes = std::fs::read(MULTIVERIFIER_OF_TWO_CAIRO_PROOFS_PATH).unwrap();
+    let multiverifier_proof =
+        deserialize_proof_with_config(&mut bytes.as_slice(), &shared_config.proof_config).unwrap();
+    let preprocessed_root_cairo_verifier: ReducedHashValue<QM31> =
+        PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT.into();
+    let output_preimage = [
+        preprocessed_root_cairo_verifier.0,
+        preprocessed_root_cairo_verifier.1,
+        PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES[0],
+        PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES[1],
+    ];
+    let payload: Vec<QM31> = chain!(output_preimage, output_preimage).collect();
+    let hash_of_payload = blake_qm31(&payload, 16 * payload.len());
+
+    let multiverifier_of_two_cairo_input = MultiverifierInput {
+        proof: multiverifier_proof,
+        output_values: [hash_of_payload.0, hash_of_payload.1],
+        preprocessed_root: MULTIVERIFIER_PREPROCESSED_ROOT.into(),
+    };
+
+    // Read the cairo verifier proof.
+    let bytes = std::fs::read(PRIVACY_CAIRO_VERIFIER_PROOF_PATH).unwrap();
+    let proof =
+        deserialize_proof_with_config(&mut bytes.as_slice(), &shared_config.proof_config).unwrap();
+
+    // Build the multiverifier circuit that verifies a proof of itself and a proof of the cairo
+    // verifier.
+    let mut context = build_multiverifier_circuit::<QM31>(
+        multiverifier_of_two_cairo_input,
+        build_cairo_input(&proof),
+        &shared_config,
+    );
+    pad_to_targets(&mut context, TARGET_PADDING_SIZES);
+    context.validate_circuit();
+
+    // Check that the circuit hasn't changed. The `MULTIVERIFIER_PREPROCESSED_ROOT` is computed by
+    // building the multiverifer on two cairo verifier proofs. The current test builds it on a
+    // multiverifier proof and a cairo verifier proof.
+    let preprocessed_multiverifier = PreprocessedCircuit::preprocess_circuit(&mut context);
+    let preprocessed_root_multiverifier =
+        get_preprocessed_root(&preprocessed_multiverifier, PCS_CONFIG.fri_config.log_blowup_factor);
+    assert_eq!(
+        preprocessed_root_multiverifier,
+        ReducedHashValue::from(MULTIVERIFIER_PREPROCESSED_ROOT)
+    );
 }
