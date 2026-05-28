@@ -32,7 +32,7 @@ use stwo_cairo_prover::prover::{ChannelHash, ProverParameters, prove_cairo};
 
 use crate::all_components::all_components;
 use crate::preprocessed_columns::MAX_SEQUENCE_LOG_SIZE;
-use crate::statement::{CairoStatement, MEMORY_VALUES_LIMBS, PUBLIC_DATA_LEN};
+use crate::statement::{AUX_DATA_FIXED_LEN, CairoStatement, MEMORY_VALUES_LIMBS};
 use crate::utils::get_proof_file_path;
 use crate::verify::{
     CairoVerifierConfig, enabled_components, get_preprocessed_root,
@@ -82,8 +82,8 @@ pub fn verify_cairo_with_component_set(
     );
 
     let (proof, public_data) = prepare_cairo_proof_for_circuit_verifier(cairo_proof, &proof_config);
-    let (mut public_claim, outputs, program) = public_data.pack_into_u32s();
-    public_claim.extend(component_log_sizes);
+    let (mut serialized_aux_data, outputs, program) = public_data.pack_into_u32s();
+    serialized_aux_data.extend(component_log_sizes);
     let outputs = outputs
         .chunks_exact(MEMORY_VALUES_LIMBS)
         .map(|chunk| array::from_fn(|i| M31::from_u32_unchecked(chunk[i])))
@@ -102,7 +102,7 @@ pub fn verify_cairo_with_component_set(
         preprocessed_trace_variant: cairo_proof.preprocessed_trace_variant,
     };
 
-    verify_fixed_cairo_circuit(&verifier_config, proof, public_claim, outputs)
+    verify_fixed_cairo_circuit(&verifier_config, proof, serialized_aux_data, outputs)
 }
 
 #[test]
@@ -125,11 +125,11 @@ fn test_verify() {
     let mut components = all_components();
     components.shift_remove("pedersen_points_table_window_bits_18");
 
-    let public_claim =
-        vec![M31::zero(); PUBLIC_DATA_LEN + output_len + program_len + components.len()];
+    let serialized_aux_data =
+        vec![M31::zero(); AUX_DATA_FIXED_LEN + output_len + program_len + components.len()];
     let statement = CairoStatement::new(
         &mut novalue_context,
-        public_claim,
+        serialized_aux_data,
         outputs,
         program,
         components,

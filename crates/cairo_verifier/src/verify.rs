@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use crate::all_components::all_components;
-use crate::statement::{CairoStatement, MEMORY_VALUES_LIMBS, PUBLIC_DATA_LEN};
+use crate::statement::{AUX_DATA_FIXED_LEN, CairoStatement, MEMORY_VALUES_LIMBS};
 use cairo_air::CairoProof;
 use cairo_air::air::PublicData;
 use cairo_air::flat_claims::FlatClaim;
@@ -68,13 +68,13 @@ pub struct CairoVerifierConfig {
 pub fn verify_fixed_cairo_circuit(
     verifier_config: &CairoVerifierConfig,
     proof: Proof<QM31>,
-    public_claim: Vec<u32>,
+    serialized_aux_data: Vec<u32>,
     outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
 ) -> Result<Context<QM31>, String> {
     if outputs.len() != verifier_config.n_outputs {
         return Err("The proof claim does not match the expected number of outputs.".to_string());
     }
-    let context = build_fixed_cairo_circuit(verifier_config, proof, public_claim, outputs);
+    let context = build_fixed_cairo_circuit(verifier_config, proof, serialized_aux_data, outputs);
 
     // Check the verifier circuit gates topology only in test mode.
     #[cfg(test)]
@@ -104,17 +104,17 @@ pub fn enabled_components<V: IValue>(
 pub fn build_fixed_cairo_circuit(
     verifier_config: &CairoVerifierConfig,
     proof: Proof<QM31>,
-    public_claim: Vec<u32>,
+    serialized_aux_data: Vec<u32>,
     outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
 ) -> Context<QM31> {
     let config = &verifier_config.proof_config;
     let components = enabled_components(&config.enabled_bits);
 
-    let public_claim = public_claim.iter().map(|u32| M31::from(*u32)).collect_vec();
+    let serialized_aux_data = serialized_aux_data.iter().map(|u32| M31::from(*u32)).collect_vec();
     let mut context = Context::new(N_RESERVED);
     let statement = CairoStatement::<QM31>::new(
         &mut context,
-        public_claim,
+        serialized_aux_data,
         outputs,
         verifier_config.program.clone(),
         components,
@@ -141,13 +141,14 @@ pub fn build_cairo_verifier_circuit(verifier_config: &CairoVerifierConfig) -> Co
     let n_outputs = verifier_config.n_outputs;
     let program_len = verifier_config.program.len();
     let n_components = components.len();
-    let public_claim = vec![M31::zero(); PUBLIC_DATA_LEN + n_outputs + program_len + n_components];
+    let serialized_aux_data =
+        vec![M31::zero(); AUX_DATA_FIXED_LEN + n_outputs + program_len + n_components];
     let outputs = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; n_outputs];
 
     let mut context: Context<NoValue> = Context::new(N_RESERVED);
     let statement = CairoStatement::new(
         &mut context,
-        public_claim,
+        serialized_aux_data,
         outputs,
         verifier_config.program.clone(),
         components,
