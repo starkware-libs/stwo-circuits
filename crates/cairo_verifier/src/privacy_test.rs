@@ -2,7 +2,7 @@ use std::fs::File;
 
 use cairo_air::utils::binary_deserialize_from_file;
 use circuit_common::N_RESERVED;
-use circuit_common::finalize::{add_zk_blinding, finalize_context};
+use circuit_common::finalize::{add_zk_blinding, pad_context};
 use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_prover::prover::{
     BaseColumnPool, CircuitProof, SimdBackend, prepare_circuit_proof_for_circuit_verifier,
@@ -105,7 +105,7 @@ fn test_verify_privacy_with_recursion() {
 
     let mut context = verify_cairo_with_component_set(&cairo_proof, privacy_components()).unwrap();
 
-    finalize_context(&mut context);
+    pad_context(&mut context);
     let circuit_proof = prove_circuit_assignment(
         context.values(),
         &preprocessed,
@@ -137,7 +137,7 @@ fn test_privacy_recursion_with_preprocessed_context() {
 
     // Prove via the assignment flow: finalize separately, then prove with pre-computed
     // preprocessed data.
-    finalize_context(&mut assignment_context);
+    pad_context(&mut assignment_context);
     let assignment_proof = prove_circuit_assignment(
         assignment_context.values(),
         &preprocessed,

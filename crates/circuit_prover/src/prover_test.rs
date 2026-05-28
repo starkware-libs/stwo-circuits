@@ -1,7 +1,7 @@
 use crate::circuit_air::circuit_components::CircuitComponents;
 use crate::prover::prepare_circuit_proof_for_circuit_verifier;
 use crate::prover::{BaseColumnPool, CircuitProof, SimdBackend, prove_circuit_assignment};
-use circuit_common::finalize::finalize_context;
+use circuit_common::finalize::pad_context;
 use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_verifier::circuit_claim::CircuitInteractionElements;
 use circuit_verifier::circuit_claim::column_log_sizes_per_tree;
@@ -462,9 +462,9 @@ fn test_prove_and_circuit_verify_blake_g_gate_context() {
 }
 
 #[test]
-fn test_finalize_context() {
+fn test_pad_context() {
     let mut context = build_fibonacci_context().finalize(false);
-    finalize_context(&mut context);
+    pad_context(&mut context);
 
     let circuit = context.circuit();
     assert!(circuit.permutation.is_empty());
