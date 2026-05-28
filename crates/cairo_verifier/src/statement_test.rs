@@ -1,6 +1,4 @@
-use crate::statement::{
-    CasmState, PubMemoryM31Value, PublicData, PublicMemory, SegmentRange, public_logup_sum,
-};
+use crate::statement::{AuxData, CasmState, PubMemoryM31Value, SegmentRange, public_logup_sum};
 use circuits::context::{TraceContext, Var};
 use circuits::finalize_constants::finalize_constants;
 use circuits::ivalue::qm31_from_u32s;
@@ -240,18 +238,18 @@ fn test_public_logup_sum() {
         .map(|id| context.constant(qm31_from_u32s(id as u32, 0, 0, 0)))
         .collect::<Vec<_>>();
 
-    let public_memory = PublicMemory { segment_ranges, safe_call_ids, output_ids, program_ids };
-
-    let public_data = PublicData { initial_state, final_state, public_memory };
+    let aux_data = AuxData {
+        initial_state,
+        final_state,
+        segment_ranges,
+        safe_call_ids,
+        output_ids,
+        program_ids,
+    };
 
     // Call public_logup_sum
-    let result = public_logup_sum(
-        &mut context,
-        &public_data,
-        &program[..],
-        &outputs[..],
-        interaction_elements,
-    );
+    let result =
+        public_logup_sum(&mut context, &aux_data, &program[..], &outputs[..], interaction_elements);
 
     // The result should be a valid variable
     let result_value = context.get(result);

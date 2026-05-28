@@ -90,20 +90,17 @@ pub struct SegmentRange<T> {
     pub end: PubMemoryM31Value<T>,
 }
 
-pub struct PublicMemory<T> {
+// Auxiliary data that is used for verifying an execution of a Cairo program.
+pub struct AuxData<T> {
+    pub initial_state: CasmState<T>,
+    pub final_state: CasmState<T>,
     pub segment_ranges: [SegmentRange<T>; N_SEGMENTS],
     pub safe_call_ids: [T; 2],
     pub output_ids: Vec<T>,
     pub program_ids: Vec<T>,
 }
 
-pub struct PublicData<T> {
-    pub initial_state: CasmState<T>,
-    pub final_state: CasmState<T>,
-    pub public_memory: PublicMemory<T>,
-}
-
-impl PublicData<Var> {
+impl AuxData<Var> {
     /// Parses the public data from a slice of variables.
     pub fn parse_from_vars(data: &[Var], output_len: usize, program_len: usize) -> Self {
         let mut iter = data.iter();
@@ -129,18 +126,14 @@ impl PublicData<Var> {
         let program_ids = iter.cloned().collect_vec();
         assert_eq!(program_ids.len(), program_len);
 
-        Self {
-            initial_state,
-            final_state,
-            public_memory: PublicMemory { segment_ranges, safe_call_ids, output_ids, program_ids },
-        }
+        Self { initial_state, final_state, segment_ranges, safe_call_ids, output_ids, program_ids }
     }
 }
 
 pub struct CairoStatement<Value: IValue> {
     pub components: IndexMap<&'static str, Box<dyn CircuitEval<Value>>>,
-    pub packed_public_data: Simd,
-    pub public_data: PublicData<Var>,
+    pub packed_aux_data: Simd,
+    pub aux_data: AuxData<Var>,
     pub program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
     pub packed_outputs: Simd,
     pub preprocessed_root: HashValue<QM31>,
@@ -166,7 +159,7 @@ impl<Value: IValue> CairoStatement<Value> {
             range_check96_segment_range,
             add_mod_segment_range,
             mul_mod_segment_range,
-        ] = &self.public_data.public_memory.segment_ranges;
+        ] = &self.aux_data.segment_ranges;
 
         // Validate the output segment range.
         let diff =
@@ -267,7 +260,7 @@ impl<Value: IValue> CairoStatement<Value> {
     /// (components.len() M31s)]`.
     pub fn new(
         context: &mut Context<Value>,
-        public_claim: Vec<M31>,
+        flat_cairo_claim: Vec<M31>,
         outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
         program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
         components: IndexMap<&'static str, Box<dyn CircuitEval<Value>>>,
@@ -276,20 +269,20 @@ impl<Value: IValue> CairoStatement<Value> {
     ) -> Self {
         let n_components = components.len();
         let public_data_len = PUBLIC_DATA_LEN + outputs.len() + program.len();
-        assert_eq!(public_claim.len(), public_data_len + n_components);
-        let (public_data_m31s, log_sizes_m31s) = public_claim.split_at(public_data_len);
+        assert_eq!(flat_cairo_claim.len(), public_data_len + n_components);
+        let (public_data_m31s, log_sizes_m31s) = flat_cairo_claim.split_at(public_data_len);
 
-        let packed_public_data = pack_into_qm31s(public_data_m31s.iter().cloned())
+        let packed_aux_data = pack_into_qm31s(public_data_m31s.iter().cloned())
             .into_iter()
             .map(|qm31| Value::from_qm31(qm31).guess(context))
             .collect_vec();
 
-        let packed_public_data = Simd::from_packed(packed_public_data, public_data_m31s.len());
-        // Note that we don't enforce anything on the padding M31 in packed_public_data.
-        let unpacked_simd = Simd::unpack(context, &packed_public_data);
+        let packed_aux_data = Simd::from_packed(packed_aux_data, public_data_m31s.len());
+        // Note that we don't enforce anything on the padding M31 in packed_aux_data.
+        let unpacked_simd = Simd::unpack(context, &packed_aux_data);
 
-        let public_data =
-            PublicData::<Var>::parse_from_vars(&unpacked_simd[..], outputs.len(), program.len());
+        let aux_data =
+            AuxData::<Var>::parse_from_vars(&unpacked_simd[..], outputs.len(), program.len());
 
         let n_outputs = outputs.len();
         let packed_outputs = pack_into_qm31s(outputs.into_iter().flatten())
@@ -305,8 +298,8 @@ impl<Value: IValue> CairoStatement<Value> {
         let component_log_sizes = Simd::from_packed(packed_log_sizes, n_components);
 
         Self {
-            packed_public_data,
-            public_data,
+            packed_aux_data,
+            aux_data,
             program,
             packed_outputs,
             components,
@@ -329,8 +322,8 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
     fn claims_to_mix(&self, context: &mut Context<Value>) -> Vec<Vec<Var>> {
         let Self {
             components: _components,
-            packed_public_data,
-            public_data: _public_data,
+            packed_aux_data,
+            aux_data: _aux_data,
             program,
             packed_outputs,
             component_log_sizes: _component_log_sizes,
@@ -347,7 +340,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         vec![
             self.component_log_sizes.get_packed().to_vec(),
             vec![program_len],
-            packed_public_data.get_packed().to_vec(),
+            packed_aux_data.get_packed().to_vec(),
             vec![output_hash.0, output_hash.1],
             vec![context.constant(program_hash.0), context.constant(program_hash.1)],
         ]
@@ -374,7 +367,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
 
         public_logup_sum(
             context,
-            &self.public_data,
+            &self.aux_data,
             &program_as_constants,
             &outputs,
             interaction_elements,
@@ -386,7 +379,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
     }
 
     fn public_params(&self, _context: &mut Context<Value>) -> HashMap<String, Var> {
-        let segment_ranges = &self.public_data.public_memory.segment_ranges;
+        let segment_ranges = &self.aux_data.segment_ranges;
         let public_params: HashMap<String, Var> = HashMap::from_iter(
             [
                 ("output_segment_start", &segment_ranges[0]),
@@ -413,7 +406,14 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         component_sizes: &[Var],
         shifted_relation_uses: &HashMap<String, Var>,
     ) {
-        let PublicData { initial_state, final_state, public_memory: _ } = &self.public_data;
+        let AuxData {
+            initial_state,
+            final_state,
+            segment_ranges: _,
+            safe_call_ids: _,
+            output_ids: _,
+            program_ids: _,
+        } = &self.aux_data;
 
         self.verify_builtins(context, component_sizes);
         // TODO(ilya): Consider adding sanity checks on the content of the program segment.
@@ -561,15 +561,18 @@ pub fn memory_segment_logup_sum(
 
 pub fn public_logup_sum(
     context: &mut Context<impl IValue>,
-    public_data: &PublicData<Var>,
+    public_data: &AuxData<Var>,
     program: &[[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]],
     outputs: &[[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]],
     interaction_elements: [Var; 2],
 ) -> Var {
-    let PublicData {
+    let AuxData {
         initial_state,
         final_state,
-        public_memory: PublicMemory { segment_ranges, safe_call_ids, output_ids, program_ids },
+        segment_ranges,
+        safe_call_ids,
+        output_ids,
+        program_ids,
     } = public_data;
     let initial_ap = initial_state.ap;
     let final_ap = final_state.ap;
