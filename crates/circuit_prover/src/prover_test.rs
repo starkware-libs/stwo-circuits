@@ -4,18 +4,22 @@ use crate::prover::{BaseColumnPool, CircuitProof, SimdBackend, prove_circuit_ass
 use circuit_common::finalize::finalize_context;
 use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_verifier::circuit_claim::CircuitInteractionElements;
+use circuit_verifier::circuit_claim::column_log_sizes_per_tree;
 use circuit_verifier::circuit_claim::lookup_sum;
+use circuit_verifier::circuit_components::N_COMPONENTS;
 use circuit_verifier::statement::{INTERACTION_POW_BITS, all_circuit_components};
 use circuit_verifier::verify::{CircuitConfig, verify_circuit};
 use circuits::blake::{blake, blake_g_gate, m31_to_u32, triple_xor};
 use circuits::context::Var;
 use circuits::eval;
 use circuits::finalize_constants::finalize_constants;
+use circuits::ivalue::NoValue;
 use circuits::ivalue::{IValue, qm31_from_u32s};
 use circuits::ops::{output, permute};
 use circuits::{context::Context, ops::guess};
 use circuits_stark_verifier::proof::ProofConfig;
 use expect_test::expect;
+use itertools::Itertools;
 use num_traits::{One, Zero};
 use stwo::core::air::Component;
 use stwo::core::channel::Blake2sM31Channel;
@@ -192,13 +196,24 @@ fn stwo_verify(
         channel_salt,
     } = circuit_proof;
 
+    let preprocessed_column_log_sizes = preprocessed_circuit.preprocessed_trace.log_sizes();
+    let log_sizes: [u32; N_COMPONENTS] = all_circuit_components::<NoValue>()
+        .values()
+        .map(|c| {
+            c.log_size(&preprocessed_column_log_sizes)
+                .expect("The circuit components can't have a dynamic log_size.")
+        })
+        .collect_vec()
+        .try_into()
+        .unwrap();
+
     let verifier_channel = &mut Blake2sM31Channel::default();
     verifier_channel.mix_felts(&[channel_salt.into()]);
     pcs_config.mix_into(verifier_channel);
     let commitment_scheme =
         &mut CommitmentSchemeVerifier::<Blake2sM31MerkleChannel>::new(pcs_config);
 
-    let [trace_log_sizes, interaction_log_sizes] = claim.column_log_sizes_per_tree();
+    let [trace_log_sizes, interaction_log_sizes] = column_log_sizes_per_tree(&log_sizes);
 
     commitment_scheme.commit(
         proof.proof.commitments[0],
@@ -219,9 +234,9 @@ fn stwo_verify(
 
     // Build components for constraint verification.
     let components = CircuitComponents::new(
-        &claim,
         &interaction_elements,
         &interaction_claim,
+        &log_sizes,
         &preprocessed_circuit.preprocessed_trace.ids(),
     )
     .components();
