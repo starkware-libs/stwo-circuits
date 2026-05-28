@@ -4,6 +4,7 @@ use crate::components::{
     verify_bitwise_xor_9, verify_bitwise_xor_12,
 };
 use crate::relations::GATE_RELATION_ID;
+use crate::verify::CircuitConfig;
 use circuits::blake::HashValue;
 use circuits::context::{Context, U_VALUE, U_VAR_IDX, Var};
 use circuits::eval;
@@ -14,6 +15,7 @@ use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
 use circuits_stark_verifier::logup::logup_use_term;
 use circuits_stark_verifier::order_hash_map::OrderedHashMap;
+use circuits_stark_verifier::proof_from_stark_proof::pack_into_qm31s;
 use circuits_stark_verifier::statement::Statement;
 use indexmap::IndexMap;
 use itertools::{Itertools, zip_eq};
@@ -28,7 +30,9 @@ pub struct CircuitStatement<Value: IValue> {
     /// The variable indices (addresses) of the output gates.
     output_addresses: Vec<M31Wrapper<Var>>,
     /// The values of the output gates.
-    output_values: Vec<Var>,
+    pub output_values: Vec<Var>,
+    /// Per-component trace log sizes packed as a [`Simd`].
+    pub component_log_sizes: Simd,
     /// Maps preprocessed column ids to their log sizes.
     /// The order of the keys is the same as the order of the columns in the prover's preprocessed
     /// trace.
@@ -39,11 +43,16 @@ pub struct CircuitStatement<Value: IValue> {
 impl<Value: IValue> CircuitStatement<Value> {
     pub fn new(
         context: &mut Context<Value>,
-        output_addresses: &[usize],
+        circuit_config: &CircuitConfig,
         output_values: &[QM31],
-        preprocessed_column_log_sizes: OrderedHashMap<PreProcessedColumnId, u32>,
-        preprocessed_root: HashValue<QM31>,
     ) -> Self {
+        let CircuitConfig {
+            config: _,
+            output_addresses,
+            preprocessed_column_log_sizes,
+            preprocessed_root,
+        } = circuit_config;
+
         // The circuit being verified should have `U_VAR_IDX` as the last output wire (see
         // `circuits::finalize_constants`: the call to `finalize_constants` should always be the
         // last to add outputs to the circuit).
@@ -70,11 +79,28 @@ impl<Value: IValue> CircuitStatement<Value> {
             HashValue(Value::from_qm31(preprocessed_root.0), Value::from_qm31(preprocessed_root.1))
                 .guess(context);
 
+        let components = all_circuit_components::<Value>();
+        let component_log_sizes = components
+            .values()
+            .map(|c| {
+                c.log_size(preprocessed_column_log_sizes)
+                    .expect("The circuit components can't have a dynamic log_size.")
+            })
+            .collect_vec();
+
+        let n_components = component_log_sizes.len();
+        let packed_log_sizes = pack_into_qm31s(component_log_sizes.iter().cloned())
+            .into_iter()
+            .map(|qm31| Value::from_qm31(qm31).guess(context))
+            .collect_vec();
+        let component_log_sizes = Simd::from_packed(packed_log_sizes, n_components);
+
         Self {
-            components: all_circuit_components(),
+            components,
             output_addresses,
             output_values,
-            preprocessed_column_log_sizes,
+            component_log_sizes,
+            preprocessed_column_log_sizes: preprocessed_column_log_sizes.clone(),
             preprocessed_root,
         }
     }
@@ -83,6 +109,7 @@ impl<Value: IValue> CircuitStatement<Value> {
         &self.output_values
     }
 }
+
 impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
     fn claims_to_mix(&self, _context: &mut Context<Value>) -> Vec<Vec<Var>> {
         vec![self.output_values.clone()]
@@ -90,6 +117,10 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
 
     fn get_components(&self) -> &IndexMap<&'static str, Box<dyn CircuitEval<Value>>> {
         &self.components
+    }
+
+    fn get_component_log_sizes(&self) -> &Simd {
+        &self.component_log_sizes
     }
 
     fn public_logup_sum(

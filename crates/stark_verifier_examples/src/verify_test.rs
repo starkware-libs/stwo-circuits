@@ -6,6 +6,7 @@ use stwo::core::vcs::blake2_hash::Blake2sHash;
 use crate::simple_air::{create_proof, create_proof_with_fold_step};
 use crate::simple_statement::{
     COMPONENT_ENABLE_BITS, PREPROCESSED_COLUMN_LOG_SIZES, SimpleStatement,
+    simple_statement_components,
 };
 use circuit_serialize::serialize::CircuitSerialize;
 use circuits::context::{Context, TraceContext};
@@ -15,7 +16,6 @@ use circuits::ops::Guess;
 use circuits_stark_verifier::fri_proof::compute_all_fold_steps;
 use circuits_stark_verifier::proof::{ProofConfig, ProofInfo, empty_proof};
 use circuits_stark_verifier::proof_from_stark_proof::proof_from_stark_proof;
-use circuits_stark_verifier::statement::Statement;
 use circuits_stark_verifier::verify::verify;
 
 enum ProofModifier {
@@ -38,9 +38,9 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
     let (_components, claim, pcs_config, mut proof, interaction_pow_nonce, channel_salt) =
         create_proof();
 
-    let statement = SimpleStatement::<NoValue>::default();
+    let components = simple_statement_components::<NoValue>();
     let config = ProofConfig::new(
-        statement.get_components(),
+        &components,
         COMPONENT_ENABLE_BITS.to_vec(),
         PREPROCESSED_COLUMN_LOG_SIZES.len(),
         &pcs_config,
@@ -51,7 +51,7 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
         let empty_proof = empty_proof(&config);
         let mut novalue_context = Context::<NoValue>::default();
         let proof_vars = empty_proof.guess(&mut novalue_context);
-        let statement = SimpleStatement::default();
+        let statement = SimpleStatement::new(&mut novalue_context);
         verify(&mut novalue_context, &proof_vars, &config, &statement);
         finalize_constants(&mut novalue_context);
         novalue_context.finalize_guessed_vars();
@@ -89,7 +89,7 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
     let mut context = TraceContext::default();
     let proof = proof_from_stark_proof(&proof, &config, claim, interaction_pow_nonce, channel_salt);
     let proof_vars = proof.guess(&mut context);
-    let statement = SimpleStatement::default();
+    let statement = SimpleStatement::new(&mut context);
     verify(&mut context, &proof_vars, &config, &statement);
     finalize_constants(&mut context);
 
@@ -149,9 +149,9 @@ fn test_proof_info(#[case] fold_step: u32) {
     let (_components, claim, pcs_config, proof, interaction_pow_nonce, channel_salt) =
         create_proof_with_fold_step(fold_step);
 
-    let statement = &SimpleStatement::<NoValue>::default();
+    let components = simple_statement_components::<NoValue>();
     let config = ProofConfig::new(
-        statement.get_components(),
+        &components,
         COMPONENT_ENABLE_BITS.to_vec(),
         PREPROCESSED_COLUMN_LOG_SIZES.len(),
         &pcs_config,

@@ -6,8 +6,7 @@ use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::fri_proof::{FriCommitProof, FriProof, FriWitness};
 use circuits_stark_verifier::merkle::{AuthPath, AuthPaths};
 use circuits_stark_verifier::oods::EvalDomainSamples;
-use circuits_stark_verifier::proof::{Claim, InteractionAtOods, Proof};
-use circuits_stark_verifier::verify::LOG_SIZE_BITS;
+use circuits_stark_verifier::proof::{InteractionAtOods, Proof};
 
 pub trait CircuitSerialize {
     fn serialize(&self, output: &mut Vec<u8>);
@@ -23,7 +22,7 @@ impl CircuitSerialize for Proof<QM31> {
             preprocessed_columns_at_oods,
             trace_at_oods,
             composition_eval_at_oods,
-            claim,
+            claimed_sums,
             interaction_at_oods,
             eval_domain_samples,
             eval_domain_auth_paths,
@@ -36,7 +35,7 @@ impl CircuitSerialize for Proof<QM31> {
         trace_root.serialize(output);
         interaction_root.serialize(output);
         composition_polynomial_root.serialize(output);
-        claim.serialize(output);
+        claimed_sums.serialize(output);
         preprocessed_columns_at_oods.as_slice().serialize(output);
         trace_at_oods.as_slice().serialize(output);
         interaction_at_oods.as_slice().serialize(output);
@@ -86,22 +85,6 @@ impl CircuitSerialize for HashValue<QM31> {
         let Self(a, b) = self;
         a.serialize(output);
         b.serialize(output);
-    }
-}
-
-impl CircuitSerialize for Claim<QM31> {
-    fn serialize(&self, output: &mut Vec<u8>) {
-        let Self { packed_component_log_sizes, claimed_sums } = self;
-
-        // Pack log sizes: 1 per u8 (requires `LOG_SIZE_BITS` <= 8).
-        assert!(LOG_SIZE_BITS as usize <= 8);
-        for qm31 in packed_component_log_sizes {
-            for m31 in qm31.to_m31_array().into_iter() {
-                output.push((m31.0 & 0xFF) as u8);
-            }
-        }
-
-        claimed_sums.serialize(output);
     }
 }
 
