@@ -1,6 +1,6 @@
 use crate::N_LANES;
 use crate::Qm31OpsTraceGenerator;
-use crate::finalize::finalize_context;
+use crate::finalize::pad_context;
 use circuits::circuit::Gate;
 use circuits::circuit::M31ToU32;
 use circuits::circuit::{
@@ -473,7 +473,7 @@ pub struct PreprocessedCircuit {
 impl PreprocessedCircuit {
     /// Finalizes the context, then builds the preprocessed circuit.
     pub fn preprocess_circuit(context: &mut FinalizedContext<impl IValue>) -> Self {
-        finalize_context(context);
+        pad_context(context);
         Self::from_finalized_circuit(context.circuit())
     }
 
