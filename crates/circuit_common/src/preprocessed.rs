@@ -489,7 +489,8 @@ impl PreprocessedCircuit {
         let params = CircuitParams {
             trace_log_size,
             first_permutation_row: qm31_ops_trace_generator.first_permutation_row,
-            output_addresses: circuit.output.iter().map(|out| out.in0).collect(),
+            // Discard the output gate of the `u` wire.
+            n_outputs: circuit.output.len() - 1,
         };
 
         Self { preprocessed_trace: Arc::new(pp_trace), params }

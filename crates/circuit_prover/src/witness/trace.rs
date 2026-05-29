@@ -18,6 +18,7 @@ use circuit_verifier::circuit_claim::CircuitClaim;
 use circuit_verifier::circuit_claim::CircuitInteractionClaim;
 use circuit_verifier::circuit_claim::CircuitInteractionElements;
 use circuit_verifier::circuit_components::N_COMPONENTS;
+use circuits::context::U_VAR_IDX;
 use itertools::Itertools;
 use num_traits::Zero;
 use rayon::scope;
@@ -36,7 +37,7 @@ pub struct TraceGenerator {
 pub fn write_trace<MC: MerkleChannel>(
     context_values: &[QM31],
     preprocessed_trace: Arc<PreProcessedTrace>,
-    output_addresses: &[usize],
+    n_outputs: usize,
     tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, MC>,
     trace_generator: &TraceGenerator,
     twiddles: &TwiddleTree<SimdBackend>,
@@ -261,7 +262,9 @@ where
     tree_builder.extend_polys(verify_bitwise_xor_9_polys);
     tree_builder.extend_polys(range_check_16_polys);
 
-    let output_values = output_addresses.iter().map(|addr| context_values[*addr]).collect_vec();
+    let output_values = ((U_VAR_IDX + 1)..(U_VAR_IDX + 1 + n_outputs))
+        .map(|addr| context_values[addr])
+        .collect_vec();
 
     let log_sizes = [
         eq_log_size,
