@@ -135,7 +135,7 @@ where
     SimdBackend: stwo::prover::backend::BackendForChannel<MC>,
 {
     let PreprocessedCircuit { preprocessed_trace, params } = preprocessed_circuit;
-    let CircuitParams { first_permutation_row, output_addresses, .. } = params;
+    let CircuitParams { first_permutation_row, n_outputs, .. } = params;
     let trace_generator = TraceGenerator {
         qm31_ops_trace_generator: Qm31OpsTraceGenerator {
             first_permutation_row: *first_permutation_row,
@@ -165,7 +165,7 @@ where
     let (claim, component_log_sizes, interaction_generator) = write_trace(
         values,
         preprocessed_trace.clone(),
-        output_addresses,
+        *n_outputs,
         &mut tree_builder,
         &trace_generator,
         twiddles,
@@ -190,10 +190,7 @@ where
     );
 
     // Validate lookup argument.
-    assert_eq!(
-        lookup_sum(&claim, &interaction_claim, &interaction_elements, output_addresses),
-        QM31::zero()
-    );
+    assert_eq!(lookup_sum(&claim, &interaction_claim, &interaction_elements), QM31::zero());
 
     interaction_claim.mix_into(channel);
     tree_builder.commit(channel);

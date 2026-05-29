@@ -36,7 +36,7 @@ pub struct TraceGenerator {
 pub fn write_trace<MC: MerkleChannel>(
     context_values: &[QM31],
     preprocessed_trace: Arc<PreProcessedTrace>,
-    output_addresses: &[usize],
+    n_outputs: usize,
     tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, MC>,
     trace_generator: &TraceGenerator,
     twiddles: &TwiddleTree<SimdBackend>,
@@ -261,7 +261,7 @@ where
     tree_builder.extend_polys(verify_bitwise_xor_9_polys);
     tree_builder.extend_polys(range_check_16_polys);
 
-    let output_values = output_addresses.iter().map(|addr| context_values[*addr]).collect_vec();
+    let output_values = (3..(3 + n_outputs)).map(|addr| context_values[addr]).collect_vec();
 
     let log_sizes = [
         eq_log_size,

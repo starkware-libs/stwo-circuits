@@ -1,6 +1,6 @@
 use crate::preprocessed::PreprocessedCircuit;
 use circuits::circuit::{
-    Add, BlakeGGate, Circuit, Eq, M31ToU32, Mul, PointwiseMul, Sub, TripleXor,
+    Add, BlakeGGate, Circuit, Eq, M31ToU32, Mul, Output, PointwiseMul, Sub, TripleXor,
 };
 use expect_test::expect;
 use itertools::Itertools;
@@ -42,7 +42,8 @@ fn test_preprocess_circuit() {
         circuit.m31_to_u32.push(M31ToU32 { input: 0, out: 72 + i });
     }
     circuit.n_vars = 152;
-
+    // A circuit must always have at least one output.
+    circuit.output.push(Output { in0: 0 });
     let preprocessed_trace = PreprocessedCircuit::from_finalized_circuit(&circuit)
         .preprocessed_trace
         .get_trace::<SimdBackend>();
