@@ -6,7 +6,7 @@ use crate::components::{
 use crate::relations::GATE_RELATION_ID;
 use crate::verify::CircuitConfig;
 use circuits::blake::HashValue;
-use circuits::context::{Context, U_VALUE, U_VAR_IDX, Var};
+use circuits::context::{Context, U_VAR_IDX, Var};
 use circuits::eval;
 use circuits::ivalue::IValue;
 use circuits::ops::Guess;
@@ -18,7 +18,7 @@ use circuits_stark_verifier::order_hash_map::OrderedHashMap;
 use circuits_stark_verifier::proof_from_stark_proof::pack_into_qm31s;
 use circuits_stark_verifier::statement::Statement;
 use indexmap::IndexMap;
-use itertools::{Itertools, zip_eq};
+use itertools::{Itertools, chain, zip_eq};
 use stwo::core::fields::qm31::QM31;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
@@ -27,8 +27,8 @@ pub const INTERACTION_POW_BITS: u32 = 20;
 
 pub struct CircuitStatement<Value: IValue> {
     pub components: IndexMap<&'static str, Box<dyn CircuitEval<Value>>>,
-    /// The variable indices (addresses) of the output gates.
-    output_addresses: Vec<M31Wrapper<Var>>,
+    /// The number of output gates, excluding the wire of `u` (index 2).
+    n_outputs: usize,
     /// The values of the output gates.
     pub output_values: Vec<Var>,
     /// Per-component trace log sizes packed as a [`Simd`].
@@ -48,30 +48,13 @@ impl<Value: IValue> CircuitStatement<Value> {
     ) -> Self {
         let CircuitConfig {
             config: _,
-            output_addresses,
+            n_outputs,
             preprocessed_column_log_sizes,
             preprocessed_root,
         } = circuit_config;
-
-        // The circuit being verified should have `U_VAR_IDX` as the last output wire (see
-        // `circuits::finalize_constants`: the call to `finalize_constants` should always be the
-        // last to add outputs to the circuit).
-        // The assert is a sanity check, so that we catch inconsistencies here, rather than when
-        // checking the logup sum.
-        assert_eq!(*output_addresses.last().unwrap(), U_VAR_IDX);
-        let (_, output_addresses) = output_addresses.split_last().unwrap();
-        let mut output_addresses = output_addresses
-            .iter()
-            .map(|&addr| M31Wrapper::new_unsafe(context.constant(addr.into())))
-            .collect_vec();
-        output_addresses.push(M31Wrapper::new_unsafe(context.constant(U_VAR_IDX.into())));
-        // The last output value (corresponding to wire `U_VAR_IDX`) should have `U_VALUE` as value.
-        // We ensure that the pair of constants `(U_VAR_IDX, U_VALUE)` will be added as a logup term
-        // in [`Statement::public_logup_sum`] of the current verifier.
-        let (_, output_values) = output_values.split_last().unwrap();
-        let mut output_values =
+        assert_eq!(output_values.len(), *n_outputs);
+        let output_values =
             output_values.iter().map(|value| Value::from_qm31(*value).guess(context)).collect_vec();
-        output_values.push(context.constant(U_VALUE));
         // Guess the preprocessed root. The guessed wires enter the hash that will be output by
         // this verifier. To ensure soundness in a recursive setup, it is *critical* that this hash
         // is reconstructed by the last verifier, which we can assume honest.
@@ -97,7 +80,7 @@ impl<Value: IValue> CircuitStatement<Value> {
 
         Self {
             components,
-            output_addresses,
+            n_outputs: *n_outputs,
             output_values,
             component_log_sizes,
             preprocessed_column_log_sizes: preprocessed_column_log_sizes.clone(),
@@ -132,7 +115,17 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
 
         // Output gates public logup sum contribution.
         let gate_relation_id = context.constant(GATE_RELATION_ID.into());
-        for (output_address, output_value) in zip_eq(&self.output_addresses, &self.output_values) {
+        // Construct the output addresses. They are located at addresses `[3, 3 + n_outputs)`.
+        let output_addresses = ((U_VAR_IDX + 1)..(U_VAR_IDX + 1 + self.n_outputs))
+            .map(|addr| M31Wrapper::new_unsafe(context.constant(addr.into())))
+            .collect_vec();
+        // Add the pair `(U_VAR_IDX, U_VALUE)` to the addresses and values, respectively.
+        let u_addr = M31Wrapper::new_unsafe(context.constant(U_VAR_IDX.into()));
+        let u_val = context.u();
+        let output_addresses = chain!(&output_addresses, [&u_addr]);
+        let output_values = chain!(&self.output_values, [&u_val]);
+
+        for (output_address, output_value) in zip_eq(output_addresses, output_values) {
             let [output_value_0, output_value_1, output_value_2, output_value_3] =
                 Simd::unpack(context, &Simd::from_packed(vec![*output_value], 4))
                     .try_into()

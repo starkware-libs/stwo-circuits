@@ -340,7 +340,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         let program_len = context.constant(qm31_from_u32s(program.len() as u32, 0, 0, 0));
 
         let output_hash = blake(context, packed_outputs.get_packed(), 4 * packed_outputs.len());
-        context.output_into_reserved(&[output_hash.0, output_hash.1]);
+        context.set_outputs(&[output_hash.0, output_hash.1]);
 
         let flat_program = pack_into_qm31s(program.iter().flatten().cloned());
         let program_hash = IValue::blake(&flat_program, flat_program.len() * 16);

@@ -11,7 +11,7 @@ use circuit_verifier::statement::all_circuit_components;
 use circuits::context::Context;
 use circuits::finalize_constants::finalize_constants;
 use circuits::ivalue::{NoValue, qm31_from_u32s};
-use circuits::ops::{guess, output};
+use circuits::ops::guess;
 use itertools::Itertools;
 use num_traits::{One, Zero};
 use stwo::core::fields::qm31::QM31;
@@ -31,12 +31,12 @@ fn qm31(a: u32, b: u32, c: u32, d: u32) -> QM31 {
 /// in `circuit_prover::test`, just smaller.
 fn build_minimal_context() -> Context<QM31> {
     const N: usize = 16;
-    let mut ctx = Context::<QM31>::default();
+    let mut ctx = Context::<QM31>::new(1);
     let (mut a, mut b) = (guess(&mut ctx, QM31::zero()), guess(&mut ctx, QM31::one()));
     for _ in 2..N {
         (a, b) = (b, circuits::eval!(&mut ctx, (a) + (b)));
     }
-    output(&mut ctx, b);
+    ctx.set_outputs(&[b]);
     ctx
 }
 

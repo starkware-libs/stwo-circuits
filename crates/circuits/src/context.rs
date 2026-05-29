@@ -60,7 +60,7 @@ pub struct Context<Value: IValue> {
     /// See [crate::ops::guess].
     pub guessed_vars: Option<Vec<usize>>,
     /// Variables allocated by [Self::reserve] whose values have not been supplied yet. Assignment
-    /// happens through method [Self::output_into_reserved]. Reading a reserved variable via
+    /// happens through method [Self::set_outputs]. Reading a reserved variable via
     /// [Self::get] triggers a debug assertion.
     reserved_vars: Vec<usize>,
     /// Debug only. If true, equality is asserted when adding the `eq` gate; if false, no
@@ -126,7 +126,7 @@ impl<Value: IValue> Context<Value> {
     /// reserved vars.
     ///
     /// Panics if `vars` has a different length than the number of the currently reserved variables.
-    pub fn output_into_reserved(&mut self, vars: &[Var]) {
+    pub fn set_outputs(&mut self, vars: &[Var]) {
         for (reserved, var) in zip_eq(std::mem::take(&mut self.reserved_vars), vars) {
             let value = self.get(*var);
             self.values[reserved] = value;
