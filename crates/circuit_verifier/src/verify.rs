@@ -24,7 +24,7 @@ pub struct CircuitPublicData {
 #[derive(Debug, PartialEq)]
 pub struct CircuitConfig {
     pub config: PcsConfig,
-    pub output_addresses: Vec<usize>,
+    pub n_outputs: usize,
     pub preprocessed_column_log_sizes: OrderedHashMap<PreProcessedColumnId, u32>,
     pub preprocessed_root: HashValue<QM31>,
 }
@@ -63,10 +63,9 @@ pub fn build_verification_circuit<Value: IValue>(
     // Deal with the outputs: hash the preprocessed root and all the output values except `u` (= the
     // last one). This is fine for soundness because `u` is checked as part of the logup sum.
     let preprocessed_root = statement.get_preprocessed_root(&mut context);
-    let (_, output_preimage_skip_last) = statement.get_output_values().split_last().unwrap();
     let output_preimage: Vec<_> = [preprocessed_root.0, preprocessed_root.1]
         .into_iter()
-        .chain(output_preimage_skip_last.iter().copied())
+        .chain(statement.get_output_values().iter().copied())
         .collect();
     let output_hash = blake(&mut context, &output_preimage, 16 * output_preimage.len());
     // Copy the resulting hash into the wires 3 and 4, and mark them as outputs.

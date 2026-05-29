@@ -15,7 +15,7 @@ use circuits::eval;
 use circuits::finalize_constants::finalize_constants;
 use circuits::ivalue::NoValue;
 use circuits::ivalue::{IValue, qm31_from_u32s};
-use circuits::ops::{output, permute};
+use circuits::ops::permute;
 use circuits::{context::Context, ops::guess};
 use circuits_stark_verifier::proof::ProofConfig;
 use expect_test::expect;
@@ -33,7 +33,7 @@ use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 const N: usize = 1030;
 
 pub fn build_fibonacci_context() -> Context<QM31> {
-    let mut context = Context::<QM31>::default();
+    let mut context = Context::<QM31>::new(1);
 
     let (mut a, mut b) = (guess(&mut context, QM31::zero()), guess(&mut context, QM31::one()));
     for _ in 2..N {
@@ -44,7 +44,7 @@ pub fn build_fibonacci_context() -> Context<QM31> {
         (809871181 + 0i) + (0 + 0i)u
     "#]]
     .assert_debug_eq(&context.get(b));
-    output(&mut context, b);
+    context.output_into_reserved(&[b]);
 
     context
 }
@@ -249,15 +249,7 @@ fn stwo_verify(
     )
     .unwrap();
 
-    assert_eq!(
-        lookup_sum(
-            &claim,
-            &interaction_claim,
-            &interaction_elements,
-            &preprocessed_circuit.params.output_addresses,
-        ),
-        QM31::zero()
-    );
+    assert_eq!(lookup_sum(&claim, &interaction_claim, &interaction_elements,), QM31::zero());
 }
 
 #[test]
@@ -386,7 +378,7 @@ fn circuit_verify(
     );
     let circuit_config = CircuitConfig {
         config: circuit_proof.pcs_config,
-        output_addresses: preprocessed_circuit.params.output_addresses.clone(),
+        n_outputs: preprocessed_circuit.params.n_outputs,
         preprocessed_column_log_sizes: preprocessed_circuit.preprocessed_trace.log_sizes(),
         preprocessed_root: preprocessed_root.into(),
     };
@@ -439,7 +431,9 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     )
     .unwrap();
     let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);
-    expect!["[785464727, 597140330, 1570038302, 1439548967, 701310801, 1977460503, 1177725507, 477514812]"]
+    expect![
+        "[1414631139, 873077456, 313180657, 152106457, 89024313, 451826663, 2004098325, 1475690419]"
+    ]
     .assert_eq(&format!("{preprocessed_root:?}"));
     circuit_verify(circuit_proof, &preprocessed_circuit, preprocessed_root);
 }

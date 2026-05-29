@@ -3,6 +3,7 @@ use std::iter::repeat_n;
 use crate::circuit_components::N_COMPONENTS;
 use crate::relations::{CommonLookupElements, GATE_RELATION_ID};
 use crate::statement::all_circuit_components;
+use circuits::context::{U_VALUE, U_VAR_IDX};
 use circuits::ivalue::{NoValue, qm31_from_u32s};
 use circuits_stark_verifier::proof_from_stark_proof::pack_enable_bits;
 use itertools::zip_eq;
@@ -72,7 +73,6 @@ pub fn lookup_sum(
     claim: &CircuitClaim,
     interaction_claim: &CircuitInteractionClaim,
     interaction_elements: &CircuitInteractionElements,
-    output_addresses: &[usize],
 ) -> QM31 {
     let CircuitInteractionClaim { claimed_sums } = interaction_claim;
     let component_sum: QM31 = claimed_sums.iter().sum();
@@ -80,12 +80,28 @@ pub fn lookup_sum(
     // Compute the public logup sum from output gates.
     let mut output_sum = QM31::zero();
     let gate_relation_id = M31::from(GATE_RELATION_ID);
-    for (addr, value) in zip_eq(output_addresses, &claim.output_values) {
-        let values =
-            [gate_relation_id, M31::from(*addr as u32), value.0.0, value.0.1, value.1.0, value.1.1];
+    for (i, value) in claim.output_values.iter().enumerate() {
+        let values = [
+            gate_relation_id,
+            M31::from((3 + i) as u32),
+            value.0.0,
+            value.0.1,
+            value.1.0,
+            value.1.1,
+        ];
         let denom: QM31 = interaction_elements.common_lookup_elements.combine(&values);
         output_sum += denom.inverse();
     }
+    let u_lookup_term = [
+        gate_relation_id,
+        M31::from(U_VAR_IDX),
+        U_VALUE.0.0,
+        U_VALUE.0.1,
+        U_VALUE.1.0,
+        U_VALUE.1.1,
+    ];
+    let denom: QM31 = interaction_elements.common_lookup_elements.combine(&u_lookup_term);
+    output_sum += denom.inverse();
 
     component_sum + output_sum
 }

@@ -45,7 +45,7 @@ fn verify_circuit_proof(
     );
     let circuit_config = CircuitConfig {
         config: circuit_proof.pcs_config,
-        output_addresses: preprocessed_circuit.params.output_addresses.clone(),
+        n_outputs: preprocessed_circuit.params.n_outputs,
         preprocessed_column_log_sizes: preprocessed_circuit.preprocessed_trace.log_sizes(),
         preprocessed_root,
     };
@@ -237,12 +237,12 @@ fn test_privacy_proof_info() {
     let preprocessed_root = HashValue(QM31::zero(), QM31::zero());
     let circuit_config = CircuitConfig {
         config: pcs_config,
-        output_addresses: preprocessed_circuit.params.output_addresses.clone(),
+        n_outputs: preprocessed_circuit.params.n_outputs,
         preprocessed_column_log_sizes: preprocessed_circuit.preprocessed_trace.log_sizes(),
         preprocessed_root,
     };
     let public_data = CircuitPublicData {
-        output_values: vec![QM31::zero(); preprocessed_circuit.params.output_addresses.len()],
+        output_values: vec![QM31::zero(); preprocessed_circuit.params.n_outputs],
     };
     let mut context: Context<NoValue> = Context::new(N_RESERVED);
     let statement =
