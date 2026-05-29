@@ -11,7 +11,7 @@ pub const N_RESERVED: usize = 2;
 pub struct CircuitParams {
     pub trace_log_size: u32,
     pub first_permutation_row: usize,
-    pub output_addresses: Vec<usize>,
+    pub n_outputs: usize,
 }
 
 pub struct Qm31OpsTraceGenerator {

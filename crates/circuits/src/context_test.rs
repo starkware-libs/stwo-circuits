@@ -23,14 +23,14 @@ fn test_constants() {
 }
 
 #[test]
-fn test_output_into_reserved() {
+fn test_set_outputs() {
     let mut context = TraceContext::default();
 
     let a = context.constant(qm31_from_u32s(3, 0, 0, 0));
 
     let reserved0 = context.reserve();
     let reserved1 = context.reserve();
-    context.output_into_reserved(&[a, a]);
+    context.set_outputs(&[a, a]);
     assert_eq!(context.get(reserved0), qm31_from_u32s(3, 0, 0, 0));
     assert_eq!(context.get(reserved1), qm31_from_u32s(3, 0, 0, 0));
 
