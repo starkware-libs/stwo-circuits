@@ -17,6 +17,7 @@ use circuits::extract_bits::extract_bits;
 /// The key for the i'th column is (log_size * column_idx_bound + i) * u, where
 /// `column_idx_bound = 1 << column_idx_bits`.
 /// Those keys guarantee a stable sort of the query values by the column indices and log sizes.
+/// Assumption: column_idx_bits + LOG_SIZE_BITS <= 30.
 fn generate_sort_keys<Value: IValue>(
     context: &mut Context<Value>,
     column_log_sizes: &[Var],

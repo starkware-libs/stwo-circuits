@@ -48,6 +48,7 @@ pub const PUBLIC_DATA_LEN: usize =
     2 * STATE_LEN + 2 * PUB_MEMORY_VALUE_M31_LEN * N_SEGMENTS + N_SAFE_CALL_IDS;
 
 const LIMB_BITS: usize = 9;
+// TODO(audit): Rename to address bits.
 const SMALL_VALUE_BITS: u32 = 29;
 const BUILTIN_USAGE_BITS: u32 = 27;
 
@@ -328,14 +329,14 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
 
     fn claims_to_mix(&self, context: &mut Context<Value>) -> Vec<Vec<Var>> {
         let Self {
-            components: _components,
+            components: _,
             packed_public_data,
-            public_data: _public_data,
+            public_data: _,
             program,
             packed_outputs,
-            component_log_sizes: _component_log_sizes,
-            preprocessed_root: _preprocessed_root,
-            preprocessed_trace_variant: _preprocessed_trace_variant,
+            component_log_sizes,
+            preprocessed_root: _,
+            preprocessed_trace_variant: _,
         } = self;
         let program_len = context.constant(qm31_from_u32s(program.len() as u32, 0, 0, 0));
 
@@ -345,7 +346,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         let flat_program = pack_into_qm31s(program.iter().flatten().cloned());
         let program_hash = IValue::blake(&flat_program, flat_program.len() * 16);
         vec![
-            self.component_log_sizes.get_packed().to_vec(),
+            component_log_sizes.get_packed().to_vec(),
             vec![program_len],
             packed_public_data.get_packed().to_vec(),
             vec![output_hash.0, output_hash.1],
@@ -580,8 +581,8 @@ pub fn public_logup_sum(
 
     let one = context.one();
     let safe_call_addresses = vec![
-        eval!(context, (initial_ap) - (context.constant(QM31::from(2)))),
-        eval!(context, (initial_ap) - (one)),
+        eval!(context, (initial_ap) - (2)),
+        eval!(context, (initial_ap) - (1)),
     ];
 
     // Enforce correct initialization of the safe call memory section:

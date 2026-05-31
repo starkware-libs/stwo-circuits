@@ -267,15 +267,15 @@ impl ProofConfig {
         let n_interaction_columns: usize =
             component_shapes.iter().map(|info| info.interaction_columns).sum();
         let mut cumulative_sum_columns = Vec::with_capacity(n_interaction_columns);
-        for info in &component_shapes {
+        for shape in &component_shapes {
             // The last SECURE_EXTENSION_DEGREE interaction columns of every component are
             // cumulative sum columns.
             assert!(
-                info.interaction_columns >= SECURE_EXTENSION_DEGREE,
+                shape.interaction_columns >= SECURE_EXTENSION_DEGREE,
                 "Expected at least {SECURE_EXTENSION_DEGREE} interaction columns per component"
             );
             cumulative_sum_columns
-                .extend(vec![false; info.interaction_columns - SECURE_EXTENSION_DEGREE]);
+                .extend(vec![false; shape.interaction_columns - SECURE_EXTENSION_DEGREE]);
             cumulative_sum_columns.extend(vec![true; SECURE_EXTENSION_DEGREE]);
         }
 
@@ -395,6 +395,10 @@ pub struct Proof<T> {
 impl<T> Proof<T> {
     /// Validates that the size of the members of the struct are consistent with the config.
     pub fn validate_structure(&self, config: &ProofConfig) {
+        // TODO(audit): destructure self.
+
+        assert!(self.claimed_sums.len() == config.n_components());
+
         // Validate preprocessed_columns_at_oods.
         assert_eq!(self.preprocessed_columns_at_oods.len(), config.n_preprocessed_columns);
 
@@ -412,6 +416,8 @@ impl<T> Proof<T> {
         // Validate eval_domain_samples.
         self.eval_domain_samples
             .validate_structure(&config.n_columns_per_trace(), config.n_queries());
+
+        // TODO(audit): Validate eval_domain_auth_paths.
 
         // Validate FRI.
         self.fri.validate_structure(&config.fri);

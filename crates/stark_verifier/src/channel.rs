@@ -97,6 +97,7 @@ impl Channel {
         CirclePoint { x, y }
     }
 
+    // TODO(audit): revert name change
     pub fn pow(&mut self, context: &mut Context<impl IValue>, n_bits: u32, nonce: Var) {
         assert!(n_bits <= 30);
 

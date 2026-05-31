@@ -51,13 +51,14 @@ pub(crate) fn finalize_constants_with_min_base(
     let mut qm31_constants = IndexMap::<QM31, Var>::new();
     let mut m31_cache = HashMap::<M31, usize>::new();
     // Populate the maps.
-    context.constants().iter().for_each(|(val, var)| {
+
+    for (val, var) in context.constants() {
         if let [x, M31(0), M31(0), M31(0)] = val.to_m31_array() {
             m31_constants.insert(x, *var);
         } else {
             qm31_constants.insert(*val, *var);
         }
-    });
+    }
     let m31_base = find_max_consecutive(&m31_constants).max(min_base);
 
     // Yield and constrain the `zero` wire by adding a gate x + x = x.
@@ -71,7 +72,7 @@ pub(crate) fn finalize_constants_with_min_base(
     // Yield the `one` wire.
     context.circuit.add.push(Add { in0: one.idx, in1: zero_idx, out: one.idx });
     // `u * x = u => x = 1`. This yield `u` and constrains `one`. The value of `u_var` is going to
-    // be enforced through a log up constraint in the next verifier.
+    // be enforced through a log up constraint in the external verifier.
     context.circuit.mul.push(Mul { in0: u_var.idx, in1: one.idx, out: u_var.idx });
     output(context, u_var);
     // Remove 1 and u from the constants.
@@ -93,6 +94,8 @@ pub(crate) fn finalize_constants_with_min_base(
     // `u * u = 2 + i`.
     let i_var = eval!(context, ((u_var) * (u_var)) - (two));
     let iu_var = eval!(context, (i_var) * (u_var));
+
+    // TODO(audit): Add one to basis.
     let qm31_basis: [Var; 3] = [i_var, u_var, iu_var];
     // Build the broadcast QM31 constants, i.e. constants of the form (x, x, x, x), x != 0.
     decompose_broadcast_constants(
@@ -103,8 +106,8 @@ pub(crate) fn finalize_constants_with_min_base(
         qm31_basis,
     );
     // Build the remaining QM31 constants.
-    decompose_qm31_constants(context, &mut qm31_constants, &mut m31_cache, m31_base, qm31_basis);
-    assert!(qm31_constants.is_empty());
+    decompose_qm31_constants(context, qm31_constants, &mut m31_cache, m31_base, qm31_basis);
+    
 }
 
 /// Finds the largest integer N such that all values in [0, N] are present as constants.
@@ -112,6 +115,8 @@ pub(crate) fn finalize_constants_with_min_base(
 /// # Panics
 ///
 /// Panics if `m31_constants` doesn't contain zero.
+
+// TODO(audit): add tests (specifically for the unwarp case).
 fn find_max_consecutive(m31_constants: &IndexMap<M31, Var>) -> usize {
     assert!(m31_constants.contains_key(&M31(0)));
     let m31_values = m31_constants.keys().map(|k| k.0).sorted();
@@ -163,6 +168,8 @@ fn decompose_m31_constants(
     m31_cache: &mut HashMap<M31, usize>,
     base: M31,
 ) {
+
+    // TODO(audit): Consider going over the consts in sorted order and removing the already exists optimization.
     while let Some(m31_val) = m31_constants.keys().next() {
         build_m31_from_base(context, m31_cache, m31_constants, base, *m31_val);
     }
@@ -179,13 +186,14 @@ fn build_m31_from_base(
     val: M31,
 ) {
     // Decompose `val` into its base `base` limbs (least significant first).
-    let mut limbs = Vec::<M31>::new();
+
+    // TODO(audit): explain the 4.
+    let mut limbs = Vec::<M31>::with_capacity(4);
     let mut remaining = val.0;
     while remaining > 0 {
         limbs.push((remaining % base.0).into());
         remaining /= base.0;
     }
-    assert!(!limbs.is_empty());
 
     // Build from the most significant limb down: `acc = (...((limbs[n] * base + limbs[n-1]) *
     // base)...).
@@ -216,6 +224,7 @@ fn build_m31_from_base(
         let add_val = mul_val + limb;
         // If add_val is not present in the cache, we add it.
         let add_idx = *m31_cache.entry(add_val).or_insert_with(|| {
+            // TODO(audit): consider moving this into an helper function.
             let var = if let Some(const_var) = m31_constants.swap_remove(&add_val) {
                 const_var
             } else {
@@ -261,15 +270,18 @@ fn decompose_broadcast_constants(
     let u_plus_iu = add(context, u_var, iu_var);
     context.circuit.add.push(Add { in0: one_plus_i.idx, in1: u_plus_iu.idx, out: ones_var.idx });
 
+    let mut empty_map: IndexMap<M31, Var> = Default::default();
+
     qm31_constants.retain(|qm31_value, qm31_var| {
-        let is_broadcast = qm31_value.to_m31_array().iter().tuple_windows().all(|(x, y)| x == y);
+        let m31_value = qm31_value.0.0;
+        let is_broadcast = qm31_value.to_m31_array() == [m31_value; 4];
         if !is_broadcast {
             return true;
         }
-        let m31_value = qm31_value.0.0;
+       
         // If m31_value is not in the cache, add it.
         if !m31_cache.contains_key(&m31_value) {
-            build_m31_from_base(context, m31_cache, &mut IndexMap::new(), base, m31_value);
+            build_m31_from_base(context, m31_cache, &mut empty_map, base, m31_value);
         }
         let m31_idx = *m31_cache.get(&m31_value).unwrap();
         // Add a gate m31_val * (1, 1, 1, 1) = qm31_var.
@@ -281,19 +293,21 @@ fn decompose_broadcast_constants(
 
 fn decompose_qm31_constants(
     context: &mut Context<impl IValue>,
-    qm31_constants: &mut IndexMap<QM31, Var>,
+    qm31_constants: IndexMap<QM31, Var>,
     m31_cache: &mut HashMap<M31, usize>,
     base: M31,
     qm_basis: [Var; 3],
 ) {
+    // TODO(audit): consider computing consts as (a+bi) + (c+di)u.
     let [i_var, u_var, iu_var] = qm_basis;
+    let mut empty_map: IndexMap<M31, Var> = Default::default();
 
-    for (qm31_value, qm31_var) in qm31_constants.drain(..) {
+    for (qm31_value, qm31_var) in qm31_constants {
         let limbs = qm31_value.to_m31_array();
         let [a, b, c, d]: [Var; 4] = std::array::from_fn(|j| {
             let m31_val = limbs[j];
             if !m31_cache.contains_key(&m31_val) {
-                build_m31_from_base(context, m31_cache, &mut IndexMap::new(), base, m31_val);
+                build_m31_from_base(context, m31_cache, &mut empty_map, base, m31_val);
             }
             Var { idx: *m31_cache.get(&m31_val).unwrap() }
         });

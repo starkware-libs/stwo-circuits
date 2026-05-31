@@ -40,6 +40,8 @@ pub struct CircuitStatement<Value: IValue> {
     /// The preprocessed trace root.
     pub preprocessed_root: HashValue<Var>,
 }
+
+// TODO(audit): Pass outputs as IValues.
 impl<Value: IValue> CircuitStatement<Value> {
     pub fn new(
         context: &mut Context<Value>,
@@ -68,6 +70,7 @@ impl<Value: IValue> CircuitStatement<Value> {
         // The last output value (corresponding to wire `U_VAR_IDX`) should have `U_VALUE` as value.
         // We ensure that the pair of constants `(U_VAR_IDX, U_VALUE)` will be added as a logup term
         // in [`Statement::public_logup_sum`] of the current verifier.
+        assert_eq!(*output_values.last().unwrap(), U_VALUE);
         let (_, output_values) = output_values.split_last().unwrap();
         let mut output_values =
             output_values.iter().map(|value| Value::from_qm31(*value).guess(context)).collect_vec();
@@ -89,9 +92,9 @@ impl<Value: IValue> CircuitStatement<Value> {
             .collect_vec();
 
         let n_components = component_log_sizes.len();
-        let packed_log_sizes = pack_into_qm31s(component_log_sizes.iter().cloned())
+        let packed_log_sizes = pack_into_qm31s(component_log_sizes.into_iter())
             .into_iter()
-            .map(|qm31| Value::from_qm31(qm31).guess(context))
+            .map(|qm31| context.constant(qm31))
             .collect_vec();
         let component_log_sizes = Simd::from_packed(packed_log_sizes, n_components);
 

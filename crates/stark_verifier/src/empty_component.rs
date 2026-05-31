@@ -1,3 +1,6 @@
+
+// TODO(audit): delete this file.
+
 use crate::constraint_eval::{
     CircuitEval, ComponentDataTrait, CompositionConstraintAccumulator, RelationUse,
 };

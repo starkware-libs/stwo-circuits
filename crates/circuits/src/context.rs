@@ -62,6 +62,7 @@ pub struct Context<Value: IValue> {
     /// Variables allocated by [Self::reserve] whose values have not been supplied yet. Assignment
     /// happens through method [Self::output_into_reserved]. Reading a reserved variable via
     /// [Self::get] triggers a debug assertion.
+    /// TODO(audi): change this to a single value.
     reserved_vars: Vec<usize>,
     /// Debug only. If true, equality is asserted when adding the `eq` gate; if false, no
     /// assertion is made during construction and equality can be checked later at validation.
@@ -108,6 +109,7 @@ impl<Value: IValue> Context<Value> {
 
     /// Returns the value of a variable.
     pub fn get(&self, var: Var) -> Value {
+        // TODO(audit): Change to assert.
         debug_assert!(!self.reserved_vars.contains(&var.idx), "read of reserved variable",);
         self.values[var.idx]
     }
@@ -115,6 +117,8 @@ impl<Value: IValue> Context<Value> {
     /// Allocates a fresh variable with no concrete value yet.
     ///
     /// Reading the value before assignment triggers a debug assertion in [`Self::get`].
+    /// 
+    // TODO(audit): Remove this function and inline into new.
     pub fn reserve(&mut self) -> Var {
         let reserved = self.new_var(Value::placeholder());
         self.reserved_vars.push(reserved.idx);
@@ -126,6 +130,7 @@ impl<Value: IValue> Context<Value> {
     /// reserved vars.
     ///
     /// Panics if `vars` has a different length than the number of the currently reserved variables.
+    /// TODO(audit): rename reserved to outputs.
     pub fn output_into_reserved(&mut self, vars: &[Var]) {
         for (reserved, var) in zip_eq(std::mem::take(&mut self.reserved_vars), vars) {
             let value = self.get(*var);
@@ -201,6 +206,7 @@ impl<Value: IValue> Context<Value> {
     }
 }
 
+// TODO(audit): Remove this function and inline into new.
 impl<Value: IValue> Default for Context<Value> {
     fn default() -> Self {
         let mut res = Self {
@@ -217,7 +223,8 @@ impl<Value: IValue> Default for Context<Value> {
         // Register zero, one, and u as the first constants.
         res.constant(QM31::zero());
         res.constant(QM31::one());
-        res.constant(U_VALUE); // u at idx 2
+        assert_eq!(res.constant(U_VALUE).idx, U_VAR_IDX);
+        // TODO(audit): Add u to outputs.
 
         res
     }
