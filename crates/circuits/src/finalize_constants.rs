@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::hash::Hash;
 
 use indexmap::IndexMap;
 use itertools::Itertools;
@@ -138,14 +139,10 @@ fn build_plus_one_chain(
     let mut prev_var = context.one();
 
     for val in 2..=m31_base {
-        let next_var = if let Some(v) = m31_constants.swap_remove(&M31::from(val)) {
-            context.circuit.add.push(Add { in0: prev_var.idx, in1: one_idx, out: v.idx });
-            v
-        } else {
-            add(context, prev_var, context.one())
-        };
-        m31_cache.insert(val.into(), next_var.idx);
-        prev_var = next_var;
+        let var = from_constants_or_new(context, m31_constants, M31::from(val));
+        context.circuit.add.push(Add { in0: prev_var.idx, in1: one_idx, out: var.idx });
+        m31_cache.insert(val.into(), var.idx);
+        prev_var = var;
     }
 }
 
@@ -200,13 +197,7 @@ fn build_m31_from_base(
         let mul_val = acc_val * base;
         // If mul_val is not present in the cache, we add it.
         let mul_idx = *m31_cache.entry(mul_val).or_insert_with(|| {
-            // If it's one of the circuit constants, we take it.
-            let var = if let Some(const_var) = m31_constants.swap_remove(&mul_val) {
-                const_var
-            } else {
-                // Otherwise we build a brand new variable.
-                context.new_var(IValue::from_qm31(mul_val.into()))
-            };
+            let var = from_constants_or_new(context, m31_constants, mul_val);
             // Add a gate to yield and constraint `var`.
             context.circuit.mul.push(Mul { in0: acc_idx, in1: base_idx, out: var.idx });
             var.idx
@@ -216,11 +207,7 @@ fn build_m31_from_base(
         let add_val = mul_val + limb;
         // If add_val is not present in the cache, we add it.
         let add_idx = *m31_cache.entry(add_val).or_insert_with(|| {
-            let var = if let Some(const_var) = m31_constants.swap_remove(&add_val) {
-                const_var
-            } else {
-                context.new_var(IValue::from_qm31(add_val.into()))
-            };
+            let var = from_constants_or_new(context, m31_constants, add_val);
             context.circuit.add.push(Add { in0: mul_idx, in1: limb_idx, out: var.idx });
             var.idx
         });
@@ -252,11 +239,7 @@ fn decompose_broadcast_constants(
     let [i_var, u_var, iu_var] = qm31_basis;
     // Build and constrain the wire corresponding to (1, 1, 1, 1).
     let ones_value = qm31_from_u32s(1, 1, 1, 1);
-    let ones_var = if let Some(var) = qm31_constants.swap_remove(&ones_value) {
-        var
-    } else {
-        context.new_var(IValue::from_qm31(ones_value))
-    };
+    let ones_var = from_constants_or_new(context, qm31_constants, ones_value);
     let one_plus_i = add(context, one, i_var);
     let u_plus_iu = add(context, u_var, iu_var);
     context.circuit.add.push(Add { in0: one_plus_i.idx, in1: u_plus_iu.idx, out: ones_var.idx });
@@ -306,5 +289,23 @@ fn decompose_qm31_constants(
             in1: second_half.idx,
             out: qm31_var.idx,
         });
+    }
+}
+
+/// Returns a variable corresponding to a constant with value `val`.
+/// If the constant was requested as a variable in the list of required constants `constants`,
+/// we remove it from the list and return it. Otherwise, we create and return a new variable.
+fn from_constants_or_new<T>(
+    context: &mut Context<impl IValue>,
+    constants: &mut IndexMap<T, Var>,
+    val: T,
+) -> Var
+where
+    T: Into<QM31> + Eq + Hash,
+{
+    if let Some(const_var) = constants.swap_remove(&val) {
+        const_var
+    } else {
+        context.new_var(IValue::from_qm31(val.into()))
     }
 }
