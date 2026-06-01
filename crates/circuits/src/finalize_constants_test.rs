@@ -35,13 +35,12 @@ fn test_plus_one_chain_topology() {
         [4] = [5] + [1]
         [6] = [4] + [1]
         [7] = [6] + [1]
-        [12] = [1] + [9]
-        [13] = [2] + [10]
-        [11] = [12] + [13]
+        [10] = [9] + [1]
+        [12] = [10] + [11]
         [9] = [8] - [3]
         [2] = [2] * [1]
         [8] = [2] * [2]
-        [10] = [9] * [2]
+        [11] = [10] * [2]
         output [2]
     "#]]
     .assert_eq(&format!("{:?}", context.circuit));
@@ -72,14 +71,13 @@ fn test_large_m31_decomposition() {
         [7] = [6] + [1]
         [8] = [7] + [4]
         [3] = [9] + [4]
-        [14] = [1] + [11]
-        [15] = [2] + [12]
-        [13] = [14] + [15]
+        [12] = [11] + [1]
+        [14] = [12] + [13]
         [11] = [10] - [4]
         [2] = [2] * [1]
         [9] = [8] * [7]
         [10] = [2] * [2]
-        [12] = [11] * [2]
+        [13] = [12] * [2]
         output [2]
     "#]]
     .assert_eq(&format!("{:?}", context.circuit));
@@ -102,10 +100,10 @@ fn test_broadcast_decomposition() {
     finalize_constants_with_min_base(&mut context, 5);
 
     // The plus-one chain populates [4]..=[7] for values 2..=5. The QM31 basis allocates
-    // [8] = u*u, [9] = u² - 2 = i, [10] = i*u = iu. The ones vector (1, 1, 1, 1) lands in [11],
-    // built as ([1] + [9]) + ([2] + [10]), with the partial sums in [12] and [13]. Then the M31
-    // factor 11 is decomposed in base 5 (11 = 2*5 + 1): [14] = [4] * [7] (= 2 * 5 = 10) and
-    // [15] = [14] + [1] (= 11). Finally the broadcast is yielded by [3] = [15] * [11]
+    // [8] = u*u and [9] = u² - 2 = i. The ones vector (1, 1, 1, 1) lands in [12], built as
+    // [10] + [11], where [10] = [9] + [1] = i + 1 and [11] = [10] * [2] = u + iu. Then the M31
+    // factor 11 is decomposed in base 5 (11 = 2*5 + 1): [13] = [4] * [7] (= 2 * 5 = 10) and
+    // [14] = [13] + [1] (= 11). Finally the broadcast is yielded by [3] = [14] * [12]
     // (11 * ones).
     expect![[r#"
         [0] = [0] + [0]
@@ -114,22 +112,21 @@ fn test_broadcast_decomposition() {
         [5] = [4] + [1]
         [6] = [5] + [1]
         [7] = [6] + [1]
-        [12] = [1] + [9]
-        [13] = [2] + [10]
-        [11] = [12] + [13]
-        [15] = [14] + [1]
+        [10] = [9] + [1]
+        [12] = [10] + [11]
+        [14] = [13] + [1]
         [9] = [8] - [4]
         [2] = [2] * [1]
         [8] = [2] * [2]
-        [10] = [9] * [2]
-        [14] = [4] * [7]
-        [3] = [15] * [11]
+        [11] = [10] * [2]
+        [13] = [4] * [7]
+        [3] = [14] * [12]
         output [2]
     "#]]
     .assert_eq(&format!("{:?}", context.circuit));
 
-    assert_eq!(context.get(Var { idx: 11 }), qm31_from_u32s(1, 1, 1, 1));
-    assert_eq!(context.get(Var { idx: 15 }), M31::from(11u32).into());
+    assert_eq!(context.get(Var { idx: 12 }), qm31_from_u32s(1, 1, 1, 1));
+    assert_eq!(context.get(Var { idx: 14 }), M31::from(11u32).into());
     assert_eq!(context.get(Var { idx: 3 }), qm31_from_u32s(11, 11, 11, 11));
     context.circuit.check_yields();
     context.validate_circuit();
@@ -144,13 +141,13 @@ fn test_mixed_m31_and_qm31_constants_small() {
     finalize_constants_with_min_base(&mut context, 5);
 
     // The plus-one chain populates [4]..=[7] for values 2..=5. The QM31 basis allocates
-    // [8] = u*u, [9] = u² - 2 = i, [10] = i*u = iu. The ones vector (1, 1, 1, 1) is assembled
-    // as ([1] + [9]) + ([2] + [10]): partial sums [12] = 1 + i and [13] = u + iu, with the
-    // result in [11] (unused here, since there are no broadcast qm31 constants). The general QM31
+    // [8] = u*u and [9] = u² - 2 = i. The ones vector (1, 1, 1, 1) is assembled as
+    // [10] + [11], where [10] = [9] + [1] = i + 1 and [11] = [10] * [2] = u + iu, with the
+    // result in [12] (unused here, since there are no broadcast qm31 constants). The general QM31
     // constant is then assembled as a + b*i + c*u + d*iu:
-    //   [14] = [4] * [9]  (2 * i),   [15] = [1] + [14]      (1 + 2*i)
-    //   [16] = [5] * [2]  (3 * u),   [17] = [6] * [10]      (4 * iu),   [18] = [16] + [17]
-    //   [3]  = [15] + [18]           (finally constrain the constant).
+    //   [13] = [9] * [4]  (i * 2),  [14] = [1] + [13]  (1 + 2*i)
+    //   [15] = [9] * [6]  (i * 4),  [16] = [5] + [15]  (3 + 4*i),  [17] = [16] * [2]  (3*u + 4*iu)
+    //   [3]  = [14] + [17]           (finally constrain the constant).
     expect![[r#"
         [0] = [0] + [0]
         [1] = [1] + [0]
@@ -158,27 +155,26 @@ fn test_mixed_m31_and_qm31_constants_small() {
         [5] = [4] + [1]
         [6] = [5] + [1]
         [7] = [6] + [1]
-        [12] = [1] + [9]
-        [13] = [2] + [10]
-        [11] = [12] + [13]
-        [15] = [1] + [14]
-        [18] = [16] + [17]
-        [3] = [15] + [18]
+        [10] = [9] + [1]
+        [12] = [10] + [11]
+        [14] = [1] + [13]
+        [16] = [5] + [15]
+        [3] = [14] + [17]
         [9] = [8] - [4]
         [2] = [2] * [1]
         [8] = [2] * [2]
-        [10] = [9] * [2]
-        [14] = [4] * [9]
-        [16] = [5] * [2]
-        [17] = [6] * [10]
+        [11] = [10] * [2]
+        [13] = [9] * [4]
+        [15] = [9] * [6]
+        [17] = [16] * [2]
         output [2]
     "#]]
     .assert_eq(&format!("{:?}", context.circuit));
 
     // The reserved Var carries the assembled QM31 value; the partial sums hold the two halves.
     assert_eq!(context.get(Var { idx: 3 }), qm31_from_u32s(1, 2, 3, 4));
-    assert_eq!(context.get(Var { idx: 15 }), qm31_from_u32s(1, 2, 0, 0));
-    assert_eq!(context.get(Var { idx: 18 }), qm31_from_u32s(0, 0, 3, 4));
+    assert_eq!(context.get(Var { idx: 14 }), qm31_from_u32s(1, 2, 0, 0));
+    assert_eq!(context.get(Var { idx: 17 }), qm31_from_u32s(0, 0, 3, 4));
     context.circuit.check_yields();
     context.validate_circuit();
 }
