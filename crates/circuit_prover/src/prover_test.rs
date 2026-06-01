@@ -370,7 +370,7 @@ fn test_prove_and_circuit_verify_triple_xor_context() {
     )
     .unwrap();
     let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);
-    expect!["[2146378054, 973986450, 1776844881, 1889477560, 1024680502, 816863601, 1249954554, 8807530]"]
+    expect!["[1900126952, 1829700585, 1946572709, 700479683, 20931724, 1908795741, 1653536984, 621370162]"]
     .assert_eq(&format!("{preprocessed_root:?}"));
     circuit_verify(circuit_proof, &preprocessed_circuit, preprocessed_root);
 }
@@ -396,9 +396,7 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     )
     .unwrap();
     let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);
-    expect![
-        "[1414631139, 873077456, 313180657, 152106457, 89024313, 451826663, 2004098325, 1475690419]"
-    ]
+    expect!["[887323413, 1388854936, 1879099287, 2138608815, 434385237, 1492368592, 2140742639, 1522841772]"]
     .assert_eq(&format!("{preprocessed_root:?}"));
     circuit_verify(circuit_proof, &preprocessed_circuit, preprocessed_root);
 }
@@ -418,7 +416,7 @@ fn test_prove_and_circuit_verify_m31_to_u32_context() {
     .unwrap();
     let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);
     expect![
-        "[346206255, 1209576432, 1898987739, 1223089644, 1907241678, 77461064, 1650292479, 1497625158]"
+        "[1773926445, 1045797981, 1797743734, 708644114, 1172989463, 75028478, 4837013, 194180684]"
     ]
     .assert_eq(&format!("{preprocessed_root:?}"));
     circuit_verify(circuit_proof, &preprocessed_circuit, preprocessed_root);
@@ -439,7 +437,7 @@ fn test_prove_and_circuit_verify_blake_g_gate_context() {
     .unwrap();
     let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);
     expect![
-        "[835379522, 381567572, 1733068343, 395844384, 1090109053, 285173959, 1664592836, 28935595]"
+        "[1294367590, 1329525367, 71351253, 1345006244, 1774626617, 2118994271, 276335864, 1504544877]"
     ]
     .assert_eq(&format!("{preprocessed_root:?}"));
     circuit_verify(circuit_proof, &preprocessed_circuit, preprocessed_root);
