@@ -325,6 +325,7 @@ pub fn compute_fri_input(
         }
     }
 
+    let mut prod = context.one();
     // The coefficients `a, b, c` for each response.
     let abc = oods_responses
         .iter()
@@ -335,9 +336,12 @@ pub fn compute_fri_input(
             let c = eval!(context, (pt_y_conj) - (r.pt.y));
             let b = eval!(context, ((r.value) * (c)) - ((a) * (r.pt.y)));
 
+            prod = eval!(context, (prod) * (c));
+
             (a, b, c)
         })
         .collect_vec();
+    div(context, context.one(), prod);
 
     let minus_two_u = context.constant(-qm31_from_u32s(0, 0, 2, 0));
 
