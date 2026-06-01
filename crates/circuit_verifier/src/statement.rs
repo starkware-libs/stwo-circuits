@@ -91,7 +91,7 @@ impl<Value: IValue> CircuitStatement<Value> {
         let n_components = component_log_sizes.len();
         let packed_log_sizes = pack_into_qm31s(component_log_sizes.iter().cloned())
             .into_iter()
-            .map(|qm31| Value::from_qm31(qm31).guess(context))
+            .map(|qm31| context.constant(qm31))
             .collect_vec();
         let component_log_sizes = Simd::from_packed(packed_log_sizes, n_components);
 
