@@ -3,14 +3,14 @@ use std::hash::Hash;
 
 use indexmap::IndexMap;
 use itertools::Itertools;
+use num_traits::Zero;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 
-use crate::circuit::{Add, Mul};
-use crate::context::{Context, Var};
-use crate::eval;
+use crate::circuit::{Add, Mul, Sub};
+use crate::context::{Context, U_VALUE, Var};
 use crate::ivalue::{IValue, qm31_from_u32s};
-use crate::ops::{add, output};
+use crate::ops::output;
 
 #[cfg(test)]
 #[path = "finalize_constants_test.rs"]
@@ -51,6 +51,7 @@ pub(crate) fn finalize_constants_with_min_base(
     let mut m31_constants = IndexMap::<M31, Var>::new();
     let mut qm31_constants = IndexMap::<QM31, Var>::new();
     let mut m31_cache = HashMap::<M31, usize>::new();
+    let mut qm31_cache = HashMap::<QM31, usize>::new();
     // Populate the maps.
     context.constants().iter().for_each(|(val, var)| {
         if let [x, M31(0), M31(0), M31(0)] = val.to_m31_array() {
@@ -59,13 +60,17 @@ pub(crate) fn finalize_constants_with_min_base(
             qm31_constants.insert(*val, *var);
         }
     });
+    // TODO(dan): Consider adding the limbs from all cm31s and qm31s into find_max_consecutive.
     let m31_base = find_max_consecutive(&m31_constants).max(min_base);
 
     // Yield and constrain the `zero` wire by adding a gate x + x = x.
     let zero_idx = context.zero().idx;
     context.circuit.add.push(Add { in0: zero_idx, in1: zero_idx, out: zero_idx });
-    m31_cache.insert(M31(0), m31_constants.swap_remove(&M31(0)).unwrap().idx);
+    assert_eq!(m31_constants.swap_remove(&M31(0)).unwrap().idx, zero_idx);
+    m31_cache.insert(M31::zero(), zero_idx);
+    qm31_cache.insert(QM31::zero(), zero_idx);
 
+    // TODO(dan): Consider adding `u_inverse` constant with specialized constraints to save gates.
     // Yield and constrain the `one` and `u` wires.
     let one = context.one();
     let u_var = context.u();
@@ -76,7 +81,7 @@ pub(crate) fn finalize_constants_with_min_base(
     context.circuit.mul.push(Mul { in0: u_var.idx, in1: one.idx, out: u_var.idx });
     output(context, u_var);
     // Remove 1 and u from the constants.
-    qm31_constants.swap_remove(&qm31_from_u32s(0, 0, 1, 0)).unwrap();
+    qm31_cache.insert(U_VALUE, qm31_constants.swap_remove(&U_VALUE).unwrap().idx);
     m31_cache.insert(M31(1), m31_constants.swap_remove(&M31(1)).unwrap().idx);
 
     // Build the +1 chain for consecutive M31 constants.
@@ -92,19 +97,55 @@ pub(crate) fn finalize_constants_with_min_base(
     // We know `2` is already produced because `min_base >= 2`.
     let two = Var { idx: *m31_cache.get(&2.into()).unwrap() };
     // `u * u = 2 + i`.
-    let i_var = eval!(context, ((u_var) * (u_var)) - (two));
-    let iu_var = eval!(context, (i_var) * (u_var));
-    let qm31_basis: [Var; 3] = [i_var, u_var, iu_var];
+    let i_plus_two_val = qm31_from_u32s(2, 1, 0, 0);
+    let i_plus_two_var = from_constants_or_new(context, &mut qm31_constants, i_plus_two_val);
+    context.circuit.mul.push(Mul { in0: u_var.idx, in1: u_var.idx, out: i_plus_two_var.idx });
+    qm31_cache.insert(i_plus_two_val, i_plus_two_var.idx);
+
+    let i_val = qm31_from_u32s(0, 1, 0, 0);
+    let i_var = from_constants_or_new(context, &mut qm31_constants, i_val);
+    context.circuit.sub.push(Sub { in0: i_plus_two_var.idx, in1: two.idx, out: i_var.idx });
+    qm31_cache.insert(i_val, i_var.idx);
+
+    let i_plus_one_val = qm31_from_u32s(1, 1, 0, 0);
+    let i_plus_one_var = from_constants_or_new(context, &mut qm31_constants, i_plus_one_val);
+    context.circuit.add.push(Add { in0: i_var.idx, in1: one.idx, out: i_plus_one_var.idx });
+    qm31_cache.insert(i_plus_one_val, i_plus_one_var.idx);
+
+    let u_plus_iu_val = qm31_from_u32s(0, 0, 1, 1);
+    let u_plus_iu_var = from_constants_or_new(context, &mut qm31_constants, u_plus_iu_val);
+    context.circuit.mul.push(Mul {
+        in0: i_plus_one_var.idx,
+        in1: u_var.idx,
+        out: u_plus_iu_var.idx,
+    });
+    qm31_cache.insert(u_plus_iu_val, u_plus_iu_var.idx);
+
+    let ones_val = qm31_from_u32s(1, 1, 1, 1);
+    let ones_var = from_constants_or_new(context, &mut qm31_constants, ones_val);
+    context.circuit.add.push(Add {
+        in0: i_plus_one_var.idx,
+        in1: u_plus_iu_var.idx,
+        out: ones_var.idx,
+    });
+    qm31_cache.insert(ones_val, ones_var.idx);
+
     // Build the broadcast QM31 constants, i.e. constants of the form (x, x, x, x), x != 0.
     decompose_broadcast_constants(
         context,
         &mut qm31_constants,
         &mut m31_cache,
+        &mut qm31_cache,
         m31_base,
-        qm31_basis,
     );
     // Build the remaining QM31 constants.
-    decompose_qm31_constants(context, &mut qm31_constants, &mut m31_cache, m31_base, qm31_basis);
+    decompose_qm31_constants(
+        context,
+        &mut qm31_constants,
+        &mut m31_cache,
+        &mut qm31_cache,
+        m31_base,
+    );
     assert!(qm31_constants.is_empty());
 }
 
@@ -168,13 +209,19 @@ fn decompose_m31_constants(
 /// Decomposes a value into base `base` limbs and builds it via Horner's evaluation:
 /// `val = (...((limbs[n] * base  + limbs[n-1]) * base + limbs[n-2]) * base + ...) + limbs[0]`.
 /// Intermediate values are cached in `m31_cache` for reuse.
+/// Returns the index of the corresponding var.
 fn build_m31_from_base(
     context: &mut Context<impl IValue>,
     m31_cache: &mut HashMap<M31, usize>,
     m31_constants: &mut IndexMap<M31, Var>,
     base: M31,
     val: M31,
-) {
+) -> usize {
+    // If already in cache, return directly.
+    if m31_cache.contains_key(&val) {
+        return *m31_cache.get(&val).unwrap();
+    }
+
     // Decompose `val` into its base `base` limbs (least significant first).
     let mut limbs = Vec::<M31>::new();
     let mut remaining = val.0;
@@ -215,8 +262,8 @@ fn build_m31_from_base(
         acc_val = add_val;
         acc_idx = add_idx;
     }
-    assert!(m31_cache.contains_key(&val));
     assert!(!m31_constants.contains_key(&val));
+    *m31_cache.get(&val).unwrap()
 }
 
 /// Yields and constrains every "broadcast" QM31 constant in `qm31_constants` (i.e. constants of
@@ -232,62 +279,92 @@ fn decompose_broadcast_constants(
     context: &mut Context<impl IValue>,
     qm31_constants: &mut IndexMap<QM31, Var>,
     m31_cache: &mut HashMap<M31, usize>,
+    qm31_cache: &mut HashMap<QM31, usize>,
     base: M31,
-    qm31_basis: [Var; 3],
 ) {
-    let one = context.one();
-    let [i_var, u_var, iu_var] = qm31_basis;
-    // Build and constrain the wire corresponding to (1, 1, 1, 1).
-    let ones_value = qm31_from_u32s(1, 1, 1, 1);
-    let ones_var = from_constants_or_new(context, qm31_constants, ones_value);
-    let one_plus_i = add(context, one, i_var);
-    let u_plus_iu = add(context, u_var, iu_var);
-    context.circuit.add.push(Add { in0: one_plus_i.idx, in1: u_plus_iu.idx, out: ones_var.idx });
-
+    let ones_idx = *qm31_cache.get(&qm31_from_u32s(1, 1, 1, 1)).unwrap();
     qm31_constants.retain(|qm31_value, qm31_var| {
-        let is_broadcast = qm31_value.to_m31_array().iter().tuple_windows().all(|(x, y)| x == y);
+        let m31_value = qm31_value.0.0;
+        let is_broadcast = qm31_value.to_m31_array() == [m31_value; 4];
         if !is_broadcast {
             return true;
         }
-        let m31_value = qm31_value.0.0;
-        // If m31_value is not in the cache, add it.
-        if !m31_cache.contains_key(&m31_value) {
+        let m31_idx =
             build_m31_from_base(context, m31_cache, &mut IndexMap::new(), base, m31_value);
-        }
-        let m31_idx = *m31_cache.get(&m31_value).unwrap();
         // Add a gate m31_val * (1, 1, 1, 1) = qm31_var.
-        context.circuit.mul.push(Mul { in0: m31_idx, in1: ones_var.idx, out: qm31_var.idx });
+        context.circuit.mul.push(Mul { in0: m31_idx, in1: ones_idx, out: qm31_var.idx });
+        qm31_cache.insert(*qm31_value, qm31_var.idx);
         // Remove the element from qm31_constants.
         false
     });
+}
+
+/// Computes the constant a + bi, adds it to the cache, and returns its index.
+fn add_cm31_constant(
+    context: &mut Context<impl IValue>,
+    qm31_constants: &mut IndexMap<QM31, Var>,
+    m31_cache: &mut HashMap<M31, usize>,
+    qm31_cache: &mut HashMap<QM31, usize>,
+    base: M31,
+    i_idx: usize,
+    [a, b]: [u32; 2],
+) -> usize {
+    let [a_idx, b_idx] = [a, b]
+        .map(|x| build_m31_from_base(context, m31_cache, &mut IndexMap::new(), base, M31::from(x)));
+    if b == 0 {
+        // In this case a + bi = a is in the m31_cache but not in qm31_cache.
+        return a_idx;
+    }
+
+    let bi = qm31_from_u32s(0, b, 0, 0);
+    let bi_idx = *qm31_cache.entry(bi).or_insert_with(|| {
+        let var = from_constants_or_new(context, qm31_constants, bi);
+        context.circuit.mul.push(Mul { in0: i_idx, in1: b_idx, out: var.idx });
+        var.idx
+    });
+
+    let a_plus_bi = qm31_from_u32s(a, b, 0, 0);
+    *qm31_cache.entry(a_plus_bi).or_insert_with(|| {
+        let var = from_constants_or_new(context, qm31_constants, a_plus_bi);
+        context.circuit.add.push(Add { in0: a_idx, in1: bi_idx, out: var.idx });
+        var.idx
+    })
 }
 
 fn decompose_qm31_constants(
     context: &mut Context<impl IValue>,
     qm31_constants: &mut IndexMap<QM31, Var>,
     m31_cache: &mut HashMap<M31, usize>,
+    qm31_cache: &mut HashMap<QM31, usize>,
     base: M31,
-    qm_basis: [Var; 3],
 ) {
-    let [i_var, u_var, iu_var] = qm_basis;
+    let i_idx = *qm31_cache.get(&qm31_from_u32s(0, 1, 0, 0)).unwrap();
+    let u_idx = context.u().idx;
 
-    for (qm31_value, qm31_var) in qm31_constants.drain(..) {
-        let limbs = qm31_value.to_m31_array();
-        let [a, b, c, d]: [Var; 4] = std::array::from_fn(|j| {
-            let m31_val = limbs[j];
-            if !m31_cache.contains_key(&m31_val) {
-                build_m31_from_base(context, m31_cache, &mut IndexMap::new(), base, m31_val);
-            }
-            Var { idx: *m31_cache.get(&m31_val).unwrap() }
+    while let Some(&qm31_val) = qm31_constants.keys().next() {
+        let limbs = qm31_val.to_m31_array();
+        let [a, b, c, d]: [u32; 4] = std::array::from_fn(|j| limbs[j].0);
+
+        let a_plus_bi_idx =
+            add_cm31_constant(context, qm31_constants, m31_cache, qm31_cache, base, i_idx, [a, b]);
+        let c_plus_di_idx =
+            add_cm31_constant(context, qm31_constants, m31_cache, qm31_cache, base, i_idx, [c, d]);
+
+        let cu_plus_diu = qm31_from_u32s(0, 0, c, d);
+        let cu_plus_diu_idx = *qm31_cache.entry(cu_plus_diu).or_insert_with(|| {
+            let var = from_constants_or_new(context, qm31_constants, cu_plus_diu);
+            context.circuit.mul.push(Mul { in0: c_plus_di_idx, in1: u_idx, out: var.idx });
+            var.idx
         });
 
-        // a + b*i + c*u + d*iu → output to reserved idx
-        let first_half = eval!(context, (a) + ((b) * (i_var)));
-        let second_half = eval!(context, ((c) * (u_var)) + ((d) * (iu_var)));
-        context.circuit.add.push(Add {
-            in0: first_half.idx,
-            in1: second_half.idx,
-            out: qm31_var.idx,
+        let _ = *qm31_cache.entry(qm31_val).or_insert_with(|| {
+            let var = from_constants_or_new(context, qm31_constants, qm31_val);
+            context.circuit.add.push(Add {
+                in0: a_plus_bi_idx,
+                in1: cu_plus_diu_idx,
+                out: var.idx,
+            });
+            var.idx
         });
     }
 }
