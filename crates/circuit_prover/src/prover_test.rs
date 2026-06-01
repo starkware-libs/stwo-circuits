@@ -411,7 +411,7 @@ fn test_prove_and_circuit_verify_triple_xor_context() {
     )
     .unwrap();
     let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);
-    expect!["[2146378054, 973986450, 1776844881, 1889477560, 1024680502, 816863601, 1249954554, 8807530]"]
+    expect!["[1900126952, 1829700585, 1946572709, 700479683, 20931724, 1908795741, 1653536984, 621370162]"]
     .assert_eq(&format!("{preprocessed_root:?}"));
     circuit_verify(circuit_proof, &preprocessed_circuit, preprocessed_root);
 }
@@ -439,7 +439,7 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     )
     .unwrap();
     let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);
-    expect!["[785464727, 597140330, 1570038302, 1439548967, 701310801, 1977460503, 1177725507, 477514812]"]
+    expect!["[852416177, 1143215884, 1213157999, 1688994853, 407167445, 1832340450, 1788777625, 1550220045]"]
     .assert_eq(&format!("{preprocessed_root:?}"));
     circuit_verify(circuit_proof, &preprocessed_circuit, preprocessed_root);
 }
