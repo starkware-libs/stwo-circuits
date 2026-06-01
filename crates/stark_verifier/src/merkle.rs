@@ -43,6 +43,17 @@ impl<T> AuthPaths<T> {
     pub fn at(&self, tree_idx: usize, query_idx: usize) -> &AuthPath<T> {
         &self.data[tree_idx][query_idx]
     }
+
+    /// Validates that the structure of the authentication paths is consistent with the tree heights
+    /// and and the number of queries.
+    pub fn validate_structure(&self, tree_heights: &[usize], n_queries: usize) {
+        for (tree_data, height) in zip_eq(&self.data, tree_heights) {
+            assert_eq!(tree_data.len(), n_queries);
+            for path in tree_data {
+                assert_eq!(path.0.len(), *height);
+            }
+        }
+    }
 }
 
 impl<Value: IValue> Guess<Value> for AuthPaths<Value> {

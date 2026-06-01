@@ -102,6 +102,8 @@ impl<T> FriProof<T> {
         );
         commit.validate_structure(config, &all_fold_steps);
 
+        // TODO(ilya): use `auth_paths.validate_structure` instead of the following code.
+
         // Check that the authentication paths' lengths are consistent with the folding schedule.
         assert_eq!(auth_paths.data.len(), all_fold_steps.len());
         let first_layer_log_size = config.log_evaluation_domain_size();
