@@ -102,19 +102,18 @@ impl<T> FriProof<T> {
         );
         commit.validate_structure(config, &all_fold_steps);
 
-        // TODO(ilya): use `auth_paths.validate_structure` instead of the following code.
-
-        // Check that the authentication paths' lengths are consistent with the folding schedule.
-        assert_eq!(auth_paths.data.len(), all_fold_steps.len());
-        let first_layer_log_size = config.log_evaluation_domain_size();
-        let mut fold_sum = 0;
-        for (tree_data, fold_step) in zip_eq(&auth_paths.data, &all_fold_steps) {
-            assert_eq!(tree_data.len(), config.n_queries);
-            for query_data in tree_data {
-                assert_eq!(query_data.0.len(), first_layer_log_size - fold_sum - fold_step);
-            }
-            fold_sum += fold_step
+        // Build `tree_heights` so that `tree_heights[i]` is the Merkle authentication-path
+        // length for FRI layer `i`, to validate against the proof.
+        // The fold inputs are merklized in cosets of size `2^fold_step` before authentication
+        // starts, so a layer with `2^k` values has an auth path of length `k - fold_step`
+        // (equivalently, the layer's log-size after folding).
+        let mut tree_heights: Vec<usize> = Vec::with_capacity(all_fold_steps.len());
+        let mut layer_size = config.log_evaluation_domain_size();
+        for fold_step in &all_fold_steps {
+            layer_size -= *fold_step;
+            tree_heights.push(layer_size);
         }
+        auth_paths.validate_structure(&tree_heights, config.n_queries);
 
         // Check the witness.
         witness.validate_structure(config, &all_fold_steps);
