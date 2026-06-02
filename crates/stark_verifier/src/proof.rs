@@ -395,26 +395,51 @@ pub struct Proof<T> {
 impl<T> Proof<T> {
     /// Validates that the size of the members of the struct are consistent with the config.
     pub fn validate_structure(&self, config: &ProofConfig) {
+        let Self {
+            channel_salt: _,
+            trace_root: _,
+            interaction_root: _,
+            composition_polynomial_root: _,
+            claimed_sums,
+            preprocessed_columns_at_oods,
+            trace_at_oods,
+            interaction_at_oods,
+            composition_eval_at_oods,
+            eval_domain_samples,
+            eval_domain_auth_paths,
+            pow_nonce: _,
+            interaction_pow_nonce: _,
+            fri,
+        } = self;
+
+        assert_eq!(claimed_sums.len(), config.n_components());
+
         // Validate preprocessed_columns_at_oods.
-        assert_eq!(self.preprocessed_columns_at_oods.len(), config.n_preprocessed_columns);
+        assert_eq!(preprocessed_columns_at_oods.len(), config.n_preprocessed_columns);
 
         // Validate trace_at_oods.
-        assert_eq!(self.trace_at_oods.len(), config.n_trace_columns);
+        assert_eq!(trace_at_oods.len(), config.n_trace_columns);
 
         // Validate interaction_at_oods.
-        assert_eq!(self.interaction_at_oods.len(), config.n_interaction_columns);
+        assert_eq!(interaction_at_oods.len(), config.n_interaction_columns);
         for (interaction_at_oods, is_cumulative_sum) in
-            zip_eq(&self.interaction_at_oods, &config.cumulative_sum_columns)
+            zip_eq(interaction_at_oods, &config.cumulative_sum_columns)
         {
             assert_eq!(interaction_at_oods.at_prev.is_some(), *is_cumulative_sum);
         }
 
+        // This check is trivially true because composition_eval_at_oods has a fixed length, but we
+        // keep it for completeness.
+        assert_eq!(composition_eval_at_oods.len(), N_COMPOSITION_COLUMNS);
+
         // Validate eval_domain_samples.
-        self.eval_domain_samples
-            .validate_structure(&config.n_columns_per_trace(), config.n_queries());
+        eval_domain_samples.validate_structure(&config.n_columns_per_trace(), config.n_queries());
+
+        let tree_heights = [config.log_evaluation_domain_size(); N_TRACES];
+        eval_domain_auth_paths.validate_structure(&tree_heights, config.n_queries());
 
         // Validate FRI.
-        self.fri.validate_structure(&config.fri);
+        fri.validate_structure(&config.fri);
     }
 
     /// Returns the 3 witness Merkle roots (trace, interaction, composition polynomial).
