@@ -5,6 +5,7 @@ use stwo::core::circle::CirclePoint;
 use stwo::core::fields::m31::{M31, P};
 use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
 use stwo::core::verifier::COMPOSITION_LOG_SPLIT;
+use stwo_constraint_framework::{INTERACTION_TRACE_IDX, ORIGINAL_TRACE_IDX};
 
 use crate::channel::Channel;
 use crate::circle::{add_points, generator_point};
@@ -201,14 +202,20 @@ pub fn verify<Value: IValue>(
     // Check decommitment of trace queries.
     let bits = queries.bits.iter().map(|simd| Simd::unpack(context, simd)).collect_vec();
 
-    let column_log_sizes_by_trace = column_log_sizes_by_trace(context, config, component_log_sizes);
     let periodicity_sample_points_per_column =
         column_periodicity_sample_points(config, &periodicity_sample_points_per_component);
+
+    let column_log_sizes_for_sorted_traces = get_column_log_sizes_for_sorted_traces(
+        context,
+        config,
+        component_log_sizes,
+        statement.sorting_required(),
+    );
 
     decommit_eval_domain_samples(
         context,
         config.n_queries(),
-        &column_log_sizes_by_trace,
+        &column_log_sizes_for_sorted_traces,
         &proof.eval_domain_samples,
         &proof.eval_domain_auth_paths,
         &bits,
@@ -342,13 +349,20 @@ fn check_relation_uses<Value: IValue>(
     shifted_relation_uses
 }
 
-// Returns the column_log_sizes_by_trace, which includes the column log sizes for the trace and
-// interaction columns.
-fn column_log_sizes_by_trace(
+// Returns, per trace index, the column log sizes used to sort that trace's query columns into
+// committed order. Only the trace and interaction columns may require sorting; when
+// `sorting_required` is false the columns are already in committed order and an empty map is
+// returned so sorting is skipped.
+fn get_column_log_sizes_for_sorted_traces(
     context: &mut Context<impl IValue>,
     config: &ProofConfig,
     component_log_sizes: Simd,
-) -> [Vec<Var>; 2] {
+    sorting_required: bool,
+) -> HashMap<usize, Vec<Var>> {
+    if !sorting_required {
+        return HashMap::new();
+    }
+
     let mut column_log_sizes = [
         Vec::with_capacity(config.n_trace_columns),
         Vec::with_capacity(config.n_interaction_columns),
@@ -360,7 +374,8 @@ fn column_log_sizes_by_trace(
         column_log_sizes[0].extend(vec![log_size; component_shape.trace_columns]);
         column_log_sizes[1].extend(vec![log_size; component_shape.interaction_columns]);
     }
-    column_log_sizes
+    let [trace, interaction] = column_log_sizes;
+    HashMap::from([(ORIGINAL_TRACE_IDX, trace), (INTERACTION_TRACE_IDX, interaction)])
 }
 
 /// Given the periodicity sample points for each component, returns the periodicity sample points
