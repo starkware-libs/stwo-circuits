@@ -31,7 +31,7 @@ use circuits::wrappers::M31Wrapper;
 pub const LOG_SIZE_BITS: u32 = 5;
 
 /// The bit-shift applied to component row counts when checking that no relation is used
-/// more than `P` times (see [`check_relation_uses`]).
+/// more than `P` times (see `check_relation_uses`).
 ///
 /// Dividing by `DIV = 2^RELATION_USES_NUM_ROWS_SHIFT` keeps intermediate products small
 /// enough to fit in a `u64`: at most `n_uses_per_row * (2^(max_log_trace - SHIFT) + 1)` per
