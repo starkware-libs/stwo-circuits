@@ -110,15 +110,7 @@ fn test_fri_decommit_with_jumps(
     channel.mix_felts(&last_layer_coefficients);
     let alphas: Vec<_> = alpha_values.iter().map(|x| context.constant(*x)).collect();
 
-    fri_decommit(
-        &mut context,
-        &circuit_fri_proof,
-        &config.fri,
-        &fri_input,
-        &bits,
-        queries,
-        &alphas,
-    );
+    fri_decommit(&mut context, &circuit_fri_proof, &config.fri, fri_input, &bits, queries, &alphas);
     context.validate_circuit();
     println!("Stats: {:?}", context.stats);
 }
