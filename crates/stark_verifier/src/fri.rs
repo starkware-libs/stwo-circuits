@@ -43,7 +43,7 @@ pub fn fri_decommit<Value: IValue>(
     context: &mut Context<Value>,
     proof: &FriProof<Var>,
     config: &FriConfig,
-    fri_input: &[Var],
+    fri_input: Vec<Var>,
     mut bits: &[Vec<Var>],
     queries: Queries,
     alphas: &[Var],
