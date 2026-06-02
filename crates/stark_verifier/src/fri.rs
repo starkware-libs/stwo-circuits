@@ -43,7 +43,7 @@ pub fn fri_decommit<Value: IValue>(
     context: &mut Context<Value>,
     proof: &FriProof<Var>,
     config: &FriConfig,
-    fri_input: &[Var],
+    fri_input: Vec<Var>,
     mut bits: &[Vec<Var>],
     queries: Queries,
     alphas: &[Var],
@@ -54,7 +54,7 @@ pub fn fri_decommit<Value: IValue>(
         witness: FriWitness(witness_per_query_per_tree),
     } = proof;
 
-    let mut layer_values = fri_input.to_vec();
+    let mut layer_values = fri_input;
     let mut base_point = queries.points.clone();
     let mut packed_bits = queries.bits.as_slice();
 
