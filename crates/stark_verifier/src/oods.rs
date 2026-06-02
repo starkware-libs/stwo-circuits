@@ -1,11 +1,11 @@
 use indexmap::IndexMap;
-use itertools::{chain, zip_eq};
+use itertools::{Itertools, chain, zip_eq};
 use num_traits::zero;
 use stwo::core::circle::CirclePoint;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 
-use crate::circle::{add_points, double_point, double_x};
+use crate::circle::{add_points, double_point, double_x, generator_point};
 use crate::proof::{Proof, ProofConfig};
 use crate::select_queries::Queries;
 use circuits::EXTENSION_DEGREE;
@@ -183,11 +183,21 @@ pub struct OodsResponse {
 pub fn collect_oods_responses(
     context: &mut Context<impl IValue>,
     config: &ProofConfig,
-    trace_gen: CirclePoint<M31>,
     oods_point: CirclePoint<Var>,
-    periodicity_sample_points_per_column: &[CirclePoint<Var>],
+    component_sizes_bits: &[Simd],
     proof: &Proof<Var>,
 ) -> Vec<OodsResponse> {
+    // Build the periodicity sample points for each column in the interaction trace.
+    let trace_gen = generator_point(config.log_trace_size());
+    let period_generators_per_component =
+        period_generators(context, trace_gen, component_sizes_bits);
+    let periodicity_sample_points_per_component = period_generators_per_component
+        .into_iter()
+        .map(|pt| add_points(context, &oods_point, &pt))
+        .collect_vec();
+    let periodicity_sample_points_per_column =
+        column_periodicity_sample_points(config, &periodicity_sample_points_per_component);
+
     // The negation of the trace generator, as `CirclePoint<Var>`.
     let neg_trace_gen: CirclePoint<Var> = CirclePoint {
         x: context.constant(trace_gen.x.into()),
@@ -233,7 +243,7 @@ pub fn collect_oods_responses(
                 OodsResponse {
                     trace_idx: 2,
                     column_idx,
-                    pt: *periodicity_sample_point,
+                    pt: periodicity_sample_point,
                     value: proof.interaction_at_oods[column_idx].at_oods,
                 },
                 // Previous row.
@@ -388,7 +398,7 @@ pub fn compute_fri_input(
     let query_point_x = Simd::unpack(context, &queries.points.x);
     let query_point_y = Simd::unpack(context, &queries.points.y);
 
-    let mut fri_queries = Vec::new();
+    let mut fri_queries = Vec::with_capacity(query_point_x.len());
     for (query_idx, (q_x, q_y)) in zip_eq(&query_point_x, &query_point_y).enumerate() {
         let mut sum = context.zero();
 
@@ -413,4 +423,21 @@ pub fn compute_fri_input(
     }
 
     fri_queries
+}
+
+/// Given the periodicity sample points for each component, returns the periodicity sample points
+/// for each column in the interaction trace.
+/// The periodicity sample points are the sample points used for the periodicity check.
+fn column_periodicity_sample_points(
+    config: &ProofConfig,
+    sample_points_per_component: &[CirclePoint<Var>],
+) -> Vec<CirclePoint<Var>> {
+    let mut periodicity_sample_points_per_column = Vec::with_capacity(config.n_interaction_columns);
+    for (component_shape, sample_point) in
+        zip_eq(&config.component_shapes, sample_points_per_component)
+    {
+        periodicity_sample_points_per_column
+            .extend(vec![sample_point; component_shape.interaction_columns]);
+    }
+    periodicity_sample_points_per_column
 }
