@@ -75,6 +75,7 @@ pub fn accumulate_constraints<Value: IValue>(
         linear_combination_n_6_coefs_4_2_3_1_m1_1_input_limb_57,
         linear_combination_n_6_coefs_4_2_3_1_m1_1_input_limb_58,
         linear_combination_n_6_coefs_4_2_3_1_m1_1_input_limb_59,
+        enabler,
         combination_limb_0_col0,
         combination_limb_1_col1,
         combination_limb_2_col2,
@@ -229,7 +230,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, (carry_1_tmp_290f3_3) + (2)),
         eval!(context, (carry_2_tmp_290f3_4) + (2)),
     ];
-    let numerator_10 = eval!(context, 1);
+    let numerator_10 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_10, tuple_10);
 
     // Use RangeCheck_4_4_4_4.
@@ -240,7 +241,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, (carry_5_tmp_290f3_7) + (2)),
         eval!(context, (carry_6_tmp_290f3_8) + (2)),
     ];
-    let numerator_11 = eval!(context, 1);
+    let numerator_11 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_11, tuple_11);
 
     // Use RangeCheck_4_4.
@@ -249,7 +250,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, (carry_7_tmp_290f3_9) + (2)),
         eval!(context, (carry_8_tmp_290f3_10) + (2)),
     ];
-    let numerator_12 = eval!(context, 1);
+    let numerator_12 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_12, tuple_12);
     vec![]
 }

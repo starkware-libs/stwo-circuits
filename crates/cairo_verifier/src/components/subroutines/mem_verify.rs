@@ -44,11 +44,16 @@ pub fn accumulate_constraints<Value: IValue>(
         mem_verify_input_value_limb_25,
         mem_verify_input_value_limb_26,
         mem_verify_input_value_limb_27,
+        enabler,
         id_col0,
     ] = input.try_into().unwrap();
 
     read_id::accumulate_constraints(
-        &[eval!(context, mem_verify_input_address), eval!(context, id_col0)],
+        &[
+            eval!(context, mem_verify_input_address),
+            eval!(context, enabler),
+            eval!(context, id_col0),
+        ],
         context,
         component_data,
         acc,
@@ -87,7 +92,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, mem_verify_input_value_limb_26),
         eval!(context, mem_verify_input_value_limb_27),
     ];
-    let numerator_1 = eval!(context, 1);
+    let numerator_1 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_1, tuple_1);
     vec![]
 }

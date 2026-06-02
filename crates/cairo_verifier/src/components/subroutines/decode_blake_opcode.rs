@@ -20,6 +20,7 @@ pub fn accumulate_constraints<Value: IValue>(
         decode_blake_opcode_input_pc,
         decode_blake_opcode_input_ap,
         decode_blake_opcode_input_fp,
+        enabler,
         offset0_col0,
         offset1_col1,
         offset2_col2,
@@ -65,6 +66,7 @@ pub fn accumulate_constraints<Value: IValue>(
     ] = decode_instruction_30129::accumulate_constraints(
         &[
             eval!(context, decode_blake_opcode_input_pc),
+            eval!(context, enabler),
             eval!(context, offset0_col0),
             eval!(context, offset1_col1),
             eval!(context, offset2_col2),
@@ -101,6 +103,7 @@ pub fn accumulate_constraints<Value: IValue>(
                 context,
                 (mem0_base_col8) + (decode_instruction_30129_output_tmp_c2bd8_9_offset1)
             ),
+            eval!(context, enabler),
             eval!(context, op0_id_col9),
             eval!(context, op0_limb_0_col10),
             eval!(context, op0_limb_1_col11),
@@ -129,6 +132,7 @@ pub fn accumulate_constraints<Value: IValue>(
                 context,
                 (mem1_base_col15) + (decode_instruction_30129_output_tmp_c2bd8_9_offset2)
             ),
+            eval!(context, enabler),
             eval!(context, op1_id_col16),
             eval!(context, op1_limb_0_col17),
             eval!(context, op1_limb_1_col18),
@@ -144,6 +148,7 @@ pub fn accumulate_constraints<Value: IValue>(
     read_positive_num_bits_29::accumulate_constraints(
         &[
             eval!(context, decode_blake_opcode_input_ap),
+            eval!(context, enabler),
             eval!(context, ap_id_col22),
             eval!(context, ap_limb_0_col23),
             eval!(context, ap_limb_1_col24),
@@ -171,6 +176,7 @@ pub fn accumulate_constraints<Value: IValue>(
                 context,
                 (mem_dst_base_col28) + (decode_instruction_30129_output_tmp_c2bd8_9_offset0)
             ),
+            eval!(context, enabler),
             eval!(context, low_16_bits_col29),
             eval!(context, high_16_bits_col30),
             eval!(context, low_7_ms_bits_col31),

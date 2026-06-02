@@ -22,6 +22,7 @@ pub fn accumulate_constraints<Value: IValue>(
         linear_combination_n_1_coefs_2_input_limb_7,
         linear_combination_n_1_coefs_2_input_limb_8,
         linear_combination_n_1_coefs_2_input_limb_9,
+        enabler,
         combination_limb_0_col0,
         combination_limb_1_col1,
         combination_limb_2_col2,

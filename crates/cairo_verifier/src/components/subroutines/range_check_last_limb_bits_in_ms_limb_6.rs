@@ -12,14 +12,14 @@ pub fn accumulate_constraints<Value: IValue>(
     component_data: &dyn ComponentDataTrait<Value>,
     acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
-    let [range_check_last_limb_bits_in_ms_limb_6_input] = input.try_into().unwrap();
+    let [range_check_last_limb_bits_in_ms_limb_6_input, enabler] = input.try_into().unwrap();
 
     // Use RangeCheck_6.
     let tuple_0 = &[
         eval!(context, 1185356339),
         eval!(context, range_check_last_limb_bits_in_ms_limb_6_input),
     ];
-    let numerator_0 = eval!(context, 1);
+    let numerator_0 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_0, tuple_0);
     vec![]
 }

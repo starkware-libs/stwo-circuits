@@ -16,6 +16,7 @@ pub fn accumulate_constraints<Value: IValue>(
 ) -> Vec<Var> {
     let [
         read_small_input,
+        enabler,
         id_col0,
         msb_col1,
         mid_limbs_set_col2,
@@ -27,7 +28,7 @@ pub fn accumulate_constraints<Value: IValue>(
     ] = input.try_into().unwrap();
 
     read_id::accumulate_constraints(
-        &[eval!(context, read_small_input), eval!(context, id_col0)],
+        &[eval!(context, read_small_input), eval!(context, enabler), eval!(context, id_col0)],
         context,
         component_data,
         acc,
@@ -39,7 +40,7 @@ pub fn accumulate_constraints<Value: IValue>(
         decode_small_sign_output_tmp_c806d_5_limb21,
         decode_small_sign_output_tmp_c806d_5_limb27,
     ] = decode_small_sign::accumulate_constraints(
-        &[eval!(context, msb_col1), eval!(context, mid_limbs_set_col2)],
+        &[eval!(context, enabler), eval!(context, msb_col1), eval!(context, mid_limbs_set_col2)],
         context,
         component_data,
         acc,
@@ -51,6 +52,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, remainder_bits_col6),
             eval!(context, 1),
+            eval!(context, enabler),
             eval!(context, partial_limb_msb_col7),
         ],
         context,
@@ -94,7 +96,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, 0),
         eval!(context, decode_small_sign_output_tmp_c806d_5_limb27),
     ];
-    let numerator_3 = eval!(context, 1);
+    let numerator_3 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_3, tuple_3);
     vec![eval!(
         context,

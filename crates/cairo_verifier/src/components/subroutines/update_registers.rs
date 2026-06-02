@@ -112,6 +112,7 @@ pub fn accumulate_constraints<Value: IValue>(
         update_registers_input_res_limb_25,
         update_registers_input_res_limb_26,
         update_registers_input_res_limb_27,
+        enabler,
         partial_limb_msb_col0,
         msb_col1,
         mid_limbs_set_col2,
@@ -160,6 +161,7 @@ pub fn accumulate_constraints<Value: IValue>(
             eval!(context, update_registers_input_dst_limb_26),
             eval!(context, update_registers_input_dst_limb_27),
             eval!(context, update_registers_input_opcode_ret),
+            eval!(context, enabler),
             eval!(context, partial_limb_msb_col0),
         ],
         context,
@@ -205,6 +207,7 @@ pub fn accumulate_constraints<Value: IValue>(
                     (update_registers_input_pc_update_jump_rel)
                         + (update_registers_input_ap_update_add)
                 ),
+                eval!(context, enabler),
                 eval!(context, msb_col1),
                 eval!(context, mid_limbs_set_col2),
                 eval!(context, partial_limb_msb_col3),
@@ -331,6 +334,7 @@ pub fn accumulate_constraints<Value: IValue>(
                 eval!(context, update_registers_input_op1_limb_26),
                 eval!(context, update_registers_input_op1_limb_27),
                 eval!(context, op1_as_rel_imm_cond_col6),
+                eval!(context, enabler),
                 eval!(context, msb_col7),
                 eval!(context, mid_limbs_set_col8),
                 eval!(context, partial_limb_msb_col9),
@@ -388,7 +392,11 @@ pub fn accumulate_constraints<Value: IValue>(
     acc.add_constraint(context, constraint_12_value);
 
     range_check_29::accumulate_constraints(
-        &[eval!(context, next_ap_col12), eval!(context, range_check_29_bot11bits_col13)],
+        &[
+            eval!(context, next_ap_col12),
+            eval!(context, enabler),
+            eval!(context, range_check_29_bot11bits_col13),
+        ],
         context,
         component_data,
         acc,

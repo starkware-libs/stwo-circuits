@@ -23,6 +23,7 @@ impl VerifyTripleSum32 {
             verify_triple_sum_32_input_limb_6,
             verify_triple_sum_32_input_limb_7,
         ]: [E::F; 8],
+        enabler: E::F,
         common_lookup_elements: &relations::CommonLookupElements,
         eval: &mut E,
     ) -> [E::F; 0] {

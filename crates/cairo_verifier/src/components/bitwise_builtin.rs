@@ -117,6 +117,7 @@ pub fn accumulate_constraints<Value: IValue>(
     read_positive_num_bits_252::accumulate_constraints(
         &[
             eval!(context, (bitwise_builtin_segment_start) + ((seq) * (5))),
+            eval!(context, 1),
             eval!(context, op0_id_col0),
             eval!(context, op0_limb_0_col1),
             eval!(context, op0_limb_1_col2),
@@ -155,6 +156,7 @@ pub fn accumulate_constraints<Value: IValue>(
     read_positive_num_bits_252::accumulate_constraints(
         &[
             eval!(context, ((bitwise_builtin_segment_start) + ((seq) * (5))) + (1)),
+            eval!(context, 1),
             eval!(context, op1_id_col29),
             eval!(context, op1_limb_0_col30),
             eval!(context, op1_limb_1_col31),
@@ -194,6 +196,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, op0_limb_0_col1),
             eval!(context, op1_limb_0_col30),
+            eval!(context, 1),
             eval!(context, xor_col58),
         ],
         context,
@@ -208,6 +211,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, op0_limb_1_col2),
             eval!(context, op1_limb_1_col31),
+            eval!(context, 1),
             eval!(context, xor_col59),
         ],
         context,
@@ -222,6 +226,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, op0_limb_2_col3),
             eval!(context, op1_limb_2_col32),
+            eval!(context, 1),
             eval!(context, xor_col60),
         ],
         context,
@@ -236,6 +241,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, op0_limb_3_col4),
             eval!(context, op1_limb_3_col33),
+            eval!(context, 1),
             eval!(context, xor_col61),
         ],
         context,
@@ -250,6 +256,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, op0_limb_4_col5),
             eval!(context, op1_limb_4_col34),
+            eval!(context, 1),
             eval!(context, xor_col62),
         ],
         context,
@@ -264,6 +271,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, op0_limb_5_col6),
             eval!(context, op1_limb_5_col35),
+            eval!(context, 1),
             eval!(context, xor_col63),
         ],
         context,
@@ -278,6 +286,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, op0_limb_6_col7),
             eval!(context, op1_limb_6_col36),
+            eval!(context, 1),
             eval!(context, xor_col64),
         ],
         context,
@@ -292,6 +301,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, op0_limb_7_col8),
             eval!(context, op1_limb_7_col37),
+            eval!(context, 1),
             eval!(context, xor_col65),
         ],
         context,
@@ -306,6 +316,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, op0_limb_8_col9),
             eval!(context, op1_limb_8_col38),
+            eval!(context, 1),
             eval!(context, xor_col66),
         ],
         context,
@@ -320,6 +331,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, op0_limb_9_col10),
             eval!(context, op1_limb_9_col39),
+            eval!(context, 1),
             eval!(context, xor_col67),
         ],
         context,
@@ -334,6 +346,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, op0_limb_10_col11),
             eval!(context, op1_limb_10_col40),
+            eval!(context, 1),
             eval!(context, xor_col68),
         ],
         context,
@@ -348,6 +361,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, op0_limb_11_col12),
             eval!(context, op1_limb_11_col41),
+            eval!(context, 1),
             eval!(context, xor_col69),
         ],
         context,
@@ -362,6 +376,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, op0_limb_12_col13),
             eval!(context, op1_limb_12_col42),
+            eval!(context, 1),
             eval!(context, xor_col70),
         ],
         context,
@@ -376,6 +391,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, op0_limb_13_col14),
             eval!(context, op1_limb_13_col43),
+            eval!(context, 1),
             eval!(context, xor_col71),
         ],
         context,
@@ -390,6 +406,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, op0_limb_14_col15),
             eval!(context, op1_limb_14_col44),
+            eval!(context, 1),
             eval!(context, xor_col72),
         ],
         context,
@@ -404,6 +421,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, op0_limb_15_col16),
             eval!(context, op1_limb_15_col45),
+            eval!(context, 1),
             eval!(context, xor_col73),
         ],
         context,
@@ -418,6 +436,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, op0_limb_16_col17),
             eval!(context, op1_limb_16_col46),
+            eval!(context, 1),
             eval!(context, xor_col74),
         ],
         context,
@@ -432,6 +451,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, op0_limb_17_col18),
             eval!(context, op1_limb_17_col47),
+            eval!(context, 1),
             eval!(context, xor_col75),
         ],
         context,
@@ -446,6 +466,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, op0_limb_18_col19),
             eval!(context, op1_limb_18_col48),
+            eval!(context, 1),
             eval!(context, xor_col76),
         ],
         context,
@@ -460,6 +481,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, op0_limb_19_col20),
             eval!(context, op1_limb_19_col49),
+            eval!(context, 1),
             eval!(context, xor_col77),
         ],
         context,
@@ -474,6 +496,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, op0_limb_20_col21),
             eval!(context, op1_limb_20_col50),
+            eval!(context, 1),
             eval!(context, xor_col78),
         ],
         context,
@@ -488,6 +511,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, op0_limb_21_col22),
             eval!(context, op1_limb_21_col51),
+            eval!(context, 1),
             eval!(context, xor_col79),
         ],
         context,
@@ -502,6 +526,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, op0_limb_22_col23),
             eval!(context, op1_limb_22_col52),
+            eval!(context, 1),
             eval!(context, xor_col80),
         ],
         context,
@@ -516,6 +541,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, op0_limb_23_col24),
             eval!(context, op1_limb_23_col53),
+            eval!(context, 1),
             eval!(context, xor_col81),
         ],
         context,
@@ -530,6 +556,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, op0_limb_24_col25),
             eval!(context, op1_limb_24_col54),
+            eval!(context, 1),
             eval!(context, xor_col82),
         ],
         context,
@@ -544,6 +571,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, op0_limb_25_col26),
             eval!(context, op1_limb_25_col55),
+            eval!(context, 1),
             eval!(context, xor_col83),
         ],
         context,
@@ -558,6 +586,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, op0_limb_26_col27),
             eval!(context, op1_limb_26_col56),
+            eval!(context, 1),
             eval!(context, xor_col84),
         ],
         context,
@@ -572,6 +601,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, op0_limb_27_col28),
             eval!(context, op1_limb_27_col57),
+            eval!(context, 1),
             eval!(context, xor_col85),
         ],
         context,
@@ -613,6 +643,7 @@ pub fn accumulate_constraints<Value: IValue>(
             eval!(context, and_tmp_b8fb8_87),
             eval!(context, and_tmp_b8fb8_90),
             eval!(context, and_tmp_b8fb8_93),
+            eval!(context, 1),
             eval!(context, and_id_col86),
         ],
         context,
@@ -651,6 +682,7 @@ pub fn accumulate_constraints<Value: IValue>(
             eval!(context, xor_col83),
             eval!(context, xor_col84),
             eval!(context, xor_col85),
+            eval!(context, 1),
             eval!(context, xor_id_col87),
         ],
         context,
@@ -689,6 +721,7 @@ pub fn accumulate_constraints<Value: IValue>(
             eval!(context, (and_tmp_b8fb8_87) + (xor_col83)),
             eval!(context, (and_tmp_b8fb8_90) + (xor_col84)),
             eval!(context, (and_tmp_b8fb8_93) + (xor_col85)),
+            eval!(context, 1),
             eval!(context, or_id_col88),
         ],
         context,

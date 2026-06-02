@@ -29,6 +29,7 @@ pub fn accumulate_constraints<Value: IValue>(
         verify_mul_small_input_c_limb_5,
         verify_mul_small_input_c_limb_6,
         verify_mul_small_input_c_limb_7,
+        enabler,
         carry_1_col0,
         carry_3_col1,
         carry_5_col2,
@@ -36,7 +37,7 @@ pub fn accumulate_constraints<Value: IValue>(
 
     // Use RangeCheck_11.
     let tuple_0 = &[eval!(context, 991608089), eval!(context, carry_1_col0)];
-    let numerator_0 = eval!(context, 1);
+    let numerator_0 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_0, tuple_0);
 
     //carry 1 definition.
@@ -54,7 +55,7 @@ pub fn accumulate_constraints<Value: IValue>(
 
     // Use RangeCheck_11.
     let tuple_2 = &[eval!(context, 991608089), eval!(context, carry_3_col1)];
-    let numerator_2 = eval!(context, 1);
+    let numerator_2 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_2, tuple_2);
 
     //carry 3 definition.
@@ -78,7 +79,7 @@ pub fn accumulate_constraints<Value: IValue>(
 
     // Use RangeCheck_11.
     let tuple_4 = &[eval!(context, 991608089), eval!(context, carry_5_col2)];
-    let numerator_4 = eval!(context, 1);
+    let numerator_4 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_4, tuple_4);
 
     //carry 5 definition.

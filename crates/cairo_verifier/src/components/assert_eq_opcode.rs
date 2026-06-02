@@ -19,19 +19,23 @@ pub fn accumulate_constraints<Value: IValue>(
     acc: &mut CompositionConstraintAccumulator,
 ) {
     let [
-        input_pc_col0,
-        input_ap_col1,
-        input_fp_col2,
-        offset0_col3,
-        offset2_col4,
-        dst_base_fp_col5,
-        op1_base_fp_col6,
-        ap_update_add_1_col7,
-        mem_dst_base_col8,
-        mem1_base_col9,
-        dst_id_col10,
-        enabler_col11,
+        enabler_col0,
+        input_pc_col1,
+        input_ap_col2,
+        input_fp_col3,
+        offset0_col4,
+        offset2_col5,
+        dst_base_fp_col6,
+        op1_base_fp_col7,
+        ap_update_add_1_col8,
+        mem_dst_base_col9,
+        mem1_base_col10,
+        dst_id_col11,
     ] = input.try_into().unwrap();
+
+    //Enabler is a bit.
+    let constraint_0_value = eval!(context, ((enabler_col0) * (enabler_col0)) - (enabler_col0));
+    acc.add_constraint(context, constraint_0_value);
 
     let [
         decode_instruction_135e3_output_tmp_36a9d_7_offset0,
@@ -39,12 +43,13 @@ pub fn accumulate_constraints<Value: IValue>(
         decode_instruction_135e3_output_tmp_36a9d_7_op1_base_ap,
     ] = decode_instruction_135e3::accumulate_constraints(
         &[
-            eval!(context, input_pc_col0),
-            eval!(context, offset0_col3),
-            eval!(context, offset2_col4),
-            eval!(context, dst_base_fp_col5),
-            eval!(context, op1_base_fp_col6),
-            eval!(context, ap_update_add_1_col7),
+            eval!(context, input_pc_col1),
+            eval!(context, enabler_col0),
+            eval!(context, offset0_col4),
+            eval!(context, offset2_col5),
+            eval!(context, dst_base_fp_col6),
+            eval!(context, op1_base_fp_col7),
+            eval!(context, ap_update_add_1_col8),
         ],
         context,
         component_data,
@@ -54,62 +59,59 @@ pub fn accumulate_constraints<Value: IValue>(
     .unwrap();
 
     //mem_dst_base.
-    let constraint_1_value = eval!(
-        context,
-        (mem_dst_base_col8)
-            - (((dst_base_fp_col5) * (input_fp_col2))
-                + (((1) - (dst_base_fp_col5)) * (input_ap_col1)))
-    );
-    acc.add_constraint(context, constraint_1_value);
-
-    //mem1_base.
     let constraint_2_value = eval!(
         context,
-        (mem1_base_col9)
-            - (((op1_base_fp_col6) * (input_fp_col2))
-                + ((decode_instruction_135e3_output_tmp_36a9d_7_op1_base_ap) * (input_ap_col1)))
+        (mem_dst_base_col9)
+            - (((dst_base_fp_col6) * (input_fp_col3))
+                + (((1) - (dst_base_fp_col6)) * (input_ap_col2)))
     );
     acc.add_constraint(context, constraint_2_value);
+
+    //mem1_base.
+    let constraint_3_value = eval!(
+        context,
+        (mem1_base_col10)
+            - (((op1_base_fp_col7) * (input_fp_col3))
+                + ((decode_instruction_135e3_output_tmp_36a9d_7_op1_base_ap) * (input_ap_col2)))
+    );
+    acc.add_constraint(context, constraint_3_value);
 
     mem_verify_equal::accumulate_constraints(
         &[
             eval!(
                 context,
-                (mem_dst_base_col8) + (decode_instruction_135e3_output_tmp_36a9d_7_offset0)
+                (mem_dst_base_col9) + (decode_instruction_135e3_output_tmp_36a9d_7_offset0)
             ),
             eval!(
                 context,
-                (mem1_base_col9) + (decode_instruction_135e3_output_tmp_36a9d_7_offset2)
+                (mem1_base_col10) + (decode_instruction_135e3_output_tmp_36a9d_7_offset2)
             ),
-            eval!(context, dst_id_col10),
+            eval!(context, enabler_col0),
+            eval!(context, dst_id_col11),
         ],
         context,
         component_data,
         acc,
     );
 
-    //Enabler is a bit.
-    let constraint_4_value = eval!(context, ((enabler_col11) * (enabler_col11)) - (enabler_col11));
-    acc.add_constraint(context, constraint_4_value);
-
     // Use Opcodes.
     let tuple_5 = &[
         eval!(context, 428564188),
-        eval!(context, input_pc_col0),
-        eval!(context, input_ap_col1),
-        eval!(context, input_fp_col2),
+        eval!(context, input_pc_col1),
+        eval!(context, input_ap_col2),
+        eval!(context, input_fp_col3),
     ];
-    let numerator_5 = eval!(context, enabler_col11);
+    let numerator_5 = eval!(context, enabler_col0);
     acc.add_to_relation(context, numerator_5, tuple_5);
 
     // Yield Opcodes.
     let tuple_6 = &[
         eval!(context, 428564188),
-        eval!(context, (input_pc_col0) + (1)),
-        eval!(context, (input_ap_col1) + (ap_update_add_1_col7)),
-        eval!(context, input_fp_col2),
+        eval!(context, (input_pc_col1) + (1)),
+        eval!(context, (input_ap_col2) + (ap_update_add_1_col8)),
+        eval!(context, input_fp_col3),
     ];
-    let numerator_6 = eval!(context, -(enabler_col11));
+    let numerator_6 = eval!(context, -(enabler_col0));
     acc.add_to_relation(context, numerator_6, tuple_6);
 }
 

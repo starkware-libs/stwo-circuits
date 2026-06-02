@@ -294,6 +294,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, add_mod_builtin_segment_start),
             eval!(context, seq),
+            eval!(context, 1),
             eval!(context, is_instance_0_col0),
             eval!(context, p0_id_col1),
             eval!(context, p0_limb_0_col2),

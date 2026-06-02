@@ -110,6 +110,7 @@ pub fn accumulate_constraints<Value: IValue>(
         handle_opcodes_input_res_limb_25,
         handle_opcodes_input_res_limb_26,
         handle_opcodes_input_res_limb_27,
+        enabler,
         partial_limb_msb_col0,
         partial_limb_msb_col1,
     ] = input.try_into().unwrap();
@@ -380,6 +381,7 @@ pub fn accumulate_constraints<Value: IValue>(
             eval!(context, handle_opcodes_input_dst_limb_26),
             eval!(context, handle_opcodes_input_dst_limb_27),
             eval!(context, handle_opcodes_input_opcode_call),
+            eval!(context, enabler),
             eval!(context, partial_limb_msb_col0),
         ],
         context,
@@ -427,6 +429,7 @@ pub fn accumulate_constraints<Value: IValue>(
             eval!(context, handle_opcodes_input_op0_limb_26),
             eval!(context, handle_opcodes_input_op0_limb_27),
             eval!(context, handle_opcodes_input_opcode_call),
+            eval!(context, enabler),
             eval!(context, partial_limb_msb_col1),
         ],
         context,

@@ -67,6 +67,7 @@ pub fn accumulate_constraints<Value: IValue>(
         poseidon_partial_round_input_half_key_limb_7,
         poseidon_partial_round_input_half_key_limb_8,
         poseidon_partial_round_input_half_key_limb_9,
+        enabler,
         cube_252_output_limb_0_col0,
         cube_252_output_limb_1_col1,
         cube_252_output_limb_2_col2,
@@ -125,7 +126,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, cube_252_output_limb_8_col8),
         eval!(context, cube_252_output_limb_9_col9),
     ];
-    let numerator_0 = eval!(context, 1);
+    let numerator_0 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_0, tuple_0);
 
     linear_combination_n_6_coefs_4_2_3_1_m1_1::accumulate_constraints(
@@ -190,6 +191,7 @@ pub fn accumulate_constraints<Value: IValue>(
             eval!(context, poseidon_partial_round_input_half_key_limb_7),
             eval!(context, poseidon_partial_round_input_half_key_limb_8),
             eval!(context, poseidon_partial_round_input_half_key_limb_9),
+            eval!(context, enabler),
             eval!(context, combination_limb_0_col10),
             eval!(context, combination_limb_1_col11),
             eval!(context, combination_limb_2_col12),
@@ -221,7 +223,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, combination_limb_8_col18),
         eval!(context, combination_limb_9_col19),
     ];
-    let numerator_2 = eval!(context, 1);
+    let numerator_2 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_2, tuple_2);
 
     linear_combination_n_1_coefs_2::accumulate_constraints(
@@ -236,6 +238,7 @@ pub fn accumulate_constraints<Value: IValue>(
             eval!(context, combination_limb_7_col17),
             eval!(context, combination_limb_8_col18),
             eval!(context, combination_limb_9_col19),
+            eval!(context, enabler),
             eval!(context, combination_limb_0_col21),
             eval!(context, combination_limb_1_col22),
             eval!(context, combination_limb_2_col23),

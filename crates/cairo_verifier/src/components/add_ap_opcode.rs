@@ -22,34 +22,39 @@ pub fn accumulate_constraints<Value: IValue>(
     acc: &mut CompositionConstraintAccumulator,
 ) {
     let [
-        input_pc_col0,
-        input_ap_col1,
-        input_fp_col2,
-        offset2_col3,
-        op1_imm_col4,
-        op1_base_fp_col5,
-        mem1_base_col6,
-        op1_id_col7,
-        msb_col8,
-        mid_limbs_set_col9,
-        op1_limb_0_col10,
-        op1_limb_1_col11,
-        op1_limb_2_col12,
-        remainder_bits_col13,
-        partial_limb_msb_col14,
-        range_check_29_bot11bits_col15,
-        enabler_col16,
+        enabler_col0,
+        input_pc_col1,
+        input_ap_col2,
+        input_fp_col3,
+        offset2_col4,
+        op1_imm_col5,
+        op1_base_fp_col6,
+        mem1_base_col7,
+        op1_id_col8,
+        msb_col9,
+        mid_limbs_set_col10,
+        op1_limb_0_col11,
+        op1_limb_1_col12,
+        op1_limb_2_col13,
+        remainder_bits_col14,
+        partial_limb_msb_col15,
+        range_check_29_bot11bits_col16,
     ] = input.try_into().unwrap();
+
+    //Enabler is a bit.
+    let constraint_0_value = eval!(context, ((enabler_col0) * (enabler_col0)) - (enabler_col0));
+    acc.add_constraint(context, constraint_0_value);
 
     let [
         decode_instruction_89ffb_output_tmp_44683_6_offset2,
         decode_instruction_89ffb_output_tmp_44683_6_op1_base_ap,
     ] = decode_instruction_89ffb::accumulate_constraints(
         &[
-            eval!(context, input_pc_col0),
-            eval!(context, offset2_col3),
-            eval!(context, op1_imm_col4),
-            eval!(context, op1_base_fp_col5),
+            eval!(context, input_pc_col1),
+            eval!(context, enabler_col0),
+            eval!(context, offset2_col4),
+            eval!(context, op1_imm_col5),
+            eval!(context, op1_base_fp_col6),
         ],
         context,
         component_data,
@@ -59,35 +64,36 @@ pub fn accumulate_constraints<Value: IValue>(
     .unwrap();
 
     //if imm then offset2 is 1.
-    let constraint_1_value = eval!(
-        context,
-        (op1_imm_col4) * ((1) - (decode_instruction_89ffb_output_tmp_44683_6_offset2))
-    );
-    acc.add_constraint(context, constraint_1_value);
-
-    //mem1_base.
     let constraint_2_value = eval!(
         context,
-        (mem1_base_col6)
-            - ((((op1_imm_col4) * (input_pc_col0)) + ((op1_base_fp_col5) * (input_fp_col2)))
-                + ((decode_instruction_89ffb_output_tmp_44683_6_op1_base_ap) * (input_ap_col1)))
+        (op1_imm_col5) * ((1) - (decode_instruction_89ffb_output_tmp_44683_6_offset2))
     );
     acc.add_constraint(context, constraint_2_value);
+
+    //mem1_base.
+    let constraint_3_value = eval!(
+        context,
+        (mem1_base_col7)
+            - ((((op1_imm_col5) * (input_pc_col1)) + ((op1_base_fp_col6) * (input_fp_col3)))
+                + ((decode_instruction_89ffb_output_tmp_44683_6_op1_base_ap) * (input_ap_col2)))
+    );
+    acc.add_constraint(context, constraint_3_value);
 
     let [read_small_output_tmp_44683_16_limb_0] = read_small::accumulate_constraints(
         &[
             eval!(
                 context,
-                (mem1_base_col6) + (decode_instruction_89ffb_output_tmp_44683_6_offset2)
+                (mem1_base_col7) + (decode_instruction_89ffb_output_tmp_44683_6_offset2)
             ),
-            eval!(context, op1_id_col7),
-            eval!(context, msb_col8),
-            eval!(context, mid_limbs_set_col9),
-            eval!(context, op1_limb_0_col10),
-            eval!(context, op1_limb_1_col11),
-            eval!(context, op1_limb_2_col12),
-            eval!(context, remainder_bits_col13),
-            eval!(context, partial_limb_msb_col14),
+            eval!(context, enabler_col0),
+            eval!(context, op1_id_col8),
+            eval!(context, msb_col9),
+            eval!(context, mid_limbs_set_col10),
+            eval!(context, op1_limb_0_col11),
+            eval!(context, op1_limb_1_col12),
+            eval!(context, op1_limb_2_col13),
+            eval!(context, remainder_bits_col14),
+            eval!(context, partial_limb_msb_col15),
         ],
         context,
         component_data,
@@ -97,37 +103,37 @@ pub fn accumulate_constraints<Value: IValue>(
     .unwrap();
 
     let next_ap_tmp_44683_17 =
-        eval!(context, (input_ap_col1) + (read_small_output_tmp_44683_16_limb_0));
+        eval!(context, (input_ap_col2) + (read_small_output_tmp_44683_16_limb_0));
 
     range_check_29::accumulate_constraints(
-        &[eval!(context, next_ap_tmp_44683_17), eval!(context, range_check_29_bot11bits_col15)],
+        &[
+            eval!(context, next_ap_tmp_44683_17),
+            eval!(context, enabler_col0),
+            eval!(context, range_check_29_bot11bits_col16),
+        ],
         context,
         component_data,
         acc,
     );
 
-    //Enabler is a bit.
-    let constraint_6_value = eval!(context, ((enabler_col16) * (enabler_col16)) - (enabler_col16));
-    acc.add_constraint(context, constraint_6_value);
-
     // Use Opcodes.
     let tuple_7 = &[
         eval!(context, 428564188),
-        eval!(context, input_pc_col0),
-        eval!(context, input_ap_col1),
-        eval!(context, input_fp_col2),
+        eval!(context, input_pc_col1),
+        eval!(context, input_ap_col2),
+        eval!(context, input_fp_col3),
     ];
-    let numerator_7 = eval!(context, enabler_col16);
+    let numerator_7 = eval!(context, enabler_col0);
     acc.add_to_relation(context, numerator_7, tuple_7);
 
     // Yield Opcodes.
     let tuple_8 = &[
         eval!(context, 428564188),
-        eval!(context, (input_pc_col0) + ((1) + (op1_imm_col4))),
+        eval!(context, (input_pc_col1) + ((1) + (op1_imm_col5))),
         eval!(context, next_ap_tmp_44683_17),
-        eval!(context, input_fp_col2),
+        eval!(context, input_fp_col3),
     ];
-    let numerator_8 = eval!(context, -(enabler_col16));
+    let numerator_8 = eval!(context, -(enabler_col0));
     acc.add_to_relation(context, numerator_8, tuple_8);
 }
 

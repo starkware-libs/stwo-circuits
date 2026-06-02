@@ -20,6 +20,7 @@ pub fn accumulate_constraints<Value: IValue>(
         verify_triple_sum_32_input_limb_5,
         verify_triple_sum_32_input_limb_6,
         verify_triple_sum_32_input_limb_7,
+        enabler,
     ] = input.try_into().unwrap();
 
     let carry_low_tmp_a7b7a_0 = eval!(

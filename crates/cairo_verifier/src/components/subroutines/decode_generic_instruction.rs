@@ -14,6 +14,7 @@ pub fn accumulate_constraints<Value: IValue>(
 ) -> Vec<Var> {
     let [
         decode_generic_instruction_input,
+        enabler,
         offset0_col0,
         offset1_col1,
         offset2_col2,
@@ -41,6 +42,7 @@ pub fn accumulate_constraints<Value: IValue>(
     ] = decode_instruction_a1c8b::accumulate_constraints(
         &[
             eval!(context, decode_generic_instruction_input),
+            eval!(context, enabler),
             eval!(context, offset0_col0),
             eval!(context, offset1_col1),
             eval!(context, offset2_col2),

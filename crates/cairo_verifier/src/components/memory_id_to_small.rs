@@ -20,7 +20,7 @@ pub fn accumulate_constraints<Value: IValue>(
     acc: &mut CompositionConstraintAccumulator,
 ) {
     let [
-        memory_id_to_small_output_col0,
+        multiplicity_0_col0,
         memory_id_to_small_output_col1,
         memory_id_to_small_output_col2,
         memory_id_to_small_output_col3,
@@ -28,13 +28,12 @@ pub fn accumulate_constraints<Value: IValue>(
         memory_id_to_small_output_col5,
         memory_id_to_small_output_col6,
         memory_id_to_small_output_col7,
-        multiplicity_0_col8,
+        memory_id_to_small_output_col8,
     ] = input.try_into().unwrap();
     let seq = seq_of_component_size(context, component_data, &acc.preprocessed_columns);
 
     range_check_mem_value_n_8::accumulate_constraints(
         &[
-            eval!(context, memory_id_to_small_output_col0),
             eval!(context, memory_id_to_small_output_col1),
             eval!(context, memory_id_to_small_output_col2),
             eval!(context, memory_id_to_small_output_col3),
@@ -42,6 +41,8 @@ pub fn accumulate_constraints<Value: IValue>(
             eval!(context, memory_id_to_small_output_col5),
             eval!(context, memory_id_to_small_output_col6),
             eval!(context, memory_id_to_small_output_col7),
+            eval!(context, memory_id_to_small_output_col8),
+            eval!(context, 1),
         ],
         context,
         component_data,
@@ -52,7 +53,6 @@ pub fn accumulate_constraints<Value: IValue>(
     let tuple_1 = &[
         eval!(context, 1662111297),
         eval!(context, seq),
-        eval!(context, memory_id_to_small_output_col0),
         eval!(context, memory_id_to_small_output_col1),
         eval!(context, memory_id_to_small_output_col2),
         eval!(context, memory_id_to_small_output_col3),
@@ -60,8 +60,9 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, memory_id_to_small_output_col5),
         eval!(context, memory_id_to_small_output_col6),
         eval!(context, memory_id_to_small_output_col7),
+        eval!(context, memory_id_to_small_output_col8),
     ];
-    let numerator_1 = eval!(context, -(multiplicity_0_col8));
+    let numerator_1 = eval!(context, -(multiplicity_0_col0));
     acc.add_to_relation(context, numerator_1, tuple_1);
 }
 

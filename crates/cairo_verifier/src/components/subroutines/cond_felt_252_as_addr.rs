@@ -41,6 +41,7 @@ pub fn accumulate_constraints<Value: IValue>(
         cond_felt_252_as_addr_input_limb_26,
         cond_felt_252_as_addr_input_limb_27,
         cond_felt_252_as_addr_input_limb_28,
+        enabler,
         partial_limb_msb_col0,
     ] = input.try_into().unwrap();
 
@@ -79,6 +80,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, cond_felt_252_as_addr_input_limb_3),
             eval!(context, cond_felt_252_as_addr_input_limb_28),
+            eval!(context, enabler),
             eval!(context, partial_limb_msb_col0),
         ],
         context,
