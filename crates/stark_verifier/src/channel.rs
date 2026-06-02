@@ -75,6 +75,19 @@ impl Channel {
     }
 
     /// Draws two `QM31` random values from the channel.
+    ///
+    /// The two returned QM31 values are negligibly close to uniform: the per-bit bias from
+    /// a perfectly uniform draw is at most 2^{-31}, which is negligible for Fiat-Shamir
+    /// security.
+    ///
+    /// Detailed breakdown: each QM31 consists of 4 M31 limbs, each a 32-bit Blake word
+    /// reduced mod M31 (p = 2^31 - 1). Since 2^32 = 2*M31 + 2, values 0 and 1 each have
+    /// 3 preimages in the u32 range (probability 3/2^32 each) while every v in
+    /// {2, ..., M31-1} has exactly 2 preimages (probability 2/2^32). Propagating this
+    /// through the bit representation of the M31 value:
+    ///   bit 0:      P(= 1) = (2^31 - 1) / 2^32  (bias 2^{-32} from uniform)
+    ///   bit k >= 1: P(= 1) = (2^31 - 2) / 2^32  (bias 2^{-31} from uniform)
+    /// (bits k >= 1 are slightly more biased because values 0 and 1 both have bit k = 0)
     pub fn draw_two_qm31s(&mut self, context: &mut Context<impl IValue>) -> [Var; 2] {
         let n_draws_var =
             context.constant(qm31_from_u32s(self.n_draws.try_into().unwrap(), 0, 0, 0));
@@ -122,7 +135,12 @@ impl Channel {
         // Take the first word.
         let first_word = pointwise_mul(context, res0, context.one());
 
-        // Check that the n_bits least significant bits are zero.
+        // Check that the n_bits least significant bits are zero. The only deviation from a
+        // uniform draw is that M31 value 0 has one extra u32 preimage (2*M31 in addition to
+        // 0 and M31), making PoW easier by a relative factor of 1/2^(32-n_bits), i.e. a
+        // loss of 0.32 bits of security for n_bits=30 and much less for smaller values.
+        // Value 1 also has an extra preimage but is irrelevant here since 1 is never
+        // all-zero bits.
         let bits = extract_bits(context, &Simd::from_packed(vec![first_word], 1), MODULUS_BITS);
         for bit in &bits[0..n_bits.try_into().unwrap()] {
             eq(context, bit.get_packed()[0], context.zero());
