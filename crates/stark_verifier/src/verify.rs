@@ -348,8 +348,7 @@ fn check_relation_uses<Value: IValue>(
     // Make sure that if the difference is negative, it won't fit in positive_diff_bits bits. Use
     // the check that sum < field_negative_threshold from above.
     assert!(
-        P + shifted_max_allowed_use_counts - field_negative_threshold
-            > (1 << positive_diff_bits)
+        P + shifted_max_allowed_use_counts - field_negative_threshold > (1 << positive_diff_bits)
     );
 
     // Verify that the diff fits in positive_diff_bits bits.
