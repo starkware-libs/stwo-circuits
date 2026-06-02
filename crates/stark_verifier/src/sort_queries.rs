@@ -70,19 +70,16 @@ impl QuerySorter {
     /// Verifies that `sorted_keys` is sorted. The `key_bits <= 30` bound asserted in
     /// `new` ensures the range-check soundness argument below.
     fn verify_sorted_keys<Value: IValue>(&self, context: &mut Context<Value>, sorted_keys: &[Var]) {
-        let Some(mut prev) = sorted_keys.first() else {
-            // if there are no sorted keys, return.
+        if sorted_keys.is_empty() {
             return;
-        };
+        }
 
         let u_inverse = context.constant(qm31_from_u32s(0, 0, 1, 0).inverse());
         let diffs = sorted_keys
-            .iter()
-            .skip(1)
-            .map(|curr| {
-                let u_diff = eval!(context, (*curr) - (*prev));
-                prev = curr;
-
+            .windows(2)
+            .map(|pair| {
+                let [curr, next] = pair.try_into().unwrap();
+                let u_diff = eval!(context, (next) - (curr));
                 // extract diff from u * diff.
                 let diff = eval!(context, (u_diff) * (u_inverse));
                 M31Wrapper::new_unsafe(diff)
@@ -127,18 +124,15 @@ impl QuerySorter {
 
         let sorted = permute(context, &tagged_values, IValue::sort_by_u_coordinate);
 
-        let mut sorted_keys = Vec::with_capacity(sorted.len());
-        let sorted_values = sorted
+        let (sorted_keys, sorted_values): (Vec<_>, Vec<_>) = sorted
             .iter()
             .map(|var| {
                 let value = pointwise_mul(context, *var, context.one());
-
                 let u_key = eval!(context, (*var) - (value));
-                sorted_keys.push(u_key);
 
-                M31Wrapper::new_unsafe(value)
+                (u_key, M31Wrapper::new_unsafe(value))
             })
-            .collect_vec();
+            .unzip();
 
         if self.sorted_keys.is_empty() {
             // If this is the first sort, verify the sorted keys and store them for future
