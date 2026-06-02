@@ -303,6 +303,7 @@ pub fn accumulate_constraints<Value: IValue>(
     read_positive_num_bits_252::accumulate_constraints(
         &[
             eval!(context, instance_addr_tmp_1b73f_0),
+            eval!(context, 1),
             eval!(context, p_x_id_col0),
             eval!(context, p_x_limb_0_col1),
             eval!(context, p_x_limb_1_col2),
@@ -341,6 +342,7 @@ pub fn accumulate_constraints<Value: IValue>(
     read_positive_num_bits_252::accumulate_constraints(
         &[
             eval!(context, (instance_addr_tmp_1b73f_0) + (1)),
+            eval!(context, 1),
             eval!(context, p_y_id_col29),
             eval!(context, p_y_limb_0_col30),
             eval!(context, p_y_limb_1_col31),
@@ -379,6 +381,7 @@ pub fn accumulate_constraints<Value: IValue>(
     read_positive_num_bits_252::accumulate_constraints(
         &[
             eval!(context, (instance_addr_tmp_1b73f_0) + (2)),
+            eval!(context, 1),
             eval!(context, q_x_id_col58),
             eval!(context, q_x_limb_0_col59),
             eval!(context, q_x_limb_1_col60),
@@ -417,6 +420,7 @@ pub fn accumulate_constraints<Value: IValue>(
     read_positive_num_bits_252::accumulate_constraints(
         &[
             eval!(context, (instance_addr_tmp_1b73f_0) + (3)),
+            eval!(context, 1),
             eval!(context, q_y_id_col87),
             eval!(context, q_y_limb_0_col88),
             eval!(context, q_y_limb_1_col89),
@@ -455,6 +459,7 @@ pub fn accumulate_constraints<Value: IValue>(
     read_positive_num_bits_252::accumulate_constraints(
         &[
             eval!(context, (instance_addr_tmp_1b73f_0) + (4)),
+            eval!(context, 1),
             eval!(context, m_id_col116),
             eval!(context, m_limb_0_col117),
             eval!(context, m_limb_1_col118),
@@ -520,6 +525,7 @@ pub fn accumulate_constraints<Value: IValue>(
             eval!(context, m_limb_25_col142),
             eval!(context, m_limb_26_col143),
             eval!(context, m_limb_27_col144),
+            eval!(context, 1),
             eval!(context, ms_limb_is_max_col145),
             eval!(context, ms_and_mid_limbs_are_max_col146),
             eval!(context, rc_input_col147),
@@ -855,6 +861,7 @@ pub fn accumulate_constraints<Value: IValue>(
             eval!(context, partial_ec_mul_generic_output_accumulator_x_limb_25_col239),
             eval!(context, partial_ec_mul_generic_output_accumulator_x_limb_26_col240),
             eval!(context, partial_ec_mul_generic_output_accumulator_x_limb_27_col241),
+            eval!(context, 1),
             eval!(context, res_x_id_col271),
         ],
         context,
@@ -893,6 +900,7 @@ pub fn accumulate_constraints<Value: IValue>(
             eval!(context, partial_ec_mul_generic_output_accumulator_y_limb_25_col267),
             eval!(context, partial_ec_mul_generic_output_accumulator_y_limb_26_col268),
             eval!(context, partial_ec_mul_generic_output_accumulator_y_limb_27_col269),
+            eval!(context, 1),
             eval!(context, res_y_id_col272),
         ],
         context,

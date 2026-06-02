@@ -14,6 +14,7 @@ pub fn accumulate_constraints<Value: IValue>(
 ) -> Vec<Var> {
     let [
         decode_instruction_c67a5_input_pc,
+        enabler,
         offset0_col0,
         offset1_col1,
         offset2_col2,
@@ -75,7 +76,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, (((1) - (res_add_col7)) + ((ap_update_add_1_col8) * (32))) + (256)),
         eval!(context, 3),
     ];
-    let numerator_8 = eval!(context, 1);
+    let numerator_8 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_8, tuple_8);
     vec![
         eval!(context, (offset0_col0) - (32768)),

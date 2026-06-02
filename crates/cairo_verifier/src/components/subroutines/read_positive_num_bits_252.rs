@@ -16,6 +16,7 @@ pub fn accumulate_constraints<Value: IValue>(
 ) -> Vec<Var> {
     let [
         read_positive_num_bits_252_input,
+        enabler,
         id_col0,
         value_limb_0_col1,
         value_limb_1_col2,
@@ -48,7 +49,11 @@ pub fn accumulate_constraints<Value: IValue>(
     ] = input.try_into().unwrap();
 
     read_id::accumulate_constraints(
-        &[eval!(context, read_positive_num_bits_252_input), eval!(context, id_col0)],
+        &[
+            eval!(context, read_positive_num_bits_252_input),
+            eval!(context, enabler),
+            eval!(context, id_col0),
+        ],
         context,
         component_data,
         acc,
@@ -57,6 +62,7 @@ pub fn accumulate_constraints<Value: IValue>(
     read_positive_known_id_num_bits_252::accumulate_constraints(
         &[
             eval!(context, id_col0),
+            eval!(context, enabler),
             eval!(context, value_limb_0_col1),
             eval!(context, value_limb_1_col2),
             eval!(context, value_limb_2_col3),

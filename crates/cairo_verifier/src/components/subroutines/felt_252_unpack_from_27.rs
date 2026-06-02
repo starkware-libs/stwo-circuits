@@ -22,6 +22,7 @@ pub fn accumulate_constraints<Value: IValue>(
         felt_252_unpack_from_27_input_limb_7,
         felt_252_unpack_from_27_input_limb_8,
         felt_252_unpack_from_27_input_limb_9,
+        enabler,
         unpacked_limb_0_col0,
         unpacked_limb_1_col1,
         unpacked_limb_3_col2,

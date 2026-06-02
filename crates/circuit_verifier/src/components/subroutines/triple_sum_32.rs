@@ -18,6 +18,7 @@ pub fn accumulate_constraints<Value: IValue>(
         triple_sum_32_input_b_limb_1,
         triple_sum_32_input_c_limb_0,
         triple_sum_32_input_c_limb_1,
+        enabler,
         triple_sum32_res_limb_0_col0,
         triple_sum32_res_limb_1_col1,
     ] = input.try_into().unwrap();
@@ -32,6 +33,7 @@ pub fn accumulate_constraints<Value: IValue>(
             eval!(context, triple_sum_32_input_c_limb_1),
             eval!(context, triple_sum32_res_limb_0_col0),
             eval!(context, triple_sum32_res_limb_1_col1),
+            eval!(context, enabler),
         ],
         context,
         component_data,

@@ -20,34 +20,38 @@ pub fn accumulate_constraints<Value: IValue>(
     acc: &mut CompositionConstraintAccumulator,
 ) {
     let [
-        input_pc_col0,
-        input_ap_col1,
-        input_fp_col2,
-        stored_fp_id_col3,
-        stored_fp_limb_0_col4,
-        stored_fp_limb_1_col5,
-        stored_fp_limb_2_col6,
-        stored_fp_limb_3_col7,
-        partial_limb_msb_col8,
-        stored_ret_pc_id_col9,
-        stored_ret_pc_limb_0_col10,
-        stored_ret_pc_limb_1_col11,
-        stored_ret_pc_limb_2_col12,
-        stored_ret_pc_limb_3_col13,
-        partial_limb_msb_col14,
-        distance_to_next_pc_id_col15,
-        msb_col16,
-        mid_limbs_set_col17,
-        distance_to_next_pc_limb_0_col18,
-        distance_to_next_pc_limb_1_col19,
-        distance_to_next_pc_limb_2_col20,
-        remainder_bits_col21,
-        partial_limb_msb_col22,
-        enabler_col23,
+        enabler_col0,
+        input_pc_col1,
+        input_ap_col2,
+        input_fp_col3,
+        stored_fp_id_col4,
+        stored_fp_limb_0_col5,
+        stored_fp_limb_1_col6,
+        stored_fp_limb_2_col7,
+        stored_fp_limb_3_col8,
+        partial_limb_msb_col9,
+        stored_ret_pc_id_col10,
+        stored_ret_pc_limb_0_col11,
+        stored_ret_pc_limb_1_col12,
+        stored_ret_pc_limb_2_col13,
+        stored_ret_pc_limb_3_col14,
+        partial_limb_msb_col15,
+        distance_to_next_pc_id_col16,
+        msb_col17,
+        mid_limbs_set_col18,
+        distance_to_next_pc_limb_0_col19,
+        distance_to_next_pc_limb_1_col20,
+        distance_to_next_pc_limb_2_col21,
+        remainder_bits_col22,
+        partial_limb_msb_col23,
     ] = input.try_into().unwrap();
 
+    //Enabler is a bit.
+    let constraint_0_value = eval!(context, ((enabler_col0) * (enabler_col0)) - (enabler_col0));
+    acc.add_constraint(context, constraint_0_value);
+
     decode_instruction_e4e14::accumulate_constraints(
-        &[eval!(context, input_pc_col0)],
+        &[eval!(context, input_pc_col1), eval!(context, enabler_col0)],
         context,
         component_data,
         acc,
@@ -55,13 +59,14 @@ pub fn accumulate_constraints<Value: IValue>(
 
     read_positive_num_bits_29::accumulate_constraints(
         &[
-            eval!(context, input_ap_col1),
-            eval!(context, stored_fp_id_col3),
-            eval!(context, stored_fp_limb_0_col4),
-            eval!(context, stored_fp_limb_1_col5),
-            eval!(context, stored_fp_limb_2_col6),
-            eval!(context, stored_fp_limb_3_col7),
-            eval!(context, partial_limb_msb_col8),
+            eval!(context, input_ap_col2),
+            eval!(context, enabler_col0),
+            eval!(context, stored_fp_id_col4),
+            eval!(context, stored_fp_limb_0_col5),
+            eval!(context, stored_fp_limb_1_col6),
+            eval!(context, stored_fp_limb_2_col7),
+            eval!(context, stored_fp_limb_3_col8),
+            eval!(context, partial_limb_msb_col9),
         ],
         context,
         component_data,
@@ -69,24 +74,25 @@ pub fn accumulate_constraints<Value: IValue>(
     );
 
     //[ap] = fp.
-    let constraint_2_value = eval!(
+    let constraint_3_value = eval!(
         context,
-        ((((stored_fp_limb_0_col4) + ((stored_fp_limb_1_col5) * (512)))
-            + ((stored_fp_limb_2_col6) * (262144)))
-            + ((stored_fp_limb_3_col7) * (134217728)))
-            - (input_fp_col2)
+        ((((stored_fp_limb_0_col5) + ((stored_fp_limb_1_col6) * (512)))
+            + ((stored_fp_limb_2_col7) * (262144)))
+            + ((stored_fp_limb_3_col8) * (134217728)))
+            - (input_fp_col3)
     );
-    acc.add_constraint(context, constraint_2_value);
+    acc.add_constraint(context, constraint_3_value);
 
     read_positive_num_bits_29::accumulate_constraints(
         &[
-            eval!(context, (input_ap_col1) + (1)),
-            eval!(context, stored_ret_pc_id_col9),
-            eval!(context, stored_ret_pc_limb_0_col10),
-            eval!(context, stored_ret_pc_limb_1_col11),
-            eval!(context, stored_ret_pc_limb_2_col12),
-            eval!(context, stored_ret_pc_limb_3_col13),
-            eval!(context, partial_limb_msb_col14),
+            eval!(context, (input_ap_col2) + (1)),
+            eval!(context, enabler_col0),
+            eval!(context, stored_ret_pc_id_col10),
+            eval!(context, stored_ret_pc_limb_0_col11),
+            eval!(context, stored_ret_pc_limb_1_col12),
+            eval!(context, stored_ret_pc_limb_2_col13),
+            eval!(context, stored_ret_pc_limb_3_col14),
+            eval!(context, partial_limb_msb_col15),
         ],
         context,
         component_data,
@@ -94,26 +100,27 @@ pub fn accumulate_constraints<Value: IValue>(
     );
 
     //[ap+1] = return_pc.
-    let constraint_4_value = eval!(
+    let constraint_5_value = eval!(
         context,
-        ((((stored_ret_pc_limb_0_col10) + ((stored_ret_pc_limb_1_col11) * (512)))
-            + ((stored_ret_pc_limb_2_col12) * (262144)))
-            + ((stored_ret_pc_limb_3_col13) * (134217728)))
-            - ((input_pc_col0) + (2))
+        ((((stored_ret_pc_limb_0_col11) + ((stored_ret_pc_limb_1_col12) * (512)))
+            + ((stored_ret_pc_limb_2_col13) * (262144)))
+            + ((stored_ret_pc_limb_3_col14) * (134217728)))
+            - ((input_pc_col1) + (2))
     );
-    acc.add_constraint(context, constraint_4_value);
+    acc.add_constraint(context, constraint_5_value);
 
     let [read_small_output_tmp_82d62_26_limb_0] = read_small::accumulate_constraints(
         &[
-            eval!(context, (input_pc_col0) + (1)),
-            eval!(context, distance_to_next_pc_id_col15),
-            eval!(context, msb_col16),
-            eval!(context, mid_limbs_set_col17),
-            eval!(context, distance_to_next_pc_limb_0_col18),
-            eval!(context, distance_to_next_pc_limb_1_col19),
-            eval!(context, distance_to_next_pc_limb_2_col20),
-            eval!(context, remainder_bits_col21),
-            eval!(context, partial_limb_msb_col22),
+            eval!(context, (input_pc_col1) + (1)),
+            eval!(context, enabler_col0),
+            eval!(context, distance_to_next_pc_id_col16),
+            eval!(context, msb_col17),
+            eval!(context, mid_limbs_set_col18),
+            eval!(context, distance_to_next_pc_limb_0_col19),
+            eval!(context, distance_to_next_pc_limb_1_col20),
+            eval!(context, distance_to_next_pc_limb_2_col21),
+            eval!(context, remainder_bits_col22),
+            eval!(context, partial_limb_msb_col23),
         ],
         context,
         component_data,
@@ -122,28 +129,24 @@ pub fn accumulate_constraints<Value: IValue>(
     .try_into()
     .unwrap();
 
-    //Enabler is a bit.
-    let constraint_6_value = eval!(context, ((enabler_col23) * (enabler_col23)) - (enabler_col23));
-    acc.add_constraint(context, constraint_6_value);
-
     // Use Opcodes.
     let tuple_7 = &[
         eval!(context, 428564188),
-        eval!(context, input_pc_col0),
-        eval!(context, input_ap_col1),
-        eval!(context, input_fp_col2),
+        eval!(context, input_pc_col1),
+        eval!(context, input_ap_col2),
+        eval!(context, input_fp_col3),
     ];
-    let numerator_7 = eval!(context, enabler_col23);
+    let numerator_7 = eval!(context, enabler_col0);
     acc.add_to_relation(context, numerator_7, tuple_7);
 
     // Yield Opcodes.
     let tuple_8 = &[
         eval!(context, 428564188),
-        eval!(context, (input_pc_col0) + (read_small_output_tmp_82d62_26_limb_0)),
-        eval!(context, (input_ap_col1) + (2)),
-        eval!(context, (input_ap_col1) + (2)),
+        eval!(context, (input_pc_col1) + (read_small_output_tmp_82d62_26_limb_0)),
+        eval!(context, (input_ap_col2) + (2)),
+        eval!(context, (input_ap_col2) + (2)),
     ];
-    let numerator_8 = eval!(context, -(enabler_col23));
+    let numerator_8 = eval!(context, -(enabler_col0));
     acc.add_to_relation(context, numerator_8, tuple_8);
 }
 

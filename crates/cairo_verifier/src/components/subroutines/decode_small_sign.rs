@@ -11,7 +11,7 @@ pub fn accumulate_constraints<Value: IValue>(
     component_data: &dyn ComponentDataTrait<Value>,
     acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
-    let [msb_col0, mid_limbs_set_col1] = input.try_into().unwrap();
+    let [enabler, msb_col0, mid_limbs_set_col1] = input.try_into().unwrap();
 
     //msb is a bit.
     let constraint_0_value = eval!(context, (msb_col0) * ((msb_col0) - (1)));

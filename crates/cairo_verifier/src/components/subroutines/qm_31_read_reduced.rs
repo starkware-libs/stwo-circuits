@@ -17,6 +17,7 @@ pub fn accumulate_constraints<Value: IValue>(
 ) -> Vec<Var> {
     let [
         qm_31_read_reduced_input,
+        enabler,
         id_col0,
         value_limb_0_col1,
         value_limb_1_col2,
@@ -41,6 +42,7 @@ pub fn accumulate_constraints<Value: IValue>(
     read_positive_num_bits_144::accumulate_constraints(
         &[
             eval!(context, qm_31_read_reduced_input),
+            eval!(context, enabler),
             eval!(context, id_col0),
             eval!(context, value_limb_0_col1),
             eval!(context, value_limb_1_col2),
@@ -72,7 +74,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, value_limb_11_col12),
         eval!(context, value_limb_15_col16),
     ];
-    let numerator_1 = eval!(context, 1);
+    let numerator_1 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_1, tuple_1);
 
     //delta_ab doesn't equal 0.

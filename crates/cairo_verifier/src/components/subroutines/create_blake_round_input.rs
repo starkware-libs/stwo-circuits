@@ -21,6 +21,7 @@ pub fn accumulate_constraints<Value: IValue>(
         create_blake_round_input_input_limb_1,
         create_blake_round_input_input_limb_2,
         create_blake_round_input_input_limb_3,
+        enabler,
         low_16_bits_col0,
         high_16_bits_col1,
         low_7_ms_bits_col2,
@@ -80,6 +81,7 @@ pub fn accumulate_constraints<Value: IValue>(
     read_u_32::accumulate_constraints(
         &[
             eval!(context, create_blake_round_input_input_limb_0),
+            eval!(context, enabler),
             eval!(context, low_16_bits_col0),
             eval!(context, high_16_bits_col1),
             eval!(context, low_7_ms_bits_col2),
@@ -95,6 +97,7 @@ pub fn accumulate_constraints<Value: IValue>(
     read_u_32::accumulate_constraints(
         &[
             eval!(context, (create_blake_round_input_input_limb_0) + (1)),
+            eval!(context, enabler),
             eval!(context, low_16_bits_col6),
             eval!(context, high_16_bits_col7),
             eval!(context, low_7_ms_bits_col8),
@@ -110,6 +113,7 @@ pub fn accumulate_constraints<Value: IValue>(
     read_u_32::accumulate_constraints(
         &[
             eval!(context, (create_blake_round_input_input_limb_0) + (2)),
+            eval!(context, enabler),
             eval!(context, low_16_bits_col12),
             eval!(context, high_16_bits_col13),
             eval!(context, low_7_ms_bits_col14),
@@ -125,6 +129,7 @@ pub fn accumulate_constraints<Value: IValue>(
     read_u_32::accumulate_constraints(
         &[
             eval!(context, (create_blake_round_input_input_limb_0) + (3)),
+            eval!(context, enabler),
             eval!(context, low_16_bits_col18),
             eval!(context, high_16_bits_col19),
             eval!(context, low_7_ms_bits_col20),
@@ -140,6 +145,7 @@ pub fn accumulate_constraints<Value: IValue>(
     read_u_32::accumulate_constraints(
         &[
             eval!(context, (create_blake_round_input_input_limb_0) + (4)),
+            eval!(context, enabler),
             eval!(context, low_16_bits_col24),
             eval!(context, high_16_bits_col25),
             eval!(context, low_7_ms_bits_col26),
@@ -155,6 +161,7 @@ pub fn accumulate_constraints<Value: IValue>(
     read_u_32::accumulate_constraints(
         &[
             eval!(context, (create_blake_round_input_input_limb_0) + (5)),
+            eval!(context, enabler),
             eval!(context, low_16_bits_col30),
             eval!(context, high_16_bits_col31),
             eval!(context, low_7_ms_bits_col32),
@@ -170,6 +177,7 @@ pub fn accumulate_constraints<Value: IValue>(
     read_u_32::accumulate_constraints(
         &[
             eval!(context, (create_blake_round_input_input_limb_0) + (6)),
+            eval!(context, enabler),
             eval!(context, low_16_bits_col36),
             eval!(context, high_16_bits_col37),
             eval!(context, low_7_ms_bits_col38),
@@ -185,6 +193,7 @@ pub fn accumulate_constraints<Value: IValue>(
     read_u_32::accumulate_constraints(
         &[
             eval!(context, (create_blake_round_input_input_limb_0) + (7)),
+            eval!(context, enabler),
             eval!(context, low_16_bits_col42),
             eval!(context, high_16_bits_col43),
             eval!(context, low_7_ms_bits_col44),
@@ -201,6 +210,7 @@ pub fn accumulate_constraints<Value: IValue>(
         split_16_low_part_size_8::accumulate_constraints(
             &[
                 eval!(context, create_blake_round_input_input_limb_1),
+                eval!(context, enabler),
                 eval!(context, ms_8_bits_col48),
             ],
             context,
@@ -214,6 +224,7 @@ pub fn accumulate_constraints<Value: IValue>(
         split_16_low_part_size_8::accumulate_constraints(
             &[
                 eval!(context, create_blake_round_input_input_limb_2),
+                eval!(context, enabler),
                 eval!(context, ms_8_bits_col49),
             ],
             context,
@@ -227,6 +238,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, split_16_low_part_size_8_output_tmp_4204d_89_limb_0),
             eval!(context, 127),
+            eval!(context, enabler),
             eval!(context, xor_col50),
         ],
         context,
@@ -235,7 +247,12 @@ pub fn accumulate_constraints<Value: IValue>(
     );
 
     bitwise_xor_num_bits_8::accumulate_constraints(
-        &[eval!(context, ms_8_bits_col48), eval!(context, 82), eval!(context, xor_col51)],
+        &[
+            eval!(context, ms_8_bits_col48),
+            eval!(context, 82),
+            eval!(context, enabler),
+            eval!(context, xor_col51),
+        ],
         context,
         component_data,
         acc,
@@ -245,6 +262,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, split_16_low_part_size_8_output_tmp_4204d_91_limb_0),
             eval!(context, 14),
+            eval!(context, enabler),
             eval!(context, xor_col52),
         ],
         context,
@@ -253,7 +271,12 @@ pub fn accumulate_constraints<Value: IValue>(
     );
 
     bitwise_xor_num_bits_8::accumulate_constraints(
-        &[eval!(context, ms_8_bits_col49), eval!(context, 81), eval!(context, xor_col53)],
+        &[
+            eval!(context, ms_8_bits_col49),
+            eval!(context, 81),
+            eval!(context, enabler),
+            eval!(context, xor_col53),
+        ],
         context,
         component_data,
         acc,

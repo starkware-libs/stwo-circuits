@@ -43,6 +43,7 @@ pub fn accumulate_constraints<Value: IValue>(
     read_positive_num_bits_128::accumulate_constraints(
         &[
             eval!(context, (range_check_builtin_segment_start) + (seq)),
+            eval!(context, 1),
             eval!(context, value_id_col0),
             eval!(context, value_limb_0_col1),
             eval!(context, value_limb_1_col2),

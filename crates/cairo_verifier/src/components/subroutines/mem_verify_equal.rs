@@ -12,11 +12,15 @@ pub fn accumulate_constraints<Value: IValue>(
     component_data: &dyn ComponentDataTrait<Value>,
     acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
-    let [mem_verify_equal_input_address1, mem_verify_equal_input_address2, id_col0] =
+    let [mem_verify_equal_input_address1, mem_verify_equal_input_address2, enabler, id_col0] =
         input.try_into().unwrap();
 
     read_id::accumulate_constraints(
-        &[eval!(context, mem_verify_equal_input_address1), eval!(context, id_col0)],
+        &[
+            eval!(context, mem_verify_equal_input_address1),
+            eval!(context, enabler),
+            eval!(context, id_col0),
+        ],
         context,
         component_data,
         acc,
@@ -28,7 +32,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, mem_verify_equal_input_address2),
         eval!(context, id_col0),
     ];
-    let numerator_1 = eval!(context, 1);
+    let numerator_1 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_1, tuple_1);
     vec![]
 }
