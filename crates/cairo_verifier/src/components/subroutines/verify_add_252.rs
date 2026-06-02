@@ -96,6 +96,7 @@ pub fn accumulate_constraints<Value: IValue>(
         verify_add_252_input_c_limb_25,
         verify_add_252_input_c_limb_26,
         verify_add_252_input_c_limb_27,
+        enabler,
         sub_p_bit_col0,
     ] = input.try_into().unwrap();
 

@@ -41,6 +41,7 @@ pub fn accumulate_constraints<Value: IValue>(
         cond_felt_252_as_rel_imm_input_limb_26,
         cond_felt_252_as_rel_imm_input_limb_27,
         cond_felt_252_as_rel_imm_input_limb_28,
+        enabler,
         msb_col0,
         mid_limbs_set_col1,
         partial_limb_msb_col2,
@@ -52,7 +53,7 @@ pub fn accumulate_constraints<Value: IValue>(
         decode_small_sign_output_tmp_37f57_2_limb21,
         decode_small_sign_output_tmp_37f57_2_limb27,
     ] = decode_small_sign::accumulate_constraints(
-        &[eval!(context, msb_col0), eval!(context, mid_limbs_set_col1)],
+        &[eval!(context, enabler), eval!(context, msb_col0), eval!(context, mid_limbs_set_col1)],
         context,
         component_data,
         acc,
@@ -70,6 +71,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, remainder_bits_tmp_37f57_3),
             eval!(context, cond_felt_252_as_rel_imm_input_limb_28),
+            eval!(context, enabler),
             eval!(context, partial_limb_msb_col2),
         ],
         context,

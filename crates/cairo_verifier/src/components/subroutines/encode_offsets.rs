@@ -18,6 +18,7 @@ pub fn accumulate_constraints<Value: IValue>(
         encode_offsets_input_offset0,
         encode_offsets_input_offset1,
         encode_offsets_input_offset2,
+        enabler,
         offset0_low_col0,
         offset0_mid_col1,
         offset1_low_col2,
@@ -58,7 +59,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, offset1_low_col2),
         eval!(context, offset1_high_col4),
     ];
-    let numerator_3 = eval!(context, 1);
+    let numerator_3 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_3, tuple_3);
 
     // Use RangeCheck_4_3.
@@ -67,7 +68,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, offset2_low_col5),
         eval!(context, offset2_high_col7),
     ];
-    let numerator_4 = eval!(context, 1);
+    let numerator_4 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_4, tuple_4);
     vec![
         eval!(context, (offset0_mid_col1) + ((offset1_low_col2) * (128))),

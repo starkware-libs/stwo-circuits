@@ -14,6 +14,7 @@ impl Split16LowPartSize9 {
     #[allow(clippy::too_many_arguments)]
     pub fn evaluate<E: EvalAtRow>(
         [split_16_low_part_size_9_input]: [E::F; 1],
+        enabler: E::F,
         ms_7_bits_col0: E::F,
         common_lookup_elements: &relations::CommonLookupElements,
         eval: &mut E,

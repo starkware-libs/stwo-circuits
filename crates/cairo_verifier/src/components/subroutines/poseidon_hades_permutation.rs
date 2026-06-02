@@ -50,6 +50,7 @@ pub fn accumulate_constraints<Value: IValue>(
         poseidon_hades_permutation_input_limb_27,
         poseidon_hades_permutation_input_limb_28,
         poseidon_hades_permutation_input_limb_29,
+        enabler,
         combination_limb_0_col0,
         combination_limb_1_col1,
         combination_limb_2_col2,
@@ -272,6 +273,7 @@ pub fn accumulate_constraints<Value: IValue>(
             eval!(context, 44781849),
             eval!(context, 102193642),
             eval!(context, 208),
+            eval!(context, enabler),
             eval!(context, combination_limb_0_col0),
             eval!(context, combination_limb_1_col1),
             eval!(context, combination_limb_2_col2),
@@ -311,6 +313,7 @@ pub fn accumulate_constraints<Value: IValue>(
             eval!(context, 48945103),
             eval!(context, 41320857),
             eval!(context, 112),
+            eval!(context, enabler),
             eval!(context, combination_limb_0_col11),
             eval!(context, combination_limb_1_col12),
             eval!(context, combination_limb_2_col13),
@@ -350,6 +353,7 @@ pub fn accumulate_constraints<Value: IValue>(
             eval!(context, 90842759),
             eval!(context, 60124463),
             eval!(context, 116),
+            eval!(context, enabler),
             eval!(context, combination_limb_0_col22),
             eval!(context, combination_limb_1_col23),
             eval!(context, combination_limb_2_col24),
@@ -405,7 +409,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, combination_limb_8_col30),
         eval!(context, combination_limb_9_col31),
     ];
-    let numerator_4 = eval!(context, -(1));
+    let numerator_4 = eval!(context, -(enabler));
     acc.add_to_relation(context, numerator_4, tuple_4);
 
     // Use PoseidonFullRoundChain.
@@ -444,7 +448,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, poseidon_full_round_chain_output_limb_28_col61),
         eval!(context, poseidon_full_round_chain_output_limb_29_col62),
     ];
-    let numerator_5 = eval!(context, 1);
+    let numerator_5 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_5, tuple_5);
 
     // Use RangeCheck252Width27.
@@ -461,7 +465,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, poseidon_full_round_chain_output_limb_8_col41),
         eval!(context, poseidon_full_round_chain_output_limb_9_col42),
     ];
-    let numerator_6 = eval!(context, 1);
+    let numerator_6 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_6, tuple_6);
 
     // Use RangeCheck252Width27.
@@ -478,7 +482,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, poseidon_full_round_chain_output_limb_18_col51),
         eval!(context, poseidon_full_round_chain_output_limb_19_col52),
     ];
-    let numerator_7 = eval!(context, 1);
+    let numerator_7 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_7, tuple_7);
 
     // Use Cube252.
@@ -505,7 +509,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, cube_252_output_limb_8_col71),
         eval!(context, cube_252_output_limb_9_col72),
     ];
-    let numerator_8 = eval!(context, 1);
+    let numerator_8 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_8, tuple_8);
 
     linear_combination_n_4_coefs_1_1_m2_1::accumulate_constraints(
@@ -550,6 +554,7 @@ pub fn accumulate_constraints<Value: IValue>(
             eval!(context, 45351266),
             eval!(context, 122233508),
             eval!(context, 248),
+            eval!(context, enabler),
             eval!(context, combination_limb_0_col73),
             eval!(context, combination_limb_1_col74),
             eval!(context, combination_limb_2_col75),
@@ -591,7 +596,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, cube_252_output_limb_8_col92),
         eval!(context, cube_252_output_limb_9_col93),
     ];
-    let numerator_10 = eval!(context, 1);
+    let numerator_10 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_10, tuple_10);
 
     linear_combination_n_4_coefs_4_2_m2_1::accumulate_constraints(
@@ -636,6 +641,7 @@ pub fn accumulate_constraints<Value: IValue>(
             eval!(context, 50468641),
             eval!(context, 86573645),
             eval!(context, 154),
+            eval!(context, enabler),
             eval!(context, combination_limb_0_col94),
             eval!(context, combination_limb_1_col95),
             eval!(context, combination_limb_2_col96),
@@ -699,7 +705,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, combination_limb_8_col102),
         eval!(context, combination_limb_9_col103),
     ];
-    let numerator_12 = eval!(context, -(1));
+    let numerator_12 = eval!(context, -(enabler));
     acc.add_to_relation(context, numerator_12, tuple_12);
 
     // Use Poseidon3PartialRoundsChain.
@@ -748,7 +754,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, poseidon_3_partial_rounds_chain_output_limb_38_col143),
         eval!(context, poseidon_3_partial_rounds_chain_output_limb_39_col144),
     ];
-    let numerator_13 = eval!(context, 1);
+    let numerator_13 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_13, tuple_13);
 
     linear_combination_n_4_coefs_4_2_1_1::accumulate_constraints(
@@ -793,6 +799,7 @@ pub fn accumulate_constraints<Value: IValue>(
             eval!(context, 77099918),
             eval!(context, 22899501),
             eval!(context, 99),
+            eval!(context, enabler),
             eval!(context, combination_limb_0_col145),
             eval!(context, combination_limb_1_col146),
             eval!(context, combination_limb_2_col147),
@@ -852,6 +859,7 @@ pub fn accumulate_constraints<Value: IValue>(
             eval!(context, 58475513),
             eval!(context, 18765944),
             eval!(context, 20),
+            eval!(context, enabler),
             eval!(context, combination_limb_0_col156),
             eval!(context, combination_limb_1_col157),
             eval!(context, combination_limb_2_col158),
@@ -908,7 +916,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, poseidon_3_partial_rounds_chain_output_limb_38_col143),
         eval!(context, poseidon_3_partial_rounds_chain_output_limb_39_col144),
     ];
-    let numerator_17 = eval!(context, -(1));
+    let numerator_17 = eval!(context, -(enabler));
     acc.add_to_relation(context, numerator_17, tuple_17);
 
     // Use PoseidonFullRoundChain.
@@ -947,7 +955,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, poseidon_full_round_chain_output_limb_28_col195),
         eval!(context, poseidon_full_round_chain_output_limb_29_col196),
     ];
-    let numerator_18 = eval!(context, 1);
+    let numerator_18 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_18, tuple_18);
     vec![]
 }

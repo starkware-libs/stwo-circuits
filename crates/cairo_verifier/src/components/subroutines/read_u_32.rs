@@ -17,6 +17,7 @@ pub fn accumulate_constraints<Value: IValue>(
 ) -> Vec<Var> {
     let [
         read_u_32_input,
+        enabler,
         low_16_bits_col0,
         high_16_bits_col1,
         low_7_ms_bits_col2,
@@ -30,6 +31,7 @@ pub fn accumulate_constraints<Value: IValue>(
             eval!(context, read_u_32_input),
             eval!(context, low_16_bits_col0),
             eval!(context, high_16_bits_col1),
+            eval!(context, enabler),
             eval!(context, low_7_ms_bits_col2),
             eval!(context, high_14_ms_bits_col3),
             eval!(context, high_5_ms_bits_col4),

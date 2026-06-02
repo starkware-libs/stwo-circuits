@@ -25,6 +25,7 @@ pub fn accumulate_constraints<Value: IValue>(
         range_check_mem_value_n_8_input_limb_5,
         range_check_mem_value_n_8_input_limb_6,
         range_check_mem_value_n_8_input_limb_7,
+        enabler,
     ] = input.try_into().unwrap();
 
     // Use RangeCheck_9_9.
@@ -33,7 +34,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, range_check_mem_value_n_8_input_limb_0),
         eval!(context, range_check_mem_value_n_8_input_limb_1),
     ];
-    let numerator_0 = eval!(context, 1);
+    let numerator_0 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_0, tuple_0);
 
     // Use RangeCheck_9_9_B.
@@ -42,7 +43,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, range_check_mem_value_n_8_input_limb_2),
         eval!(context, range_check_mem_value_n_8_input_limb_3),
     ];
-    let numerator_1 = eval!(context, 1);
+    let numerator_1 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_1, tuple_1);
 
     // Use RangeCheck_9_9_C.
@@ -51,7 +52,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, range_check_mem_value_n_8_input_limb_4),
         eval!(context, range_check_mem_value_n_8_input_limb_5),
     ];
-    let numerator_2 = eval!(context, 1);
+    let numerator_2 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_2, tuple_2);
 
     // Use RangeCheck_9_9_D.
@@ -60,7 +61,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, range_check_mem_value_n_8_input_limb_6),
         eval!(context, range_check_mem_value_n_8_input_limb_7),
     ];
-    let numerator_3 = eval!(context, 1);
+    let numerator_3 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_3, tuple_3);
     vec![]
 }

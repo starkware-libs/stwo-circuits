@@ -90,6 +90,7 @@ impl FrameworkEval for Eval {
         #[allow(unused_variables)]
         let [split_16_low_part_size_8_output_tmp_4ec2c_1_limb_0] = Split16LowPartSize8::evaluate(
             [input_a_limb_0_col0.clone()],
+            M31_1.clone(),
             ms_8_bits_col8.clone(),
             &self.common_lookup_elements,
             &mut eval,
@@ -98,6 +99,7 @@ impl FrameworkEval for Eval {
         #[allow(unused_variables)]
         let [split_16_low_part_size_8_output_tmp_4ec2c_3_limb_0] = Split16LowPartSize8::evaluate(
             [input_a_limb_1_col1.clone()],
+            M31_1.clone(),
             ms_8_bits_col9.clone(),
             &self.common_lookup_elements,
             &mut eval,
@@ -106,6 +108,7 @@ impl FrameworkEval for Eval {
         #[allow(unused_variables)]
         let [split_16_low_part_size_8_output_tmp_4ec2c_5_limb_0] = Split16LowPartSize8::evaluate(
             [input_b_limb_0_col2.clone()],
+            M31_1.clone(),
             ms_8_bits_col10.clone(),
             &self.common_lookup_elements,
             &mut eval,
@@ -114,6 +117,7 @@ impl FrameworkEval for Eval {
         #[allow(unused_variables)]
         let [split_16_low_part_size_8_output_tmp_4ec2c_7_limb_0] = Split16LowPartSize8::evaluate(
             [input_b_limb_1_col3.clone()],
+            M31_1.clone(),
             ms_8_bits_col11.clone(),
             &self.common_lookup_elements,
             &mut eval,
@@ -122,6 +126,7 @@ impl FrameworkEval for Eval {
         #[allow(unused_variables)]
         let [split_16_low_part_size_8_output_tmp_4ec2c_9_limb_0] = Split16LowPartSize8::evaluate(
             [input_c_limb_0_col4.clone()],
+            M31_1.clone(),
             ms_8_bits_col12.clone(),
             &self.common_lookup_elements,
             &mut eval,
@@ -130,6 +135,7 @@ impl FrameworkEval for Eval {
         #[allow(unused_variables)]
         let [split_16_low_part_size_8_output_tmp_4ec2c_11_limb_0] = Split16LowPartSize8::evaluate(
             [input_c_limb_1_col5.clone()],
+            M31_1.clone(),
             ms_8_bits_col13.clone(),
             &self.common_lookup_elements,
             &mut eval,
@@ -138,6 +144,7 @@ impl FrameworkEval for Eval {
         #[allow(unused_variables)]
         let [split_16_low_part_size_8_output_tmp_4ec2c_13_limb_0] = Split16LowPartSize8::evaluate(
             [input_a_xor_b_xor_c_limb_0_col6.clone()],
+            M31_1.clone(),
             ms_8_bits_col14.clone(),
             &self.common_lookup_elements,
             &mut eval,
@@ -146,6 +153,7 @@ impl FrameworkEval for Eval {
         #[allow(unused_variables)]
         let [split_16_low_part_size_8_output_tmp_4ec2c_15_limb_0] = Split16LowPartSize8::evaluate(
             [input_a_xor_b_xor_c_limb_1_col7.clone()],
+            M31_1.clone(),
             ms_8_bits_col15.clone(),
             &self.common_lookup_elements,
             &mut eval,
@@ -155,12 +163,14 @@ impl FrameworkEval for Eval {
                 split_16_low_part_size_8_output_tmp_4ec2c_1_limb_0.clone(),
                 split_16_low_part_size_8_output_tmp_4ec2c_5_limb_0.clone(),
             ],
+            M31_1.clone(),
             xor_col16.clone(),
             &self.common_lookup_elements,
             &mut eval,
         );
         BitwiseXorNumBits8::evaluate(
             [ms_8_bits_col8.clone(), ms_8_bits_col10.clone()],
+            M31_1.clone(),
             xor_col17.clone(),
             &self.common_lookup_elements,
             &mut eval,
@@ -170,12 +180,14 @@ impl FrameworkEval for Eval {
                 split_16_low_part_size_8_output_tmp_4ec2c_3_limb_0.clone(),
                 split_16_low_part_size_8_output_tmp_4ec2c_7_limb_0.clone(),
             ],
+            M31_1.clone(),
             xor_col18.clone(),
             &self.common_lookup_elements,
             &mut eval,
         );
         BitwiseXorNumBits8::evaluate(
             [ms_8_bits_col9.clone(), ms_8_bits_col11.clone()],
+            M31_1.clone(),
             xor_col19.clone(),
             &self.common_lookup_elements,
             &mut eval,

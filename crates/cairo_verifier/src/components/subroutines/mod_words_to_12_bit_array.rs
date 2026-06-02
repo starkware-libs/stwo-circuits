@@ -35,6 +35,7 @@ pub fn accumulate_constraints<Value: IValue>(
         mod_words_to_12_bit_array_input_limb_36,
         mod_words_to_12_bit_array_input_limb_37,
         mod_words_to_12_bit_array_input_limb_38,
+        enabler,
         limb1b_0_col0,
         limb2b_0_col1,
         limb5b_0_col2,
@@ -61,7 +62,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, limb2a_0_tmp_2aff4_3),
         eval!(context, limb2b_0_col1),
     ];
-    let numerator_2 = eval!(context, 1);
+    let numerator_2 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_2, tuple_2);
 
     let limb5a_0_tmp_2aff4_5 =
@@ -78,7 +79,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, limb6a_0_tmp_2aff4_7),
         eval!(context, limb6b_0_col3),
     ];
-    let numerator_5 = eval!(context, 1);
+    let numerator_5 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_5, tuple_5);
 
     let limb9a_0_tmp_2aff4_9 =
@@ -98,7 +99,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, limb2a_1_tmp_2aff4_13),
         eval!(context, limb2b_1_col6),
     ];
-    let numerator_9 = eval!(context, 1);
+    let numerator_9 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_9, tuple_9);
 
     let limb5a_1_tmp_2aff4_15 =
@@ -115,7 +116,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, limb6a_1_tmp_2aff4_17),
         eval!(context, limb6b_1_col8),
     ];
-    let numerator_12 = eval!(context, 1);
+    let numerator_12 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_12, tuple_12);
 
     let limb9a_1_tmp_2aff4_19 =
@@ -129,7 +130,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, limb9b_1_col9),
         eval!(context, limb9a_1_tmp_2aff4_19),
     ];
-    let numerator_14 = eval!(context, 1);
+    let numerator_14 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_14, tuple_14);
     vec![
         eval!(context, (mod_words_to_12_bit_array_input_limb_0) + ((512) * (limb1a_0_tmp_2aff4_1))),

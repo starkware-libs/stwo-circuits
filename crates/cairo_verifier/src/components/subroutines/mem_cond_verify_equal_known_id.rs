@@ -16,11 +16,16 @@ pub fn accumulate_constraints<Value: IValue>(
         mem_cond_verify_equal_known_id_input_limb_0,
         mem_cond_verify_equal_known_id_input_limb_1,
         mem_cond_verify_equal_known_id_input_limb_2,
+        enabler,
         id_col0,
     ] = input.try_into().unwrap();
 
     read_id::accumulate_constraints(
-        &[eval!(context, mem_cond_verify_equal_known_id_input_limb_0), eval!(context, id_col0)],
+        &[
+            eval!(context, mem_cond_verify_equal_known_id_input_limb_0),
+            eval!(context, enabler),
+            eval!(context, id_col0),
+        ],
         context,
         component_data,
         acc,

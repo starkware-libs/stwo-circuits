@@ -18,19 +18,19 @@ pub fn accumulate_constraints<Value: IValue>(
     acc: &mut CompositionConstraintAccumulator,
 ) {
     let [
-        input_limb_0_col0,
-        input_limb_1_col1,
-        input_limb_2_col2,
-        input_limb_3_col3,
-        input_limb_4_col4,
-        input_limb_5_col5,
-        ms_8_bits_col6,
+        enabler_col0,
+        input_limb_0_col1,
+        input_limb_1_col2,
+        input_limb_2_col3,
+        input_limb_3_col4,
+        input_limb_4_col5,
+        input_limb_5_col6,
         ms_8_bits_col7,
         ms_8_bits_col8,
         ms_8_bits_col9,
         ms_8_bits_col10,
         ms_8_bits_col11,
-        xor_col12,
+        ms_8_bits_col12,
         xor_col13,
         xor_col14,
         xor_col15,
@@ -38,12 +38,20 @@ pub fn accumulate_constraints<Value: IValue>(
         xor_col17,
         xor_col18,
         xor_col19,
-        enabler_col20,
+        xor_col20,
     ] = input.try_into().unwrap();
+
+    //Enabler is a bit.
+    let constraint_0_value = eval!(context, ((enabler_col0) * (enabler_col0)) - (enabler_col0));
+    acc.add_constraint(context, constraint_0_value);
 
     let [split_16_low_part_size_8_output_tmp_6e2d1_1_limb_0] =
         split_16_low_part_size_8::accumulate_constraints(
-            &[eval!(context, input_limb_0_col0), eval!(context, ms_8_bits_col6)],
+            &[
+                eval!(context, input_limb_0_col1),
+                eval!(context, enabler_col0),
+                eval!(context, ms_8_bits_col7),
+            ],
             context,
             component_data,
             acc,
@@ -53,7 +61,11 @@ pub fn accumulate_constraints<Value: IValue>(
 
     let [split_16_low_part_size_8_output_tmp_6e2d1_3_limb_0] =
         split_16_low_part_size_8::accumulate_constraints(
-            &[eval!(context, input_limb_1_col1), eval!(context, ms_8_bits_col7)],
+            &[
+                eval!(context, input_limb_1_col2),
+                eval!(context, enabler_col0),
+                eval!(context, ms_8_bits_col8),
+            ],
             context,
             component_data,
             acc,
@@ -63,7 +75,11 @@ pub fn accumulate_constraints<Value: IValue>(
 
     let [split_16_low_part_size_8_output_tmp_6e2d1_5_limb_0] =
         split_16_low_part_size_8::accumulate_constraints(
-            &[eval!(context, input_limb_2_col2), eval!(context, ms_8_bits_col8)],
+            &[
+                eval!(context, input_limb_2_col3),
+                eval!(context, enabler_col0),
+                eval!(context, ms_8_bits_col9),
+            ],
             context,
             component_data,
             acc,
@@ -73,7 +89,11 @@ pub fn accumulate_constraints<Value: IValue>(
 
     let [split_16_low_part_size_8_output_tmp_6e2d1_7_limb_0] =
         split_16_low_part_size_8::accumulate_constraints(
-            &[eval!(context, input_limb_3_col3), eval!(context, ms_8_bits_col9)],
+            &[
+                eval!(context, input_limb_3_col4),
+                eval!(context, enabler_col0),
+                eval!(context, ms_8_bits_col10),
+            ],
             context,
             component_data,
             acc,
@@ -83,7 +103,11 @@ pub fn accumulate_constraints<Value: IValue>(
 
     let [split_16_low_part_size_8_output_tmp_6e2d1_9_limb_0] =
         split_16_low_part_size_8::accumulate_constraints(
-            &[eval!(context, input_limb_4_col4), eval!(context, ms_8_bits_col10)],
+            &[
+                eval!(context, input_limb_4_col5),
+                eval!(context, enabler_col0),
+                eval!(context, ms_8_bits_col11),
+            ],
             context,
             component_data,
             acc,
@@ -93,7 +117,11 @@ pub fn accumulate_constraints<Value: IValue>(
 
     let [split_16_low_part_size_8_output_tmp_6e2d1_11_limb_0] =
         split_16_low_part_size_8::accumulate_constraints(
-            &[eval!(context, input_limb_5_col5), eval!(context, ms_8_bits_col11)],
+            &[
+                eval!(context, input_limb_5_col6),
+                eval!(context, enabler_col0),
+                eval!(context, ms_8_bits_col12),
+            ],
             context,
             component_data,
             acc,
@@ -105,17 +133,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, split_16_low_part_size_8_output_tmp_6e2d1_1_limb_0),
             eval!(context, split_16_low_part_size_8_output_tmp_6e2d1_5_limb_0),
-            eval!(context, xor_col12),
-        ],
-        context,
-        component_data,
-        acc,
-    );
-
-    bitwise_xor_num_bits_8::accumulate_constraints(
-        &[
-            eval!(context, xor_col12),
-            eval!(context, split_16_low_part_size_8_output_tmp_6e2d1_9_limb_0),
+            eval!(context, enabler_col0),
             eval!(context, xor_col13),
         ],
         context,
@@ -125,8 +143,9 @@ pub fn accumulate_constraints<Value: IValue>(
 
     bitwise_xor_num_bits_8::accumulate_constraints(
         &[
-            eval!(context, ms_8_bits_col6),
-            eval!(context, ms_8_bits_col8),
+            eval!(context, xor_col13),
+            eval!(context, split_16_low_part_size_8_output_tmp_6e2d1_9_limb_0),
+            eval!(context, enabler_col0),
             eval!(context, xor_col14),
         ],
         context,
@@ -135,7 +154,24 @@ pub fn accumulate_constraints<Value: IValue>(
     );
 
     bitwise_xor_num_bits_8::accumulate_constraints(
-        &[eval!(context, xor_col14), eval!(context, ms_8_bits_col10), eval!(context, xor_col15)],
+        &[
+            eval!(context, ms_8_bits_col7),
+            eval!(context, ms_8_bits_col9),
+            eval!(context, enabler_col0),
+            eval!(context, xor_col15),
+        ],
+        context,
+        component_data,
+        acc,
+    );
+
+    bitwise_xor_num_bits_8::accumulate_constraints(
+        &[
+            eval!(context, xor_col15),
+            eval!(context, ms_8_bits_col11),
+            eval!(context, enabler_col0),
+            eval!(context, xor_col16),
+        ],
         context,
         component_data,
         acc,
@@ -145,17 +181,7 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(context, split_16_low_part_size_8_output_tmp_6e2d1_3_limb_0),
             eval!(context, split_16_low_part_size_8_output_tmp_6e2d1_7_limb_0),
-            eval!(context, xor_col16),
-        ],
-        context,
-        component_data,
-        acc,
-    );
-
-    bitwise_xor_num_bits_8_b::accumulate_constraints(
-        &[
-            eval!(context, xor_col16),
-            eval!(context, split_16_low_part_size_8_output_tmp_6e2d1_11_limb_0),
+            eval!(context, enabler_col0),
             eval!(context, xor_col17),
         ],
         context,
@@ -165,8 +191,9 @@ pub fn accumulate_constraints<Value: IValue>(
 
     bitwise_xor_num_bits_8_b::accumulate_constraints(
         &[
-            eval!(context, ms_8_bits_col7),
-            eval!(context, ms_8_bits_col9),
+            eval!(context, xor_col17),
+            eval!(context, split_16_low_part_size_8_output_tmp_6e2d1_11_limb_0),
+            eval!(context, enabler_col0),
             eval!(context, xor_col18),
         ],
         context,
@@ -175,35 +202,48 @@ pub fn accumulate_constraints<Value: IValue>(
     );
 
     bitwise_xor_num_bits_8_b::accumulate_constraints(
-        &[eval!(context, xor_col18), eval!(context, ms_8_bits_col11), eval!(context, xor_col19)],
+        &[
+            eval!(context, ms_8_bits_col8),
+            eval!(context, ms_8_bits_col10),
+            eval!(context, enabler_col0),
+            eval!(context, xor_col19),
+        ],
+        context,
+        component_data,
+        acc,
+    );
+
+    bitwise_xor_num_bits_8_b::accumulate_constraints(
+        &[
+            eval!(context, xor_col19),
+            eval!(context, ms_8_bits_col12),
+            eval!(context, enabler_col0),
+            eval!(context, xor_col20),
+        ],
         context,
         component_data,
         acc,
     );
 
     let triple_xor32_output_tmp_6e2d1_28_limb_0 =
-        eval!(context, (xor_col13) + ((xor_col15) * (256)));
+        eval!(context, (xor_col14) + ((xor_col16) * (256)));
 
     let triple_xor32_output_tmp_6e2d1_28_limb_1 =
-        eval!(context, (xor_col17) + ((xor_col19) * (256)));
-
-    //Enabler is a bit.
-    let constraint_16_value = eval!(context, ((enabler_col20) * (enabler_col20)) - (enabler_col20));
-    acc.add_constraint(context, constraint_16_value);
+        eval!(context, (xor_col18) + ((xor_col20) * (256)));
 
     // Yield TripleXor32.
     let tuple_17 = &[
         eval!(context, 990559919),
-        eval!(context, input_limb_0_col0),
-        eval!(context, input_limb_1_col1),
-        eval!(context, input_limb_2_col2),
-        eval!(context, input_limb_3_col3),
-        eval!(context, input_limb_4_col4),
-        eval!(context, input_limb_5_col5),
+        eval!(context, input_limb_0_col1),
+        eval!(context, input_limb_1_col2),
+        eval!(context, input_limb_2_col3),
+        eval!(context, input_limb_3_col4),
+        eval!(context, input_limb_4_col5),
+        eval!(context, input_limb_5_col6),
         eval!(context, triple_xor32_output_tmp_6e2d1_28_limb_0),
         eval!(context, triple_xor32_output_tmp_6e2d1_28_limb_1),
     ];
-    let numerator_17 = eval!(context, -(enabler_col20));
+    let numerator_17 = eval!(context, -(enabler_col0));
     acc.add_to_relation(context, numerator_17, tuple_17);
 }
 

@@ -19,6 +19,7 @@ pub fn accumulate_constraints<Value: IValue>(
         verify_u_32_input_limb_0,
         verify_u_32_input_limb_1,
         verify_u_32_input_limb_2,
+        enabler,
         low_7_ms_bits_col0,
         high_14_ms_bits_col1,
         high_5_ms_bits_col2,
@@ -35,7 +36,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, high_2_ls_bits_tmp_1a63a_2),
         eval!(context, high_5_ms_bits_col2),
     ];
-    let numerator_1 = eval!(context, 1);
+    let numerator_1 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_1, tuple_1);
 
     mem_verify::accumulate_constraints(
@@ -69,6 +70,7 @@ pub fn accumulate_constraints<Value: IValue>(
             eval!(context, 0),
             eval!(context, 0),
             eval!(context, 0),
+            eval!(context, enabler),
             eval!(context, id_col3),
         ],
         context,

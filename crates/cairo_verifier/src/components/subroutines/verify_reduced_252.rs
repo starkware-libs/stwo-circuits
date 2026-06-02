@@ -41,6 +41,7 @@ pub fn accumulate_constraints<Value: IValue>(
         verify_reduced_252_input_limb_25,
         verify_reduced_252_input_limb_26,
         verify_reduced_252_input_limb_27,
+        enabler,
         ms_limb_is_max_col0,
         ms_and_mid_limbs_are_max_col1,
         rc_input_col2,
@@ -60,7 +61,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, 1420243005),
         eval!(context, (verify_reduced_252_input_limb_27) - (ms_limb_is_max_col0)),
     ];
-    let numerator_2 = eval!(context, 1);
+    let numerator_2 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_2, tuple_2);
 
     //If the MS limb is max, high limbs should be 0.
@@ -85,7 +86,7 @@ pub fn accumulate_constraints<Value: IValue>(
 
     // Use RangeCheck_8.
     let tuple_5 = &[eval!(context, 1420243005), eval!(context, rc_input_col2)];
-    let numerator_5 = eval!(context, 1);
+    let numerator_5 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_5, tuple_5);
 
     //If the MS and mid limbs are max, low limbs should be 0.

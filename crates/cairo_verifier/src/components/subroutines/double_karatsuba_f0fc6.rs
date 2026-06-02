@@ -68,6 +68,7 @@ pub fn accumulate_constraints<Value: IValue>(
         double_karatsuba_f0fc6_input_limb_53,
         double_karatsuba_f0fc6_input_limb_54,
         double_karatsuba_f0fc6_input_limb_55,
+        enabler,
     ] = input.try_into().unwrap();
 
     let [
@@ -128,6 +129,7 @@ pub fn accumulate_constraints<Value: IValue>(
             eval!(context, double_karatsuba_f0fc6_input_limb_39),
             eval!(context, double_karatsuba_f0fc6_input_limb_40),
             eval!(context, double_karatsuba_f0fc6_input_limb_41),
+            eval!(context, enabler),
         ],
         context,
         component_data,
@@ -194,6 +196,7 @@ pub fn accumulate_constraints<Value: IValue>(
             eval!(context, double_karatsuba_f0fc6_input_limb_53),
             eval!(context, double_karatsuba_f0fc6_input_limb_54),
             eval!(context, double_karatsuba_f0fc6_input_limb_55),
+            eval!(context, enabler),
         ],
         context,
         component_data,
@@ -400,6 +403,7 @@ pub fn accumulate_constraints<Value: IValue>(
             eval!(context, y_sum_tmp_f0fc6_11_limb_11),
             eval!(context, y_sum_tmp_f0fc6_11_limb_12),
             eval!(context, y_sum_tmp_f0fc6_11_limb_13),
+            eval!(context, enabler),
         ],
         context,
         component_data,
