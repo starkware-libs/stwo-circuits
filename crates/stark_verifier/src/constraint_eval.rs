@@ -115,13 +115,6 @@ impl CompositionConstraintAccumulator {
         }
     }
 
-    /// Incorporate the next constraint evaluation at the OODS point.
-    pub fn accumulate(&mut self, context: &mut Context<impl IValue>, constraint_eval_at_oods: Var) {
-        let shifted_accumulation =
-            eval!(context, (self.accumulation) * (self.composition_polynomial_coeff));
-        self.accumulation = eval!(context, (shifted_accumulation) + (constraint_eval_at_oods));
-    }
-
     /// Finish accumulation and return the combined value.
     ///
     /// Panics if not all expected samples/claimed sums have been consumed.
@@ -138,7 +131,9 @@ impl CompositionConstraintAccumulator {
         context: &mut Context<impl IValue>,
         constraint_eval_at_oods: Var,
     ) {
-        self.accumulate(context, constraint_eval_at_oods);
+        let shifted_accumulation =
+            eval!(context, (self.accumulation) * (self.composition_polynomial_coeff));
+        self.accumulation = eval!(context, (shifted_accumulation) + (constraint_eval_at_oods));
     }
 
     pub fn add_to_relation(
