@@ -194,6 +194,7 @@ fn test_zk_padding() {
                 .map(|p| p.inputs.len() + p.outputs.len())
                 .sum::<usize>();
 
+        // TODO(audit): Add more padding rows. (n_queries + 10)
         add_zk_blinding(&mut context, [0; 32], const_config.proof_config.fri.n_queries);
 
         let Stats { equals: eq_after, add, sub, mul, div, pointwise_mul, .. } = context.stats;

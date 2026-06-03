@@ -30,6 +30,7 @@ fn pad_eq(context: &mut Context<impl IValue>) {
     let eq_n_rows = context.circuit.eq.len();
     let eq_padding = std::cmp::max(eq_n_rows.next_power_of_two(), N_LANES) - eq_n_rows;
     let zero = context.zero();
+     // TODO(audit): make it consistent with the other padding functions.
     for _ in 0..eq_padding {
         circuits::ops::eq(context, zero, zero);
     }
@@ -67,6 +68,7 @@ fn pad_blake_g_gate(context: &mut Context<impl IValue>) {
 /// of two.
 // TODO(Gali): Have it under a trait.
 // TODO(Ilya): Make it pub(crate).
+// TODO(audit): rename to pad_components.
 pub fn finalize_context(context: &mut Context<impl IValue>) {
     // Padding the components to a power of two.
     pad_eq(context);
@@ -96,6 +98,7 @@ pub fn add_zk_blinding(context: &mut Context<impl IValue>, seed_bytes: [u8; 32],
             in1: var2.idx,
             out: var2.idx,
         });
+        // TODO(audit): Replace with 0 + var = var.
         eval!(context, (var1) + (var2));
 
         let value3 = qm31_from_u32s(rng.next_u32(), rng.next_u32(), rng.next_u32(), rng.next_u32());
@@ -106,5 +109,7 @@ pub fn add_zk_blinding(context: &mut Context<impl IValue>, seed_bytes: [u8; 32],
             out: var3.idx,
         });
         eq(context, var3, var3);
+
+        // TODO(audit): Add ZK to new components.
     }
 }

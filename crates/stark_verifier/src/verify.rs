@@ -83,6 +83,8 @@ pub fn verify<Value: IValue>(
         extract_bits(context, &component_sizes, config.log_trace_size() as u32 + 1);
 
     // Mix the (hardcoded) enable bits into the channel for compatibility with the Cairo1 verifier.
+
+    // TODO(audit): Consider moving the enable bit mixing to the statement.
     let enable_bits = &config.enabled_bits;
     let n_enable_bits = context.constant(qm31_from_u32s(enable_bits.len() as u32, 0, 0, 0));
     channel.mix_qm31s(context, [n_enable_bits]);
@@ -252,6 +254,9 @@ fn check_relation_uses<Value: IValue>(
 ) -> HashMap<String, Var> {
     let components = statement.get_components();
 
+
+    // TODO(audit): Use `log_trace_size` instead of component_sizes_bits.len() (off by 1 error).
+    // TODO(audit): rename component_size_upper_bound -> `trace_size`
     let component_size_upper_bound = 1u64 << component_sizes_bits.len();
     let shifted_component_size_upper_bound =
         (component_size_upper_bound >> RELATION_USES_NUM_ROWS_SHIFT) + 1;
@@ -266,11 +271,14 @@ fn check_relation_uses<Value: IValue>(
     for component in components.values() {
         for relation_use in component.relation_uses_per_row() {
             let entry = max_shifted_uses_per_relation.entry(relation_use.relation_id).or_insert(0);
+            // TODO(audit): consider moving the multiplication by the shift after the loop.
             *entry = entry
                 .checked_add(relation_use.uses * shifted_component_size_upper_bound)
                 .expect("Shifted num rows upper bound computation overflowed");
         }
     }
+
+    // TODO(audit): restore < P check.
     assert!(
         max_shifted_uses_per_relation
             .values()
@@ -330,6 +338,8 @@ fn check_relation_uses<Value: IValue>(
     // If the difference is positive, it will fit in this many bits.
     let positive_diff_bits = shifted_max_allowed_use_counts.ilog2() + 1;
 
+    // TODO(audit): revert the change and add +1 on the range check. use the fact that P = 2**31-1.
+
     // Make sure that if the difference is negative, it won't fit in positive_diff_bits bits. Use
     // the check that sum < shifted_use_count_upper_bound from above.
     assert!(
@@ -355,7 +365,7 @@ fn column_log_sizes_by_trace(
     ];
 
     for (component_shape, log_size) in
-        izip!(&config.component_shapes, Simd::unpack(context, &component_log_sizes))
+        zip_eq(&config.component_shapes, Simd::unpack(context, &component_log_sizes))
     {
         column_log_sizes[0].extend(vec![log_size; component_shape.trace_columns]);
         column_log_sizes[1].extend(vec![log_size; component_shape.interaction_columns]);
@@ -372,7 +382,7 @@ fn column_periodicity_sample_points(
 ) -> Vec<CirclePoint<Var>> {
     let mut periodicity_sample_points_per_column = Vec::with_capacity(config.n_interaction_columns);
     for (component_shape, sample_point) in
-        izip!(&config.component_shapes, sample_points_per_component)
+        zip_eq(&config.component_shapes, sample_points_per_component)
     {
         periodicity_sample_points_per_column
             .extend(vec![sample_point; component_shape.interaction_columns]);
@@ -389,6 +399,11 @@ fn validate_and_compute_component_sizes(
     const _: () = assert!(LOG_SIZE_BITS == 5, "LOG_SIZE_BITS must be 5 to avoid overflows in pow2");
     // Since LOG_SIZE_BITS is 5, and 2**31 - 1 = M31::P, we need to make sure that the log size the
     // components are not 31.
+
+
+    // TODO(audit): Consider doing a range check on (log_trace_size-log_component_size)
+
+    // TODO(audit): Remove padding, it is not needed.
     let packed = component_log_sizes.get_packed();
     let with_padding = Simd::from_packed(packed.to_vec(), packed.len() * SECURE_EXTENSION_DEGREE);
     let thirty_one = Simd::repeat(context, M31::from(31), with_padding.len());

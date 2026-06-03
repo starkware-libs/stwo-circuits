@@ -132,6 +132,7 @@ pub fn blake<Value: IValue>(
     let n_blocks = std::cmp::max(1, n_bytes.div_ceil(BLOCK_BYTES));
     let total_words = n_blocks * WORDS_PER_BLOCK;
     let zero_u32 = ctx.constant(QM31::pack_u32(0));
+    assert!(message_u32s.len() <= total_words);
     while message_u32s.len() < total_words {
         message_u32s.push(zero_u32);
     }
@@ -146,9 +147,13 @@ pub fn blake<Value: IValue>(
         let block: [Var; WORDS_PER_BLOCK] =
             std::array::from_fn(|i| message_u32s[block_idx * WORDS_PER_BLOCK + i]);
         let t0 = std::cmp::min(n_bytes, (block_idx + 1) * BLOCK_BYTES) as u32;
+
+        // TODO(audit): Consider removing t1.
         let t1 = 0u32;
         let last = block_idx == n_blocks - 1;
 
+
+        // TODO(audit): Consider removing prev_h.
         let prev_h = h;
 
         let mut v: [Var; 16] = std::array::from_fn(|i| {
@@ -192,6 +197,7 @@ pub fn blake<Value: IValue>(
         }
     }
 
+    // TODO(audit): Consider optimizing the reduction.
     let c_2_pow_16 = ctx.constant(M31::from(1u32 << 16).into());
     let reduced: [Var; 8] = std::array::from_fn(|i| {
         let h_simd = Simd::from_packed(vec![h[i]], 2);
