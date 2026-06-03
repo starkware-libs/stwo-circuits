@@ -184,6 +184,7 @@ fn test_verify_all_opcodes() {
             channel_salt: 0,
             store_polynomials_coefficients: true,
             include_all_preprocessed_columns: true,
+            opt_n_id_to_big_components: None,
         };
         let cairo_proof = prove_cairo::<Blake2sM31MerkleChannel>(input, prover_params).unwrap();
 
