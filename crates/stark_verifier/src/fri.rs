@@ -171,6 +171,10 @@ pub fn fri_decommit<Value: IValue>(
         // Compute twiddles for the next step.
         twiddles_per_fold = compute_twiddles_from_base_point(context, &base_point, step);
     }
+    // The last fri layer log size is equal to the log blowup factor.
+    assert_eq!(bits.len(), config.log_blowup_factor);
+    assert_eq!(packed_bits.len(), config.log_blowup_factor);
+
     // The last base point's y-coords hasn't been used by `compute_twiddles_from_base_point` if the
     // last step was = 1.
     if step == 1 {
@@ -193,16 +197,15 @@ fn fold_coset<Value: IValue>(
     twiddles_per_fold: &[Vec<Var>],
     alphas: &[Var],
 ) -> Var {
-    assert_eq!(twiddles_per_fold.len(), alphas.len());
     assert_eq!(coset_values.len(), 1 << twiddles_per_fold.len());
     let mut values = coset_values.to_vec();
 
-    for (i, twiddles) in twiddles_per_fold.iter().enumerate() {
+    for (alpha, twiddles) in zip_eq(alphas, twiddles_per_fold) {
         for (j, t) in twiddles.iter().enumerate() {
             let (even, odd) = (values[2 * j], values[2 * j + 1]);
             let g = eval!(context, (even) + (odd));
             let h = eval!(context, ((even) - (odd)) * (*t));
-            values[j] = eval!(context, (g) + ((alphas[i]) * (h)));
+            values[j] = eval!(context, (g) + ((*alpha) * (h)));
         }
     }
     values[0]
