@@ -1,13 +1,15 @@
+use crate::channel::Channel;
 use crate::constraint_eval::CircuitEval;
 use crate::fri_proof::{FriConfig, FriProof, compute_all_fold_steps, empty_fri_proof};
 use crate::merkle::{AuthPath, AuthPaths};
 use crate::oods::{EvalDomainSamples, N_COMPOSITION_COLUMNS, empty_eval_domain_samples};
+use crate::proof_from_stark_proof::pack_into_qm31s;
 use circuits::blake::HashValue;
 use circuits::context::{Context, Var};
 use circuits::ivalue::{IValue, NoValue};
 use circuits::ops::Guess;
 use indexmap::IndexMap;
-use itertools::zip_eq;
+use itertools::{Itertools, zip_eq};
 
 use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
 use stwo::core::pcs::PcsConfig;
@@ -343,6 +345,29 @@ impl ProofConfig {
             self.n_interaction_columns,
             N_COMPOSITION_COLUMNS,
         ]
+    }
+
+    /// Mixes the pcs config into the channel.
+    pub fn mix_pcs_config<Value: IValue>(
+        &self,
+        context: &mut Context<Value>,
+        channel: &mut Channel,
+    ) {
+        let lifting_log_size = self.log_trace_size() + self.fri.log_blowup_factor;
+        let pcs_config_values = vec![
+            self.n_pow_bits,
+            self.fri.log_blowup_factor as u32,
+            self.fri.n_queries as u32,
+            self.fri.log_n_last_layer_coefs as u32,
+            self.fri.fold_step as u32,
+            lifting_log_size as u32,
+        ];
+
+        let pcs_config_vars = pack_into_qm31s(pcs_config_values.into_iter())
+            .into_iter()
+            .map(|qm31| context.constant(qm31))
+            .collect_vec();
+        channel.mix_qm31s(context, pcs_config_vars);
     }
 }
 
