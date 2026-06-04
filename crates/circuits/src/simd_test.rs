@@ -84,6 +84,7 @@ fn test_eq_circuit8() {
     expect![[r#"
         [3] = [5]
         [4] = [6]
+        output [2]
 
     "#]]
     .assert_debug_eq(&context.circuit);
@@ -111,6 +112,7 @@ fn test_eq_circuit7() {
         [9] = [7] x [8]
         [3] = [5]
         [9] = [0]
+        output [2]
 
     "#]]
     .assert_debug_eq(&context.circuit);
@@ -233,6 +235,7 @@ fn test_inv_circuit() {
         [12] = [10] x [11]
         [7] = [9]
         [12] = [0]
+        output [2]
 
     "#]]
     .assert_debug_eq(&context.circuit);
@@ -344,6 +347,7 @@ fn test_unpack_circuit() {
         [14] = [3] x [13]
         [17] = [4] x [1]
         [18] = [4] x [6]
+        output [2]
 
     "#]]
     .assert_debug_eq(&context.circuit);
@@ -423,6 +427,7 @@ fn test_pack_circuit() {
         [13] = [2] * [5]
         [15] = [10] * [6]
         [17] = [9] * [8]
+        output [2]
 
     "#]]
     .assert_debug_eq(&context.circuit);
@@ -462,6 +467,7 @@ fn test_scalar_mul_circuit() {
         [7] = [5] * [4]
         [8] = [6] * [4]
         [4] = [3] x [1]
+        output [2]
 
     "#]]
     .assert_debug_eq(&context.circuit);

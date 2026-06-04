@@ -71,6 +71,7 @@ fn test_div() {
     expect![[r#"
         [6] = [5] * [4]
         [6] = [3]
+        output [2]
 
     "#]]
     .assert_debug_eq(&context.circuit);
@@ -129,6 +130,7 @@ fn test_conj() {
     expect![[r#"
         [6] = [3] * [5]
         [5] = [3] x [4]
+        output [2]
 
     "#]]
     .assert_debug_eq(&context.circuit);
@@ -155,6 +157,7 @@ fn test_im() {
     .assert_debug_eq(&context.constants());
     expect![[r#"
         [5] = [3] x [4]
+        output [2]
 
     "#]]
     .assert_debug_eq(&context.circuit);
@@ -180,7 +183,8 @@ fn test_from_partial_evals() {
 fn test_stats() {
     let mut context = TraceContext::default();
 
-    let stats = Stats::default();
+    // A fresh context marks `u` as an output in its constructor.
+    let stats = Stats { outputs: 1, ..Stats::default() };
     assert_eq!(context.stats, stats);
 
     let x = guess(&mut context, 5.into());
