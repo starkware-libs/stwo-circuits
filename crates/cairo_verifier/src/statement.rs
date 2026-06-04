@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::preprocessed_columns::MAX_SEQUENCE_LOG_SIZE;
+use crate::utils::safe_div;
 use crate::verify::enabled_components;
 use cairo_air::components::memory_address_to_id::MEMORY_ADDRESS_TO_ID_SPLIT;
 use cairo_air::relations::{
@@ -179,7 +180,8 @@ impl<Value: IValue> CairoStatement<Value> {
         // Validate the output segment range.
         let diff =
             eval!(context, (output_segment_range.end.value) - (output_segment_range.start.value));
-        let n_outputs = context.constant((self.packed_outputs.len() / MEMORY_VALUES_LIMBS).into());
+        let n_outputs =
+            context.constant(safe_div(self.packed_outputs.len(), MEMORY_VALUES_LIMBS).into());
         eq(context, diff, n_outputs);
 
         let builtin_segment_ranges = [

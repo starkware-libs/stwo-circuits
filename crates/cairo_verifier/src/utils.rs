@@ -6,6 +6,12 @@ use stwo_cairo_common::prover_types::felt::split_f252;
 
 use crate::statement::MEMORY_VALUES_LIMBS;
 
+/// Divides `a` by `b`, panicking if `b` does not divide `a` evenly.
+pub fn safe_div(a: usize, b: usize) -> usize {
+    assert_eq!(a % b, 0, "{b} does not divide {a}");
+    a / b
+}
+
 pub fn get_test_data_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../test_data/")
 }
