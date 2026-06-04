@@ -10,7 +10,7 @@ use circuits::eval;
 use circuits::ivalue::IValue;
 use circuits::ops::{div, from_partial_evals};
 use circuits::simd::Simd;
-use itertools::{Itertools, izip, zip_eq};
+use itertools::{Itertools, zip_eq};
 use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
@@ -273,13 +273,15 @@ pub fn compute_composition_polynomial<Value: IValue>(
         interaction_elements,
     );
 
-    for (component_index, (component, component_shape, &claimed_sum, &component_size)) in izip!(
-        statement.get_components().values(),
-        &config.component_shapes,
-        claimed_sums,
-        component_sizes,
-    )
-    .enumerate()
+    for (component_index, (((component, component_shape), &claimed_sum), &component_size)) in
+        zip_eq(
+            zip_eq(
+                zip_eq(statement.get_components().values(), &config.component_shapes),
+                claimed_sums,
+            ),
+            component_sizes,
+        )
+        .enumerate()
     {
         let trace_columns = get_n_columns(&mut oods_samples.trace, component_shape.trace_columns);
         let interaction_columns =

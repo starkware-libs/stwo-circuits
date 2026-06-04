@@ -23,7 +23,7 @@ use circuits_stark_verifier::proof_from_stark_proof::{pack_enable_bits, pack_int
 use circuits_stark_verifier::statement::Statement;
 use circuits_stark_verifier::verify::RELATION_USES_NUM_ROWS_SHIFT;
 use indexmap::IndexMap;
-use itertools::{Itertools, chain, izip, zip_eq};
+use itertools::{Itertools, chain, zip_eq};
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::m31::P as M31_P;
 use stwo::core::fields::qm31::QM31;
@@ -631,7 +631,9 @@ pub fn public_logup_sum(
     // Passing an empty slice to id_to_big_logup_term is equivalent to passing [0, 0, 0, 0]
     // because trailing zeros don't affect the polynomial combination in combine_term.
     let safe_call_values = [split_initial_ap.as_slice(), &[]];
-    for (address, id, value_limbs) in izip!(safe_call_addresses, safe_call_ids, safe_call_values) {
+    for ((address, id), value_limbs) in
+        zip_eq(zip_eq(safe_call_addresses, safe_call_ids), safe_call_values)
+    {
         let logup_term =
             public_memory_logup_terms(context, interaction_elements, address, *id, value_limbs);
         sum = eval!(context, (sum) + (logup_term));
