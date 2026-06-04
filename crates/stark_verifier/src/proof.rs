@@ -435,6 +435,13 @@ impl<T> Proof<T> {
         self.eval_domain_samples
             .validate_structure(&config.n_columns_per_trace(), config.n_queries());
 
+        // Validate eval_domain_auth_paths.
+        self.eval_domain_auth_paths.validate_structure(
+            N_TRACES,
+            config.n_queries(),
+            config.log_evaluation_domain_size(),
+        );
+
         // Validate FRI.
         self.fri.validate_structure(&config.fri);
     }
