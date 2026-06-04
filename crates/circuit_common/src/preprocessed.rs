@@ -378,15 +378,23 @@ impl PreProcessedTrace {
         // `IndexMap::sort_by` is a stable sort, so ties keep insertion order.
         self.columns.sort_by(|_, c1, _, c2| c1.len().cmp(&c2.len()));
     }
-    fn add_non_circuit_preprocessed_columns(
-        pp_trace: &mut PreProcessedTrace,
-        log_seq_sizes: &[u32],
-    ) {
-        for &log_size in log_seq_sizes {
-            let seq_column: Vec<usize> = (0..1_usize << log_size).collect();
-            pp_trace
-                .push_column(PreProcessedColumnId { id: format!("seq_{log_size}") }, seq_column);
-        }
+    /// Adds preprocessed columns that are fixed lookup tables, independent of the circuit's gates.
+    ///
+    /// Unlike the per-component helpers (e.g. `add_eq_to_preprocessed_trace`), these columns do not
+    /// depend on the circuit gates or their multiplicities. They provide constant lookup
+    /// infrastructure referenced by certain components:
+    /// - `seq_16`: the sequence `0..2^16`, used by `range_check_16`.
+    /// - `bitwise_xor_{n}_{0,1,2}`: for each bit-width n in {4, 7, 8, 9, 10}, three columns holding
+    ///   all ordered pairs of n-bit values (`lhs`, `rhs`) and their XOR, used by the
+    ///   `VerifyBitwiseXor` components.
+    fn add_fixed_preprocessed_columns(pp_trace: &mut PreProcessedTrace) {
+        // Seq column of size 2^16, needed by range_check_16.
+        pp_trace.push_column(
+            PreProcessedColumnId { id: "seq_16".to_owned() },
+            (0..1_usize << 16).collect(),
+        );
+
+        // Bitwise XOR columns of sizes 2^4, 2^7, 2^8, 2^9, 2^10.
         let bitwise_xor: Vec<Vec<usize>> = [4, 7, 8, 9, 10]
             .into_iter()
             .flat_map(|n_bits| gen_xor_columns(n_bits).into_iter())
@@ -503,10 +511,7 @@ impl PreprocessedCircuit {
         // Add BlakeGGate columns.
         add_blake_g_gate_to_preprocessed_trace(blake_g_gate, &multiplicities, &mut pp_trace);
 
-        // Generate seq columns for sizes needed by circuit components:
-        // - 16: needed by range_check_16.
-        let log_seq_sizes = vec![16];
-        PreProcessedTrace::add_non_circuit_preprocessed_columns(&mut pp_trace, &log_seq_sizes);
+        PreProcessedTrace::add_fixed_preprocessed_columns(&mut pp_trace);
         pp_trace.sort_by_size();
 
         // The trace size is the max between:
