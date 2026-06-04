@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use itertools::{Itertools, chain, izip};
 use stwo::core::fields::m31::{M31, P};
-use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
 use stwo::core::verifier::COMPOSITION_LOG_SPLIT;
 
 use crate::channel::Channel;
@@ -67,7 +66,11 @@ pub fn verify<Value: IValue>(
     channel.mix_commitment(context, preprocessed_root);
 
     let component_log_sizes = statement.get_component_log_sizes().clone();
-    let component_sizes = validate_and_compute_component_sizes(context, &component_log_sizes);
+    let component_sizes = validate_and_compute_component_sizes(
+        context,
+        &component_log_sizes,
+        config.log_trace_size(),
+    );
 
     // Check that the component sizes are at most 2^config.log_trace_size().
     // Note that we need k + 1 bits to represent 2^k.
@@ -343,17 +346,21 @@ fn column_log_sizes_by_trace(
 fn validate_and_compute_component_sizes(
     context: &mut Context<impl IValue>,
     component_log_sizes: &Simd,
+    log_trace_size: usize,
 ) -> Simd {
-    // Range check the component log sizes to 5 bits.
+    const _: () = assert!(
+        LOG_SIZE_BITS == 5,
+        "5 bits suffice to represent any log trace size up to the maximum of 30."
+    );
+
+    // Extract the bits of the component log sizes and verify that it is in the range [0,
+    // 2**log_trace_size). Note that log_trace_size is at most 30, so 2**log_trace_size does not
+    // overflow in M31.
     let component_log_size_bits = extract_bits(context, component_log_sizes, LOG_SIZE_BITS);
-    const _: () = assert!(LOG_SIZE_BITS == 5, "LOG_SIZE_BITS must be 5 to avoid overflows in pow2");
-    // Since LOG_SIZE_BITS is 5, and 2**31 - 1 = M31::P, we need to make sure that the log size the
-    // components are not 31.
-    let packed = component_log_sizes.get_packed();
-    let with_padding = Simd::from_packed(packed.to_vec(), packed.len() * SECURE_EXTENSION_DEGREE);
-    let thirty_one = Simd::repeat(context, M31::from(31), with_padding.len());
-    // Assert the all the log sizes (including the zero padding) minus 31 are non-zero (invertable).
-    Simd::sub(context, &with_padding, &thirty_one).inv(context);
+    let log_trace_size =
+        Simd::repeat(context, M31::from(log_trace_size), component_log_sizes.len());
+    let diff = Simd::sub(context, &log_trace_size, component_log_sizes);
+    extract_bits(context, &diff, LOG_SIZE_BITS);
 
     Simd::pow2(context, &component_log_size_bits)
 }
