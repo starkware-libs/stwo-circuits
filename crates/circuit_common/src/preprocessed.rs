@@ -378,15 +378,12 @@ impl PreProcessedTrace {
         // `IndexMap::sort_by` is a stable sort, so ties keep insertion order.
         self.columns.sort_by(|_, c1, _, c2| c1.len().cmp(&c2.len()));
     }
-    fn add_non_circuit_preprocessed_columns(
-        pp_trace: &mut PreProcessedTrace,
-        log_seq_sizes: &[u32],
-    ) {
-        for &log_size in log_seq_sizes {
-            let seq_column: Vec<usize> = (0..1_usize << log_size).collect();
-            pp_trace
-                .push_column(PreProcessedColumnId { id: format!("seq_{log_size}") }, seq_column);
-        }
+
+    fn add_non_circuit_preprocessed_columns(pp_trace: &mut PreProcessedTrace) {
+        // Generate seq column for range_check_16.
+        let seq_column: Vec<usize> = (0..1_usize << 16).collect();
+        pp_trace.push_column(PreProcessedColumnId { id: "seq_16".to_string() }, seq_column);
+
         let bitwise_xor: Vec<Vec<usize>> = [4, 7, 8, 9, 10]
             .into_iter()
             .flat_map(|n_bits| gen_xor_columns(n_bits).into_iter())
@@ -503,10 +500,7 @@ impl PreprocessedCircuit {
         // Add BlakeGGate columns.
         add_blake_g_gate_to_preprocessed_trace(blake_g_gate, &multiplicities, &mut pp_trace);
 
-        // Generate seq columns for sizes needed by circuit components:
-        // - 16: needed by range_check_16.
-        let log_seq_sizes = vec![16];
-        PreProcessedTrace::add_non_circuit_preprocessed_columns(&mut pp_trace, &log_seq_sizes);
+        PreProcessedTrace::add_non_circuit_preprocessed_columns(&mut pp_trace);
         pp_trace.sort_by_size();
 
         // The trace size is the max between:
