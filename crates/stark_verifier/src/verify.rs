@@ -227,18 +227,8 @@ fn check_relation_uses<Value: IValue>(
 ) -> HashMap<String, Var> {
     let components = statement.get_components();
 
-    // An upper bound on the number of rows any component can have.
-    let component_size_upper_bound = 1u64 << component_sizes_bits.len();
-    // An upper bound on `floor(num_rows / DIV) + 1` for any component.
-    let shifted_component_size_upper_bound =
-        (component_size_upper_bound >> RELATION_USES_NUM_ROWS_SHIFT) + 1;
-    // Used below to distinguish a negative field value from a positive one: any "negative"
-    // value (i.e. a sum that exceeded P) lands in [shifted_max_allowed + 1, P-1] ≥ P/2.
-    let field_negative_threshold = P >> 1;
-
-    // Check that sum(uses_per_row * (floor(num_rows / DIV) + 1)) < field_negative_threshold
-    // even for the maximal num_rows (num_rows = component_size_upper_bound). This fact is used
-    // later in this function when comparing the sum to floor(P / DIV).
+    // Check that sum(uses_per_row * (floor(num_rows / DIV) + 1)) cannot overflow even for the
+    // maximal num_rows (num_rows = P).
     // This is a sanity check that `RELATION_USES_NUM_ROWS_SHIFT` is large enough for the given
     // statement, it does not depend on the specific assignment.
     let mut max_shifted_uses_per_relation = HashMap::<&str, u64>::new();
@@ -246,15 +236,11 @@ fn check_relation_uses<Value: IValue>(
         for relation_use in component.relation_uses_per_row() {
             let entry = max_shifted_uses_per_relation.entry(relation_use.relation_id).or_insert(0);
             *entry = entry
-                .checked_add(relation_use.uses * shifted_component_size_upper_bound)
+                .checked_add(relation_use.uses * (((P >> RELATION_USES_NUM_ROWS_SHIFT) + 1) as u64))
                 .expect("Shifted num rows upper bound computation overflowed");
         }
     }
-    assert!(
-        max_shifted_uses_per_relation
-            .values()
-            .all(|count| *count < field_negative_threshold.into())
-    );
+    assert!(max_shifted_uses_per_relation.values().all(|count| *count < (P as u64)));
 
     // Compute floor(num_rows / DIV) + 1 for all components
     let shifted_component_sizes_p1 = match component_sizes_bits.get(RELATION_USES_NUM_ROWS_SHIFT..)
@@ -292,31 +278,21 @@ fn check_relation_uses<Value: IValue>(
         }
     }
 
+    // Verify that the sum is at most `floor(P / DIV) = 2^(31 - RELATION_USES_NUM_ROWS_SHIFT) - 1`
+    // by expressing it as a `31 - RELATION_USES_NUM_ROWS_SHIFT`-bit number.
     let shifted_use_counts = shifted_relation_uses
         .iter()
         .sorted_by_key(|(k, _v)| *k)
         .map(|(_k, v)| M31Wrapper::new_unsafe(*v))
         .collect_vec();
     let shifted_use_counts = Simd::pack(context, &shifted_use_counts);
-
-    // Verify that the sum is at most floor(P / DIV) by checking that floor(P / DIV) - sum is
-    // positive or zero.
-    let shifted_max_allowed_use_counts = P >> RELATION_USES_NUM_ROWS_SHIFT;
-    let shifted_max_allowed_use_counts_simd =
-        Simd::repeat(context, shifted_max_allowed_use_counts.into(), shifted_use_counts.len());
-    let diff = Simd::sub(context, &shifted_max_allowed_use_counts_simd, &shifted_use_counts);
-
-    // If the difference is positive, it will fit in this many bits.
-    let positive_diff_bits = shifted_max_allowed_use_counts.ilog2() + 1;
-
-    // Make sure that if the difference is negative, it won't fit in positive_diff_bits bits. Use
-    // the check that sum < field_negative_threshold from above.
-    assert!(
-        P + shifted_max_allowed_use_counts - field_negative_threshold > (1 << positive_diff_bits)
-    );
-
-    // Verify that the diff fits in positive_diff_bits bits.
-    extract_bits(context, &diff, positive_diff_bits);
+    // The range check below ensures that:
+    // `shifted_use_counts <= 2^(31 - RELATION_USES_NUM_ROWS_SHIFT) - 1`
+    // therefore:
+    // `use_counts < shifted_use_counts * 2^RELATION_USES_NUM_ROWS_SHIFT <=
+    // <= 2^31 - 2^RELATION_USES_NUM_ROWS_SHIFT < P`
+    // where `use_counts` is the total number of uses, per relation.
+    extract_bits(context, &shifted_use_counts, 31 - RELATION_USES_NUM_ROWS_SHIFT as u32);
     shifted_relation_uses
 }
 
