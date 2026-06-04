@@ -112,6 +112,28 @@ pub fn verify<Value: IValue>(
     let unpacked_component_sizes = Simd::unpack(context, &component_sizes);
     statement.verify_claim(context, &unpacked_component_sizes, &shifted_relation_uses);
 
+    // Mix the values at the OODS point (and its previous point where applicable) into the channel.
+    let interaction_at_oods = proof
+        .interaction_at_oods
+        .iter()
+        .flat_map(|interaction| {
+            if let Some(interaction_at_prev) = interaction.at_prev {
+                vec![interaction_at_prev, interaction.at_oods]
+            } else {
+                vec![interaction.at_oods]
+            }
+        })
+        .collect_vec();
+    channel.mix_qm31s(
+        context,
+        chain!(
+            proof.preprocessed_columns_at_oods.iter().cloned(),
+            proof.trace_at_oods.iter().cloned(),
+            interaction_at_oods,
+            proof.composition_eval_at_oods,
+        ),
+    );
+
     // Compute the composition evaluation at the OODS point from `proof.*_at_oods` and compare
     // to `proof.composition_eval_at_oods`.
     let composition_eval = compute_composition_polynomial(
@@ -140,30 +162,6 @@ pub fn verify<Value: IValue>(
         config.log_trace_size() + COMPOSITION_LOG_SPLIT as usize,
     );
     eq(context, composition_eval, expected_composition_eval);
-
-    // Verify the values in `proof.trace_at_oods` and `proof.composition_eval_at_oods`.
-    // Start by adding the values to the channel. Values belonging to cumulative sum columns are
-    // added twice, once for the previous point and once for the OODS point.
-    let interaction_at_oods = proof
-        .interaction_at_oods
-        .iter()
-        .flat_map(|interaction| {
-            if let Some(interaction_at_prev) = interaction.at_prev {
-                vec![interaction_at_prev, interaction.at_oods]
-            } else {
-                vec![interaction.at_oods]
-            }
-        })
-        .collect_vec();
-    channel.mix_qm31s(
-        context,
-        chain!(
-            proof.preprocessed_columns_at_oods.iter().cloned(),
-            proof.trace_at_oods.iter().cloned(),
-            interaction_at_oods,
-            proof.composition_eval_at_oods,
-        ),
-    );
 
     // Draw a random challenge for the linear combination of the OODS quotients.
     let oods_quotient_coef = channel.draw_qm31(context);
