@@ -22,8 +22,16 @@ use circuits::ops::eq;
 use circuits::simd::Simd;
 use circuits::wrappers::M31Wrapper;
 
+/// Number of bits used to represent a component log-size in the packed claim format.
+/// Must satisfy `2^LOG_SIZE_BITS >= max(log_trace_size) + 1`.
 pub const LOG_SIZE_BITS: u32 = 5;
 
+/// The bit-shift applied to component row counts when checking that no relation is used
+/// more than `P` times (see `check_relation_uses`).
+///
+/// Dividing by `DIV = 2^RELATION_USES_NUM_ROWS_SHIFT` keeps intermediate products small
+/// enough to fit in a `u64`: at most `n_uses_per_row * (2^(max_log_trace - SHIFT) + 1)` per
+/// component, summed over all components per relation.
 pub const RELATION_USES_NUM_ROWS_SHIFT: usize = 16;
 
 pub fn validate_logup_sum(
@@ -217,12 +225,16 @@ fn check_relation_uses<Value: IValue>(
 ) -> HashMap<String, Var> {
     let components = statement.get_components();
 
+    // An upper bound on the number of rows any component can have.
     let component_size_upper_bound = 1u64 << component_sizes_bits.len();
+    // An upper bound on `floor(num_rows / DIV) + 1` for any component.
     let shifted_component_size_upper_bound =
         (component_size_upper_bound >> RELATION_USES_NUM_ROWS_SHIFT) + 1;
-    let shifted_use_count_upper_bound = P >> 1;
+    // Used below to distinguish a negative field value from a positive one: any "negative"
+    // value (i.e. a sum that exceeded P) lands in [shifted_max_allowed + 1, P-1] ≥ P/2.
+    let field_negative_threshold = P >> 1;
 
-    // Check that sum(uses_per_row * (floor(num_rows / DIV) + 1)) < shifted_use_count_upper_bound
+    // Check that sum(uses_per_row * (floor(num_rows / DIV) + 1)) < field_negative_threshold
     // even for the maximal num_rows (num_rows = component_size_upper_bound). This fact is used
     // later in this function when comparing the sum to floor(P / DIV).
     // This is a sanity check that `RELATION_USES_NUM_ROWS_SHIFT` is large enough for the given
@@ -239,7 +251,7 @@ fn check_relation_uses<Value: IValue>(
     assert!(
         max_shifted_uses_per_relation
             .values()
-            .all(|count| *count < shifted_use_count_upper_bound.into())
+            .all(|count| *count < field_negative_threshold.into())
     );
 
     // Compute floor(num_rows / DIV) + 1 for all components
@@ -296,10 +308,9 @@ fn check_relation_uses<Value: IValue>(
     let positive_diff_bits = shifted_max_allowed_use_counts.ilog2() + 1;
 
     // Make sure that if the difference is negative, it won't fit in positive_diff_bits bits. Use
-    // the check that sum < shifted_use_count_upper_bound from above.
+    // the check that sum < field_negative_threshold from above.
     assert!(
-        P + shifted_max_allowed_use_counts - shifted_use_count_upper_bound
-            > (1 << positive_diff_bits)
+        P + shifted_max_allowed_use_counts - field_negative_threshold > (1 << positive_diff_bits)
     );
 
     // Verify that the diff fits in positive_diff_bits bits.
