@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use indexmap::IndexMap;
 use itertools::{Itertools, chain, izip};
 use stwo::core::fields::m31::{M31, P};
 use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
@@ -214,7 +215,7 @@ fn check_relation_uses<Value: IValue>(
     context: &mut Context<impl IValue>,
     statement: &impl Statement<Value>,
     component_sizes_bits: &[Simd],
-) -> HashMap<String, Var> {
+) -> IndexMap<String, Var> {
     let components = statement.get_components();
 
     let component_size_upper_bound = 1u64 << component_sizes_bits.len();
@@ -257,7 +258,7 @@ fn check_relation_uses<Value: IValue>(
     Simd::mark_partly_used(context, &shifted_component_sizes_p1);
 
     // Sum uses_per_row * (floor(num_rows / DIV) + 1) for all relations
-    let mut shifted_relation_uses = HashMap::new();
+    let mut shifted_relation_uses = IndexMap::new();
     for (i, component) in components.values().enumerate() {
         let relation_uses = component.relation_uses_per_row();
         if relation_uses.is_empty() {
@@ -278,11 +279,8 @@ fn check_relation_uses<Value: IValue>(
         }
     }
 
-    let shifted_use_counts = shifted_relation_uses
-        .iter()
-        .sorted_by_key(|(k, _v)| *k)
-        .map(|(_k, v)| M31Wrapper::new_unsafe(*v))
-        .collect_vec();
+    let shifted_use_counts =
+        shifted_relation_uses.values().map(|v| M31Wrapper::new_unsafe(*v)).collect_vec();
     let shifted_use_counts = Simd::pack(context, &shifted_use_counts);
 
     // Verify that the sum is at most floor(P / DIV) by checking that floor(P / DIV) - sum is
