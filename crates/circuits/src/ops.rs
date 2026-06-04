@@ -65,26 +65,44 @@ pub fn eq<Value: IValue>(context: &mut Context<Value>, a: Var, b: Var) {
 
 /// Adds an addition gate to the circuit, and returns the output variable.
 pub fn add(context: &mut Context<impl IValue>, a: Var, b: Var) -> Var {
-    context.stats.add += 1;
     let out = context.new_var(context.get(a) + context.get(b));
-    context.circuit.add.push(Add { in0: a.idx, in1: b.idx, out: out.idx });
+    add_into(context, a, b, out);
     out
+}
+
+/// Adds an addition gate `a + b = out` to the circuit, using the given existing variable as the
+/// output. The caller is responsible for the value of `out`.
+pub fn add_into(context: &mut Context<impl IValue>, a: Var, b: Var, out: Var) {
+    context.stats.add += 1;
+    context.circuit.add.push(Add { in0: a.idx, in1: b.idx, out: out.idx });
 }
 
 /// Adds a subtraction gate to the circuit, and returns the output variable.
 pub fn sub(context: &mut Context<impl IValue>, a: Var, b: Var) -> Var {
-    context.stats.sub += 1;
     let out = context.new_var(context.get(a) - context.get(b));
-    context.circuit.sub.push(Sub { in0: a.idx, in1: b.idx, out: out.idx });
+    sub_into(context, a, b, out);
     out
+}
+
+/// Adds a subtraction gate `a - b = out` to the circuit, using the given existing variable as the
+/// output. The caller is responsible for the value of `out`.
+pub fn sub_into(context: &mut Context<impl IValue>, a: Var, b: Var, out: Var) {
+    context.stats.sub += 1;
+    context.circuit.sub.push(Sub { in0: a.idx, in1: b.idx, out: out.idx });
 }
 
 /// Adds a multiplication gate to the circuit, and returns the output variable.
 pub fn mul(context: &mut Context<impl IValue>, a: Var, b: Var) -> Var {
-    context.stats.mul += 1;
     let out = context.new_var(context.get(a) * context.get(b));
-    context.circuit.mul.push(Mul { in0: a.idx, in1: b.idx, out: out.idx });
+    mul_into(context, a, b, out);
     out
+}
+
+/// Adds a multiplication gate `a * b = out` to the circuit, using the given existing variable as
+/// the output. The caller is responsible for the value of `out`.
+pub fn mul_into(context: &mut Context<impl IValue>, a: Var, b: Var, out: Var) {
+    context.stats.mul += 1;
+    context.circuit.mul.push(Mul { in0: a.idx, in1: b.idx, out: out.idx });
 }
 
 /// Computes `a / b` by guessing the result and adding a multiplication gate to the circuit to
@@ -100,10 +118,16 @@ pub fn div(context: &mut Context<impl IValue>, a: Var, b: Var) -> Var {
 }
 
 pub fn pointwise_mul<Value: IValue>(context: &mut Context<Value>, a: Var, b: Var) -> Var {
-    context.stats.pointwise_mul += 1;
     let out = context.new_var(Value::pointwise_mul(context.get(a), context.get(b)));
-    context.circuit.pointwise_mul.push(PointwiseMul { in0: a.idx, in1: b.idx, out: out.idx });
+    pointwise_mul_into(context, a, b, out);
     out
+}
+
+/// Adds a pointwise multiplication gate `a .* b = out` to the circuit, using the given existing
+/// variable as the output. The caller is responsible for the value of `out`.
+pub fn pointwise_mul_into<Value: IValue>(context: &mut Context<Value>, a: Var, b: Var, out: Var) {
+    context.stats.pointwise_mul += 1;
+    context.circuit.pointwise_mul.push(PointwiseMul { in0: a.idx, in1: b.idx, out: out.idx });
 }
 
 /// Permutes the input values using the given function and returns the new variables.
