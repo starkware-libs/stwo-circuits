@@ -52,7 +52,6 @@ pub fn privacy_cairo_verifier_config(log_blowup_factor: u32) -> CairoVerifierCon
 
     let proof_config = ProofConfig::new(
         &components,
-        enabled_bits,
         preprocessed_trace_variant.n_columns(),
         &pcs_config,
         INTERACTION_POW_BITS,
@@ -64,6 +63,7 @@ pub fn privacy_cairo_verifier_config(log_blowup_factor: u32) -> CairoVerifierCon
     CairoVerifierConfig {
         preprocessed_root: get_preprocessed_root(lifting_log_size),
         proof_config,
+        enabled_bits,
         program,
         n_outputs: 1,
         preprocessed_trace_variant,

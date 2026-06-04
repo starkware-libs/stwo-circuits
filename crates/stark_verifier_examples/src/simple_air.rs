@@ -1,5 +1,4 @@
-use circuits::ivalue::qm31_from_u32s;
-use circuits_stark_verifier::proof_from_stark_proof::{pack_enable_bits, pack_public_claim};
+use circuits_stark_verifier::proof_from_stark_proof::pack_public_claim;
 
 use itertools::{Itertools, zip_eq};
 use num_traits::One;
@@ -29,8 +28,6 @@ use stwo_constraint_framework::{
     EvalAtRow, FrameworkComponent, FrameworkEval, LogupTraceGenerator, RelationEntry,
     TraceLocationAllocator, relation,
 };
-
-use crate::simple_statement::COMPONENT_ENABLE_BITS;
 
 pub const INTERACTION_POW_BITS: u32 = 8;
 
@@ -234,13 +231,6 @@ pub fn create_proof_with_fold_step(
         generate_seq_column(LOG_SIZE_LONG),
     ]);
     tree_builder.commit(prover_channel);
-
-    let n_components = 3;
-    prover_channel.mix_felts(&[qm31_from_u32s(n_components, 0, 0, 0)]);
-
-    // Mix the enable bits into the channel.
-    let packed_enable_bits = pack_enable_bits(&COMPONENT_ENABLE_BITS);
-    prover_channel.mix_felts(&packed_enable_bits);
 
     // Mix the public claim into the channel.
     // Public claim is empty.

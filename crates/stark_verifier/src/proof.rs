@@ -234,19 +234,11 @@ pub struct ProofConfig {
     // OODS response.
     pub cumulative_sum_columns: Vec<bool>,
 
-    // Per component in the full list of components (in the order returned by `all_components()`),
-    // an indicator of whether it is enabled.
-    // This field is used for compatibility with the Cairo1 verifier where the set of components in
-    // the AIR can be set dynamically. In the Circuit verifier, the set of components is static
-    // and we always have enabled_bits.len() >= n_components.
-    pub enabled_bits: Vec<bool>,
-
     pub fri: FriConfig,
 }
 impl ProofConfig {
     pub fn new<Value: IValue>(
         components: &IndexMap<&'static str, Box<dyn CircuitEval<Value>>>,
-        enabled_bits: Vec<bool>,
         n_preprocessed_columns: usize,
         pcs_config: &PcsConfig,
         n_interaction_pow_bits: u32,
@@ -258,14 +250,6 @@ impl ProofConfig {
                 interaction_columns: component.interaction_columns(),
             });
         }
-
-        // Every component must have an enable bit.
-        assert!(component_shapes.len() <= enabled_bits.len());
-        assert_eq!(
-            component_shapes.len(),
-            enabled_bits.iter().filter(|b| **b).count(),
-            "Number of enabled bits must match the number of component shapes"
-        );
 
         let n_trace_columns: usize = component_shapes.iter().map(|info| info.trace_columns).sum();
         let n_interaction_columns: usize =
@@ -308,7 +292,6 @@ impl ProofConfig {
             n_interaction_columns,
             component_shapes,
             cumulative_sum_columns,
-            enabled_bits,
             fri: FriConfig {
                 log_trace_size,
                 log_blowup_factor: *log_blowup_factor as usize,

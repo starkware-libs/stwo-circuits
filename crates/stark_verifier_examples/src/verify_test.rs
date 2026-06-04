@@ -5,8 +5,7 @@ use stwo::core::vcs::blake2_hash::Blake2sHash;
 
 use crate::simple_air::{create_proof, create_proof_with_fold_step};
 use crate::simple_statement::{
-    COMPONENT_ENABLE_BITS, PREPROCESSED_COLUMN_LOG_SIZES, SimpleStatement,
-    simple_statement_components,
+    PREPROCESSED_COLUMN_LOG_SIZES, SimpleStatement, simple_statement_components,
 };
 use circuit_serialize::serialize::CircuitSerialize;
 use circuits::context::{Context, TraceContext};
@@ -39,13 +38,7 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
         create_proof();
 
     let components = simple_statement_components::<NoValue>();
-    let config = ProofConfig::new(
-        &components,
-        COMPONENT_ENABLE_BITS.to_vec(),
-        PREPROCESSED_COLUMN_LOG_SIZES.len(),
-        &pcs_config,
-        8,
-    );
+    let config = ProofConfig::new(&components, PREPROCESSED_COLUMN_LOG_SIZES.len(), &pcs_config, 8);
     // Create a NoValue version.
     let novalue_circuit = {
         let empty_proof = empty_proof(&config);
@@ -150,13 +143,7 @@ fn test_proof_info(#[case] fold_step: u32) {
         create_proof_with_fold_step(fold_step);
 
     let components = simple_statement_components::<NoValue>();
-    let config = ProofConfig::new(
-        &components,
-        COMPONENT_ENABLE_BITS.to_vec(),
-        PREPROCESSED_COLUMN_LOG_SIZES.len(),
-        &pcs_config,
-        8,
-    );
+    let config = ProofConfig::new(&components, PREPROCESSED_COLUMN_LOG_SIZES.len(), &pcs_config, 8);
     let info = ProofInfo::from_config(&config);
     let circuit_proof =
         proof_from_stark_proof(&proof, &config, claim, interaction_pow_nonce, channel_salt);

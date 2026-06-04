@@ -19,12 +19,8 @@ use num_traits::One;
 use stwo::core::fields::m31::M31;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
-/// Log sizes of the enabled components in [`SimpleStatement`].
-/// The stwo prover in `create_proof` runs with an additional disabled component (see
-/// [`COMPONENT_ENABLE_BITS`]); the disabled slot has log size `0` and is filled in by
-/// `pad_disabled` during channel mixing.
+/// Log sizes of the components in [`SimpleStatement`].
 pub const COMPONENT_LOG_SIZES: [u32; 2] = [LOG_SIZE_LONG, LOG_SIZE_SHORT];
-pub const COMPONENT_ENABLE_BITS: [bool; 3] = [true, true, false];
 pub const PREPROCESSED_COLUMN_LOG_SIZES: [u32; 2] = [LOG_SIZE_SHORT, LOG_SIZE_LONG];
 
 pub struct SimpleStatement<Value: IValue> {
@@ -146,6 +142,7 @@ fn squared_fibonacci_public_logup_sum(
 
 impl<Value: IValue> Statement<Value> for SimpleStatement<Value> {
     fn claims_to_mix(&self, _context: &mut Context<Value>) -> Vec<Vec<Var>> {
+        // The public claim is empty (mixed as an empty call).
         vec![vec![]]
     }
 

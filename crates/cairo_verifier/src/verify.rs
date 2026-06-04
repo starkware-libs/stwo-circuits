@@ -63,6 +63,9 @@ pub fn get_preprocessed_root(lifting_log_size: u32) -> HashValue<QM31> {
 pub struct CairoVerifierConfig {
     /// STARK proof configuration (component shapes, FRI parameters, PoW bits, etc.).
     pub proof_config: ProofConfig,
+    /// One flag per component in the full list of components (in the order returned by
+    /// `all_components()`), indicating whether it is enabled.
+    pub enabled_bits: Vec<bool>,
     /// The Cairo program being verified. Each memory cell is encoded as `MEMORY_VALUES_LIMBS`
     /// nine-bit M31 limbs.
     pub program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
@@ -118,7 +121,6 @@ pub fn build_fixed_cairo_circuit(
     outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
 ) -> Context<QM31> {
     let config = &verifier_config.proof_config;
-    let components = enabled_components(&config.enabled_bits);
 
     let public_claim = public_claim.iter().map(|u32| M31::from(*u32)).collect_vec();
     let mut context = Context::new(N_RESERVED);
@@ -127,7 +129,7 @@ pub fn build_fixed_cairo_circuit(
         public_claim,
         outputs,
         verifier_config.program.clone(),
-        components,
+        verifier_config.enabled_bits.clone(),
         verifier_config.preprocessed_root,
         verifier_config.preprocessed_trace_variant,
     );
@@ -146,11 +148,10 @@ pub fn build_fixed_cairo_circuit(
 /// [NoValue] and an [empty_proof].
 pub fn build_cairo_verifier_circuit(verifier_config: &CairoVerifierConfig) -> Context<NoValue> {
     let config = &verifier_config.proof_config;
-    let components = enabled_components::<NoValue>(&config.enabled_bits);
 
     let n_outputs = verifier_config.n_outputs;
     let program_len = verifier_config.program.len();
-    let n_components = components.len();
+    let n_components = verifier_config.enabled_bits.iter().filter(|b| **b).count();
     let public_claim = vec![M31::zero(); PUBLIC_DATA_LEN + n_outputs + program_len + n_components];
     let outputs = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; n_outputs];
 
@@ -160,7 +161,7 @@ pub fn build_cairo_verifier_circuit(verifier_config: &CairoVerifierConfig) -> Co
         public_claim,
         outputs,
         verifier_config.program.clone(),
-        components,
+        verifier_config.enabled_bits.clone(),
         verifier_config.preprocessed_root,
         verifier_config.preprocessed_trace_variant,
     );
@@ -176,6 +177,7 @@ pub fn build_cairo_verifier_circuit(verifier_config: &CairoVerifierConfig) -> Co
 pub fn prepare_cairo_proof_for_circuit_verifier(
     proof: &CairoProof<Blake2sM31MerkleHasher>,
     proof_config: &ProofConfig,
+    enabled_bits: &[bool],
 ) -> (Proof<QM31>, PublicData) {
     let CairoProof {
         claim,
@@ -190,7 +192,7 @@ pub fn prepare_cairo_proof_for_circuit_verifier(
         claim.flatten_claim();
     let claimed_sums = interaction_claim.flatten_interaction_claim();
 
-    debug_assert_eq!(component_enable_bits, proof_config.enabled_bits);
+    debug_assert_eq!(component_enable_bits, enabled_bits);
     debug_assert_eq!(component_log_sizes.len(), proof_config.n_components());
     debug_assert_eq!(claimed_sums.len(), proof_config.n_components());
 

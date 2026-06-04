@@ -75,13 +75,16 @@ pub fn verify_cairo_with_component_set(
 
     let proof_config = ProofConfig::new(
         &components,
-        component_enable_bits,
         cairo_proof.preprocessed_trace_variant.n_columns(),
         &cairo_proof.extended_stark_proof.proof.config,
         INTERACTION_POW_BITS,
     );
 
-    let (proof, public_data) = prepare_cairo_proof_for_circuit_verifier(cairo_proof, &proof_config);
+    let (proof, public_data) = prepare_cairo_proof_for_circuit_verifier(
+        cairo_proof,
+        &proof_config,
+        &component_enable_bits,
+    );
     let (mut public_claim, outputs, program) = public_data.pack_into_u32s();
     public_claim.extend(component_log_sizes);
     let outputs = outputs
@@ -97,6 +100,7 @@ pub fn verify_cairo_with_component_set(
     let verifier_config = CairoVerifierConfig {
         preprocessed_root: ppt_root.into(),
         proof_config,
+        enabled_bits: component_enable_bits,
         program,
         n_outputs: cairo_proof.claim.public_data.public_memory.output.len(),
         preprocessed_trace_variant: cairo_proof.preprocessed_trace_variant,
@@ -122,26 +126,24 @@ fn test_verify() {
     // are not supported.
     let pedersen_points_index =
         all_components::<NoValue>().get_full("pedersen_points_table_window_bits_18").unwrap().0;
-    let mut components = all_components();
-    components.shift_remove("pedersen_points_table_window_bits_18");
 
-    let public_claim =
-        vec![M31::zero(); PUBLIC_DATA_LEN + output_len + program_len + components.len()];
+    let mut enabled_bits = vec![true; all_components::<NoValue>().len()];
+    enabled_bits[pedersen_points_index] = false;
+    let n_components = enabled_bits.iter().filter(|b| **b).count();
+
+    let public_claim = vec![M31::zero(); PUBLIC_DATA_LEN + output_len + program_len + n_components];
     let statement = CairoStatement::new(
         &mut novalue_context,
         public_claim,
         outputs,
         program,
-        components,
+        enabled_bits,
         get_preprocessed_root(20 + pcs_config.fri_config.log_blowup_factor),
         PreProcessedTraceVariant::CanonicalSmall,
     );
 
-    let mut enabled_bits = vec![true; all_components::<NoValue>().len()];
-    enabled_bits[pedersen_points_index] = false;
     let config = ProofConfig::new(
         statement.get_components(),
-        enabled_bits,
         statement.preprocessed_trace_variant.n_columns(),
         &pcs_config,
         INTERACTION_POW_BITS,

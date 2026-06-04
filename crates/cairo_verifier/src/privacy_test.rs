@@ -34,10 +34,8 @@ fn verify_circuit_proof(
     preprocessed_root: HashValue<QM31>,
 ) -> Context<QM31> {
     let components = all_circuit_components::<QM31>();
-    let enabled_bits = vec![true; components.len()];
     let proof_config = ProofConfig::new(
         &components,
-        enabled_bits,
         preprocessed_circuit.preprocessed_trace.n_columns(),
         &circuit_proof.pcs_config,
         circuit_verifier::statement::INTERACTION_POW_BITS,
@@ -227,10 +225,8 @@ fn test_privacy_proof_info() {
     let statement =
         CircuitStatement::new(&mut context, &circuit_config, &public_data.output_values);
 
-    let enabled_bits = vec![true; all_circuit_components::<NoValue>().len()];
     let proof_config = ProofConfig::new(
         statement.get_components(),
-        enabled_bits,
         circuit_config.preprocessed_column_log_sizes.len(),
         &circuit_config.config,
         circuit_verifier::statement::INTERACTION_POW_BITS,
