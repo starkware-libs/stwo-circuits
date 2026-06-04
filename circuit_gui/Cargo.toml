@@ -1,0 +1,28 @@
+# Standalone crate: the empty `[workspace]` table below makes this its own
+# workspace root, so it is EXCLUDED from the parent stwo-circuits workspace.
+# This means no existing file (including the root Cargo.toml) is touched.
+[workspace]
+
+[package]
+name = "circuit-gui"
+version = "0.1.0"
+edition = "2024"
+description = "Browser-based read-only visualizer for stwo-circuits circuits"
+
+[[bin]]
+name = "circuit-gui"
+path = "src/main.rs"
+
+[dependencies]
+# Enable the (otherwise default-off) scope-recording feature so the GUI can read
+# `Context::scope_spans()` to build the hierarchical view.
+circuits = { path = "../crates/circuits", features = ["gui-scopes"] }
+# Source of named constants (relation ids) for friendly constant labels.
+circuit-verifier = { path = "../crates/circuit_verifier" }
+# Real verifier-circuit builders (NoValue topology) for the menu.
+circuits-stark-verifier = { path = "../crates/stark_verifier" }
+circuits-stark-verifier-examples = { path = "../crates/stark_verifier_examples" }
+circuit-cairo-verifier = { path = "../crates/cairo_verifier" }
+stwo = { version = "2.2.0", default-features = false }
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0"

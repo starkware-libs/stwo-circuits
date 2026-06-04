@@ -3,6 +3,13 @@ name = "circuits"
 version.workspace = true
 edition.workspace = true
 
+[features]
+# Off by default. When enabled (only by the external `circuit-gui` crate), the
+# `Context` records named scope spans (`push_scope`/`pop_scope`) used to build a
+# hierarchical view of the circuit. Has no effect on constraints, field math,
+# soundness, or performance, and is never enabled by normal builds, tests, or CI.
+gui-scopes = []
+
 [dependencies]
 blake2.workspace = true
 hashbrown.workspace = true

@@ -116,6 +116,8 @@ pub fn blake<Value: IValue>(
     // Sanity check: check the number of bytes is consistent with the number of [QM31] values.
     assert_eq!(input.len(), n_bytes.div_ceil(16));
 
+    ctx.push_scope("blake");
+
     const BLOCK_BYTES: usize = 64;
     const WORDS_PER_BLOCK: usize = 16;
 
@@ -204,6 +206,7 @@ pub fn blake<Value: IValue>(
     let out1 = from_partial_evals(ctx, [reduced[4], reduced[5], reduced[6], reduced[7]]);
 
     ctx.stats.blake_updates += n_blocks;
+    ctx.pop_scope();
     HashValue(out0, out1)
 }
 

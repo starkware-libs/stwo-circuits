@@ -7,6 +7,7 @@ pub mod extract_bits;
 pub mod finalize_constants;
 pub mod ivalue;
 pub mod ops;
+pub mod scopes;
 pub mod simd;
 pub mod stats;
 pub mod test_utils;
