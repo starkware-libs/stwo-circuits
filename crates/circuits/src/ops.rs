@@ -111,6 +111,7 @@ pub fn mul_into(context: &mut Context<impl IValue>, a: Var, b: Var, out: Var) {
 /// The caller must ensure that `b` is not zero.
 pub fn div(context: &mut Context<impl IValue>, a: Var, b: Var) -> Var {
     context.stats.div += 1;
+    assert!(!context.get(b).is_zero(), "div by zero");
     let out = guess(context, context.get(a) / context.get(b));
     let mul_res = mul(context, out, b);
     eq(context, mul_res, a);

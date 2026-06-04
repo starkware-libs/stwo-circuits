@@ -124,6 +124,8 @@ fn squared_fibonacci_public_logup_sum(
             (a, b) = (b, a * a + b * b + M31::from(j));
         }
         let elements = [context.constant(a.into()), context.constant(b.into())];
+        // denom1 is evaluated at the random interaction elements, so it is non-zero with high
+        // probability (denom = denom1^2 is non-zero for the same reason).
         let denom1 = combine_term(context, &elements, interaction_elements);
 
         let denom = eval!(context, (denom1) * (denom1));

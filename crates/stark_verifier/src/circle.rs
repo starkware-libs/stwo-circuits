@@ -133,6 +133,8 @@ pub fn coset_vanishing_poly(
 }
 
 /// Computes the inverse of the domain polynomial at `x`. See [coset_vanishing_poly].
+///
+/// The caller must ensure `x` is not on the trace coset.
 pub fn denom_inverse(context: &mut Context<impl IValue>, x: Var, log_trace_size: usize) -> Var {
     let one = context.one();
     let denom = coset_vanishing_poly(context, x, log_trace_size);

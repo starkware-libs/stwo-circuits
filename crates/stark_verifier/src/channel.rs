@@ -104,6 +104,7 @@ impl Channel {
         let t2 = eval!(context, (t) * (t));
 
         let denom = eval!(context, (t2) + (1));
+        // denom = t^2 + 1; zero only for t = ±i in QM31.
         let denom_inv = div(context, context.one(), denom);
         let x = eval!(context, ((1) - (t2)) * (denom_inv));
         let y = eval!(context, ((2) * (t)) * (denom_inv));

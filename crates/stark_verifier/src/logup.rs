@@ -42,6 +42,8 @@ pub fn logup_use_term(
     interaction_elements: [Var; 2],
 ) -> Var {
     let combined = combine_term(context, element, interaction_elements);
+    // combined is evaluated at the random interaction elements, so it is non-zero with high
+    // probability.
     div(context, context.one(), combined)
 }
 

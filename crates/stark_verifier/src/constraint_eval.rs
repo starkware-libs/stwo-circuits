@@ -189,6 +189,7 @@ impl CompositionConstraintAccumulator {
         let cur_cumsum = from_partial_evals(context, last_chunk.each_ref().map(|x| x.at_oods));
 
         let diff = eval!(context, ((cur_cumsum) - (prev_row_cumsum)) - (prev_col_cumsum));
+        // n_instances = 2^log_size, which is always non-zero.
         let cumsum_shift = div(context, claimed_sum, component_data.n_instances());
         // Instead of checking diff = num / denom, check diff = num / denom - cumsum_shift.
         // This makes (num / denom - cumsum_shift) have sum zero, which makes the constraint
@@ -307,6 +308,7 @@ pub fn compute_composition_polynomial<Value: IValue>(
     assert!(oods_samples.interaction.is_empty(), "unconsumed interaction columns");
 
     let final_evaluation = evaluation_accumulator.finalize();
+    // pt is the OODS point, outside the trace coset.
     let denom_inverse = denom_inverse(context, pt.x, log_domain_size);
     eval!(context, (final_evaluation) * (denom_inverse))
 }

@@ -30,6 +30,8 @@ pub trait IValue:
 {
     fn from_qm31(value: QM31) -> Self;
 
+    fn is_zero(&self) -> bool;
+
     /// A dummy value used by [`Context::reserve`](crate::context::Context::reserve) for variables
     /// whose value will be supplied later.
     fn placeholder() -> Self;
@@ -66,6 +68,10 @@ impl IValue for QM31 {
     /// Constructs an [IValue] from the given [QM31].
     fn from_qm31(value: QM31) -> Self {
         value
+    }
+
+    fn is_zero(&self) -> bool {
+        Zero::is_zero(self)
     }
 
     /// Dummy QM31 value.
@@ -120,6 +126,10 @@ pub struct NoValue;
 impl IValue for NoValue {
     fn from_qm31(_: QM31) -> Self {
         Self
+    }
+
+    fn is_zero(&self) -> bool {
+        false
     }
 
     fn placeholder() -> Self {

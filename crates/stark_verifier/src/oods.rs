@@ -414,7 +414,8 @@ pub fn compute_fri_input(
 
             // Compute the denominator line at (q_x, q_y).
             let denominator = eval!(context, ((aux.d) * (*q_x)) - (((aux.e) * (*q_y)) + (aux.f)));
-
+            // Non-zero: query points are M31 circle points (im(q.y)=0), so the line
+            // through the OODS sample point does not pass through them when d != 0.
             let quotient = div(context, numerator, denominator);
             sum = eval!(context, (sum) + (quotient));
         }
