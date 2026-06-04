@@ -106,16 +106,16 @@ pub fn verify<Value: IValue>(
     channel.mix_commitment(context, proof.composition_polynomial_root);
 
     // Draw a random point for the OODS.
-    // Security analysis: the OODS point is drawn from QM31, which has ~2^124 elements. A
-    // cheating prover can only pass this check if the OODS point lands in the "bad set" — the
-    // roots of (composition_poly - claimed) * vanishing. The composition polynomial has degree
-    // ≤ 2^log_trace_size ≤ 2^30 and the vanishing polynomial has degree 2^log_trace_size ≤ 2^30,
-    // giving a bad set of size ≤ 2^31. Soundness error ≤ 2^31 / 2^124 = 2^(-93).
-    // Note: draw_qm31 is slightly non-uniform — values 0 and 1 per M31 limb are each ~1.5×
-    // more probable than uniform (since 2^32 = 2p + 2, values 0 and 1 map from 3 pre-images
-    // while all others map from 2). An attacker can concentrate the bad set on elements with
-    // 3 "heavy" limbs (probability ratio 1.5^3), costing log2(1.5^3) ≈ 1.75 bits. Effective
-    // OODS security: ~91 bits.
+    // Soundness: the OODS check verifies the polynomial identity composition_poly * vanishing =
+    // constraints. An honest prover makes P = composition_poly * vanishing - constraints the zero
+    // polynomial; a cheating prover has P != 0, so the check passes only if the OODS point is one
+    // of P's ≤ deg(P) roots. deg(P) ≤ 3 * 2^log_trace_size: the composition polynomial has degree
+    // ≤ 2 * 2^log_trace_size (its committed degree bound is 2^(log_trace_size + 1)) and the
+    // vanishing polynomial adds 2^log_trace_size. So for log_trace_size ≤ 30 the bad set is
+    // ≤ 3 * 2^30 = 2^30 * 3 = 2^(30 + log2 3) = 2^(30 + 1.585) ≈ 2^31.6 of QM31's ~2^124
+    // elements — soundness error
+    // ≤ 2^(-92). draw_qm31's slight non-uniformity (values 0, 1 per M31 limb ~1.5× likelier,
+    // since 2^32 = 2p + 2) costs ≤ log2(1.5^3) ≈ 1.75 bits, leaving ~90 bits.
     let oods_point = channel.draw_point(context);
 
     let shifted_relation_uses = check_relation_uses(context, statement, &component_sizes_bits);
