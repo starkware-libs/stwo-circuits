@@ -193,6 +193,7 @@ fn fold_coset<Value: IValue>(
     twiddles_per_fold: &[Vec<Var>],
     alphas: &[Var],
 ) -> Var {
+    context.push_scope("fold_coset");
     assert_eq!(twiddles_per_fold.len(), alphas.len());
     assert_eq!(coset_values.len(), 1 << twiddles_per_fold.len());
     let mut values = coset_values.to_vec();
@@ -205,6 +206,7 @@ fn fold_coset<Value: IValue>(
             values[j] = eval!(context, (g) + ((alphas[i]) * (h)));
         }
     }
+    context.pop_scope();
     values[0]
 }
 

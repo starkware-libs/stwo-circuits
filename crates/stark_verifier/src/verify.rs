@@ -75,7 +75,9 @@ pub fn verify<Value: IValue>(
     channel.mix_commitment(context, preprocessed_root);
 
     let component_log_sizes = statement.get_component_log_sizes().clone();
+    context.push_scope("validate_and_compute_component_sizes");
     let component_sizes = validate_and_compute_component_sizes(context, &component_log_sizes);
+    context.pop_scope();
 
     // Check that the component sizes are at most 2^config.log_trace_size().
     // Note that we need k + 1 bits to represent 2^k.
@@ -102,8 +104,12 @@ pub fn verify<Value: IValue>(
     // Pick the interaction elements.
     let [interaction_z, interaction_alpha] = channel.draw_two_qm31s(context);
 
+    context.push_scope("public_logup_sum");
     let public_logup_sum = statement.public_logup_sum(context, [interaction_z, interaction_alpha]);
+    context.pop_scope();
+    context.push_scope("validate_logup_sum");
     validate_logup_sum(context, public_logup_sum, &proof.claimed_sums);
+    context.pop_scope();
 
     channel.mix_qm31s(context, proof.claimed_sums.iter().cloned());
     channel.mix_commitment(context, proof.interaction_root);
@@ -116,12 +122,15 @@ pub fn verify<Value: IValue>(
     // Draw a random point for the OODS.
     let oods_point = channel.draw_point(context);
 
+    context.push_scope("check_relation_uses");
     let shifted_relation_uses = check_relation_uses(context, statement, &component_sizes_bits);
+    context.pop_scope();
     let unpacked_component_sizes = Simd::unpack(context, &component_sizes);
     statement.verify_claim(context, &unpacked_component_sizes, &shifted_relation_uses);
 
     // Compute the composition evaluation at the OODS point from `proof.*_at_oods` and compare
     // to `proof.composition_eval_at_oods`.
+    context.push_scope("compute_composition_polynomial");
     let composition_eval = compute_composition_polynomial(
         context,
         config,
@@ -141,19 +150,24 @@ pub fn verify<Value: IValue>(
             n_instances_bits: &component_sizes_bits,
         },
     );
+    context.pop_scope();
+    context.push_scope("extract_expected_composition_eval");
     let expected_composition_eval = extract_expected_composition_eval(
         context,
         &proof.composition_eval_at_oods,
         oods_point,
         config.log_trace_size() + COMPOSITION_LOG_SPLIT as usize,
     );
+    context.pop_scope();
     eq(context, composition_eval, expected_composition_eval);
 
     // The generator of the trace subgroup on the circle.
     let trace_gen = generator_point(config.log_trace_size());
 
+    context.push_scope("period_generators");
     let period_generators_per_component =
         period_generators(context, trace_gen, &component_sizes_bits);
+    context.pop_scope();
     let periodicity_sample_points_per_component = period_generators_per_component
         .into_iter()
         .map(|pt| add_points(context, &oods_point, &pt))
@@ -187,7 +201,9 @@ pub fn verify<Value: IValue>(
     let oods_quotient_coef = channel.draw_qm31(context);
 
     // Run the commit phase of FRI.
+    context.push_scope("fri_commit");
     let fri_alphas = fri_commit(context, &mut channel, &proof.fri.commit);
+    context.pop_scope();
 
     // Proof of work before query selection.
     channel.pow(context, config.n_pow_bits, proof.pow_nonce);
@@ -195,8 +211,10 @@ pub fn verify<Value: IValue>(
     // Select queries.
     let query_selection_input =
         get_query_selection_input_from_channel(context, &mut channel, config.n_queries());
+    context.push_scope("select_queries");
     let queries =
         select_queries(context, &query_selection_input, config.log_evaluation_domain_size());
+    context.pop_scope();
 
     // Check decommitment of trace queries.
     let bits = queries.bits.iter().map(|simd| Simd::unpack(context, simd)).collect_vec();
@@ -205,6 +223,7 @@ pub fn verify<Value: IValue>(
     let periodicity_sample_points_per_column =
         column_periodicity_sample_points(config, &periodicity_sample_points_per_component);
 
+    context.push_scope("decommit_eval_domain_samples");
     decommit_eval_domain_samples(
         context,
         config.n_queries(),
@@ -217,8 +236,10 @@ pub fn verify<Value: IValue>(
             [preprocessed_root, trace, interaction, composition]
         },
     );
+    context.pop_scope();
 
     // Compute FRI input.
+    context.push_scope("collect_oods_responses");
     let oods_responses = collect_oods_responses(
         context,
         config,
@@ -227,6 +248,8 @@ pub fn verify<Value: IValue>(
         &periodicity_sample_points_per_column,
         proof,
     );
+    context.pop_scope();
+    context.push_scope("compute_fri_input");
     let fri_input = compute_fri_input(
         context,
         &oods_responses,
@@ -234,8 +257,11 @@ pub fn verify<Value: IValue>(
         &proof.eval_domain_samples,
         oods_quotient_coef,
     );
+    context.pop_scope();
 
+    context.push_scope("fri_decommit");
     fri_decommit(context, &proof.fri, &config.fri, &fri_input, &bits, queries, &fri_alphas);
+    context.pop_scope();
 }
 
 /// Verify that no relation is used more than P times.

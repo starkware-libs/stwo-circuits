@@ -39,19 +39,19 @@ fn fibonacci() -> Ctx {
     );
 
     let mut ctx = Context::<NoValue>::default();
-    // Wrap each stage in a scope (from here, not the library) so every gate
-    // lands under a top-level group — essential for the group-level renderer.
-    ctx.push_scope("proof");
+    // Scope the stages that produce gates (from here, not the library) so they
+    // land under a top-level group. `proof`/`statement` only `guess()` — no gates
+    // of their own (those become x+0=x gates under `finalize_guessed_vars`) — so
+    // they are left unscoped.
     let proof_vars = empty_proof(&config).guess(&mut ctx);
-    ctx.pop_scope();
-    ctx.push_scope("statement");
     let statement = SimpleStatement::new(&mut ctx);
-    ctx.pop_scope();
     ctx.push_scope("verify");
     verify(&mut ctx, &proof_vars, &config, &statement);
     ctx.pop_scope();
-    ctx.push_scope("finalize");
+    ctx.push_scope("finalize_constants");
     finalize_constants(&mut ctx);
+    ctx.pop_scope();
+    ctx.push_scope("finalize_guessed_vars");
     ctx.finalize_guessed_vars();
     ctx.pop_scope();
     ctx
