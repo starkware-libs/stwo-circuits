@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::preprocessed_columns::MAX_SEQUENCE_LOG_SIZE;
+use crate::verify::enabled_components;
 use cairo_air::components::memory_address_to_id::MEMORY_ADDRESS_TO_ID_SPLIT;
 use cairo_air::relations::{
     MEMORY_ADDRESS_TO_ID_RELATION_ID, MEMORY_ID_TO_BIG_RELATION_ID, OPCODES_RELATION_ID,
@@ -17,7 +18,7 @@ use circuits::simd::Simd;
 use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
 use circuits_stark_verifier::logup::logup_use_term;
-use circuits_stark_verifier::proof_from_stark_proof::pack_into_qm31s;
+use circuits_stark_verifier::proof_from_stark_proof::{pack_enable_bits, pack_into_qm31s};
 use circuits_stark_verifier::statement::Statement;
 use circuits_stark_verifier::verify::RELATION_USES_NUM_ROWS_SHIFT;
 use indexmap::IndexMap;
@@ -141,6 +142,11 @@ impl PublicData<Var> {
 
 pub struct CairoStatement<Value: IValue> {
     pub components: IndexMap<&'static str, Box<dyn CircuitEval<Value>>>,
+    /// One flag per component in the full list of components (in the order returned by
+    /// `all_components()`), indicating whether it is enabled. Mixed into the channel by
+    /// `claims_to_mix` for compatibility with the Cairo1 verifier, where the set of components in
+    /// the AIR can be set dynamically.
+    pub enabled_bits: Vec<bool>,
     pub packed_public_data: Simd,
     pub public_data: PublicData<Var>,
     pub program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
@@ -279,15 +285,19 @@ impl<Value: IValue> CairoStatement<Value> {
     /// `public_claim` is the flat public claim laid out as:
     /// `[public_data (PUBLIC_DATA_LEN + outputs.len() + program.len() M31s) | component_log_sizes
     /// (components.len() M31s)]`.
+    ///
+    /// The active components are derived from `enabled_bits` (which has one flag per component in
+    /// the full list returned by `all_components()`).
     pub fn new(
         context: &mut Context<Value>,
         public_claim: Vec<M31>,
         outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
         program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
-        components: IndexMap<&'static str, Box<dyn CircuitEval<Value>>>,
+        enabled_bits: Vec<bool>,
         preprocessed_root: HashValue<QM31>,
         preprocessed_trace_variant: PreProcessedTraceVariant,
     ) -> Self {
+        let components = enabled_components::<Value>(&enabled_bits);
         let n_components = components.len();
         let public_data_len = PUBLIC_DATA_LEN + outputs.len() + program.len();
         assert_eq!(public_claim.len(), public_data_len + n_components);
@@ -324,6 +334,7 @@ impl<Value: IValue> CairoStatement<Value> {
             program,
             packed_outputs,
             components,
+            enabled_bits,
             component_log_sizes,
             preprocessed_root,
             preprocessed_trace_variant,
@@ -343,6 +354,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
     fn claims_to_mix(&self, context: &mut Context<Value>) -> Vec<Vec<Var>> {
         let Self {
             components: _components,
+            enabled_bits,
             packed_public_data,
             public_data: _public_data,
             program,
@@ -351,6 +363,15 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
             preprocessed_root: _preprocessed_root,
             preprocessed_trace_variant: _preprocessed_trace_variant,
         } = self;
+
+        // Mix the (hardcoded) enable bits into the channel for compatibility with the Cairo1
+        // verifier: first the number of enable bits, then the packed enable bits.
+        let n_enable_bits = context.constant(qm31_from_u32s(enabled_bits.len() as u32, 0, 0, 0));
+        let packed_enable_bits = pack_enable_bits(enabled_bits)
+            .into_iter()
+            .map(|qm31| context.constant(qm31))
+            .collect_vec();
+
         let program_len = context.constant(qm31_from_u32s(program.len() as u32, 0, 0, 0));
 
         let output_hash = blake(context, packed_outputs.get_packed(), 4 * packed_outputs.len());
@@ -359,6 +380,8 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         let flat_program = pack_into_qm31s(program.iter().flatten().cloned());
         let program_hash = IValue::blake(&flat_program, flat_program.len() * 16);
         vec![
+            vec![n_enable_bits],
+            packed_enable_bits,
             self.component_log_sizes.get_packed().to_vec(),
             vec![program_len],
             packed_public_data.get_packed().to_vec(),

@@ -11,13 +11,12 @@ use crate::fri::{fri_commit, fri_decommit};
 use crate::merkle::decommit_eval_domain_samples;
 use crate::oods::{collect_oods_responses, compute_fri_input, extract_expected_composition_eval};
 use crate::proof::{Proof, ProofConfig};
-use crate::proof_from_stark_proof::pack_enable_bits;
 use crate::select_queries::{get_query_selection_input_from_channel, select_queries};
 use crate::statement::{EvaluateArgs, OodsSamples, Statement};
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::extract_bits::extract_bits;
-use circuits::ivalue::{IValue, qm31_from_u32s};
+use circuits::ivalue::IValue;
 use circuits::ops::eq;
 use circuits::simd::Simd;
 use circuits::wrappers::M31Wrapper;
@@ -73,15 +72,6 @@ pub fn verify<Value: IValue>(
     // Note that we need k + 1 bits to represent 2^k.
     let component_sizes_bits =
         extract_bits(context, &component_sizes, config.log_trace_size() as u32 + 1);
-
-    // Mix the (hardcoded) enable bits into the channel for compatibility with the Cairo1 verifier.
-    let enable_bits = &config.enabled_bits;
-    let n_enable_bits = context.constant(qm31_from_u32s(enable_bits.len() as u32, 0, 0, 0));
-    channel.mix_qm31s(context, [n_enable_bits]);
-
-    let packed_enable_bits =
-        pack_enable_bits(enable_bits).into_iter().map(|qm31| context.constant(qm31)).collect_vec();
-    channel.mix_qm31s(context, packed_enable_bits);
 
     for claim_to_mix in statement.claims_to_mix(context) {
         channel.mix_qm31s(context, claim_to_mix.iter().cloned());

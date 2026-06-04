@@ -6,7 +6,7 @@ use circuits_stark_verifier::proof::{ProofConfig, ProofInfo};
 use circuits_stark_verifier::proof_from_stark_proof::proof_from_stark_proof;
 use circuits_stark_verifier_examples::simple_air::create_proof;
 use circuits_stark_verifier_examples::simple_statement::{
-    COMPONENT_ENABLE_BITS, PREPROCESSED_COLUMN_LOG_SIZES, simple_statement_components,
+    PREPROCESSED_COLUMN_LOG_SIZES, simple_statement_components,
 };
 
 #[test]
@@ -15,13 +15,7 @@ fn test_serialize_deserialize() {
         create_proof();
 
     let components = simple_statement_components::<QM31>();
-    let config = ProofConfig::new(
-        &components,
-        COMPONENT_ENABLE_BITS.to_vec(),
-        PREPROCESSED_COLUMN_LOG_SIZES.len(),
-        &pcs_config,
-        8,
-    );
+    let config = ProofConfig::new(&components, PREPROCESSED_COLUMN_LOG_SIZES.len(), &pcs_config, 8);
     let proof = proof_from_stark_proof(&proof, &config, claim, interaction_pow_nonce, channel_salt);
 
     let mut serialized = Vec::new();

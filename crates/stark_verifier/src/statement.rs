@@ -31,11 +31,9 @@ pub struct EvaluateArgs<'a> {
 
 /// Represents an AIR and its public inputs.
 pub trait Statement<Value: IValue> {
-    /// Returns the statement's public inputs to mix into the channel (one
-    /// `mix_qm31s` call per inner `Vec`). Only statement-specific data belongs here,
-    /// e.g. program bytecode, public memory, circuit outputs. Per-component metadata
-    /// (enable bits, log sizes, claimed sums) is already mixed via `proof.claim` before
-    /// this is called and should not be included.
+    /// Returns the statement's public inputs to mix into the channel, one `mix_qm31s` call per
+    /// inner `Vec`, in the exact order (and with the exact grouping) the prover mixed them.
+    /// The concrete contents are statement-specific.
     fn claims_to_mix(&self, context: &mut Context<Value>) -> Vec<Vec<Var>>;
 
     /// Returns the AIR components that define the constraint system.

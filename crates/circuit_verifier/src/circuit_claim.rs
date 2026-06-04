@@ -4,8 +4,7 @@ use crate::circuit_components::N_COMPONENTS;
 use crate::relations::{CommonLookupElements, GATE_RELATION_ID};
 use crate::statement::all_circuit_components;
 use circuits::context::{U_VALUE, U_VAR_IDX};
-use circuits::ivalue::{NoValue, qm31_from_u32s};
-use circuits_stark_verifier::proof_from_stark_proof::pack_enable_bits;
+use circuits::ivalue::NoValue;
 use itertools::zip_eq;
 use num_traits::Zero;
 use stwo::core::channel::Channel;
@@ -25,11 +24,6 @@ impl CircuitClaim {
     pub fn mix_into(&self, channel: &mut impl Channel) {
         let Self { output_values } = self;
 
-        // mix the number of components.
-        channel.mix_felts(&[qm31_from_u32s(N_COMPONENTS.try_into().unwrap(), 0, 0, 0)]);
-
-        // mix the enable bits into the channel.
-        channel.mix_felts(&pack_enable_bits(&[true; N_COMPONENTS]));
         // mix the output values into the channel.
         channel.mix_felts(output_values);
     }
