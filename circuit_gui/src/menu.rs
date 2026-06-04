@@ -86,9 +86,8 @@ fn blake_hash(n_blocks: usize) -> Ctx {
 
     let message: Vec<_> = (0..n_words).map(|_| input(&mut ctx)).collect();
 
-    ctx.push_scope("blake");
+    // `blake()` pushes its own "blake" scope; don't double-wrap it here.
     let h = blake(&mut ctx, &message, n_bytes);
-    ctx.pop_scope();
 
     output(&mut ctx, h.0);
     output(&mut ctx, h.1);
