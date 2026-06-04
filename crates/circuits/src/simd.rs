@@ -217,6 +217,8 @@ impl Simd {
         let unit_vec = context.constant(UNIT_VECS[coord]);
         let x = pointwise_mul(context, qm31_var, unit_vec);
         // Then, divide by `unit_vecs[coord]` to get `c`.
+        // For coord == 0, UNIT_VECS[0] = (1,0,0,0), so the pointwise multiplication already
+        // zeroed out the other coordinates and leaves c unchanged — no division needed.
         if coord == 0 {
             x
         } else {
@@ -244,6 +246,11 @@ impl Simd {
         Simd::from_packed(data, values.len())
     }
 
+    /// Computes `2^n` per lane, where `n` is the integer whose little-endian bit decomposition
+    /// is given by `bits`: `n = bits[0] + bits[1]*2 + bits[2]*4 + ...`.
+    ///
+    /// Each `bits[i]` must contain only 0/1 values; `bits` must be non-empty and have at most
+    /// 5 elements, and the encoded value `n` must be at most 30 (so that `2^n` stays within M31).
     pub fn pow2(context: &mut Context<impl IValue>, bits: &[Simd]) -> Simd {
         let len = bits[0].len();
         let mut res = Simd::one(context, len);
@@ -252,6 +259,7 @@ impl Simd {
             let res_if_bit_is_one = Simd::scalar_mul(context, &res, &pow2);
             // Select between `res` and `res_if_bit_is_one` based on the value of the bit.
             res = Simd::select(context, bit, &res, &res_if_bit_is_one);
+            // Square `pow2` to advance to the next power of two, except on the last iteration.
             if bit_idx < bits.len() - 1 {
                 pow2 = M31Wrapper::mul(context, pow2.clone(), pow2.clone());
             }
@@ -260,10 +268,13 @@ impl Simd {
     }
 
     /// Packs little-endian bit-slices into a SIMD integer.
-    /// This is the inverse of `extract_bits`
+    /// This is the inverse of `extract_bits`.
     ///
     /// Assumes each `bits[i]` contains only 0/1 values;
     /// returns Σ `bits[i] * (1 << i)` per lane.
+    ///
+    /// `bits` must be non-empty and have at most 30 elements (so the result fits in M31 without
+    /// wrapping — 31 all-one bits would produce 2^31 - 1 = M31::P ≡ 0).
     pub fn combine_bits(context: &mut Context<impl IValue>, bits: &[Simd]) -> Simd {
         let mut iter = bits.iter().rev();
         let mut res = iter.next().unwrap().clone();

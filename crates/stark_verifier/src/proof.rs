@@ -226,6 +226,7 @@ pub struct ProofConfig {
     pub n_preprocessed_columns: usize,
     pub n_trace_columns: usize,
     pub n_interaction_columns: usize,
+    // One entry per enabled component, in the order returned by `all_components()`.
     pub component_shapes: Vec<ComponentShape>,
 
     // Per column in the interaction trace, an indicator of whether it is a cumulative sum column.
@@ -233,7 +234,8 @@ pub struct ProofConfig {
     // OODS response.
     pub cumulative_sum_columns: Vec<bool>,
 
-    // Per component in the full list of components, an indicator of whether it is enabled.
+    // Per component in the full list of components (in the order returned by `all_components()`),
+    // an indicator of whether it is enabled.
     // This field is used for compatibility with the Cairo1 verifier where the set of components in
     // the AIR can be set dynamically. In the Circuit verifier, the set of components is static
     // and we always have enabled_bits.len() >= n_components.

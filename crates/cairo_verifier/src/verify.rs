@@ -56,11 +56,21 @@ pub fn get_preprocessed_root(lifting_log_size: u32) -> HashValue<QM31> {
     root.into()
 }
 
+/// Configuration for the circuit that verifies the Cairo AIR.
+///
+/// Bundles everything the verifier needs that is fixed for a given Cairo program and proof
+/// configuration: the STARK parameters, the program itself, and the preprocessed trace root.
 pub struct CairoVerifierConfig {
+    /// STARK proof configuration (component shapes, FRI parameters, PoW bits, etc.).
     pub proof_config: ProofConfig,
+    /// The Cairo program being verified. Each memory cell is encoded as `MEMORY_VALUES_LIMBS`
+    /// nine-bit M31 limbs.
     pub program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
+    /// Number of public outputs produced by the program.
     pub n_outputs: usize,
+    /// Merkle root of the preprocessed (constant) trace columns.
     pub preprocessed_root: HashValue<QM31>,
+    /// Which preprocessed trace variant to use (e.g. small canonical vs lifted).
     pub preprocessed_trace_variant: PreProcessedTraceVariant,
 }
 
