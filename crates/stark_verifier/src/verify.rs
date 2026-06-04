@@ -49,6 +49,7 @@ pub fn verify<Value: IValue>(
     statement: &impl Statement<Value>,
 ) {
     proof.validate_structure(config);
+    assert!(config.log_trace_size() <= 30);
     let mut channel = Channel::new(context);
 
     // Mix the channel salt.
