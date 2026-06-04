@@ -1,7 +1,6 @@
 pub mod channel;
 pub mod circle;
 pub mod constraint_eval;
-pub mod empty_component;
 pub mod fri;
 pub mod fri_proof;
 pub mod logup;
