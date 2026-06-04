@@ -84,9 +84,9 @@ impl Channel {
     /// reduced mod M31 (p = 2^31 - 1). Since 2^32 = 2*M31 + 2, values 0 and 1 each have
     /// 3 preimages in the u32 range (probability 3/2^32 each) while every v in
     /// {2, ..., M31-1} has exactly 2 preimages (probability 2/2^32). Propagating this
-    /// through the bit representation of the M31 value:
-    ///   bit 0:      P(= 1) = (2^31 - 1) / 2^32  (bias 2^{-32} from uniform)
-    ///   bit k >= 1: P(= 1) = (2^31 - 2) / 2^32  (bias 2^{-31} from uniform)
+    /// through the bit representation of the M31 value, we have that P(k-th bit = 1) is
+    ///   = (2^31 - 1) / 2^32 if k = 0  (bias 2^{-32} from uniform)
+    ///   = (2^31 - 2) / 2^32 if k >= 1 (bias 2^{-31} from uniform)
     /// (bits k >= 1 are slightly more biased because values 0 and 1 both have bit k = 0)
     pub fn draw_two_qm31s(&mut self, context: &mut Context<impl IValue>) -> [Var; 2] {
         let n_draws_var =
