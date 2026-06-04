@@ -116,7 +116,7 @@ impl<Value: IValue> Context<Value> {
 
     /// Returns the value of a variable.
     pub fn get(&self, var: Var) -> Value {
-        debug_assert!(!self.reserved_vars.contains(&var.idx), "read of reserved variable",);
+        assert!(!self.reserved_vars.contains(&var.idx), "read of reserved variable",);
         self.values[var.idx]
     }
 
