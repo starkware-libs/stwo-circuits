@@ -173,11 +173,9 @@ fn add_qm31_ops_to_preprocessed_trace(
 fn add_eq_to_preprocessed_trace(eq: &[Eq], pp_trace: &mut PreProcessedTrace) {
     let mut eq_in0_address = vec![];
     let mut eq_in1_address = vec![];
-    for gate in eq.iter() {
-        let [in0, in1] = gate.uses()[..] else { panic!("Expected 2 uses for gate") };
-        assert!(gate.yields().is_empty(), "Expected no yields for Eq gate");
-        eq_in0_address.push(in0);
-        eq_in1_address.push(in1);
+    for Eq { in0, in1 } in eq {
+        eq_in0_address.push(*in0);
+        eq_in1_address.push(*in1);
     }
 
     pp_trace.push_column(PreProcessedColumnId { id: "eq_in0_address".to_owned() }, eq_in0_address);
@@ -196,16 +194,12 @@ fn add_triple_xor_to_preprocessed_trace(
     let mut triple_xor_input_addr_2 = vec![];
     let mut triple_xor_output_addr = vec![];
     let mut triple_xor_multiplicity = vec![];
-    for gate in triple_xor.iter() {
-        let [input_a, input_b, input_c] = gate.uses()[..] else {
-            panic!("Expected 3 uses for TripleXor")
-        };
-        let [out] = gate.yields()[..] else { panic!("Expected 1 yield for TripleXor") };
-        triple_xor_input_addr_0.push(input_a);
-        triple_xor_input_addr_1.push(input_b);
-        triple_xor_input_addr_2.push(input_c);
-        triple_xor_output_addr.push(out);
-        triple_xor_multiplicity.push(multiplicities[out]);
+    for TripleXor { input_a, input_b, input_c, out } in triple_xor.iter() {
+        triple_xor_input_addr_0.push(*input_a);
+        triple_xor_input_addr_1.push(*input_b);
+        triple_xor_input_addr_2.push(*input_c);
+        triple_xor_output_addr.push(*out);
+        triple_xor_multiplicity.push(multiplicities[*out]);
     }
 
     pp_trace.push_column(
@@ -239,12 +233,10 @@ fn fill_m31_to_u32_columns(
     multiplicities: &[usize],
     columns: &mut [Vec<usize>; N_M31_TO_U32_PP_COLUMNS],
 ) {
-    for gate in gates.iter() {
-        let [input] = gate.uses()[..] else { panic!("Expected 1 use for M31ToU32") };
-        let [out] = gate.yields()[..] else { panic!("Expected 1 yield for M31ToU32") };
-        columns[0].push(input);
-        columns[1].push(out);
-        columns[2].push(multiplicities[out]);
+    for M31ToU32 { input, out } in gates.iter() {
+        columns[0].push(*input);
+        columns[1].push(*out);
+        columns[2].push(multiplicities[*out]);
     }
 }
 
@@ -281,31 +273,37 @@ fn add_blake_g_gate_to_preprocessed_trace(
     let mut blake_g_gate_output_addr_c = vec![];
     let mut blake_g_gate_output_addr_d = vec![];
     let mut blake_g_gate_multiplicity = vec![];
-    for gate in blake_g_gate.iter() {
-        let [input_a, input_b, input_c, input_d, input_f0, input_f1] = gate.uses()[..] else {
-            panic!("Expected 6 uses for BlakeGGate")
-        };
-        let [out_a, out_b, out_c, out_d] = gate.yields()[..] else {
-            panic!("Expected 4 yields for BlakeGGate")
-        };
-        blake_g_gate_input_addr_a.push(input_a);
-        blake_g_gate_input_addr_b.push(input_b);
-        blake_g_gate_input_addr_c.push(input_c);
-        blake_g_gate_input_addr_d.push(input_d);
-        blake_g_gate_input_addr_f0.push(input_f0);
-        blake_g_gate_input_addr_f1.push(input_f1);
-        blake_g_gate_output_addr_a.push(out_a);
-        blake_g_gate_output_addr_b.push(out_b);
-        blake_g_gate_output_addr_c.push(out_c);
-        blake_g_gate_output_addr_d.push(out_d);
+    for BlakeGGate {
+        input_a,
+        input_b,
+        input_c,
+        input_d,
+        input_f0,
+        input_f1,
+        out_a,
+        out_b,
+        out_c,
+        out_d,
+    } in blake_g_gate.iter()
+    {
+        blake_g_gate_input_addr_a.push(*input_a);
+        blake_g_gate_input_addr_b.push(*input_b);
+        blake_g_gate_input_addr_c.push(*input_c);
+        blake_g_gate_input_addr_d.push(*input_d);
+        blake_g_gate_input_addr_f0.push(*input_f0);
+        blake_g_gate_input_addr_f1.push(*input_f1);
+        blake_g_gate_output_addr_a.push(*out_a);
+        blake_g_gate_output_addr_b.push(*out_b);
+        blake_g_gate_output_addr_c.push(*out_c);
+        blake_g_gate_output_addr_d.push(*out_d);
 
         // All four outputs of a Blake G gate share one multiplicity column. In the Blake
         // construction, each G output is consumed exactly once (by another G step or by the
         // triple-XOR).
-        let mult = multiplicities[out_a];
+        let mult = multiplicities[*out_a];
         for y in [out_b, out_c, out_d] {
             assert_eq!(
-                multiplicities[y], mult,
+                multiplicities[*y], mult,
                 "BlakeGGate output multiplicities must be identical"
             );
         }
