@@ -431,6 +431,20 @@ impl Circuit {
         )
     }
 
+    /// Number of rows in the QM31Ops AIR component for this circuit.
+    ///
+    /// NOTE: This assumes a specific arithmetization of the circuit, in which the arithmetic
+    /// gates (add/sub/mul/pointwise_mul) and the permutation gates are all packed into a single
+    /// QM31Ops component — one row per arithmetic gate plus one row per permutation input/output.
+    /// The `Circuit` itself is otherwise independent of the arithmetization.
+    pub fn n_qm31_ops_rows(&self) -> usize {
+        self.add.len()
+            + self.sub.len()
+            + self.mul.len()
+            + self.pointwise_mul.len()
+            + self.permutation.iter().map(|p| p.inputs.len() + p.outputs.len()).sum::<usize>()
+    }
+
     /// Checks if the circuit is satisfied by the given values.
     pub fn check(&self, values: &[QM31]) -> Result<(), String> {
         for gate in self.all_gates() {

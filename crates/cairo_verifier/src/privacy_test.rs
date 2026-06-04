@@ -13,7 +13,6 @@ use circuit_verifier::verify::{CircuitConfig, CircuitPublicData, verify_circuit}
 use circuits::blake::HashValue;
 use circuits::context::Context;
 use circuits::ivalue::{IValue, NoValue};
-use circuits::stats::Stats;
 use circuits_stark_verifier::proof::{ProofConfig, ProofInfo};
 use circuits_stark_verifier::statement::Statement;
 use itertools::Itertools;
@@ -181,33 +180,13 @@ fn test_zk_padding() {
         let const_config = privacy_cairo_verifier_config(log_blowup_factor);
         let mut context = build_cairo_verifier_circuit(&const_config);
 
-        let Stats { equals: eq_before, add, sub, mul, div, pointwise_mul, .. } = context.stats;
-        let qm31_ops_before = add
-            + sub
-            + mul
-            + div
-            + pointwise_mul
-            + context
-                .circuit
-                .permutation
-                .iter()
-                .map(|p| p.inputs.len() + p.outputs.len())
-                .sum::<usize>();
+        let eq_before = context.circuit.eq.len();
+        let qm31_ops_before = context.circuit.n_qm31_ops_rows();
 
         add_zk_blinding(&mut context, [0; 32], const_config.proof_config.fri.n_queries);
 
-        let Stats { equals: eq_after, add, sub, mul, div, pointwise_mul, .. } = context.stats;
-        let qm31_ops_after = add
-            + sub
-            + mul
-            + div
-            + pointwise_mul
-            + context
-                .circuit
-                .permutation
-                .iter()
-                .map(|p| p.inputs.len() + p.outputs.len())
-                .sum::<usize>();
+        let eq_after = context.circuit.eq.len();
+        let qm31_ops_after = context.circuit.n_qm31_ops_rows();
 
         assert_eq!(eq_after.next_power_of_two(), eq_before.next_power_of_two());
         assert_eq!(qm31_ops_after.next_power_of_two(), qm31_ops_before.next_power_of_two());
