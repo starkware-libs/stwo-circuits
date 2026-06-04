@@ -4,7 +4,7 @@
 // (Linear-style: color carries meaning, nothing shouts).
 const KIND_COLOR = {
   add: "#5e6ad2", sub: "#7c8af0", mul: "#d9912f", pmul: "#c1568f",
-  eq: "#8a6fd4", blakeg: "#4f9d69", xor: "#d4a72c", m2u: "#2aa7a0",
+  eq: "#8a6fd4", blakeg: "#16a34a", xor: "#d4a72c", m2u: "#0891b2",
   perm: "#b5546b", out: "#3a3f4d", input: "#ffffff",
 };
 const KIND_SYMBOL = {
@@ -138,10 +138,11 @@ function style() {
     {
       selector: "node[?isGroup]",
       style: {
-        "background-color": "data(gcolor)", "background-opacity": 0.04,
+        "background-color": "data(gcolor)",
+        "background-opacity": (n) => 0.05 + 0.05 * (n.data("depth") || 0),
         shape: "round-rectangle", "corner-radius": 14,
-        "border-width": 1.5, "border-style": "solid",
-        "border-color": "data(gcolor)", "border-opacity": 0.3,
+        "border-width": 1, "border-style": "solid",
+        "border-color": "data(gcolor)", "border-opacity": 0.55,
         label: "data(label)", "text-valign": "top", "text-halign": "center",
         "font-size": 10.5, "font-weight": "bold", color: "data(gcolor)",
         "text-margin-y": -9, "text-background-color": "#ffffff",
@@ -172,10 +173,10 @@ function style() {
       selector: "edge",
       style: {
         "curve-style": "straight",
-        width: (e) => Math.min(2.4, 0.9 + 0.3 * (e.data("count") || 1)),
-        "line-color": "#c4c8d2", "target-arrow-color": "#aab0bd",
-        "target-arrow-shape": "triangle", "arrow-scale": 0.6,
-        "line-cap": "round", opacity: 0.95,
+        width: (e) => Math.min(1.6, 0.6 + 0.22 * (e.data("count") || 1)),
+        "line-color": "#d8dbe3", "target-arrow-color": "#c2c6d2",
+        "target-arrow-shape": "triangle", "arrow-scale": 0.45,
+        "line-cap": "round", opacity: 0.5,
         label: "data(label)", "font-size": 9, color: "#475569",
         "text-background-color": "#f8fafc", "text-background-opacity": 0.95,
         "text-background-padding": 2, "text-background-shape": "round-rectangle",
@@ -192,7 +193,7 @@ function style() {
     // Hover highlight: fade everything, then spotlight the hovered node + its wires.
     { selector: ".faded", style: { opacity: 0.22 } },
     { selector: ".hl-node", style: { opacity: 1, "border-width": 2.5, "border-color": "#5e6ad2", "z-index": 20 } },
-    { selector: ".hl-edge", style: { opacity: 1, "line-color": "#5e6ad2", "target-arrow-color": "#5e6ad2", "z-index": 19, width: 2 } },
+    { selector: ".hl-edge", style: { opacity: 1, "line-color": "#5e6ad2", "target-arrow-color": "#5e6ad2", "z-index": 999, width: 2.2 } },
     { selector: "edge:selected", style: { "line-color": "#5e6ad2", "target-arrow-color": "#5e6ad2" } },
   ];
 }
@@ -257,18 +258,31 @@ function arrangeBlakeBlocks() {
     (n) => n.data("isGroup") && groupFamily(n.data("label")) === "blake block",
   );
   if (blocks.length === 0) return;
-  const ROUND_DY = 60;
+  const ROUND_DY = 64;
   let commonTop = null;
   blocks.forEach((block) => {
     const rounds = block.children().filter((c) => groupFamily(c.data("label")) === "blake round");
-    // Skip if any round is expanded (a parent) — that case is laid out by dagre.
-    if (rounds.length === 0 || rounds.some((r) => r.isParent())) return;
+    if (rounds.length === 0) return;
     const sorted = rounds.sort((a, b) => familyIndex(a.data("label"), "round") - familyIndex(b.data("label"), "round"));
     const cx = block.position("x");
     let top = block.position("y") - ((sorted.length - 1) * ROUND_DY) / 2;
     if (commonTop === null) commonTop = top; else top = commonTop;
     cy.batch(() => {
-      sorted.forEach((r, i) => r.position({ x: cx, y: top + i * ROUND_DY }));
+      sorted.forEach((r, i) => {
+        const tx = cx, ty = top + i * ROUND_DY;
+        if (r.isParent()) {
+          // Expanded round: translate its whole subtree so the box keeps its
+          // slot in the column (a parent's own position can't be set directly).
+          const cur = r.position();
+          const dx = tx - cur.x, dy = ty - cur.y;
+          r.descendants().forEach((d) => {
+            const p = d.position();
+            d.position({ x: p.x + dx, y: p.y + dy });
+          });
+        } else {
+          r.position({ x: tx, y: ty });
+        }
+      });
     });
   });
 }
