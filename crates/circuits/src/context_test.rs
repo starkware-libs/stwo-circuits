@@ -1,6 +1,6 @@
 use itertools::Itertools;
 
-use crate::context::{Context, TraceContext};
+use crate::context::{Context, TraceContext, U_VAR_IDX};
 use crate::finalize_constants::finalize_constants;
 use crate::ivalue::qm31_from_u32s;
 
@@ -34,7 +34,9 @@ fn test_set_outputs() {
     assert_eq!(context.get(reserved0), qm31_from_u32s(3, 0, 0, 0));
     assert_eq!(context.get(reserved1), qm31_from_u32s(3, 0, 0, 0));
 
-    for (actual, expected) in context.circuit.output.iter().zip_eq([reserved0.idx, reserved1.idx]) {
+    for (actual, expected) in
+        context.circuit.output.iter().zip_eq([U_VAR_IDX, reserved0.idx, reserved1.idx])
+    {
         assert_eq!(actual.in0, expected);
     }
     finalize_constants(&mut context);

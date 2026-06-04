@@ -225,8 +225,10 @@ impl<Value: IValue> Default for Context<Value> {
         // Register zero, one, and u as the first constants.
         res.constant(QM31::zero());
         res.constant(QM31::one());
-        res.constant(U_VALUE); // u at idx 2
-
+        let u_var = res.constant(U_VALUE); // u at idx 2
+        assert_eq!(u_var.idx, U_VAR_IDX);
+        // Add `u` to the outputs.
+        output(&mut res, u_var);
         res
     }
 }

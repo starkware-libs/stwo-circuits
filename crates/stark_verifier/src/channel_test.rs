@@ -45,6 +45,8 @@ fn test_mix_commitment_regression() {
             blake_updates: 2,
             triple_xor: 16,
             m31_to_u32: 32,
+            // The context constructor marks `u` as an output.
+            outputs: 1,
             ..Stats::default()
         }
     );

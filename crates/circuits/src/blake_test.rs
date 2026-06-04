@@ -53,7 +53,8 @@ fn test_blake(#[case] wrong_output: bool) {
             guess: 7,
             blake_updates: 2,
             permutation_inputs: 0,
-            outputs: 0,
+            // The context constructor marks `u` as an output.
+            outputs: 1,
             triple_xor: 16,
             m31_to_u32: 20
         }

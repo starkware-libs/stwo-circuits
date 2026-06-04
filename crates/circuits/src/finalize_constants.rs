@@ -9,7 +9,7 @@ use crate::circuit::{Add, Mul};
 use crate::context::{Context, Var};
 use crate::eval;
 use crate::ivalue::{IValue, qm31_from_u32s};
-use crate::ops::{add, output};
+use crate::ops::add;
 
 #[cfg(test)]
 #[path = "finalize_constants_test.rs"]
@@ -71,9 +71,9 @@ pub(crate) fn finalize_constants_with_min_base(
     // Yield the `one` wire.
     context.circuit.add.push(Add { in0: one.idx, in1: zero_idx, out: one.idx });
     // `u * x = u => x = 1`. This yield `u` and constrains `one`. The value of `u_var` is going to
-    // be enforced through a log up constraint in the next verifier.
+    // be enforced through a log up constraint in the next verifier. The wire of `u_var` is marked
+    // as output in the context constructor.
     context.circuit.mul.push(Mul { in0: u_var.idx, in1: one.idx, out: u_var.idx });
-    output(context, u_var);
     // Remove 1 and u from the constants.
     qm31_constants.swap_remove(&qm31_from_u32s(0, 0, 1, 0)).unwrap();
     m31_cache.insert(M31(1), m31_constants.swap_remove(&M31(1)).unwrap().idx);

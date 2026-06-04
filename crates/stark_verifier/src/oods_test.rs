@@ -30,6 +30,7 @@ fn test_eval_domain_samples_guess_circuit() {
     expect![[r#"
         [4] = [3] x [1]
         [6] = [5] x [1]
+        output [2]
 
     "#]]
     .assert_debug_eq(&context.circuit);
