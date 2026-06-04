@@ -168,7 +168,11 @@ impl CompositionConstraintAccumulator {
         {
             let cur_cumsum = from_partial_evals(
                 context,
-                std::array::from_fn(|_| chunk_iter.next().unwrap().at_oods),
+                std::array::from_fn(|_| {
+                    let interaction = chunk_iter.next().unwrap();
+                    assert!(interaction.at_prev.is_none());
+                    interaction.at_oods
+                }),
             );
             // All pairs except the last are cumulatively summed in new interaction columns.
             let diff =
