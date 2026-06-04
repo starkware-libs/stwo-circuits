@@ -108,8 +108,8 @@ pub fn verify<Value: IValue>(
     // Draw a random point for the OODS.
     // Security analysis: the OODS point is drawn from QM31, which has ~2^124 elements. A
     // cheating prover can only pass this check if the OODS point lands in the "bad set" — the
-    // roots of (composition_poly - claimed). The composition polynomial uses a 2-way split
-    // (COMPOSITION_LOG_SPLIT = 1), so its degree is at most 2 * 2^log_trace_size ≤ 2 * 2^30 = 2^31,
+    // roots of (composition_poly - claimed) * vanishing. The composition polynomial has degree
+    // ≤ 2^log_trace_size ≤ 2^30 and the vanishing polynomial has degree 2^log_trace_size ≤ 2^30,
     // giving a bad set of size ≤ 2^31. Soundness error ≤ 2^31 / 2^124 = 2^(-93).
     // Note: draw_qm31 is slightly non-uniform — values 0 and 1 per M31 limb are each ~1.5×
     // more probable than uniform (since 2^32 = 2p + 2, values 0 and 1 map from 3 pre-images
