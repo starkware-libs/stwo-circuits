@@ -107,7 +107,8 @@ pub fn verify<Value: IValue>(
     // Draw a random point for the OODS.
     let oods_point = channel.draw_point(context);
 
-    let shifted_relation_uses = check_relation_uses(context, statement, &component_sizes_bits);
+    let shifted_relation_uses =
+        check_relation_uses(context, statement, &component_sizes_bits, config.log_trace_size());
     let unpacked_component_sizes = Simd::unpack(context, &component_sizes);
     statement.verify_claim(context, &unpacked_component_sizes, &shifted_relation_uses);
 
@@ -222,11 +223,12 @@ fn check_relation_uses<Value: IValue>(
     context: &mut Context<impl IValue>,
     statement: &impl Statement<Value>,
     component_sizes_bits: &[Simd],
+    log_trace_size: usize,
 ) -> HashMap<String, Var> {
     let components = statement.get_components();
 
     // An upper bound on the number of rows any component can have.
-    let component_size_upper_bound = 1u64 << component_sizes_bits.len();
+    let component_size_upper_bound = 1u64 << log_trace_size;
     // An upper bound on `floor(num_rows / DIV) + 1` for any component.
     let shifted_component_size_upper_bound =
         (component_size_upper_bound >> RELATION_USES_NUM_ROWS_SHIFT) + 1;
