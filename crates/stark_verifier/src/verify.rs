@@ -1,19 +1,15 @@
 use std::collections::HashMap;
 
 use itertools::{Itertools, chain, izip};
-use stwo::core::circle::CirclePoint;
 use stwo::core::fields::m31::{M31, P};
 use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
 use stwo::core::verifier::COMPOSITION_LOG_SPLIT;
 
 use crate::channel::Channel;
-use crate::circle::{add_points, generator_point};
 use crate::constraint_eval::compute_composition_polynomial;
 use crate::fri::{fri_commit, fri_decommit};
 use crate::merkle::decommit_eval_domain_samples;
-use crate::oods::{
-    collect_oods_responses, compute_fri_input, extract_expected_composition_eval, period_generators,
-};
+use crate::oods::{collect_oods_responses, compute_fri_input, extract_expected_composition_eval};
 use crate::proof::{Proof, ProofConfig};
 use crate::proof_from_stark_proof::{pack_enable_bits, pack_into_qm31s};
 use crate::select_queries::{get_query_selection_input_from_channel, select_queries};
@@ -149,16 +145,6 @@ pub fn verify<Value: IValue>(
     );
     eq(context, composition_eval, expected_composition_eval);
 
-    // The generator of the trace subgroup on the circle.
-    let trace_gen = generator_point(config.log_trace_size());
-
-    let period_generators_per_component =
-        period_generators(context, trace_gen, &component_sizes_bits);
-    let periodicity_sample_points_per_component = period_generators_per_component
-        .into_iter()
-        .map(|pt| add_points(context, &oods_point, &pt))
-        .collect_vec();
-
     // Verify the values in `proof.trace_at_oods` and `proof.composition_eval_at_oods`.
     // Start by adding the values to the channel. Values belonging to cumulative sum columns are
     // added twice, once for the previous point and once for the OODS point.
@@ -202,8 +188,6 @@ pub fn verify<Value: IValue>(
     let bits = queries.bits.iter().map(|simd| Simd::unpack(context, simd)).collect_vec();
 
     let column_log_sizes_by_trace = column_log_sizes_by_trace(context, config, component_log_sizes);
-    let periodicity_sample_points_per_column =
-        column_periodicity_sample_points(config, &periodicity_sample_points_per_component);
 
     decommit_eval_domain_samples(
         context,
@@ -219,14 +203,8 @@ pub fn verify<Value: IValue>(
     );
 
     // Compute FRI input.
-    let oods_responses = collect_oods_responses(
-        context,
-        config,
-        trace_gen,
-        oods_point,
-        &periodicity_sample_points_per_column,
-        proof,
-    );
+    let oods_responses =
+        collect_oods_responses(context, config, oods_point, &component_sizes_bits, proof);
     let fri_input = compute_fri_input(
         context,
         &oods_responses,
@@ -361,23 +339,6 @@ fn column_log_sizes_by_trace(
         column_log_sizes[1].extend(vec![log_size; component_shape.interaction_columns]);
     }
     column_log_sizes
-}
-
-/// Given the periodicity sample points for each component, returns the periodicity sample points
-/// for each column in the interaction trace.
-/// The periodicity sample points are the sample points used for the periodicity check.
-fn column_periodicity_sample_points(
-    config: &ProofConfig,
-    sample_points_per_component: &[CirclePoint<Var>],
-) -> Vec<CirclePoint<Var>> {
-    let mut periodicity_sample_points_per_column = Vec::with_capacity(config.n_interaction_columns);
-    for (component_shape, sample_point) in
-        izip!(&config.component_shapes, sample_points_per_component)
-    {
-        periodicity_sample_points_per_column
-            .extend(vec![sample_point; component_shape.interaction_columns]);
-    }
-    periodicity_sample_points_per_column
 }
 
 fn validate_and_compute_component_sizes(
