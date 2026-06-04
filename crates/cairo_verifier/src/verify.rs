@@ -57,7 +57,7 @@ pub fn get_preprocessed_root(lifting_log_size: u32) -> HashValue<QM31> {
     root.into()
 }
 
-/// Configuration for the Cairo circuit verifier.
+/// Configuration for the circuit that verifies the Cairo AIR.
 ///
 /// Bundles everything the verifier needs that is fixed for a given Cairo program and proof
 /// configuration: the STARK parameters, the program itself, and the preprocessed trace root.
