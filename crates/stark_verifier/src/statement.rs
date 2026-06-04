@@ -63,7 +63,7 @@ pub trait Statement<Value: IValue> {
         &self,
         _context: &mut Context<Value>,
         _component_sizes: &[Var],
-        _shifted_relation_uses: &HashMap<String, Var>,
+        _shifted_relation_uses: &IndexMap<String, Var>,
     ) {
     }
 }
