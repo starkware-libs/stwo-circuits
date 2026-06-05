@@ -326,6 +326,10 @@ fn build_groups(
     // of the Blake group — no synthetic "other" wrapper.
     subdivide_blake(spans, &befores, &afters, &span_gid, &mut groups, &mut group_of);
 
+    // Recognize lane-parallel SIMD blocks and wrap each in a `simd::<op>` group.
+    // Runs AFTER subdivide_blake so simd groups nest under the finest scope.
+    recognize_simd(recs, &mut groups, &mut group_of);
+
     // Drop groups that end up with no gates (directly or via descendants), so we
     // never render an empty box (e.g. an inputs/outputs scope of guesses/badges).
     prune_empty(&mut groups, &group_of);
@@ -483,4 +487,128 @@ fn subdivide_blake(
             }
         }
     }
+}
+
+/// Motif catalog — layer 1: recognizes lane-parallel SIMD blocks.
+///
+/// A single `Simd::add`/`sub`/`mul`/`scalar_mul` call emits N consecutive
+/// same-kind gates (one per lane), lane-aligned to its input vectors, with no
+/// inter-lane wiring. We scan consecutive same-kind gates (in `within_idx`
+/// creation order) and greedily extend a run while it stays a valid
+/// lane-parallel block, then close it at the boundary. Each run of length ≥ 2
+/// becomes a synthesized `simd::<op>` group nested under the deepest existing
+/// group its gates share.
+///
+/// Op→kind: `Simd::add`→`add`, `Simd::sub`→`sub`, `Simd::mul`→`pmul`
+/// (pointwise_mul), `Simd::scalar_mul`→`mul`. The compound SIMD ops (`inv`,
+/// `assert_bits`, `guess_inv_or_zero`, `select`, `pow2`, `combine_bits`) emit
+/// multi-gate per-lane patterns and are left for a later catalog layer.
+fn recognize_simd(
+    recs: &[GateRecord],
+    groups: &mut Vec<Group>,
+    group_of: &mut HashMap<String, String>,
+) {
+    // (gate-kind abbrev, simd op label).
+    const SIMD_OPS: [(&str, &str); 4] =
+        [("add", "simd::add"), ("sub", "simd::sub"), ("pmul", "simd::mul"), ("mul", "simd::scalar_mul")];
+
+    let depth_of: HashMap<String, usize> =
+        groups.iter().map(|g| (g.id.clone(), g.depth)).collect();
+
+    // Trivial filler gates — `finalize_guessed_vars`' `x + 0 = x` (a yield that
+    // is also a use) — are mutually independent with contiguous in0 and a
+    // constant-0 in1, so they masquerade as a SIMD block. A real arithmetic gate
+    // always yields a FRESH var, so excluding self-referential gates (a yield
+    // that appears in uses) drops these false positives structurally, with no
+    // scope-name special case.
+
+    for (abbrev, op_label) in SIMD_OPS {
+        // Gates of this kind, in creation (`within_idx`) order. `collect` appends
+        // each kind's gates in order, so filtering preserves that ordering.
+        let kind_recs: Vec<&GateRecord> = recs
+            .iter()
+            .filter(|r| r.kind == abbrev && !r.yields.iter().any(|y| r.uses.contains(y)))
+            .collect();
+        if kind_recs.is_empty() {
+            continue;
+        }
+
+        let n = kind_recs.len();
+        let mut start = 0;
+        while start < n {
+            // Greedily extend a run [start, end) that stays a valid lane block.
+            let mut end = start + 1;
+            while end < n && extends_run(&kind_recs[start..end], kind_recs[end]) {
+                end += 1;
+            }
+            let run = &kind_recs[start..end];
+            if run.len() >= 2 {
+                // Parent: the deepest existing group the run's gates share. They
+                // should all share one; pick the deepest if they happen to differ.
+                let parent = run
+                    .iter()
+                    .filter_map(|r| group_of.get(&r.id))
+                    .max_by_key(|gid| depth_of.get(*gid).copied().unwrap_or(0))
+                    .cloned();
+                let parent_depth =
+                    parent.as_deref().and_then(|p| depth_of.get(p)).copied().unwrap_or(usize::MAX);
+                let gid = format!("simd-{abbrev}-{}", run[0].within_idx);
+                groups.push(Group {
+                    id: gid.clone(),
+                    label: op_label.to_string(),
+                    parent,
+                    depth: parent_depth.wrapping_add(1),
+                    count: 0,
+                });
+                for r in run {
+                    group_of.insert(r.id.clone(), gid.clone());
+                }
+            }
+            start = end;
+        }
+    }
+}
+
+/// Returns `true` if appending `next` to the existing same-kind `run` keeps it a
+/// valid lane-parallel SIMD block:
+/// * mutual independence — `next`'s yields are not used by the run and the run's
+///   yields are not used by `next` (no inter-lane wiring); and
+/// * input-slot consistency — for every input slot, the values across the run +
+///   `next` are EITHER all-equal (a broadcast/constant lane) OR a contiguous run
+///   (`uses[s] of gate i == uses[s] of gate 0 + i`, a fresh lane vector).
+///
+/// The contiguous check is what splits e.g. `extract_bits` (one `Simd::sub` per
+/// bit, each independent but with different input vectors) into separate groups:
+/// the in0 progression jumps at each bit boundary, breaking contiguity.
+fn extends_run(run: &[&GateRecord], next: &GateRecord) -> bool {
+    let first = run[0];
+    // Same arity is required to compare slots positionally.
+    if next.uses.len() != first.uses.len() {
+        return false;
+    }
+
+    // Independence: no wiring between `next` and any gate already in the run.
+    for r in run {
+        if r.yields.iter().any(|y| next.uses.contains(y)) {
+            return false;
+        }
+        if next.yields.iter().any(|y| r.uses.contains(y)) {
+            return false;
+        }
+    }
+
+    let len = run.len(); // index `next` would occupy in the run.
+    for s in 0..first.uses.len() {
+        let base = first.uses[s];
+        // Pattern established by the run so far: all-equal or contiguous?
+        let all_equal = run.iter().all(|r| r.uses[s] == base);
+        let contiguous = run.iter().enumerate().all(|(i, r)| r.uses[s] == base + i);
+        // `next` must continue whichever pattern(s) the run still admits.
+        let next_equal = all_equal && next.uses[s] == base;
+        let next_contig = contiguous && next.uses[s] == base + len;
+        if !next_equal && !next_contig {
+            return false;
+        }
+    }
+    true
 }
