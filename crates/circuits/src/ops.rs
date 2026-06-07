@@ -105,13 +105,14 @@ pub fn mul_into(context: &mut Context<impl IValue>, a: Var, b: Var, out: Var) {
     context.circuit.mul.push(Mul { in0: a.idx, in1: b.idx, out: out.idx });
 }
 
-/// Computes `a / b` by guessing `b`'s inverse and returning `a * b_inv`.
+/// Computes `a / b` by guessing `a / b`, constraining `out * b = a`, and returning `out`.
 /// Does not constrain `b != 0` — the caller must ensure this through other means.
 pub fn div(context: &mut Context<impl IValue>, a: Var, b: Var) -> Var {
     context.stats.div += 1;
-    let one = context.one();
-    let b_inv = guess(context, context.get(one) / context.get(b));
-    mul(context, a, b_inv)
+    let out = guess(context, context.get(a) / context.get(b));
+    let mul_res = mul(context, out, b);
+    eq(context, mul_res, a);
+    out
 }
 
 /// Computes `b`'s inverse by guessing it, constraining `b * b_inv = 1` (which proves
