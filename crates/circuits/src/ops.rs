@@ -106,14 +106,14 @@ pub fn mul_into(context: &mut Context<impl IValue>, a: Var, b: Var, out: Var) {
 }
 
 /// Computes `a / b` by guessing `b`'s inverse, constraining `b_inv * b = 1` (which proves
-/// `b != 0`), and returning `b_inv * a`.
+/// `b != 0`), and returning `a * b_inv`.
 pub fn div(context: &mut Context<impl IValue>, a: Var, b: Var) -> Var {
     context.stats.div += 1;
     let one = context.one();
     let b_inv = guess(context, context.get(one) / context.get(b));
     let b_inv_times_b = mul(context, b_inv, b);
     eq(context, b_inv_times_b, one);
-    mul(context, b_inv, a)
+    mul(context, a, b_inv)
 }
 
 pub fn pointwise_mul<Value: IValue>(context: &mut Context<Value>, a: Var, b: Var) -> Var {
