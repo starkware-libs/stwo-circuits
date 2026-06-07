@@ -105,19 +105,15 @@ pub fn mul_into(context: &mut Context<impl IValue>, a: Var, b: Var, out: Var) {
     context.circuit.mul.push(Mul { in0: a.idx, in1: b.idx, out: out.idx });
 }
 
-/// Computes `a / b` by guessing the result and adding a multiplication gate to the circuit to
-/// validate its correctness. Also proves that `b` is non-zero by guessing `b`'s inverse and
-/// constraining `b_inv * b = 1`.
+/// Computes `a / b` by guessing `b`'s inverse, constraining `b_inv * b = 1` (which proves
+/// `b != 0`), and returning `b_inv * a`.
 pub fn div(context: &mut Context<impl IValue>, a: Var, b: Var) -> Var {
     context.stats.div += 1;
     let one = context.one();
     let b_inv = guess(context, context.get(one) / context.get(b));
     let b_inv_times_b = mul(context, b_inv, b);
     eq(context, b_inv_times_b, one);
-    let out = guess(context, context.get(a) / context.get(b));
-    let mul_res = mul(context, out, b);
-    eq(context, mul_res, a);
-    out
+    mul(context, b_inv, a)
 }
 
 pub fn pointwise_mul<Value: IValue>(context: &mut Context<Value>, a: Var, b: Var) -> Var {
