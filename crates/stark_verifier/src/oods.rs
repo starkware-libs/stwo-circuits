@@ -394,7 +394,7 @@ pub fn compute_fri_input(
     //    pt and conj(pt). Query points (q.x, q.y) are M31 points with im(q.y) = 0, so d != 0
     //    ensures q is neither pt nor conj(pt), and the denominators are non-zero.
     let prod_inv = div(context, context.one(), prod);
-    context.mark_as_maybe_unused(&prod_inv);
+    context.mark_as_unused(&prod_inv);
 
     let query_point_x = Simd::unpack(context, &queries.points.x);
     let query_point_y = Simd::unpack(context, &queries.points.y);
