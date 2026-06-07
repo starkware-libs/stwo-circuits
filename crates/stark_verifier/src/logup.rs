@@ -2,7 +2,7 @@ use circuits::context::Context;
 use circuits::context::Var;
 use circuits::eval;
 use circuits::ivalue::IValue;
-use circuits::ops::div;
+use circuits::ops::inv;
 use stwo::core::Fraction;
 
 pub type LogupTerm = Fraction<Var, Var>;
@@ -44,7 +44,7 @@ pub fn logup_use_term(
     let combined = combine_term(context, element, interaction_elements);
     // combined is evaluated at the random interaction elements, so it is non-zero with high
     // probability.
-    div(context, context.one(), combined)
+    inv(context, combined)
 }
 
 /// Computes the constraint polynomial for a single logup term.

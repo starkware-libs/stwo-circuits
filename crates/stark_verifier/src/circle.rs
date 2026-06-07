@@ -5,7 +5,7 @@ use circuits::{
     context::{Context, Var},
     eval,
     ivalue::IValue,
-    ops::div,
+    ops::inv,
     simd::Simd,
     wrappers::M31Wrapper,
 };
@@ -136,9 +136,8 @@ pub fn coset_vanishing_poly(
 ///
 /// The caller must ensure `x` is not on the trace coset.
 pub fn denom_inverse(context: &mut Context<impl IValue>, x: Var, log_trace_size: usize) -> Var {
-    let one = context.one();
     let denom = coset_vanishing_poly(context, x, log_trace_size);
-    div(context, one, denom)
+    inv(context, denom)
 }
 
 /// For each base point (i.e. for each SIMD lane in `base_points`), computes the points of the first

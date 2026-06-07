@@ -12,7 +12,7 @@ use circuits::EXTENSION_DEGREE;
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::ivalue::{IValue, NoValue, qm31_from_u32s};
-use circuits::ops::{Guess, div, from_partial_evals, im};
+use circuits::ops::{Guess, from_partial_evals, im, inv, mul};
 use circuits::simd::Simd;
 use circuits::wrappers::M31Wrapper;
 
@@ -393,7 +393,7 @@ pub fn compute_fri_input(
     // 2. Non-zero denominators: The denominator `d * x - e * y + f` vanishes on the circle only at
     //    pt and conj(pt). Query points (q.x, q.y) are M31 points with im(q.y) = 0, so d != 0
     //    ensures q is neither pt nor conj(pt), and the denominators are non-zero.
-    let prod_inv = div(context, context.one(), prod);
+    let prod_inv = inv(context, prod);
     context.mark_as_unused(prod_inv);
 
     let query_point_x = Simd::unpack(context, &queries.points.x);
@@ -418,7 +418,8 @@ pub fn compute_fri_input(
             // Non-zero: query points are M31 circle points (im(q.y)=0), so the line
             // through an OODS sample point and its conjugate does not pass through them when d !=
             // 0.
-            let quotient = div(context, numerator, denominator);
+            let denom_inv = inv(context, denominator);
+            let quotient = mul(context, numerator, denom_inv);
             sum = eval!(context, (sum) + (quotient));
         }
 

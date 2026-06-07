@@ -7,7 +7,7 @@ use stwo::core::fields::m31::P;
 use crate::context::TraceContext;
 use crate::eval;
 use crate::ivalue::qm31_from_u32s;
-use crate::ops::{Guess, cond_flip, conj, div, eq, from_partial_evals, guess, im, pointwise_mul};
+use crate::ops::{Guess, cond_flip, conj, eq, from_partial_evals, guess, im, inv, mul, pointwise_mul};
 use crate::stats::Stats;
 
 #[test]
@@ -61,16 +61,17 @@ fn test_eval_neg() {
 }
 
 #[test]
-fn test_div() {
+fn test_inv() {
     let mut context = TraceContext::default();
     let x = guess(&mut context, 10.into());
     let y = guess(&mut context, 2.into());
-    let res = div(&mut context, x, y);
+    let y_inv = inv(&mut context, y);
+    let res = mul(&mut context, x, y_inv);
     assert_eq!(context.get(res), 5.into());
 
     expect![[r#"
-        [6] = [5] * [4]
-        [7] = [5] * [3]
+        [6] = [4] * [5]
+        [7] = [3] * [5]
         [6] = [1]
         output [2]
 
@@ -208,9 +209,10 @@ fn test_stats() {
     let stats = Stats { add: 1, ..stats };
     assert_eq!(context.stats, stats);
 
-    div(&mut context, x, y);
+    let y_inv = inv(&mut context, y);
+    mul(&mut context, x, y_inv);
     let stats = Stats {
-        div: 1,
+        inv: 1,
         mul: stats.mul + 2,
         guess: stats.guess + 1,
         equals: stats.equals + 1,
