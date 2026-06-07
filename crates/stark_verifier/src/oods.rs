@@ -12,7 +12,7 @@ use circuits::EXTENSION_DEGREE;
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::ivalue::{IValue, NoValue, qm31_from_u32s};
-use circuits::ops::{Guess, from_partial_evals, im, inv, mul};
+use circuits::ops::{Guess, div, from_partial_evals, im, inv};
 use circuits::simd::Simd;
 use circuits::wrappers::M31Wrapper;
 
@@ -417,8 +417,7 @@ pub fn compute_fri_input(
             // Non-zero: query points are M31 circle points (im(q.y)=0), so the line
             // through an OODS sample point and its conjugate does not pass through them when d !=
             // 0.
-            let denom_inv = inv(context, denominator);
-            let quotient = mul(context, numerator, denom_inv);
+            let quotient = div(context, numerator, denominator);
             sum = eval!(context, (sum) + (quotient));
         }
 
