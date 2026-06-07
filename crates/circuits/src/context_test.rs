@@ -1,7 +1,6 @@
 use itertools::Itertools;
 
 use crate::context::{Context, TraceContext, U_VAR_IDX};
-use crate::finalize_constants::finalize_constants;
 use crate::ivalue::qm31_from_u32s;
 
 #[test]
@@ -17,8 +16,7 @@ fn test_constants() {
     let u = qm31_from_u32s(0, 0, 1, 0);
     assert_eq!(context.values(), &vec![0.into(), 1.into(), u, x, x + x]);
 
-    finalize_constants(&mut context);
-    context.finalize_guessed_vars();
+    let context = context.finalize(false);
     context.validate_circuit();
 }
 
@@ -39,9 +37,8 @@ fn test_set_outputs() {
     {
         assert_eq!(actual.in0, expected);
     }
-    finalize_constants(&mut context);
-    context.finalize_guessed_vars();
-    context.circuit.check_yields();
+    let context = context.finalize(false);
+    context.circuit().check_yields();
 
     context.validate_circuit();
 }
@@ -51,7 +48,7 @@ fn test_set_outputs() {
 fn test_unfulfilled_reservation_panics_at_finalize() {
     let mut context = TraceContext::default();
     context.reserve();
-    context.finalize_guessed_vars();
+    context.finalize(false);
 }
 
 #[test]
