@@ -106,11 +106,14 @@ pub fn mul_into(context: &mut Context<impl IValue>, a: Var, b: Var, out: Var) {
 }
 
 /// Computes `a / b` by guessing the result and adding a multiplication gate to the circuit to
-/// validate its correctness.
-///
-/// The caller must ensure that `b` is not zero.
+/// validate its correctness. Also proves that `b` is non-zero by guessing `b`'s inverse and
+/// constraining `b_inv * b = 1`.
 pub fn div(context: &mut Context<impl IValue>, a: Var, b: Var) -> Var {
     context.stats.div += 1;
+    let one = context.one();
+    let b_inv = guess(context, context.get(one) / context.get(b));
+    let b_inv_times_b = mul(context, b_inv, b);
+    eq(context, b_inv_times_b, one);
     let out = guess(context, context.get(a) / context.get(b));
     let mul_res = mul(context, out, b);
     eq(context, mul_res, a);

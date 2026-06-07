@@ -70,7 +70,9 @@ fn test_div() {
 
     expect![[r#"
         [6] = [5] * [4]
-        [6] = [3]
+        [8] = [7] * [4]
+        [6] = [1]
+        [8] = [3]
         output [2]
 
     "#]]
@@ -210,9 +212,9 @@ fn test_stats() {
     div(&mut context, x, y);
     let stats = Stats {
         div: 1,
-        mul: stats.mul + 1,
-        guess: stats.guess + 1,
-        equals: stats.equals + 1,
+        mul: stats.mul + 2,
+        guess: stats.guess + 2,
+        equals: stats.equals + 2,
         ..stats
     };
     assert_eq!(context.stats, stats);
