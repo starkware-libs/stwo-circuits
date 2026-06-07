@@ -393,8 +393,7 @@ pub fn compute_fri_input(
     // 2. Non-zero denominators: The denominator `d * x - e * y + f` vanishes on the circle only at
     //    pt and conj(pt). Query points (q.x, q.y) are M31 points with im(q.y) = 0, so d != 0
     //    ensures q is neither pt nor conj(pt), and the denominators are non-zero.
-    let prod_inv = inv(context, prod);
-    context.mark_as_unused(prod_inv);
+    inv(context, prod);
 
     let query_point_x = Simd::unpack(context, &queries.points.x);
     let query_point_y = Simd::unpack(context, &queries.points.y);
