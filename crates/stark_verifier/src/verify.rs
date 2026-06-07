@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use itertools::{Itertools, chain, izip};
+use itertools::{Itertools, chain, zip_eq};
 use stwo::core::fields::m31::{M31, P};
 use stwo::core::verifier::COMPOSITION_LOG_SPLIT;
 
@@ -299,7 +299,7 @@ fn column_log_sizes_by_trace(
     ];
 
     for (component_shape, log_size) in
-        izip!(&config.component_shapes, Simd::unpack(context, &component_log_sizes))
+        zip_eq(&config.component_shapes, Simd::unpack(context, &component_log_sizes))
     {
         column_log_sizes[0].extend(vec![log_size; component_shape.trace_columns]);
         column_log_sizes[1].extend(vec![log_size; component_shape.interaction_columns]);
