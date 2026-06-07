@@ -1,6 +1,6 @@
 use crate::N_LANES;
 use circuits::blake::{blake_g_gate, m31_to_u32, triple_xor};
-use circuits::context::{Context, Var};
+use circuits::context::{Context, FinalizedContext, Var};
 use circuits::eval;
 use circuits::ivalue::{IValue, qm31_from_u32s};
 use circuits::ops::{add_into, eq};
@@ -58,8 +58,9 @@ fn pad_blake_g_gate(context: &mut Context<impl IValue>) {
 /// of two.
 // TODO(Gali): Have it under a trait.
 // TODO(Ilya): Make it pub(crate).
-pub fn finalize_context(context: &mut Context<impl IValue>) {
+pub fn finalize_context(context: &mut FinalizedContext<impl IValue>) {
     // Padding the components to a power of two.
+    let context = &mut context.context;
     pad_eq(context);
     pad_qm31_ops(context);
     pad_triple_xor(context);
@@ -150,7 +151,12 @@ fn blake_g_gate_zk_blinding(context: &mut Context<impl IValue>, rng: &mut impl R
 /// Adds ZK blinding to the circuit by adding random rows to all the witness components: qm31_ops,
 /// eq, triple_xor, m31_to_u32, and blake_g_gate. The fresh input variables are yielded through
 /// trivial `x + 0 = x` add gates in the qm31_ops component.
-pub fn add_zk_blinding(context: &mut Context<impl IValue>, seed_bytes: [u8; 32], n_padding: usize) {
+pub fn add_zk_blinding(
+    context: &mut FinalizedContext<impl IValue>,
+    seed_bytes: [u8; 32],
+    n_padding: usize,
+) {
+    let context = &mut context.context;
     let mut rng = rand_chacha::ChaCha20Rng::from_seed(seed_bytes);
     for _ in 0..n_padding {
         qm31_zk_blinding(context, &mut rng);

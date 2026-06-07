@@ -4,7 +4,6 @@ use stwo::core::vcs::blake2_hash::reduce_to_m31;
 
 use crate::blake::{blake, blake_qm31, qm31_from_bytes};
 use crate::context::TraceContext;
-use crate::finalize_constants::finalize_constants;
 use crate::ivalue::qm31_from_u32s;
 use crate::ops::{Guess, eq, guess};
 use crate::stats::Stats;
@@ -61,9 +60,8 @@ fn test_blake(#[case] wrong_output: bool) {
         }
     );
 
-    crate::finalize_constants::finalize_constants(&mut context);
-    context.finalize_guessed_vars();
-    context.circuit.check_yields();
+    let context = context.finalize(false);
+    context.circuit().check_yields();
 
     assert_eq!(context.is_circuit_valid(), !wrong_output);
 }
@@ -96,8 +94,7 @@ fn test_blake_qm31() {
     eq(&mut context, output.0, out0);
     eq(&mut context, output.1, out1);
 
-    finalize_constants(&mut context);
-    context.finalize_guessed_vars();
-    context.circuit.check_yields();
+    let context = context.finalize(false);
+    context.circuit().check_yields();
     assert!(context.is_circuit_valid());
 }

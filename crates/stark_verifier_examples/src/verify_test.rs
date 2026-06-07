@@ -9,7 +9,6 @@ use crate::simple_statement::{
 };
 use circuit_serialize::serialize::CircuitSerialize;
 use circuits::context::{Context, TraceContext};
-use circuits::finalize_constants::finalize_constants;
 use circuits::ivalue::NoValue;
 use circuits::ops::Guess;
 use circuits_stark_verifier::fri_proof::compute_all_fold_steps;
@@ -46,9 +45,7 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
         let proof_vars = empty_proof.guess(&mut novalue_context);
         let statement = SimpleStatement::new(&mut novalue_context);
         verify(&mut novalue_context, &proof_vars, &config, &statement);
-        finalize_constants(&mut novalue_context);
-        novalue_context.finalize_guessed_vars();
-        novalue_context.circuit
+        novalue_context.finalize(false).context.circuit
     };
 
     match proof_modifier {
@@ -84,7 +81,7 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
     let proof_vars = proof.guess(&mut context);
     let statement = SimpleStatement::new(&mut context);
     verify(&mut context, &proof_vars, &config, &statement);
-    finalize_constants(&mut context);
+    let context = context.finalize(true);
 
     let result = novalue_circuit.check(context.values());
     match proof_modifier {
@@ -122,15 +119,11 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
         }
     }
 
-    context.check_vars_used();
-
-    context.finalize_guessed_vars();
-
     // Make sure we got the same circuit.
-    assert_eq!(context.circuit, novalue_circuit);
+    assert_eq!(context.circuit(), &novalue_circuit);
 
     novalue_circuit.check_yields();
-    println!("Stats: {:?}", context.stats);
+    println!("Stats: {:?}", context.stats());
 }
 
 #[rstest]

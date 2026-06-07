@@ -12,7 +12,6 @@ use circuit_verifier::verify::{CircuitConfig, verify_circuit};
 use circuits::blake::{blake, blake_g_gate, m31_to_u32, triple_xor};
 use circuits::context::Var;
 use circuits::eval;
-use circuits::finalize_constants::finalize_constants;
 use circuits::ivalue::NoValue;
 use circuits::ivalue::{IValue, qm31_from_u32s};
 use circuits::ops::permute;
@@ -254,9 +253,7 @@ fn stwo_verify(
 
 #[test]
 fn test_prove_and_stark_verify_blake_gate_context() {
-    let mut blake_context = build_blake_context();
-    finalize_constants(&mut blake_context);
-    blake_context.finalize_guessed_vars();
+    let mut blake_context = build_blake_context().finalize(false);
     blake_context.validate_circuit();
 
     let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut blake_context);
@@ -272,9 +269,7 @@ fn test_prove_and_stark_verify_blake_gate_context() {
 
 #[test]
 fn test_prove_and_stark_verify_permutation_context() {
-    let mut permutation_context = build_permutation_context();
-    finalize_constants(&mut permutation_context);
-    permutation_context.finalize_guessed_vars();
+    let mut permutation_context = build_permutation_context().finalize(false);
     permutation_context.validate_circuit();
 
     let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut permutation_context);
@@ -290,9 +285,7 @@ fn test_prove_and_stark_verify_permutation_context() {
 
 #[test]
 fn test_prove_and_stark_verify_fibonacci_context() {
-    let mut fibonacci_context = build_fibonacci_context();
-    finalize_constants(&mut fibonacci_context);
-    fibonacci_context.finalize_guessed_vars();
+    let mut fibonacci_context = build_fibonacci_context().finalize(false);
     fibonacci_context.validate_circuit();
 
     let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut fibonacci_context);
@@ -308,9 +301,7 @@ fn test_prove_and_stark_verify_fibonacci_context() {
 
 #[test]
 fn test_prove_and_stark_verify_triple_xor_context() {
-    let mut triple_xor_context = build_triple_xor_context();
-    finalize_constants(&mut triple_xor_context);
-    triple_xor_context.finalize_guessed_vars();
+    let mut triple_xor_context = build_triple_xor_context().finalize(false);
     triple_xor_context.validate_circuit();
 
     let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut triple_xor_context);
@@ -326,9 +317,7 @@ fn test_prove_and_stark_verify_triple_xor_context() {
 
 #[test]
 fn test_prove_and_stark_verify_m31_to_u32_context() {
-    let mut m31_to_u32_context = build_m31_to_u32_context();
-    finalize_constants(&mut m31_to_u32_context);
-    m31_to_u32_context.finalize_guessed_vars();
+    let mut m31_to_u32_context = build_m31_to_u32_context().finalize(false);
     m31_to_u32_context.validate_circuit();
 
     let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut m31_to_u32_context);
@@ -344,9 +333,7 @@ fn test_prove_and_stark_verify_m31_to_u32_context() {
 
 #[test]
 fn test_prove_and_stark_verify_blake_g_gate_context() {
-    let mut blake_g_gate_context = build_blake_g_gate_context();
-    finalize_constants(&mut blake_g_gate_context);
-    blake_g_gate_context.finalize_guessed_vars();
+    let mut blake_g_gate_context = build_blake_g_gate_context().finalize(false);
     blake_g_gate_context.validate_circuit();
 
     let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut blake_g_gate_context);
@@ -387,9 +374,7 @@ fn circuit_verify(
 
 #[test]
 fn test_prove_and_circuit_verify_triple_xor_context() {
-    let mut triple_xor_context = build_triple_xor_context();
-    finalize_constants(&mut triple_xor_context);
-    triple_xor_context.finalize_guessed_vars();
+    let mut triple_xor_context = build_triple_xor_context().finalize(false);
     triple_xor_context.validate_circuit();
 
     let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut triple_xor_context);
@@ -415,9 +400,7 @@ fn preprocessed_root_from_proof(circuit_proof: &CircuitProof<Blake2sM31MerkleHas
 
 #[test]
 fn test_prove_and_circuit_verify_fibonacci_context() {
-    let mut fibonacci_context = build_fibonacci_context();
-    finalize_constants(&mut fibonacci_context);
-    fibonacci_context.finalize_guessed_vars();
+    let mut fibonacci_context = build_fibonacci_context().finalize(false);
     fibonacci_context.validate_circuit();
 
     let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut fibonacci_context);
@@ -438,9 +421,7 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
 
 #[test]
 fn test_prove_and_circuit_verify_m31_to_u32_context() {
-    let mut m31_to_u32_context = build_m31_to_u32_context();
-    finalize_constants(&mut m31_to_u32_context);
-    m31_to_u32_context.finalize_guessed_vars();
+    let mut m31_to_u32_context = build_m31_to_u32_context().finalize(false);
     m31_to_u32_context.validate_circuit();
 
     let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut m31_to_u32_context);
@@ -461,9 +442,7 @@ fn test_prove_and_circuit_verify_m31_to_u32_context() {
 
 #[test]
 fn test_prove_and_circuit_verify_blake_g_gate_context() {
-    let mut blake_g_gate_context = build_blake_g_gate_context();
-    finalize_constants(&mut blake_g_gate_context);
-    blake_g_gate_context.finalize_guessed_vars();
+    let mut blake_g_gate_context = build_blake_g_gate_context().finalize(false);
     blake_g_gate_context.validate_circuit();
 
     let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut blake_g_gate_context);
@@ -484,9 +463,13 @@ fn test_prove_and_circuit_verify_blake_g_gate_context() {
 
 #[test]
 fn test_finalize_context() {
-    let mut context = build_fibonacci_context();
+    let mut context = build_fibonacci_context().finalize(false);
     finalize_context(&mut context);
 
-    assert!(context.circuit.add.len().is_power_of_two());
+    let circuit = context.circuit();
+    assert!(circuit.permutation.is_empty());
+    let qm31_ops =
+        circuit.add.len() + circuit.sub.len() + circuit.mul.len() + circuit.pointwise_mul.len();
+    assert!(qm31_ops.is_power_of_two());
     context.validate_circuit();
 }

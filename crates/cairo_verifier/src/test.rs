@@ -9,8 +9,7 @@ use cairo_air::utils::{binary_deserialize_from_file, binary_serialize_to_file};
 use cairo_air::verifier::INTERACTION_POW_BITS;
 use cairo_vm::types::layout_name::LayoutName;
 use circuit_common::N_RESERVED;
-use circuits::context::Context;
-use circuits::finalize_constants::finalize_constants;
+use circuits::context::{Context, FinalizedContext};
 use circuits::ivalue::NoValue;
 use circuits::ops::Guess;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
@@ -40,7 +39,9 @@ use crate::verify::{
 };
 
 /// Circuit Verifies a [CairoProof].
-pub fn verify_cairo(proof: &CairoProof<Blake2sM31MerkleHasher>) -> Result<Context<QM31>, String> {
+pub fn verify_cairo(
+    proof: &CairoProof<Blake2sM31MerkleHasher>,
+) -> Result<FinalizedContext<QM31>, String> {
     let FlatClaim { component_enable_bits, component_log_sizes: _, public_data: _ } =
         proof.claim.flatten_claim();
 
@@ -54,7 +55,7 @@ pub fn verify_cairo(proof: &CairoProof<Blake2sM31MerkleHasher>) -> Result<Contex
 pub fn verify_cairo_with_component_set(
     cairo_proof: &CairoProof<Blake2sM31MerkleHasher>,
     component_set: HashSet<&str>,
-) -> Result<Context<QM31>, String> {
+) -> Result<FinalizedContext<QM31>, String> {
     let FlatClaim { component_enable_bits, component_log_sizes, public_data: _ } =
         cairo_proof.claim.flatten_claim();
     let components: indexmap::IndexMap<&'static str, Box<dyn CircuitEval<QM31>>> =
@@ -153,12 +154,10 @@ fn test_verify() {
 
     let proof_vars = empty_proof.guess(&mut novalue_context);
     verify(&mut novalue_context, &proof_vars, &config, &statement);
-    finalize_constants(&mut novalue_context);
-    novalue_context.finalize_guessed_vars();
-    novalue_context.check_vars_used();
-    novalue_context.circuit.check_yields();
+    let novalue_context = novalue_context.finalize(true);
+    novalue_context.circuit().check_yields();
 
-    println!("Stats: {:?}", novalue_context.stats);
+    println!("Stats: {:?}", novalue_context.stats());
 }
 
 #[test]
@@ -198,5 +197,5 @@ fn test_verify_all_opcodes() {
     let cairo_proof = binary_deserialize_from_file(&proof_file).unwrap();
 
     let context = verify_cairo(&cairo_proof).unwrap();
-    println!("Stats: {:?}", context.stats);
+    println!("Stats: {:?}", context.stats());
 }

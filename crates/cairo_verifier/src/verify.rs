@@ -7,8 +7,7 @@ use cairo_air::air::PublicData;
 use cairo_air::flat_claims::FlatClaim;
 use circuit_common::N_RESERVED;
 use circuits::blake::HashValue;
-use circuits::context::Context;
-use circuits::finalize_constants::finalize_constants;
+use circuits::context::{Context, FinalizedContext};
 use circuits::ivalue::{IValue, NoValue};
 use circuits::ops::Guess;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
@@ -83,7 +82,7 @@ pub fn verify_fixed_cairo_circuit(
     proof: Proof<QM31>,
     public_claim: Vec<u32>,
     outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
-) -> Result<Context<QM31>, String> {
+) -> Result<FinalizedContext<QM31>, String> {
     if outputs.len() != verifier_config.n_outputs {
         return Err("The proof claim does not match the expected number of outputs.".to_string());
     }
@@ -93,7 +92,7 @@ pub fn verify_fixed_cairo_circuit(
     #[cfg(test)]
     context.check_vars_used();
     #[cfg(test)]
-    context.circuit.check_yields();
+    context.circuit().check_yields();
     // Always validate the circuit values.
     if !context.is_circuit_valid() {
         return Err("Verification failed".to_string());
@@ -119,7 +118,7 @@ pub fn build_fixed_cairo_circuit(
     proof: Proof<QM31>,
     public_claim: Vec<u32>,
     outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
-) -> Context<QM31> {
+) -> FinalizedContext<QM31> {
     let config = &verifier_config.proof_config;
 
     let public_claim = public_claim.iter().map(|u32| M31::from(*u32)).collect_vec();
@@ -136,17 +135,17 @@ pub fn build_fixed_cairo_circuit(
 
     let proof_vars = proof.guess(&mut context);
     verify(&mut context, &proof_vars, config, &statement);
-    finalize_constants(&mut context);
-    context.finalize_guessed_vars();
 
-    context
+    context.finalize(false)
 }
 
 /// Builds the Cairo verifier circuit topology without needing a proof.
 ///
 /// The circuit structure is deterministic given the verifier config, so we can construct it using
 /// [NoValue] and an [empty_proof].
-pub fn build_cairo_verifier_circuit(verifier_config: &CairoVerifierConfig) -> Context<NoValue> {
+pub fn build_cairo_verifier_circuit(
+    verifier_config: &CairoVerifierConfig,
+) -> FinalizedContext<NoValue> {
     let config = &verifier_config.proof_config;
 
     let n_outputs = verifier_config.n_outputs;
@@ -168,9 +167,7 @@ pub fn build_cairo_verifier_circuit(verifier_config: &CairoVerifierConfig) -> Co
 
     let proof_vars = empty_proof(config).guess(&mut context);
     verify(&mut context, &proof_vars, config, &statement);
-    finalize_constants(&mut context);
-    context.finalize_guessed_vars();
-    context
+    context.finalize(false)
 }
 
 /// Converts a [CairoProof] to a [Proof] and [PublicData] for the circuit verifier.

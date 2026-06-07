@@ -1,10 +1,9 @@
 use circuit_common::N_RESERVED;
 use circuit_verifier::statement::CircuitStatement;
 use circuit_verifier::verify::CircuitConfig;
-use circuits::context::Context;
+use circuits::context::{Context, FinalizedContext};
 use circuits::{
     blake::{HashValue, blake},
-    finalize_constants::finalize_constants,
     ivalue::IValue,
     ops::Guess,
 };
@@ -58,7 +57,7 @@ pub fn build_multiverifier_circuit<Value: IValue>(
     input0: MultiverifierInput<Value>,
     input1: MultiverifierInput<Value>,
     shared_config: &SharedConfig,
-) -> Context<Value> {
+) -> FinalizedContext<Value> {
     let mut context = Context::new(N_RESERVED);
 
     let mut outer_verifier_output_preimage = vec![];
@@ -95,9 +94,8 @@ pub fn build_multiverifier_circuit<Value: IValue>(
     // Copy the resulting hash into the reserved variables
     context.set_outputs(&[output_hash.0, output_hash.1]);
 
-    finalize_constants(&mut context);
-    context.finalize_guessed_vars();
+    let context = context.finalize(false);
     #[cfg(test)]
-    context.circuit.check_yields();
+    context.circuit().check_yields();
     context
 }
