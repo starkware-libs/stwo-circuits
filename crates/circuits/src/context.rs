@@ -6,6 +6,7 @@ use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 
 use crate::circuit::{Add, Circuit};
+use crate::finalize_constants::finalize_constants;
 use crate::ivalue::IValue;
 use crate::ops::output;
 use crate::stats::Stats;
@@ -75,6 +76,7 @@ pub struct Context<Value: IValue> {
     /// assertion is made during construction and equality can be checked later at validation.
     pub assert_eq_on_eval: bool,
 }
+
 impl<Value: IValue> Context<Value> {
     /// Creates a new context with `n_reserved` wires at addresses `3 + i`, for `i ∈ [0,
     /// n_reserved)`.
@@ -195,7 +197,7 @@ impl<Value: IValue> Context<Value> {
     /// appears exactly once as a yield lookup.
     /// For guessed value, add a trivial constraint so that the new variable appears once as
     /// a yield.
-    pub fn finalize_guessed_vars(&mut self) {
+    fn finalize_guessed_vars(&mut self) {
         // TODO(Leo): move the assertion to a new finalize method which calls finalize_constants and
         // finalize_guessed_vars.
         assert!(
@@ -206,6 +208,15 @@ impl<Value: IValue> Context<Value> {
         for idx in self.guessed_vars.take().unwrap().iter() {
             self.circuit.add.push(Add { in0: *idx, in1: self.zero().idx, out: *idx });
         }
+    }
+
+    pub fn finalize(mut self, check_vars_used: bool) -> FinalizedContext<Value> {
+        finalize_constants(&mut self);
+        if check_vars_used {
+            self.check_vars_used();
+        }
+        self.finalize_guessed_vars();
+        FinalizedContext { context: self }
     }
 }
 
@@ -249,5 +260,41 @@ impl TraceContext {
 
     pub fn enable_assert_eq_on_eval(&mut self) {
         self.assert_eq_on_eval = true;
+    }
+}
+
+pub struct FinalizedContext<Value: IValue> {
+    pub context: Context<Value>,
+}
+
+impl<Value: IValue> FinalizedContext<Value> {
+    pub fn circuit(&self) -> &Circuit {
+        &self.context.circuit
+    }
+
+    pub fn stats(&self) -> &Stats {
+        &self.context.stats
+    }
+
+    pub fn values(&self) -> &Vec<Value> {
+        self.context.values()
+    }
+
+    pub fn check_vars_used(&self) {
+        self.context.check_vars_used();
+    }
+
+    pub fn get(&self, var: Var) -> Value {
+        self.context.get(var)
+    }
+}
+
+impl FinalizedContext<QM31> {
+    pub fn is_circuit_valid(&self) -> bool {
+        self.context.is_circuit_valid()
+    }
+
+    pub fn validate_circuit(&self) {
+        self.context.validate_circuit();
     }
 }

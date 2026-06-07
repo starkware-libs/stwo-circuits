@@ -80,10 +80,9 @@ fn test_inv() {
     "#]]
     .assert_debug_eq(&context.circuit);
 
-    crate::finalize_constants::finalize_constants(&mut context);
-    context.finalize_guessed_vars();
+    let context = context.finalize(false);
     context.validate_circuit();
-    context.circuit.check_yields();
+    context.circuit().check_yields();
 }
 
 #[test]
