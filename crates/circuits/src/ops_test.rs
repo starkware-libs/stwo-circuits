@@ -7,7 +7,9 @@ use stwo::core::fields::m31::P;
 use crate::context::TraceContext;
 use crate::eval;
 use crate::ivalue::qm31_from_u32s;
-use crate::ops::{Guess, cond_flip, conj, eq, from_partial_evals, guess, im, inv, mul, pointwise_mul};
+use crate::ops::{
+    Guess, cond_flip, conj, eq, from_partial_evals, guess, im, inv, mul, pointwise_mul,
+};
 use crate::stats::Stats;
 
 #[test]
