@@ -48,7 +48,7 @@ fn test_blake(#[case] wrong_output: bool) {
             add: 14,
             sub: 0,
             mul: 37,
-            div: 0,
+            inv: 0,
             pointwise_mul: 36,
             guess: 7,
             blake_updates: 2,
