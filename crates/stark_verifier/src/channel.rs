@@ -6,7 +6,7 @@ use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::extract_bits::extract_bits;
 use circuits::ivalue::{IValue, qm31_from_u32s};
-use circuits::ops::{div, eq, pointwise_mul};
+use circuits::ops::{eq, inv, pointwise_mul};
 use circuits::simd::Simd;
 
 #[cfg(test)]
@@ -104,7 +104,8 @@ impl Channel {
         let t2 = eval!(context, (t) * (t));
 
         let denom = eval!(context, (t2) + (1));
-        let denom_inv = div(context, context.one(), denom);
+        // denom = t^2 + 1; zero only for t = ±i in QM31.
+        let denom_inv = inv(context, denom);
         let x = eval!(context, ((1) - (t2)) * (denom_inv));
         let y = eval!(context, ((2) * (t)) * (denom_inv));
         CirclePoint { x, y }

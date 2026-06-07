@@ -4,8 +4,11 @@ pub struct Stats {
     pub add: usize,
     pub sub: usize,
     pub mul: usize,
-    /// The number of divisions. Note that each division also increments [Self::mul],
+    /// The number of inversions. Note that each inversion also increments [Self::mul],
     /// [Self::guess] and [Self::equals] by 1.
+    pub inv: usize,
+    /// The number of divisions. Note that each division also increments [Self::mul],
+    /// [Self::guess] and [Self::equals] by 1. The caller must ensure the divisor is non-zero.
     pub div: usize,
     pub pointwise_mul: usize,
     pub guess: usize,

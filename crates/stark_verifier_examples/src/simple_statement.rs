@@ -4,7 +4,7 @@ use circuits::blake::HashValue;
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::ivalue::{IValue, qm31_from_u32s};
-use circuits::ops::{Guess, div};
+use circuits::ops::{Guess, inv, mul};
 use circuits::simd::Simd;
 use circuits_stark_verifier::constraint_eval::RelationUse;
 use circuits_stark_verifier::constraint_eval::{
@@ -124,13 +124,16 @@ fn squared_fibonacci_public_logup_sum(
             (a, b) = (b, a * a + b * b + M31::from(j));
         }
         let elements = [context.constant(a.into()), context.constant(b.into())];
+        // denom1 is evaluated at the random interaction elements, so it is non-zero with high
+        // probability (denom = denom1^2 is non-zero for the same reason).
         let denom1 = combine_term(context, &elements, interaction_elements);
 
         let denom = eval!(context, (denom1) * (denom1));
         let numerator = eval!(context, (denom1) + (denom1));
 
-        let frac0 = div(context, numerator, denom);
-        let frac1 = div(context, context.one(), denom1);
+        let denom_inv = inv(context, denom);
+        let frac0 = mul(context, numerator, denom_inv);
+        let frac1 = inv(context, denom1);
         let frac = eval!(context, (frac0) + (frac1));
 
         // Note that the sum is negated because we want to use the values that are yielded in

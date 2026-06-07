@@ -8,7 +8,7 @@ use crate::statement::{EvaluateArgs, Statement};
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::ivalue::IValue;
-use circuits::ops::{div, from_partial_evals};
+use circuits::ops::{from_partial_evals, inv, mul};
 use circuits::simd::Simd;
 use itertools::{Itertools, izip, zip_eq};
 use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
@@ -189,7 +189,9 @@ impl CompositionConstraintAccumulator {
         let cur_cumsum = from_partial_evals(context, last_chunk.each_ref().map(|x| x.at_oods));
 
         let diff = eval!(context, ((cur_cumsum) - (prev_row_cumsum)) - (prev_col_cumsum));
-        let cumsum_shift = div(context, claimed_sum, component_data.n_instances());
+        // n_instances = 2^log_size, which is always non-zero.
+        let n_instances_inv = inv(context, component_data.n_instances());
+        let cumsum_shift = mul(context, claimed_sum, n_instances_inv);
         // Instead of checking diff = num / denom, check diff = num / denom - cumsum_shift.
         // This makes (num / denom - cumsum_shift) have sum zero, which makes the constraint
         // uniform - apply on all rows.
@@ -307,6 +309,7 @@ pub fn compute_composition_polynomial<Value: IValue>(
     assert!(oods_samples.interaction.is_empty(), "unconsumed interaction columns");
 
     let final_evaluation = evaluation_accumulator.finalize();
+    // pt is the OODS point, outside the trace coset.
     let denom_inverse = denom_inverse(context, pt.x, log_domain_size);
     eval!(context, (final_evaluation) * (denom_inverse))
 }
