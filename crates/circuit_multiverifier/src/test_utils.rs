@@ -6,7 +6,7 @@ use circuit_common::{
     preprocessed::PreprocessedCircuit,
 };
 use circuit_verifier::{
-    statement::{INTERACTION_POW_BITS, all_circuit_components},
+    statement::{INTERACTION_POW_BITS, all_circuit_components, circuit_component_log_sizes},
     verify::CircuitConfig,
 };
 use circuits::{blake::HashValue, context::FinalizedContext, ivalue::NoValue};
@@ -50,7 +50,7 @@ pub const PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT: [u32; 8] =
 
 /// The preprocessed root of the multiverifier circuit.
 pub const MULTIVERIFIER_PREPROCESSED_ROOT: [u32; 8] =
-    [299245338, 3245106799, 2582894857, 1660971541, 1264978744, 3663378231, 505079882, 3077728512];
+    [2300041752, 3471565793, 3628676412, 2418424907, 1371439364, 4074995684, 674420963, 1388191024];
 /// A multiverifier proof verifying two identical Cairo verifier proofs.
 pub const MULTIVERIFIER_OF_TWO_CAIRO_PROOFS_PATH: &str =
     concat!(env!("CARGO_MANIFEST_DIR"), "/../../test_data/circuit_multiverifier/proof.bin");
@@ -129,9 +129,13 @@ pub fn get_preprocessed_multiverifier_from_circuit(
         pcs_config.lifting_log_size.unwrap(),
         preprocessed_leaf_circuit.trace_log_size + pcs_config.fri_config.log_blowup_factor
     );
-    let all_circuit_components = &all_circuit_components::<NoValue>();
+    let preprocessed_column_log_sizes = preprocessed_leaf_circuit.preprocessed_trace.log_sizes();
+    // `ProofConfig` expects the components in ascending log-size order.
+    let mut components = all_circuit_components::<NoValue>();
+    let log_sizes = circuit_component_log_sizes(&components, &preprocessed_column_log_sizes);
+    components.sort_by(|a, _, b, _| log_sizes[*a].cmp(&log_sizes[*b]));
     let proof_config = ProofConfig::new(
-        all_circuit_components,
+        &components,
         preprocessed_leaf_circuit.preprocessed_trace.n_columns(),
         &pcs_config,
         INTERACTION_POW_BITS,
@@ -139,7 +143,7 @@ pub fn get_preprocessed_multiverifier_from_circuit(
     let subcircuit_config = CircuitConfig {
         config: pcs_config,
         n_outputs: preprocessed_leaf_circuit.n_outputs,
-        preprocessed_column_log_sizes: preprocessed_leaf_circuit.preprocessed_trace.log_sizes(),
+        preprocessed_column_log_sizes,
         preprocessed_root: HashValue::from([0u32; 8]),
     };
     let shared_config = SharedConfig {

@@ -61,15 +61,22 @@ impl<Value: IValue> CircuitStatement<Value> {
         }))
         .guess(context);
 
+        // Order the components by ascending trace log size — the committed-column order. stwo
+        // commits the trace/interaction columns sorted by size (see
+        // `stwo::prover::vcs_lifted::prover::MerkleProverLifted::commit`), so iterating the
+        // components in this order makes the natural component order coincide with the
+        // committed column order. That lets `sorting_required` return `false`, skipping the
+        // in-circuit query-column sort during decommitment.
         let components = all_circuit_components::<Value>();
-        let component_log_sizes =
-            circuit_component_log_sizes(&components, preprocessed_column_log_sizes)
-                .values()
-                .cloned()
-                .collect_vec();
+        let log_sizes = circuit_component_log_sizes(&components, preprocessed_column_log_sizes);
+        let (sorted_components, sorted_log_sizes): (Vec<_>, Vec<_>) =
+            zip_eq(components, log_sizes.into_iter().map(|(_, log_size)| log_size))
+                .sorted_by_key(|(_, log_size)| *log_size)
+                .unzip();
+        let components = IndexMap::from_iter(sorted_components);
 
-        let n_components = component_log_sizes.len();
-        let packed_log_sizes = pack_into_qm31s(component_log_sizes.iter().cloned())
+        let n_components = sorted_log_sizes.len();
+        let packed_log_sizes = pack_into_qm31s(sorted_log_sizes.iter().cloned())
             .into_iter()
             .map(|qm31| context.constant(qm31))
             .collect_vec();
@@ -99,6 +106,13 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
 
     fn get_component_log_sizes(&self) -> &Simd {
         &self.component_log_sizes
+    }
+
+    /// The circuit components are committed and iterated in size-sorted order (see the sort in
+    /// `CircuitStatement::new`), so the trace and interaction query columns are already in
+    /// committed order and need no sorting during decommitment.
+    fn sorting_required(&self) -> bool {
+        false
     }
 
     fn public_logup_sum(
