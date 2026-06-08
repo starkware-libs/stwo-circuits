@@ -42,7 +42,7 @@ fn verify_circuit_proof(
     );
     let circuit_config = CircuitConfig {
         config: circuit_proof.pcs_config,
-        n_outputs: preprocessed_circuit.params.n_outputs,
+        n_outputs: preprocessed_circuit.n_outputs,
         preprocessed_column_log_sizes: preprocessed_circuit.preprocessed_trace.log_sizes(),
         preprocessed_root,
     };
@@ -200,7 +200,7 @@ fn test_privacy_proof_info() {
     let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut novalue_context);
 
     let log_blowup_factor = 2;
-    let lifting_log_size = preprocessed_circuit.params.trace_log_size + log_blowup_factor;
+    let lifting_log_size = preprocessed_circuit.trace_log_size + log_blowup_factor;
     let pcs_config = PcsConfig {
         pow_bits: 26,
         fri_config: FriConfig {
@@ -214,13 +214,12 @@ fn test_privacy_proof_info() {
     let preprocessed_root = HashValue(QM31::zero(), QM31::zero());
     let circuit_config = CircuitConfig {
         config: pcs_config,
-        n_outputs: preprocessed_circuit.params.n_outputs,
+        n_outputs: preprocessed_circuit.n_outputs,
         preprocessed_column_log_sizes: preprocessed_circuit.preprocessed_trace.log_sizes(),
         preprocessed_root,
     };
-    let public_data = CircuitPublicData {
-        output_values: vec![QM31::zero(); preprocessed_circuit.params.n_outputs],
-    };
+    let public_data =
+        CircuitPublicData { output_values: vec![QM31::zero(); preprocessed_circuit.n_outputs] };
     let mut context: Context<NoValue> = Context::new(N_RESERVED);
     let statement =
         CircuitStatement::new(&mut context, &circuit_config, &public_data.output_values);

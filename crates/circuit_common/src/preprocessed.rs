@@ -1,4 +1,3 @@
-use crate::CircuitParams;
 use crate::N_LANES;
 use crate::Qm31OpsTraceGenerator;
 use crate::finalize::finalize_context;
@@ -455,10 +454,20 @@ impl PreProcessedTrace {
     }
 }
 
+/// A finalized circuit ready for proving: its fixed preprocessed trace together with the
+/// parameters derived from the circuit's structure.
 #[derive(Debug, PartialEq)]
 pub struct PreprocessedCircuit {
+    /// The fixed preprocessed trace columns, shared (via `Arc`) between the prover and the
+    /// components that read them during witness generation.
     pub preprocessed_trace: Arc<PreProcessedTrace>,
-    pub params: CircuitParams,
+    /// Log2 of the circuit's base trace size, this is the largest preprocessed column log size.
+    pub trace_log_size: u32,
+    /// Index of the first permutation row in the qm31_ops component, i.e. the number of
+    /// (non-permutation) binary-op rows that precede the permutation rows.
+    pub first_permutation_row: usize,
+    /// Number of public output values of the circuit (excluding the output gate of the `u` wire).
+    pub n_outputs: usize,
 }
 
 impl PreprocessedCircuit {
@@ -512,21 +521,16 @@ impl PreprocessedCircuit {
         PreProcessedTrace::add_fixed_preprocessed_columns(&mut pp_trace);
         pp_trace.sort_by_size();
 
-        // The trace size is the max between:
-        // 1. The largest preprocessed column size.
-        // 2. BlakeG column size after we pad them to a power of two.
-        let max_pp_trace_log_size = pp_trace.log_sizes().values().copied().max().unwrap();
-        let blake_g_log_size = circuit.blake_g_gate.len().ilog2();
-        let trace_log_size = std::cmp::max(max_pp_trace_log_size, blake_g_log_size);
+        // The log trace size is The largest preprocessed column log size.
+        let trace_log_size = pp_trace.log_sizes().values().copied().max().unwrap();
 
-        let params = CircuitParams {
+        Self {
+            preprocessed_trace: Arc::new(pp_trace),
             trace_log_size,
             first_permutation_row: qm31_ops_trace_generator.first_permutation_row,
             // Discard the output gate of the `u` wire.
             n_outputs: output.len() - 1,
-        };
-
-        Self { preprocessed_trace: Arc::new(pp_trace), params }
+        }
     }
 }
 

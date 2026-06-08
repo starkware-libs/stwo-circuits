@@ -2,7 +2,6 @@ use crate::circuit_air::circuit_components::CircuitComponents;
 use crate::witness::trace::TraceGenerator;
 use crate::witness::trace::write_interaction_trace;
 use crate::witness::trace::write_trace;
-use circuit_common::CircuitParams;
 use circuit_common::Qm31OpsTraceGenerator;
 use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_verifier::circuit_claim::{CircuitInteractionElements, lookup_sum};
@@ -80,7 +79,7 @@ where
     MC: MerkleChannel,
     SimdBackend: stwo::prover::backend::BackendForChannel<MC>,
 {
-    let trace_log_size = preprocessed_circuit.params.trace_log_size;
+    let trace_log_size = preprocessed_circuit.trace_log_size;
     let lifting_log_size = trace_log_size + pcs_config.fri_config.log_blowup_factor;
     let pcs_config = PcsConfig { lifting_log_size: Some(lifting_log_size), ..pcs_config };
 
@@ -134,8 +133,12 @@ where
     MC: MerkleChannel,
     SimdBackend: stwo::prover::backend::BackendForChannel<MC>,
 {
-    let PreprocessedCircuit { preprocessed_trace, params } = preprocessed_circuit;
-    let CircuitParams { first_permutation_row, n_outputs, .. } = params;
+    let PreprocessedCircuit {
+        preprocessed_trace,
+        first_permutation_row,
+        n_outputs,
+        trace_log_size: _,
+    } = preprocessed_circuit;
     let trace_generator = TraceGenerator {
         qm31_ops_trace_generator: Qm31OpsTraceGenerator {
             first_permutation_row: *first_permutation_row,
