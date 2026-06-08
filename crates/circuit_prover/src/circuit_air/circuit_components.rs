@@ -5,21 +5,13 @@ use crate::circuit_air::components::{
 use circuit_verifier::circuit_claim::{CircuitInteractionClaim, CircuitInteractionElements};
 use circuit_verifier::circuit_components::{ComponentList, N_COMPONENTS};
 use stwo::core::air::Component;
+use stwo::prover::ComponentProver;
+use stwo::prover::backend::simd::SimdBackend;
 use stwo_constraint_framework::TraceLocationAllocator;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 pub struct CircuitComponents {
-    pub eq: eq::Component,
-    pub qm31_ops: qm31_ops::Component,
-    pub triple_xor: triple_xor::Component,
-    pub m_31_to_u_32: m_31_to_u_32::Component,
-    pub blake_g_gate: blake_g_gate::Component,
-    pub verify_bitwise_xor_8: verify_bitwise_xor_8::Component,
-    pub verify_bitwise_xor_12: verify_bitwise_xor_12::Component,
-    pub verify_bitwise_xor_4: verify_bitwise_xor_4::Component,
-    pub verify_bitwise_xor_7: verify_bitwise_xor_7::Component,
-    pub verify_bitwise_xor_9: verify_bitwise_xor_9::Component,
-    pub range_check_16: range_check_16::Component,
+    components: Vec<Box<dyn ComponentProver<SimdBackend>>>,
 }
 impl CircuitComponents {
     pub fn new(
@@ -127,33 +119,27 @@ impl CircuitComponents {
             interaction_claim.claimed_sums[ComponentList::RangeCheck16 as usize],
         );
         Self {
-            eq: eq_component,
-            qm31_ops: qm31_ops_component,
-            triple_xor: triple_xor_component,
-            m_31_to_u_32: m_31_to_u_32_component,
-            blake_g_gate: blake_g_gate_component,
-            verify_bitwise_xor_8: verify_bitwise_xor_8_component,
-            verify_bitwise_xor_12: verify_bitwise_xor_12_component,
-            verify_bitwise_xor_4: verify_bitwise_xor_4_component,
-            verify_bitwise_xor_7: verify_bitwise_xor_7_component,
-            verify_bitwise_xor_9: verify_bitwise_xor_9_component,
-            range_check_16: range_check_16_component,
+            components: vec![
+                Box::new(eq_component) as Box<dyn ComponentProver<SimdBackend>>,
+                Box::new(qm31_ops_component) as Box<dyn ComponentProver<SimdBackend>>,
+                Box::new(triple_xor_component) as Box<dyn ComponentProver<SimdBackend>>,
+                Box::new(m_31_to_u_32_component) as Box<dyn ComponentProver<SimdBackend>>,
+                Box::new(blake_g_gate_component) as Box<dyn ComponentProver<SimdBackend>>,
+                Box::new(verify_bitwise_xor_8_component) as Box<dyn ComponentProver<SimdBackend>>,
+                Box::new(verify_bitwise_xor_12_component) as Box<dyn ComponentProver<SimdBackend>>,
+                Box::new(verify_bitwise_xor_4_component) as Box<dyn ComponentProver<SimdBackend>>,
+                Box::new(verify_bitwise_xor_7_component) as Box<dyn ComponentProver<SimdBackend>>,
+                Box::new(verify_bitwise_xor_9_component) as Box<dyn ComponentProver<SimdBackend>>,
+                Box::new(range_check_16_component) as Box<dyn ComponentProver<SimdBackend>>,
+            ],
         }
     }
 
+    pub fn component_provers(&self) -> Vec<&dyn ComponentProver<SimdBackend>> {
+        self.components.iter().map(|c| c.as_ref()).collect()
+    }
+
     pub fn components(self) -> Vec<Box<dyn Component>> {
-        vec![
-            Box::new(self.eq) as Box<dyn Component>,
-            Box::new(self.qm31_ops) as Box<dyn Component>,
-            Box::new(self.triple_xor) as Box<dyn Component>,
-            Box::new(self.m_31_to_u_32) as Box<dyn Component>,
-            Box::new(self.blake_g_gate) as Box<dyn Component>,
-            Box::new(self.verify_bitwise_xor_8) as Box<dyn Component>,
-            Box::new(self.verify_bitwise_xor_12) as Box<dyn Component>,
-            Box::new(self.verify_bitwise_xor_4) as Box<dyn Component>,
-            Box::new(self.verify_bitwise_xor_7) as Box<dyn Component>,
-            Box::new(self.verify_bitwise_xor_9) as Box<dyn Component>,
-            Box::new(self.range_check_16) as Box<dyn Component>,
-        ]
+        self.components.into_iter().map(|c| c as Box<dyn Component>).collect()
     }
 }

@@ -12,7 +12,6 @@ use circuit_verifier::verify::CircuitPublicData;
 use circuits_stark_verifier::proof::Proof;
 use circuits_stark_verifier::proof::ProofConfig;
 use circuits_stark_verifier::proof_from_stark_proof::proof_from_stark_proof;
-use itertools::chain;
 use num_traits::Zero;
 use stwo::core::channel::{Channel, MerkleChannel};
 use stwo::core::fields::qm31::QM31;
@@ -24,7 +23,6 @@ use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
 use stwo::prover::CommitmentSchemeProver;
 use stwo::prover::CommitmentTreeProver;
-use stwo::prover::ComponentProver;
 pub use stwo::prover::backend::simd::SimdBackend;
 pub use stwo::prover::mempool::BaseColumnPool;
 use stwo::prover::poly::circle::PolyOps;
@@ -36,25 +34,6 @@ const COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND: u32 = 1;
 #[cfg(test)]
 #[path = "prover_test.rs"]
 pub mod test;
-
-pub fn to_component_provers(
-    components: &CircuitComponents,
-) -> Vec<&dyn ComponentProver<SimdBackend>> {
-    chain!([
-        &components.eq as &dyn ComponentProver<SimdBackend>,
-        &components.qm31_ops as &dyn ComponentProver<SimdBackend>,
-        &components.triple_xor as &dyn ComponentProver<SimdBackend>,
-        &components.m_31_to_u_32 as &dyn ComponentProver<SimdBackend>,
-        &components.blake_g_gate as &dyn ComponentProver<SimdBackend>,
-        &components.verify_bitwise_xor_8 as &dyn ComponentProver<SimdBackend>,
-        &components.verify_bitwise_xor_12 as &dyn ComponentProver<SimdBackend>,
-        &components.verify_bitwise_xor_4 as &dyn ComponentProver<SimdBackend>,
-        &components.verify_bitwise_xor_7 as &dyn ComponentProver<SimdBackend>,
-        &components.verify_bitwise_xor_9 as &dyn ComponentProver<SimdBackend>,
-        &components.range_check_16 as &dyn ComponentProver<SimdBackend>,
-    ])
-    .collect()
-}
 
 pub fn prove_circuit_assignment(
     values: &[QM31],
@@ -201,7 +180,7 @@ where
         &component_log_sizes,
         &preprocessed_trace.ids(),
     );
-    let components = to_component_provers(&circuit_components);
+    let components = circuit_components.component_provers();
 
     // Prove stark.
     let stark_proof = prove_ex::<SimdBackend, _>(&components, channel, commitment_scheme, true)?;
