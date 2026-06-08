@@ -215,12 +215,10 @@ pub fn prepare_circuit_proof_for_circuit_verifier(
         INTERACTION_POW_BITS,
     );
 
-    let claimed_sums = interaction_claim.claimed_sums.to_vec();
-
     let proof = proof_from_stark_proof(
         &stark_proof,
         &proof_config,
-        claimed_sums,
+        interaction_claim.claimed_sums.to_vec(),
         interaction_pow_nonce,
         channel_salt,
     );
