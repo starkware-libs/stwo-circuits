@@ -1,6 +1,6 @@
 use std::iter::repeat_n;
 
-use crate::circuit_components::N_COMPONENTS;
+use crate::circuit_components::{N_COMPONENTS, sorted_component_order};
 use crate::relations::{CommonLookupElements, GATE_RELATION_ID};
 use crate::statement::all_circuit_components;
 use circuits::context::{U_VALUE, U_VAR_IDX};
@@ -30,19 +30,20 @@ impl CircuitClaim {
 }
 
 /// Returns `[trace_log_sizes, interaction_log_sizes]` for `tree[1]` and `tree[2]`,
-/// in the order the prover commits columns. Each component contributes its
-/// `log_size` repeated by its number of trace and interaction columns respectively.
+/// in the order the prover commits columns, i.e. size-sorted component order (see
+/// `sorted_component_order`). Each component contributes its `log_size` repeated by its number of
+/// trace and interaction columns respectively.
 pub fn column_log_sizes_per_tree(log_sizes: &OrderedHashMap<&'static str, u32>) -> [Vec<u32>; 2] {
-    let mut components = all_circuit_components::<NoValue>();
-    assert_eq!(log_sizes.len(), components.len());
+    let components = all_circuit_components::<NoValue>();
+    let order = sorted_component_order(log_sizes);
     let mut trace = Vec::new();
     let mut interaction = Vec::new();
-    for (name, log_size) in log_sizes.iter() {
-        let component = components.swap_remove(name).expect("Component not found");
+    for &i in &order {
+        let (&name, component) = components.get_index(i).unwrap();
+        let log_size = log_sizes[name];
         trace.extend(repeat_n(log_size, component.trace_columns()));
         interaction.extend(repeat_n(log_size, component.interaction_columns()));
     }
-    assert!(components.is_empty(), "All components must be accounted for");
     [trace, interaction]
 }
 
@@ -60,6 +61,9 @@ pub struct CircuitInteractionClaim {
     pub claimed_sums: [ClaimedSum; N_COMPONENTS],
 }
 impl CircuitInteractionClaim {
+    /// Mixes the claimed sums into the channel. They are already stored in size-sorted component
+    /// order (see `sorted_component_order`), matching the order in which the components' columns
+    /// are committed and the order in which the verifier consumes the claimed sums.
     pub fn mix_into(&self, channel: &mut impl Channel) {
         let Self { claimed_sums } = self;
         channel.mix_felts(claimed_sums);
