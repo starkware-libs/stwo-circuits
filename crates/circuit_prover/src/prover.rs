@@ -220,6 +220,9 @@ pub fn prepare_circuit_proof_for_circuit_verifier(
         INTERACTION_POW_BITS,
     );
 
+    // The claimed sums are already stored in size-sorted component order (see
+    // `write_interaction_trace`), matching the order in which the verifier consumes them and the
+    // order in which they are mixed into the channel.
     let claimed_sums = interaction_claim.claimed_sums.to_vec();
 
     let proof = proof_from_stark_proof(

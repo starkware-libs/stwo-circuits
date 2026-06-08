@@ -75,17 +75,19 @@ fn test_serialize_deserialize_claim_and_interaction_claim() {
     // 16 distinct values so any ordering bug shows up.
     let claim = CairoCircuitClaim { output_values: vec![qm31(1, 2, 3, 4), qm31(5, 6, 7, 8)] };
     let interaction = CairoCircuitInteractionClaim {
-        eq: qm31(1, 0, 0, 0),
-        qm31_ops: qm31(2, 0, 0, 0),
-        triple_xor: qm31(3, 0, 0, 0),
-        m_31_to_u_32: qm31(4, 0, 0, 0),
-        blake_g_gate: qm31(5, 0, 0, 0),
-        verify_bitwise_xor_8: qm31(6, 0, 0, 0),
-        verify_bitwise_xor_12: qm31(7, 0, 0, 0),
-        verify_bitwise_xor_4: qm31(8, 0, 0, 0),
-        verify_bitwise_xor_7: qm31(9, 0, 0, 0),
-        verify_bitwise_xor_9: qm31(10, 0, 0, 0),
-        range_check_16: qm31(11, 0, 0, 0),
+        claimed_sums: [
+            qm31(1, 0, 0, 0),
+            qm31(2, 0, 0, 0),
+            qm31(3, 0, 0, 0),
+            qm31(4, 0, 0, 0),
+            qm31(5, 0, 0, 0),
+            qm31(6, 0, 0, 0),
+            qm31(7, 0, 0, 0),
+            qm31(8, 0, 0, 0),
+            qm31(9, 0, 0, 0),
+            qm31(10, 0, 0, 0),
+            qm31(11, 0, 0, 0),
+        ],
     };
 
     // Roundtrip claim
