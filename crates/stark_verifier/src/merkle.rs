@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use itertools::{Itertools, zip_eq};
 use stwo::core::vcs_lifted::verifier::PACKED_LEAF_SIZE;
 
@@ -138,11 +140,13 @@ pub fn merkle_node<Value: IValue>(
 ///
 /// `bits[i][query_idx]` is the `i`-th bit of the bit representation of the query at index
 /// `query_idx`.
-/// column_log_sizes_by_trace includes the column log sizes for the trace and interaction columns.
+/// `opt_column_log_sizes_by_trace` maps a trace index to the column log sizes used to sort
+/// that trace's query columns into committed order. A trace absent from the map is left unsorted,
+/// so the map is empty when all columns are already in committed order and sorting can be skipped.
 pub fn decommit_eval_domain_samples<Value: IValue>(
     context: &mut Context<Value>,
     n_queries: usize,
-    column_log_sizes_by_trace: &[Vec<Var>; 2],
+    opt_column_log_sizes_by_trace: &HashMap<usize, Vec<Var>>,
     eval_domain_samples: &EvalDomainSamples<Var>,
     auth_paths: &AuthPaths<Var>,
     bits: &[Vec<Var>],
@@ -154,10 +158,9 @@ pub fn decommit_eval_domain_samples<Value: IValue>(
     for (trace_idx, root) in roots.iter().enumerate() {
         let data = eval_domain_samples.data_for_trace(trace_idx);
 
-        let mut query_sorter = match trace_idx {
-            // Only the trace and interaction columns require sorting.
-            1 | 2 => QuerySorter::new(context, &column_log_sizes_by_trace[trace_idx - 1]),
-            _ => QuerySorter::skip_sorting(),
+        let mut query_sorter = match opt_column_log_sizes_by_trace.get(&trace_idx) {
+            Some(column_log_sizes) => QuerySorter::new(context, column_log_sizes),
+            None => QuerySorter::skip_sorting(),
         };
 
         for query_idx in 0..n_queries {

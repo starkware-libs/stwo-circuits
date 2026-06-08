@@ -139,6 +139,8 @@ fn test_merkle_path(#[case] wrong_bit: bool, #[case] wrong_root: bool) {
 #[case::wrong_root2(Some(2), false)]
 #[case::wrong_root3(Some(3), false)]
 fn test_decommit_eval_domain_samples(#[case] wrong_root: Option<usize>, #[case] wrong_bit: bool) {
+    use std::collections::HashMap;
+
     use circuits::context::Var;
 
     let mut context = TraceContext::default();
@@ -148,7 +150,8 @@ fn test_decommit_eval_domain_samples(#[case] wrong_root: Option<usize>, #[case] 
         EvalDomainSamples::from_m31s(vec![vec![vec![M31::from(1)]], vec![], vec![], vec![]]);
 
     // 2 traces with no columns.
-    let column_log_sizes: [Vec<Var>; 2] = [vec![], vec![]];
+    let opt_column_log_sizes_by_trace: HashMap<usize, Vec<Var>> =
+        HashMap::from([(1, vec![]), (2, vec![])]);
 
     let auth_path_val0 = HashValue(qm31_from_u32s(1, 2, 3, 4), qm31_from_u32s(5, 6, 7, 8));
     let auth_path_val1 = HashValue(qm31_from_u32s(9, 10, 11, 12), qm31_from_u32s(13, 14, 15, 16));
@@ -178,7 +181,7 @@ fn test_decommit_eval_domain_samples(#[case] wrong_root: Option<usize>, #[case] 
     decommit_eval_domain_samples(
         &mut context,
         n_queries,
-        &column_log_sizes,
+        &opt_column_log_sizes_by_trace,
         &eval_domain_samples_vars,
         &auth_paths_vars,
         &bits_vars,

@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use itertools::{Itertools, chain, zip_eq};
 use stwo::core::fields::m31::{M31, P};
 use stwo::core::verifier::COMPOSITION_LOG_SPLIT;
+use stwo_constraint_framework::{INTERACTION_TRACE_IDX, ORIGINAL_TRACE_IDX};
 
 use crate::channel::Channel;
 use crate::constraint_eval::compute_composition_polynomial;
@@ -174,12 +175,17 @@ pub fn verify<Value: IValue>(
     // Check decommitment of trace queries.
     let bits = queries.bits.iter().map(|simd| Simd::unpack(context, simd)).collect_vec();
 
-    let column_log_sizes_by_trace = column_log_sizes_by_trace(context, config, component_log_sizes);
+    let opt_column_log_sizes_by_trace = get_opt_column_log_sizes_by_trace(
+        context,
+        config,
+        component_log_sizes,
+        statement.sorting_required(),
+    );
 
     decommit_eval_domain_samples(
         context,
         config.n_queries(),
-        &column_log_sizes_by_trace,
+        &opt_column_log_sizes_by_trace,
         &proof.eval_domain_samples,
         &proof.eval_domain_auth_paths,
         &bits,
@@ -286,13 +292,21 @@ fn check_relation_uses<Value: IValue>(
     shifted_relation_uses
 }
 
-// Returns the column_log_sizes_by_trace, which includes the column log sizes for the trace and
-// interaction columns.
-fn column_log_sizes_by_trace(
+// Returns a map from trace index to the column log sizes used to sort that trace's query columns
+// into committed order. A trace index absent from the map needs no sorting (its columns are already
+// in committed order), so only the trace and interaction columns ever appear. When
+// `sorting_required` is false every trace is already in committed order and an empty map is
+// returned, skipping sorting entirely.
+fn get_opt_column_log_sizes_by_trace(
     context: &mut Context<impl IValue>,
     config: &ProofConfig,
     component_log_sizes: Simd,
-) -> [Vec<Var>; 2] {
+    sorting_required: bool,
+) -> HashMap<usize, Vec<Var>> {
+    if !sorting_required {
+        return HashMap::new();
+    }
+
     let mut column_log_sizes = [
         Vec::with_capacity(config.n_trace_columns),
         Vec::with_capacity(config.n_interaction_columns),
@@ -304,7 +318,8 @@ fn column_log_sizes_by_trace(
         column_log_sizes[0].extend(vec![log_size; component_shape.trace_columns]);
         column_log_sizes[1].extend(vec![log_size; component_shape.interaction_columns]);
     }
-    column_log_sizes
+    let [trace, interaction] = column_log_sizes;
+    HashMap::from([(ORIGINAL_TRACE_IDX, trace), (INTERACTION_TRACE_IDX, interaction)])
 }
 
 fn validate_and_compute_component_sizes(
