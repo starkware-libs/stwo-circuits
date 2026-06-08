@@ -4,7 +4,7 @@ use circuit_common::{
     preprocessed::PreprocessedCircuit,
 };
 use circuit_verifier::{
-    statement::{INTERACTION_POW_BITS, all_circuit_components},
+    statement::{INTERACTION_POW_BITS, all_circuit_components, circuit_component_log_sizes},
     verify::CircuitConfig,
 };
 use circuits::{blake::HashValue, context::FinalizedContext, ivalue::NoValue};
@@ -30,9 +30,13 @@ pub fn get_preprocessed_multiverifier_from_circuit(
         pcs_config.lifting_log_size.unwrap(),
         preprocessed_leaf_circuit.trace_log_size + pcs_config.fri_config.log_blowup_factor
     );
-    let all_circuit_components = &all_circuit_components::<NoValue>();
+    let preprocessed_column_log_sizes = preprocessed_leaf_circuit.preprocessed_trace.log_sizes();
+    // `ProofConfig` expects the components in ascending log-size order.
+    let mut components = all_circuit_components::<NoValue>();
+    let log_sizes = circuit_component_log_sizes(&components, &preprocessed_column_log_sizes);
+    components.sort_by(|a, _, b, _| log_sizes[*a].cmp(&log_sizes[*b]));
     let proof_config = ProofConfig::new(
-        all_circuit_components,
+        &components,
         preprocessed_leaf_circuit.preprocessed_trace.n_columns(),
         &pcs_config,
         INTERACTION_POW_BITS,
@@ -40,7 +44,7 @@ pub fn get_preprocessed_multiverifier_from_circuit(
     let subcircuit_config = CircuitConfig {
         config: pcs_config,
         n_outputs: preprocessed_leaf_circuit.n_outputs,
-        preprocessed_column_log_sizes: preprocessed_leaf_circuit.preprocessed_trace.log_sizes(),
+        preprocessed_column_log_sizes,
         preprocessed_root: HashValue::from([0u32; 8]),
     };
     let shared_config = SharedConfig {

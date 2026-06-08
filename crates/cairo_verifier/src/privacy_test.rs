@@ -2,22 +2,20 @@ use std::fs::File;
 
 use cairo_air::CairoProof;
 use cairo_air::utils::binary_deserialize_from_file;
-use circuit_common::N_RESERVED;
 use circuit_common::finalize::{add_zk_blinding, pad_context};
 use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_prover::prover::{
     BaseColumnPool, CircuitProof, SimdBackend, prepare_circuit_proof_for_circuit_verifier,
     prove_circuit_assignment,
 };
-use circuit_verifier::statement::CircuitStatement;
-use circuit_verifier::verify::{CircuitConfig, CircuitPublicData, verify_circuit};
+use circuit_verifier::statement::{all_circuit_components, circuit_component_log_sizes};
+use circuit_verifier::verify::{CircuitConfig, verify_circuit};
 use circuits::blake::HashValue;
-use circuits::context::{Context, FinalizedContext};
+use circuits::context::FinalizedContext;
 use circuits::ivalue::{IValue, NoValue};
 use circuits_stark_verifier::proof::{ProofConfig, ProofInfo};
-use circuits_stark_verifier::statement::Statement;
-use itertools::Itertools;
-use num_traits::Zero;
+use indexmap::IndexMap;
+use itertools::{Itertools, zip_eq};
 use stwo::core::fields::qm31::QM31;
 use stwo::core::fri::FriConfig;
 use stwo::core::pcs::PcsConfig;
@@ -211,23 +209,21 @@ fn test_privacy_proof_info() {
         },
         lifting_log_size: Some(lifting_log_size),
     };
-    let preprocessed_root = HashValue::from([0u32; 8]);
-    let circuit_config = CircuitConfig {
-        config: pcs_config,
-        n_outputs: preprocessed_circuit.n_outputs,
-        preprocessed_column_log_sizes: preprocessed_circuit.preprocessed_trace.log_sizes(),
-        preprocessed_root,
-    };
-    let public_data =
-        CircuitPublicData { output_values: vec![QM31::zero(); preprocessed_circuit.n_outputs] };
-    let mut context: Context<NoValue> = Context::new(N_RESERVED);
-    let statement =
-        CircuitStatement::new(&mut context, &circuit_config, &public_data.output_values);
-
+    // Order components by ascending trace log size — the order `CircuitStatement::new` iterates
+    // them in, sorted to coincide with stwo's committed-column order. Proof size is invariant to
+    // component order, but this keeps the test on the same layout as the real prover and verifier.
+    let preprocessed_column_log_sizes = preprocessed_circuit.preprocessed_trace.log_sizes();
+    let components = all_circuit_components::<NoValue>();
+    let log_sizes = circuit_component_log_sizes(&components, &preprocessed_column_log_sizes);
+    let components: IndexMap<_, _> =
+        zip_eq(components, log_sizes.into_iter().map(|(_, log_size)| log_size))
+            .sorted_by_key(|(_, log_size)| *log_size)
+            .map(|((name, component), _)| (name, component))
+            .collect();
     let proof_config = ProofConfig::new(
-        statement.get_components(),
-        circuit_config.preprocessed_column_log_sizes.len(),
-        &circuit_config.config,
+        &components,
+        preprocessed_column_log_sizes.len(),
+        &pcs_config,
         circuit_verifier::statement::INTERACTION_POW_BITS,
     );
     let proof_info = ProofInfo::from_config(&proof_config);
