@@ -226,7 +226,11 @@ pub struct ProofConfig {
     pub n_preprocessed_columns: usize,
     pub n_trace_columns: usize,
     pub n_interaction_columns: usize,
-    // One entry per enabled component, in the order returned by `all_components()`.
+    // One entry per component, in the order of the components map passed to `new`. This must match
+    // the order in which the statement's components are later iterated (see `constraint_eval`),
+    // which both callers satisfy by building this config from the same map. Note this is not
+    // necessarily the committed-column order: when `Statement::sorting_required` is `true` the
+    // verifier sorts the query columns to the committed order during decommitment instead.
     pub component_shapes: Vec<ComponentShape>,
 
     // Per column in the interaction trace, an indicator of whether it is a cumulative sum column.
