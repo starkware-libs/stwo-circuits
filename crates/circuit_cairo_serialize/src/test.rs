@@ -9,7 +9,6 @@ use circuit_prover::prover::{BaseColumnPool, SimdBackend, prove_circuit_assignme
 use circuit_verifier::circuit_components::N_COMPONENTS;
 use circuit_verifier::statement::all_circuit_components;
 use circuits::context::Context;
-use circuits::finalize_constants::finalize_constants;
 use circuits::ivalue::{NoValue, qm31_from_u32s};
 use circuits::ops::guess;
 use itertools::Itertools;
@@ -42,9 +41,7 @@ fn build_minimal_context() -> Context<QM31> {
 
 #[test]
 fn test_serialize_deserialize_cairo_proof() {
-    let mut ctx = build_minimal_context();
-    finalize_constants(&mut ctx);
-    ctx.finalize_guessed_vars();
+    let mut ctx = build_minimal_context().finalize(false);
     ctx.validate_circuit();
     let preprocessed_circuit = PreprocessedCircuit::preprocess_circuit(&mut ctx);
     let circuit_proof = prove_circuit_assignment(

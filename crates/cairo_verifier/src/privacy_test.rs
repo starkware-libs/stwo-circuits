@@ -11,7 +11,7 @@ use circuit_prover::prover::{
 use circuit_verifier::statement::{CircuitStatement, all_circuit_components};
 use circuit_verifier::verify::{CircuitConfig, CircuitPublicData, verify_circuit};
 use circuits::blake::HashValue;
-use circuits::context::Context;
+use circuits::context::{Context, FinalizedContext};
 use circuits::ivalue::{IValue, NoValue};
 use circuits_stark_verifier::proof::{ProofConfig, ProofInfo};
 use circuits_stark_verifier::statement::Statement;
@@ -32,7 +32,7 @@ fn verify_circuit_proof(
     preprocessed_circuit: &PreprocessedCircuit,
     circuit_proof: CircuitProof<Blake2sM31MerkleHasher>,
     preprocessed_root: HashValue<QM31>,
-) -> Context<QM31> {
+) -> FinalizedContext<QM31> {
     let components = all_circuit_components::<QM31>();
     let proof_config = ProofConfig::new(
         &components,
@@ -54,15 +54,16 @@ fn verify_circuit_proof(
 /// Compares the topology of two contexts.
 /// Note that the values are not compared.
 fn compare_contexts_topology<Value: IValue, OtherValue: IValue>(
-    context_a: &Context<Value>,
-    context_b: &Context<OtherValue>,
+    context_a: &FinalizedContext<Value>,
+    context_b: &FinalizedContext<OtherValue>,
 ) {
     // TODO(Gali): Consider comparing unused and maybe unused vars.
-    assert!(context_a.circuit == context_b.circuit);
-    assert!(context_a.stats == context_b.stats);
-    assert!(context_a.guessed_vars == context_b.guessed_vars);
-    let constants_a = context_a.constants().iter().map(|(k, v)| (*k, v.idx)).collect_vec();
-    let constants_b = context_b.constants().iter().map(|(k, v)| (*k, v.idx)).collect_vec();
+    assert!(context_a.circuit() == context_b.circuit());
+    assert!(context_a.stats() == context_b.stats());
+    assert!(context_a.context.guessed_vars == context_b.context.guessed_vars);
+    // TODO: constants is empty at this point?
+    let constants_a = context_a.context.constants().iter().map(|(k, v)| (*k, v.idx)).collect_vec();
+    let constants_b = context_b.context.constants().iter().map(|(k, v)| (*k, v.idx)).collect_vec();
     assert!(constants_a == constants_b);
 }
 
@@ -178,13 +179,13 @@ fn test_zk_padding() {
         let const_config = privacy_cairo_verifier_config(log_blowup_factor);
         let mut context = build_cairo_verifier_circuit(&const_config);
 
-        let eq_before = context.circuit.eq.len();
-        let qm31_ops_before = context.circuit.n_qm31_ops_rows();
+        let eq_before = context.circuit().eq.len();
+        let qm31_ops_before = context.circuit().n_qm31_ops_rows();
 
         add_zk_blinding(&mut context, [0; 32], const_config.proof_config.fri.n_queries);
 
-        let eq_after = context.circuit.eq.len();
-        let qm31_ops_after = context.circuit.n_qm31_ops_rows();
+        let eq_after = context.circuit().eq.len();
+        let qm31_ops_after = context.circuit().n_qm31_ops_rows();
 
         assert_eq!(eq_after.next_power_of_two(), eq_before.next_power_of_two());
         assert_eq!(qm31_ops_after.next_power_of_two(), qm31_ops_before.next_power_of_two());

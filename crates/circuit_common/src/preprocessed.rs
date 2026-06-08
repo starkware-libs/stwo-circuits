@@ -6,7 +6,7 @@ use circuits::circuit::M31ToU32;
 use circuits::circuit::{
     Add, BlakeGGate, Circuit, Eq, Mul, Permutation, PointwiseMul, Sub, TripleXor,
 };
-use circuits::context::Context;
+use circuits::context::FinalizedContext;
 use circuits::ivalue::IValue;
 use circuits_stark_verifier::order_hash_map::OrderedHashMap;
 use itertools::zip_eq;
@@ -472,9 +472,9 @@ pub struct PreprocessedCircuit {
 
 impl PreprocessedCircuit {
     /// Finalizes the context, then builds the preprocessed circuit.
-    pub fn preprocess_circuit(context: &mut Context<impl IValue>) -> Self {
+    pub fn preprocess_circuit(context: &mut FinalizedContext<impl IValue>) -> Self {
         finalize_context(context);
-        Self::from_finalized_circuit(&context.circuit)
+        Self::from_finalized_circuit(context.circuit())
     }
 
     /// Builds the preprocessed circuit data (trace + params) from a finalized circuit.

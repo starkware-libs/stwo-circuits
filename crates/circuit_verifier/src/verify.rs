@@ -1,8 +1,7 @@
 use circuit_common::N_RESERVED;
 use circuits::{
     blake::{HashValue, blake},
-    context::Context,
-    finalize_constants::finalize_constants,
+    context::{Context, FinalizedContext},
     ivalue::IValue,
     ops::Guess,
 };
@@ -46,7 +45,7 @@ pub fn build_verification_circuit<Value: IValue>(
     circuit_config: CircuitConfig,
     proof: Proof<Value>,
     public_data: CircuitPublicData,
-) -> Result<Context<Value>, String> {
+) -> Result<FinalizedContext<Value>, String> {
     let mut context = Context::new(N_RESERVED);
     let statement =
         CircuitStatement::new(&mut context, &circuit_config, &public_data.output_values);
@@ -72,10 +71,9 @@ pub fn build_verification_circuit<Value: IValue>(
     // Copy the resulting hash into the wires 3 and 4, and mark them as outputs.
     context.set_outputs(&[output_hash.0, output_hash.1]);
 
-    finalize_constants(&mut context);
-    context.finalize_guessed_vars();
+    let context = context.finalize(false);
     #[cfg(test)]
-    context.circuit.check_yields();
+    context.circuit().check_yields();
 
     Ok(context)
 }
@@ -84,7 +82,7 @@ pub fn verify_circuit(
     circuit_config: CircuitConfig,
     proof: Proof<QM31>,
     public_data: CircuitPublicData,
-) -> Result<Context<QM31>, String> {
+) -> Result<FinalizedContext<QM31>, String> {
     let context = build_verification_circuit(circuit_config, proof, public_data)?;
     #[cfg(test)]
     context.check_vars_used();
