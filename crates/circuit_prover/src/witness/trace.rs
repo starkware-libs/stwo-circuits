@@ -19,6 +19,7 @@ use circuit_verifier::circuit_claim::CircuitInteractionClaim;
 use circuit_verifier::circuit_claim::CircuitInteractionElements;
 use circuit_verifier::circuit_components::COMPONENT_NAMES;
 use circuit_verifier::circuit_components::ComponentList;
+use circuit_verifier::circuit_components::sorted_component_order;
 use circuits::context::U_VAR_IDX;
 use circuits_stark_verifier::order_hash_map::OrderedHashMap;
 use itertools::Itertools;
@@ -252,22 +253,6 @@ where
         )
     };
 
-    tree_builder.extend_polys(eq_polys);
-    tree_builder.extend_polys(qm31_ops_polys);
-    tree_builder.extend_polys(triple_xor_polys);
-    tree_builder.extend_polys(m_31_to_u_32_polys);
-    tree_builder.extend_polys(blake_g_gate_polys);
-    tree_builder.extend_polys(verify_bitwise_xor_8_polys);
-    tree_builder.extend_polys(verify_bitwise_xor_12_polys);
-    tree_builder.extend_polys(verify_bitwise_xor_4_polys);
-    tree_builder.extend_polys(verify_bitwise_xor_7_polys);
-    tree_builder.extend_polys(verify_bitwise_xor_9_polys);
-    tree_builder.extend_polys(range_check_16_polys);
-
-    let output_values = ((U_VAR_IDX + 1)..(U_VAR_IDX + 1 + n_outputs))
-        .map(|addr| context_values[addr])
-        .collect_vec();
-
     // Per-component log sizes, in `COMPONENT_NAMES` (i.e. `ComponentList`) order.
     let log_sizes: OrderedHashMap<&'static str, u32> = COMPONENT_NAMES
         .into_iter()
@@ -285,6 +270,31 @@ where
             crate::circuit_air::components::range_check_16::LOG_SIZE,
         ])
         .collect();
+
+    // Commit the component columns in size-sorted order (see `sorted_component_order`) so the
+    // committed column layout coincides with the natural component order, letting the verifier
+    // skip the in-circuit query-column sort during decommitment.
+    let component_trace_polys = [
+        eq_polys,
+        qm31_ops_polys,
+        triple_xor_polys,
+        m_31_to_u_32_polys,
+        blake_g_gate_polys,
+        verify_bitwise_xor_8_polys,
+        verify_bitwise_xor_12_polys,
+        verify_bitwise_xor_4_polys,
+        verify_bitwise_xor_7_polys,
+        verify_bitwise_xor_9_polys,
+        range_check_16_polys,
+    ];
+    let mut component_trace_polys = component_trace_polys.map(Some);
+    for &i in sorted_component_order(&log_sizes).iter() {
+        tree_builder.extend_polys(component_trace_polys[i].take().unwrap());
+    }
+
+    let output_values = ((U_VAR_IDX + 1)..(U_VAR_IDX + 1 + n_outputs))
+        .map(|addr| context_values[addr])
+        .collect_vec();
 
     (
         CircuitClaim { output_values },
@@ -451,7 +461,15 @@ where
         });
     }
 
-    tree_builder.extend_polys(all_polys.into_iter().flatten());
+    // Commit the interaction columns in the same size-sorted order as the base trace columns
+    // (see `sorted_component_order`), and reorder the claimed sums to match so that
+    // `CircuitInteractionClaim` stores them in committed (size-sorted) order.
+    let order = sorted_component_order(component_log_sizes);
+    let mut sorted_claimed_sums = [QM31::zero(); 11];
+    for (sorted_idx, &i) in order.iter().enumerate() {
+        tree_builder.extend_polys(std::mem::take(&mut all_polys[i]));
+        sorted_claimed_sums[sorted_idx] = claimed_sums[i];
+    }
 
-    CircuitInteractionClaim { claimed_sums }
+    CircuitInteractionClaim { claimed_sums: sorted_claimed_sums }
 }

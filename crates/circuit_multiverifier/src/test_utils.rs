@@ -3,7 +3,7 @@ use circuit_common::{
     preprocessed::PreprocessedCircuit,
 };
 use circuit_verifier::{
-    statement::{INTERACTION_POW_BITS, all_circuit_components},
+    statement::{INTERACTION_POW_BITS, all_circuit_components, circuit_component_log_sizes},
     verify::CircuitConfig,
 };
 use circuits::{blake::HashValue, context::FinalizedContext, ivalue::NoValue};
@@ -29,9 +29,17 @@ pub fn get_preprocessed_multiverifier_from_circuit(
         pcs_config.lifting_log_size.unwrap(),
         preprocessed_leaf_circuit.trace_log_size + pcs_config.fri_config.log_blowup_factor
     );
-    let all_circuit_components = &all_circuit_components::<NoValue>();
+    let preprocessed_column_log_sizes = preprocessed_leaf_circuit.preprocessed_trace.log_sizes();
+    // Order the components by ascending trace log size — the committed-column order in which
+    // `build_multiverifier_circuit`'s `CircuitStatement` iterates them during verification (see
+    // `constraint_eval`). The `ProofConfig`'s `component_shapes` must follow this order; building
+    // it from the unsorted `all_circuit_components` map would misalign the shapes with the sorted
+    // components. `IndexMap::sort_by` is stable, matching the stable sort in `CircuitStatement`.
+    let mut components = all_circuit_components::<NoValue>();
+    let log_sizes = circuit_component_log_sizes(&components, &preprocessed_column_log_sizes);
+    components.sort_by(|a, _, b, _| log_sizes[*a].cmp(&log_sizes[*b]));
     let proof_config = ProofConfig::new(
-        all_circuit_components,
+        &components,
         preprocessed_leaf_circuit.preprocessed_trace.n_columns(),
         &pcs_config,
         INTERACTION_POW_BITS,
@@ -39,7 +47,7 @@ pub fn get_preprocessed_multiverifier_from_circuit(
     let subcircuit_config = CircuitConfig {
         config: pcs_config,
         n_outputs: preprocessed_leaf_circuit.n_outputs,
-        preprocessed_column_log_sizes: preprocessed_leaf_circuit.preprocessed_trace.log_sizes(),
+        preprocessed_column_log_sizes,
         preprocessed_root: HashValue(QM31::from(0), QM31::from(0)),
     };
     let shared_config = SharedConfig {
