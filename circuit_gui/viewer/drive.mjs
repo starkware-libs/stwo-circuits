@@ -16,6 +16,17 @@
 //   collapseByLabel('blake')                 // collapse them again
 //   setLevel(2)                              // bulk expand to depth 2
 //   "document.getElementById('fit').click()" // press a toolbar button
+//
+// REAL input gestures (CDP Input — these reach cytoscape's canvas listeners,
+// unlike synthetic DOM events). A step whose JS starts with '@' is an input
+// command instead of evaluated JS (coords are CSS px in the 1500x1000 window;
+// the header bar is ~50px tall so the graph canvas is y>50):
+//   '@drag x1 y1 x2 y2 [steps]'  // press-move-release: pans the graph (or tests
+//                                //   pan-from-anywhere by starting on a node/box)
+//   '@wheel x y deltaY'          // mouse wheel at (x,y): zoom (negative = zoom in)
+//   '@click x y'                 // a real left click at (x,y)
+//   '@dblclick x y'              // a real double-click (expand/collapse a group)
+//   '@move x y'                  // move the cursor (hover) to (x,y)
 
 import { spawn } from "node:child_process";
 import { writeFileSync } from "node:fs";
@@ -61,6 +72,42 @@ const evalJs = (ws, expression) =>
   // (or functions) triggers "object reference chain too long".
   send(ws, "Runtime.evaluate", { expression, awaitPromise: true, returnByValue: false });
 
+const mouse = (ws, type, p) => send(ws, "Input.dispatchMouseEvent", { type, ...p });
+
+// REAL trusted input via CDP (reaches cytoscape's canvas handlers). Used by the
+// '@'-prefixed step commands so the reviewer can test pan/zoom/click gestures.
+async function realDrag(ws, x1, y1, x2, y2, n = 12) {
+  await mouse(ws, "mouseMoved", { x: x1, y: y1 });
+  await mouse(ws, "mousePressed", { x: x1, y: y1, button: "left", buttons: 1, clickCount: 1 });
+  for (let i = 1; i <= n; i++) {
+    await mouse(ws, "mouseMoved", { x: x1 + (x2 - x1) * i / n, y: y1 + (y2 - y1) * i / n, button: "left", buttons: 1 });
+    await sleep(16);
+  }
+  await mouse(ws, "mouseReleased", { x: x2, y: y2, button: "left", buttons: 1, clickCount: 1 });
+}
+async function realClick(ws, x, y) {
+  await mouse(ws, "mouseMoved", { x, y });
+  await mouse(ws, "mousePressed", { x, y, button: "left", buttons: 1, clickCount: 1 });
+  await mouse(ws, "mouseReleased", { x, y, button: "left", buttons: 1, clickCount: 1 });
+}
+async function realDblClick(ws, x, y) {
+  await mouse(ws, "mouseMoved", { x, y });
+  await mouse(ws, "mousePressed", { x, y, button: "left", buttons: 1, clickCount: 1 });
+  await mouse(ws, "mouseReleased", { x, y, button: "left", buttons: 1, clickCount: 1 });
+  await mouse(ws, "mousePressed", { x, y, button: "left", buttons: 1, clickCount: 2 });
+  await mouse(ws, "mouseReleased", { x, y, button: "left", buttons: 1, clickCount: 2 });
+}
+async function runInput(ws, js) {
+  const [cmd, ...args] = js.slice(1).trim().split(/\s+/);
+  const a = args.map(Number);
+  if (cmd === "drag") await realDrag(ws, a[0], a[1], a[2], a[3], a[4] || 12);
+  else if (cmd === "wheel") await mouse(ws, "mouseWheel", { x: a[0], y: a[1], deltaX: 0, deltaY: a[2] });
+  else if (cmd === "click") await realClick(ws, a[0], a[1]);
+  else if (cmd === "dblclick") await realDblClick(ws, a[0], a[1]);
+  else if (cmd === "move") await mouse(ws, "mouseMoved", { x: a[0], y: a[1] });
+  else console.error(`unknown input command: @${cmd}`);
+}
+
 try {
   // Wait for the DevTools endpoint, then find the page target.
   let target;
@@ -92,7 +139,10 @@ try {
   await evalJs(ws, HELPERS);
 
   for (const { png, js } of steps) {
-    if (js && js.trim()) {
+    if (js && js.trim().startsWith("@")) {
+      await runInput(ws, js.trim());
+      await sleep(900); // let the gesture's effects (pan/zoom/highlight) settle
+    } else if (js && js.trim()) {
       const r = await evalJs(ws, js);
       if (r.exceptionDetails) console.error(`step js error: ${JSON.stringify(r.exceptionDetails)}`);
       await sleep(1200); // let layout/fit settle

@@ -18,11 +18,20 @@ pub struct ConstTag {
     pub var: usize,
 }
 
-/// A node in the graph: either a gate or an input pseudo-node.
+/// A node in the graph.
+///
+/// `kind` is one of:
+/// * a gate abbreviation (`"add"`, `"sub"`, `"mul"`, `"pmul"`, `"blakeg"`,
+///   `"xor"`, `"m2u"`, `"perm"`) — one node per gate;
+/// * `"const"` — a per-use constant node (a fresh node per consuming use);
+/// * `"witness"` — a prover-guessed (`guess()`) variable that is not a
+///   recognized motif's input port;
+/// * `"input"` — a genuine boundary input (a guess promoted to a motif input
+///   port, laid out in the top row).
 #[derive(Serialize)]
 pub struct Node {
     pub id: String,
-    /// Gate abbreviation (`"add"`, `"mul"`, `"blakeg"`, ...) or `"input"`.
+    /// See the struct docs for the full taxonomy.
     pub kind: String,
     /// Short human label shown on the node.
     pub label: String,
@@ -61,6 +70,17 @@ pub struct Edge {
     pub vars: Vec<usize>,
     /// Number of wires bundled into this edge.
     pub count: usize,
+    /// Operand position on the TARGET node for a `wire` edge (so two wires from
+    /// the SAME source into different slots, e.g. `pmul(x, x)`, stay distinct
+    /// edges and the node shows its true arity). `usize::MAX` for `eq` edges and
+    /// group/meta aggregation where an operand slot is not applicable.
+    pub slot: usize,
+    /// For an `eq` edge: `true` if the two sides are DEPENDENCY-RELATED (one is
+    /// computed from the other in the gate DAG), i.e. a genuine constraint
+    /// (`x²==x`, `q·b==a`). Such an eq is never merged (always stays a dashed
+    /// edge). `false` for independent eqs (mergeable) and for `wire` edges.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub constraint: bool,
 }
 
 /// A collapsible compound node in the hierarchy (a recorded scope, e.g. one
@@ -80,6 +100,50 @@ pub struct Group {
     pub count: usize,
 }
 
+/// A recognized lane-parallel SIMD block, emitted as an *annotation* over the
+/// raw gate nodes (the gates stay individually in the graph; this does not merge
+/// or group them). The viewer can later collapse a block's member gates into a
+/// single SIMD node as a toggle.
+#[derive(Serialize)]
+pub struct SimdBlock {
+    /// Stable id for this block.
+    pub id: String,
+    /// Human label, e.g. `"simd::add"` / `"simd::sub"` / `"simd::mul"`.
+    pub label: String,
+    /// Number of lanes (member gates) in this block.
+    pub lanes: usize,
+    /// Ids of the raw gate nodes that make up this block (each exists as a
+    /// node in `nodes`).
+    pub gate_ids: Vec<String>,
+}
+
+/// A recognized SIMD *value* vector: the per-lane operand vars feeding one input
+/// slot of a recognized SIMD block, when those vars are all genuine input ports
+/// (an **input** Simd) or all prover witnesses (a **witness** Simd). Emitted as
+/// an annotation over the existing `in#`/`w#` lane nodes so the viewer can
+/// collapse the whole vector into one node when SIMD is merged (mirroring how it
+/// collapses gate op-blocks). Gate-output and broadcast-const vectors are NOT
+/// emitted here (the producing block / shared broadcast-const node already
+/// represents them).
+#[derive(Serialize)]
+pub struct SimdValue {
+    /// Stable id for the merged node (e.g. `simdval-input-<first var>`).
+    pub id: String,
+    /// `"input"` (all lane vars are input ports) or `"witness"` (all guesses).
+    pub kind: String,
+    /// The `in#`/`w#` node ids of the member lanes, in lane order.
+    pub member_ids: Vec<String>,
+    /// Logical Simd length. For the `extract_bits` input port this is the
+    /// catalog's known length (16); otherwise `member_ids.len() * 4`, an UPPER
+    /// BOUND (each packed QM31 holds up to 4 M31 lanes).
+    pub len: usize,
+    /// Source-level name for this vector when it is a recognized motif role
+    /// (e.g. `"lsb"` for `extract_bits`' per-bit guesses), transcribed from the
+    /// motif's code via the catalog. `None` for unrecognized vectors.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+}
+
 /// Summary counts shown in the viewer header.
 #[derive(Serialize, Default)]
 pub struct Meta {
@@ -96,5 +160,11 @@ pub struct Graph {
     pub nodes: Vec<Node>,
     pub edges: Vec<Edge>,
     pub groups: Vec<Group>,
+    /// Recognized SIMD lane-blocks, as annotations over the raw gate nodes (no
+    /// merge). See [`SimdBlock`].
+    pub simd_blocks: Vec<SimdBlock>,
+    /// Recognized SIMD value vectors (input / witness lane-vectors feeding SIMD
+    /// blocks), as annotations over the `in#`/`w#` lane nodes. See [`SimdValue`].
+    pub simd_values: Vec<SimdValue>,
     pub meta: Meta,
 }

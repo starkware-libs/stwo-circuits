@@ -8,7 +8,9 @@ use circuits::blake::blake;
 use circuits::context::{Context, Var};
 use circuits::finalize_constants::finalize_constants;
 use circuits::ivalue::NoValue;
+use circuits::extract_bits::extract_bits;
 use circuits::ops::{Guess, guess, output};
+use circuits::simd::Simd;
 use circuits_stark_verifier::proof::{ProofConfig, empty_proof};
 use circuits_stark_verifier::verify::verify;
 use circuits_stark_verifier_examples::simple_air::LOG_SIZE_LONG;
@@ -94,6 +96,22 @@ fn blake_hash(n_blocks: usize) -> Ctx {
     ctx
 }
 
+/// A standalone `extract_bits` demo (16 M31 lanes = 4 packed vars, 8 bits each).
+/// Deliberately UNSCOPED: the `extract_bits` / `simd::*` grouping you see is
+/// produced entirely by the exporter's motif catalog, not a hand-placed scope.
+fn extract_bits_demo() -> Ctx {
+    let mut ctx = Context::new(0);
+    let data: Vec<Var> = (0..4).map(|_| input(&mut ctx)).collect();
+    let value = Simd::from_packed(data, 16);
+    let bits = extract_bits(&mut ctx, &value, 8);
+    for bit in &bits {
+        for &v in bit.get_packed() {
+            output(&mut ctx, v);
+        }
+    }
+    ctx
+}
+
 /// Returns the menu: `(name, builder)` pairs, in display order. Each builder is
 /// invoked by `main` between a `scopes::reset()` and a `scopes::take_spans()`.
 pub fn builders() -> Vec<(String, fn() -> Ctx)> {
@@ -103,5 +121,6 @@ pub fn builders() -> Vec<(String, fn() -> Ctx)> {
         ("blake (1 block)".to_string(), blake_one_block as fn() -> Ctx),
         ("blake (2 blocks)".to_string(), blake_two_blocks as fn() -> Ctx),
         ("fibonacci verifier (large)".to_string(), fibonacci as fn() -> Ctx),
+        ("extract_bits (demo)".to_string(), extract_bits_demo as fn() -> Ctx),
     ]
 }

@@ -6,6 +6,7 @@
 //!   cargo run                # writes ./viewer/data.js
 //!   cargo run -- <out_dir>   # writes <out_dir>/data.js
 
+mod catalog;
 mod const_registry;
 mod export;
 mod menu;
