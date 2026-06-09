@@ -5,7 +5,7 @@ use crate::relations::{CommonLookupElements, GATE_RELATION_ID};
 use crate::statement::all_circuit_components;
 use circuits::context::{U_VALUE, U_VAR_IDX};
 use circuits::ivalue::NoValue;
-use itertools::zip_eq;
+use circuits_stark_verifier::order_hash_map::OrderedHashMap;
 use num_traits::Zero;
 use stwo::core::channel::Channel;
 use stwo::core::fields::FieldExpOps;
@@ -32,14 +32,17 @@ impl CircuitClaim {
 /// Returns `[trace_log_sizes, interaction_log_sizes]` for `tree[1]` and `tree[2]`,
 /// in the order the prover commits columns. Each component contributes its
 /// `log_size` repeated by its number of trace and interaction columns respectively.
-pub fn column_log_sizes_per_tree(log_sizes: &[u32; N_COMPONENTS]) -> [Vec<u32>; 2] {
-    let components = all_circuit_components::<NoValue>();
+pub fn column_log_sizes_per_tree(log_sizes: &OrderedHashMap<&'static str, u32>) -> [Vec<u32>; 2] {
+    let mut components = all_circuit_components::<NoValue>();
+    assert_eq!(log_sizes.len(), components.len());
     let mut trace = Vec::new();
     let mut interaction = Vec::new();
-    for (&log_size, (_, component)) in zip_eq(log_sizes.iter(), components.iter()) {
+    for (name, log_size) in log_sizes.iter() {
+        let component = components.swap_remove(name).expect("Component not found");
         trace.extend(repeat_n(log_size, component.trace_columns()));
         interaction.extend(repeat_n(log_size, component.interaction_columns()));
     }
+    assert!(components.is_empty(), "All components must be accounted for");
     [trace, interaction]
 }
 
