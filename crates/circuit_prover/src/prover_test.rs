@@ -6,7 +6,6 @@ use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_verifier::circuit_claim::CircuitInteractionElements;
 use circuit_verifier::circuit_claim::column_log_sizes_per_tree;
 use circuit_verifier::circuit_claim::lookup_sum;
-use circuit_verifier::circuit_components::N_COMPONENTS;
 use circuit_verifier::statement::{INTERACTION_POW_BITS, all_circuit_components};
 use circuit_verifier::verify::{CircuitConfig, verify_circuit};
 use circuits::blake::{blake, blake_g_gate, m31_to_u32, triple_xor};
@@ -16,9 +15,9 @@ use circuits::ivalue::NoValue;
 use circuits::ivalue::{IValue, qm31_from_u32s};
 use circuits::ops::permute;
 use circuits::{context::Context, ops::guess};
+use circuits_stark_verifier::order_hash_map::OrderedHashMap;
 use circuits_stark_verifier::proof::ProofConfig;
 use expect_test::expect;
-use itertools::Itertools;
 use num_traits::{One, Zero};
 use stwo::core::channel::Blake2sM31Channel;
 use stwo::core::channel::Channel;
@@ -195,15 +194,15 @@ fn stwo_verify(
     } = circuit_proof;
 
     let preprocessed_column_log_sizes = preprocessed_circuit.preprocessed_trace.log_sizes();
-    let log_sizes: [u32; N_COMPONENTS] = all_circuit_components::<NoValue>()
-        .values()
-        .map(|c| {
-            c.log_size(&preprocessed_column_log_sizes)
-                .expect("The circuit components can't have a dynamic log_size.")
+    let log_sizes: OrderedHashMap<&'static str, u32> = all_circuit_components::<NoValue>()
+        .iter()
+        .map(|(&name, c)| {
+            let log_size = c
+                .log_size(&preprocessed_column_log_sizes)
+                .expect("The circuit components can't have a dynamic log_size.");
+            (name, log_size)
         })
-        .collect_vec()
-        .try_into()
-        .unwrap();
+        .collect();
 
     let verifier_channel = &mut Blake2sM31Channel::default();
     verifier_channel.mix_felts(&[channel_salt.into()]);

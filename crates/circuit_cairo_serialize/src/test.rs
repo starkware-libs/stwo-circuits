@@ -6,12 +6,10 @@
 
 use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_prover::prover::{BaseColumnPool, SimdBackend, prove_circuit_assignment};
-use circuit_verifier::circuit_components::N_COMPONENTS;
-use circuit_verifier::statement::all_circuit_components;
+use circuit_verifier::statement::{all_circuit_components, circuit_component_log_sizes};
 use circuits::context::Context;
 use circuits::ivalue::{NoValue, qm31_from_u32s};
 use circuits::ops::guess;
-use itertools::Itertools;
 use num_traits::{One, Zero};
 use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::PcsConfig;
@@ -58,15 +56,10 @@ fn test_serialize_deserialize_cairo_proof() {
     // re-serialized felts — if the deserializer is the inverse of the serializer, the
     // two byte streams must match.
     let preprocessed_column_log_sizes = preprocessed_circuit.preprocessed_trace.log_sizes();
-    let component_log_sizes: [u32; N_COMPONENTS] = all_circuit_components::<NoValue>()
-        .values()
-        .map(|c| {
-            c.log_size(&preprocessed_column_log_sizes)
-                .expect("The circuit components can't have a dynamic log_size.")
-        })
-        .collect_vec()
-        .try_into()
-        .unwrap();
+    let component_log_sizes = circuit_component_log_sizes(
+        &all_circuit_components::<NoValue>(),
+        &preprocessed_column_log_sizes,
+    );
     let felts = prepare_circuit_proof_for_cairo_verifier(circuit_proof, &component_log_sizes);
     let mut iter = felts.iter();
     let deserialized: CairoCircuitProof<Blake2sM31MerkleHasher> =
