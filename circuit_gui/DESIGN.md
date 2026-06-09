@@ -6,6 +6,12 @@ and **appends** a token here (with rationale) when a genuinely new role is neede
 it does not re-derive the palette from scratch or pick colors that collide with
 existing roles.
 
+**RULE — keep this file GENERAL.** Everything here must be a general principle that holds
+for ANY circuit/motif. NEVER write anything specific to a particular circuit, the demo, or a
+named motif/variable (no `extract_bits`, `lsb`, `inv_two`, `blake`, etc.). Describe roles and
+shapes generically ("a high-fan-out constant", "a gate asserted equal to a value"); put
+motif/demo-specific facts in the project memory or code comments, not here.
+
 Files: `viewer/app.js` (the `style()` array + `KIND_COLOR`/`KIND_SYMBOL`/`KIND_LABEL`
 maps + layout/fit), `viewer/style.css` (`:root` tokens, toolbar, legend, overlays),
 `viewer/index.html` (toolbar markup).
@@ -44,7 +50,7 @@ maps + layout/fit), `viewer/style.css` (`:root` tokens, toolbar, legend, overlay
 
 ### Group-family palette (`GROUP_PALETTE`, cycled by `familyColor`)
 `#6366f1 #0ea5e9 #10b981 #f59e0b #ef4444 #8b5cf6 #ec4899 #14b8a6 #f97316 #84cc16 #0891b2`
-— each group family (blake, round, fri_commit, …) gets a stable ring color from this list.
+— each group family gets a stable ring color from this list (hashed from the family name).
 
 ---
 
@@ -61,7 +67,8 @@ vector). Each fact gets its **own visual channel** so they never overwrite each 
   scalar) is **NOT** SIMD-marked (no teal ring); its hover reads "broadcast constant · all lanes".
 - **OVERLAY = focus halo** — `#5e6ad2` opacity .10, padding 6, on the focused group only.
 
-Example: the `lsb` node = periwinkle fill (guess) + orange border (output) + teal outline (SIMD).
+Example: a node that is a guess AND a public output AND a SIMD vector = periwinkle fill
+(guess) + orange border (output) + teal outline (SIMD), all three readable at once.
 
 ---
 
@@ -70,7 +77,7 @@ Example: the `lsb` node = periwinkle fill (guess) + orange border (output) + tea
 | Kind | Shape / size | Fill | Border | Label |
 |---|---|---|---|---|
 | gate (add/sub/mul/pmul/…) | ellipse 32 | `KIND_COLOR[kind]` | white .85, w 1.5 | `KIND_SYMBOL` glyph, white bold |
-| guess (witness) | ellipse 24 | `#c5cae9` | `#9aa1c4` solid 1.5 | source name (e.g. `lsb`) or `guess`, `#3a3f63` 9px bold |
+| guess (witness) | ellipse 24 | `#c5cae9` | `#9aa1c4` solid 1.5 | source var name or `guess`, `#3a3f63` 9px bold |
 | input | ellipse 15 | `#ffffff` | `#aeb3c0` 1.5 | name **above** the dot |
 | const | round-rect, label-width × 18 | `#eef0f5` | `#cfc7bd` 1 | symbolic (`2⁻¹`, `7`, `2^k`); raw QM31 in hover |
 | merged SIMD op-block (`simd-…`) | gate style | kind color | — + teal outline | `KIND_SYMBOL`; detail "Simd::Op · N×QM31" |
@@ -114,12 +121,11 @@ consumer**, all visually separated; nothing overlaps (lines or labels).
 
 ## 6. Toolbar & legend
 
-- **Toolbar** (top-right): segmented `.btn-group`s — **depth** (`Collapse all` / `Expand all`)
-  · **detail** (`Lanes` / `Equalities` — the SIMD / eq toggles, **per focused group**: tap a
-  group first; **disabled** when there's nothing to merge) · zoom slider · `⤢` Fit (icon).
-  There is **no Pan/Select** button (panning works from anywhere). `button.active` = pressed;
-  `button:disabled` = greyed (`opacity .4`).
-  *(Pending change: rename `Lanes`→`Simd`, `Equalities`→`Eq`, drop `Expand all`.)*
+- **Toolbar** (top-right): `Collapse all` · segmented `.btn-group` **detail** (`Simd` / `Eq` —
+  the SIMD / eq toggles, **per focused group**: tap a group first; **disabled** when there's
+  nothing to merge) · zoom slider · `⤢` Fit (icon). There is **no Pan/Select** button (panning
+  works from anywhere) and **no Expand-all** (expand via double-clicking a group).
+  `button.active` = pressed; `button:disabled` = greyed (`opacity .4`).
 - **Legend** (`.overlay-right`, scrollable, min 170 / max 230px): "gates in view" (kind +
   `Simd::Op` rows, then guess / public-output / SIMD-vector / eq swatches) and "groups in view"
   (family rings, **capped at 14 + "+N more…"**).
@@ -211,3 +217,74 @@ meaning, nothing shouts"). Score each 1–5 and justify with a screenshot.
 
 ## 11. Design backlog (audit findings — burn down over time)
 _(empty — populated by the first audit-mode run; each item: dimension · what · why · effort · status)_
+
+---
+
+## 12. Layout objectives (how to spread the graph) — RANKED
+
+When laying out nodes (especially the canonical motif layout, §13), optimize these in
+priority order. Higher = more important; lower objectives break ties.
+
+1. **Minimize total edge length** — short edges read as locality; the primary objective.
+   **EXCLUDE from the cost** edges incident to *broadcast* nodes: **inputs** (pinned to the
+   top-row band) and **high-fan-out constants / shared sources** (they can't be near all
+   consumers, so don't let them dominate; per-use scalar consts are already inlined as
+   badges, removing those edges entirely). Everything else: full weight.
+2. **Dataflow direction** — top-to-bottom: producers above consumers, **inputs in the top
+   row, outputs in the bottom row**; avoid upward edges.
+3. **Minimize edge crossings.**
+4. **Align repeated structure** — identical instances of a motif laid out identically;
+   SIMD lanes in a straight row; repetition should be visually obvious.
+5. **Symmetry** — mirrored/paired sub-circuits laid out symmetrically.
+6. **Balanced aspect ratio** — avoid pathological tall-thin columns; prefer a shape that
+   frames well in the viewport.
+7. **Stability across interaction** — expand/collapse/toggle must not reflow unrelated parts
+   (cache positions; re-center on the inspected node).
+8. **Enough spacing that nodes never sit on top of edges** — node spacing (lane spacing and
+   row height) must leave routing room so an edge never passes underneath/over a node it
+   isn't incident to. When in doubt, spread WIDER (and taller); a sparser graph that reads
+   cleanly beats a dense one where edges disappear under nodes. (This trades against
+   compactness §6 — readability of connectivity wins.)
+9. **High-fan-out constants go to the SIDE (left)** — a constant feeding many gates can't be
+   near all its consumers, so don't let it sit inline in the dataflow column. Park it in a
+   column on the LEFT, vertically centered on its consumers; its many edges fan rightward into
+   the body. (Consistent with §1: its edges are already excluded from the short-edge cost.)
+   Genuine boundary INPUTS stay in the top row (§2); this is specifically for high-fan-out
+   shared constants.
+10. **Equality-connected nodes as CLOSE as possible** — two nodes joined by an `eq` (dashed
+    equality) edge should be placed adjacent, ideally column-aligned so the eq reads as a
+    short straight link. An eq asserts two values are the same thing, so they belong next to
+    each other. Stronger than the general §1 for eq edges specifically.
+
+**Canonical vs. short-edges tension (LOCKED):** short edges define a motif's INTERNAL
+canonical shape only (minimize length within the isolated motif, once). At the parent level
+you place rigid motif BOXES minimizing their EXTERNAL edge length — you never reflow a box's
+insides. Instances stay pixel-identical (no in-context flexing).
+
+## 13. Motif catalog checklist — every motif MUST define these
+
+Each catalogued motif (`crate::catalog`) must DEFINE the following about its own subgraph.
+Recognition, input/const/guess marking, and canonical layout all depend on these, so a
+motif missing any is a bug.
+
+- **inputs** — its entry ports (so they render in the top row, not as witnesses).
+- **constant var names** — source-level names for the constants it creates, analogous to
+  guess names; lets the canonical layout/labels name them intrinsically rather than only by
+  value.
+- **guess var names** — source-level names for the prover guesses it creates.
+- **outputs & their order** — the public outputs the motif exposes, in a defined DECLARATION
+  order (the order they're `output()`-ed), so the canonical layout orders the output row
+  meaningfully rather than by node id. (The exporter records an output ordinal per node; the
+  motif must produce its outputs in a sensible order.)
+- **(LATER) repeating sub-graphs** — the nested sub-motifs it composes, so their canonical
+  layout can be captured once and composed bottom-up. Add the concrete field once the
+  canonical-layout-stamp design lands.
+
+**WHERE it lives (two places, kept in sync):**
+- *Executable* — the `Motif` trait in `catalog.rs` (`inputs_defined()` / `consts_defined()` /
+  `guess_names_defined()` / …). This file (the human-readable list + rationale).
+- *Documented* — this section.
+
+**WHEN it runs:** `catalog::build()` ASSERTS every method for every motif — so the check runs
+on every `cargo run` (data.js regen) and, critically, **fires automatically for any NEW
+motif** the moment it's added to the catalog. The reviewer also confirms it conceptually.

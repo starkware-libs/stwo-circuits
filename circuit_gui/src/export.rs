@@ -279,6 +279,10 @@ pub fn export(ctx: &Context<NoValue>, spans: &[ScopeSpan], declared_inputs: &[us
     // per-use const node here.
     let mut collapsed: HashSet<String> = HashSet::new();
     let mut is_output: HashSet<String> = HashSet::new();
+    // node id -> declaration ordinal (the index of the `output()` call that made
+    // it public, in circuit order). Lets the layout order outputs as the circuit
+    // declares them rather than by node id.
+    let mut out_order: HashMap<String, usize> = HashMap::new();
     // (source node, target node, vars, constraint).
     let mut eq_edges: Vec<(String, String, Vec<usize>, bool)> = Vec::new();
     // Per-use const nodes accumulated across eq operands and gate uses.
@@ -304,6 +308,7 @@ pub fn export(ctx: &Context<NoValue>, spans: &[ScopeSpan], declared_inputs: &[us
             // INSIDE the motif box instead of floating outside it.
             group: group_of.get(owner).cloned(),
             is_output: false,
+            out_index: None,
             consts: Vec::new(),
             bk: None,
             bcol: None,
@@ -329,24 +334,21 @@ pub fn export(ctx: &Context<NoValue>, spans: &[ScopeSpan], declared_inputs: &[us
             }
             "out" => {
                 let v = r.uses[0];
-                if let Some(p) = producer.get(&v) {
-                    // The output var is produced by a gate: mark that gate.
-                    is_output.insert(p.clone());
-                    collapsed.insert(r.id.clone());
+                // The output node is the producing gate, or (no producer) the
+                // var's witness/input node — so outputs on bare guesses/inputs
+                // aren't dropped. (The witness/input loop below reads `is_output`.)
+                let node_id = if let Some(p) = producer.get(&v) {
+                    p.clone()
+                } else if input_ports.contains(&v) {
+                    format!("in#{v}")
                 } else {
-                    // No producer gate: the output is a guess (witness) or a
-                    // genuine input. Mark its witness/input NODE instead, so
-                    // outputs on bare guesses/inputs are not dropped. (The
-                    // witness/input node loop runs after this one and reads the
-                    // populated `is_output` set.)
-                    let id = if input_ports.contains(&v) {
-                        format!("in#{v}")
-                    } else {
-                        format!("w#{v}")
-                    };
-                    is_output.insert(id);
-                    collapsed.insert(r.id.clone());
-                }
+                    format!("w#{v}")
+                };
+                is_output.insert(node_id.clone());
+                // Record declaration ordinal (first output() call wins for a node).
+                let ord = out_order.len();
+                out_order.entry(node_id).or_insert(ord);
+                collapsed.insert(r.id.clone());
             }
             _ => {}
         }
@@ -369,6 +371,7 @@ pub fn export(ctx: &Context<NoValue>, spans: &[ScopeSpan], declared_inputs: &[us
             detail: r.detail.clone(),
             group: group_of.get(&r.id).cloned(),
             is_output: is_output.contains(&r.id),
+            out_index: out_order.get(&r.id).copied(),
             consts: Vec::new(),
             bk,
             bcol,
@@ -402,6 +405,7 @@ pub fn export(ctx: &Context<NoValue>, spans: &[ScopeSpan], declared_inputs: &[us
             // Inputs sit in the top row (no group); witnesses lay near consumers.
             group: if is_input { None } else { witness_group.get(&g).cloned() },
             is_output: is_output.contains(&node_id),
+            out_index: out_order.get(&node_id).copied(),
             consts: Vec::new(),
             bk: None,
             bcol: None,
@@ -450,6 +454,7 @@ pub fn export(ctx: &Context<NoValue>, spans: &[ScopeSpan], declared_inputs: &[us
                             detail: raw,
                             group: broadcast_group.get(&cv).cloned().flatten(),
                             is_output: false,
+                            out_index: None,
                             consts: Vec::new(),
                             bk: None,
                             bcol: None,

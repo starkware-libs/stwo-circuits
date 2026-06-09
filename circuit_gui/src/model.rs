@@ -43,6 +43,11 @@ pub struct Node {
     /// True if an `Output` gate marks this node's yielded variable as public.
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub is_output: bool,
+    /// Declaration ordinal among outputs: the index of the `output()` call that
+    /// made this node public (0-based, in circuit order). Lets the layout order
+    /// outputs the way the circuit declares them rather than by node id.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub out_index: Option<usize>,
     /// Inlined constant inputs (rendered as badges).
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub consts: Vec<ConstTag>,

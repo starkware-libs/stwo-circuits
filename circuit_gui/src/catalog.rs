@@ -53,17 +53,32 @@ pub struct ExtractBitsSig {
     /// known function, we take the variable name from the code in advance rather
     /// than deriving a positional label — every bit guess is the loop's `lsb`.
     pub guess_name: &'static str,
+    /// Source-level names of the constants the motif creates, transcribed from the
+    /// function body (`extract_bits` makes one: `inv_two`). Analogous to
+    /// `guess_name`; lets the canonical layout/labels name consts intrinsically
+    /// instead of only by value.
+    pub const_names: &'static [&'static str],
 }
 
-/// Every catalogued motif must DEFINE its inputs (entry ports). Recognition,
-/// input-marking, and canonical layout all depend on knowing a motif's inputs, so
-/// a motif with no defined inputs is a bug. Implementing this trait is what makes
-/// a new motif eligible for the catalog; `build()` asserts `inputs_defined()` for
-/// each — so the check runs automatically for every motif added.
+/// Every catalogued motif must DEFINE these about its own subgraph (see
+/// `circuit_gui/DESIGN.md` §13 — the human checklist). Recognition, input/const/
+/// guess marking, and canonical layout all depend on them, so a motif missing any
+/// is a bug. Implementing this trait is what makes a new motif eligible for the
+/// catalog; `build()` asserts EVERY method for each motif — so the whole checklist
+/// runs automatically the moment a NEW motif is added.
 pub trait Motif {
     fn name(&self) -> &'static str;
-    /// True iff this motif has declared/learned its input ports.
+    /// Its entry ports are defined (so they render in the top row, not witnesses).
     fn inputs_defined(&self) -> bool;
+    /// Its constants' source-level var names are declared.
+    fn consts_defined(&self) -> bool;
+    /// Its prover guesses' source-level var names are declared.
+    fn guess_names_defined(&self) -> bool;
+    /// It exposes a defined number of outputs in a meaningful declaration order
+    /// (so the layout orders the output row by declaration, not node id).
+    fn outputs_defined(&self) -> bool;
+    // LATER (with the canonical-layout-stamp): `subgraphs_defined()` — the nested
+    // repeating sub-motifs it composes, so their layout can be captured + reused.
 }
 impl Motif for ExtractBitsSig {
     fn name(&self) -> &'static str {
@@ -72,6 +87,17 @@ impl Motif for ExtractBitsSig {
     fn inputs_defined(&self) -> bool {
         // The `value` vector fed into the reduction chain (length learned).
         self.input_len > 0
+    }
+    fn consts_defined(&self) -> bool {
+        // `inv_two` (the 2⁻¹ reduction constant).
+        self.const_names.iter().all(|n| !n.is_empty()) && !self.const_names.is_empty()
+    }
+    fn guess_names_defined(&self) -> bool {
+        !self.guess_name.is_empty()
+    }
+    fn outputs_defined(&self) -> bool {
+        // Exposes `n_bits` bit outputs, emitted in bit order (lsb..msb).
+        self.n_bits > 0
     }
 }
 
@@ -92,8 +118,13 @@ impl Catalog {
 /// every motif has defined inputs (runs for each motif, including new ones).
 pub fn build() -> Catalog {
     let cat = Catalog { extract_bits: learn_extract_bits() };
+    // Run the whole motif checklist (DESIGN.md §13) for every motif. Fires
+    // automatically for any NEW motif the moment it's added to `motifs()`.
     for m in cat.motifs() {
         assert!(m.inputs_defined(), "catalog motif `{}` has no defined inputs", m.name());
+        assert!(m.consts_defined(), "catalog motif `{}` has no defined const names", m.name());
+        assert!(m.guess_names_defined(), "catalog motif `{}` has no defined guess names", m.name());
+        assert!(m.outputs_defined(), "catalog motif `{}` has no defined outputs", m.name());
     }
     cat
 }
@@ -134,6 +165,7 @@ fn learn_extract_bits() -> ExtractBitsSig {
         guesses_per_packed: guesses / PACKED,
         input_len,
         guess_name: "lsb",
+        const_names: &["inv_two"],
     };
 
     // The learned counts must match the function's closed form, confirming the

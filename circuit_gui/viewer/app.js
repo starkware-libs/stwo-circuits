@@ -187,11 +187,24 @@ function applySimd(g, expandFor) {
     const grp = blockGroup(g, ids, nodeIndex);
     // Op-block length is lanes*4 M31 values (≤bound: each QM31 packs up to 4).
     const len = b.lanes * 4;
+    // Preserve a public-output marker if any member lane is an output — so a
+    // gate-block whose value is a public output (e.g. extract_bits' MSB, the last
+    // `·inv_two` pmul) shows the output ring in MERGED mode too, consistent with
+    // the expanded lanes. (Without this, merged mode silently dropped it.)
+    // Also carry the MIN output ordinal of the members, so a merged output block
+    // sorts into the output row by declaration order (same as its lanes do).
+    let isOut = false, outIdx;
+    for (const gid of ids) {
+      const n = nodeIndex.get(gid);
+      if (!n) continue;
+      if (n.is_output) isOut = true;
+      if (n.out_index != null) outIdx = outIdx == null ? n.out_index : Math.min(outIdx, n.out_index);
+    }
     blockNodes.push({
       id: b.id, kind,
       label: KIND_SYMBOL[kind] || sym || b.label,
       detail: `${b.label} · ${b.lanes}×QM31 (≤${len} M31 values)`,
-      group: grp, simd: true, len,
+      group: grp, simd: true, len, is_output: isOut, out_index: outIdx,
     });
     for (const gid of ids) { map.set(gid, b.id); dropped.add(gid); }
   }
@@ -209,16 +222,21 @@ function applySimd(g, expandFor) {
     // are ungrouped, so they follow the root/whole-graph default.
     if (expandFor(grp)) continue;
     if (sv.kind === "input") grp = null; // inputs always render in the top row
-    // Preserve a public-output marker if any member lane was an output.
-    let isOut = false;
-    for (const mid of ids) { const n = nodeIndex.get(mid); if (n && n.is_output) { isOut = true; break; } }
+    // Preserve a public-output marker + the MIN output ordinal of the members.
+    let isOut = false, outIdx;
+    for (const mid of ids) {
+      const n = nodeIndex.get(mid);
+      if (!n) continue;
+      if (n.is_output) isOut = true;
+      if (n.out_index != null) outIdx = outIdx == null ? n.out_index : Math.min(outIdx, n.out_index);
+    }
     blockNodes.push({
       id: sv.id, kind: sv.kind,
       // A recognized motif role uses its source-level name (e.g. "lsb"); the
       // teal SIMD-vector ring (not a "[]" suffix) marks it as a vector.
       label: sv.name ? sv.name : (sv.kind === "input" ? "in" : "guess"),
       detail: `${sv.kind} Simd · ${sv.len} (len)`,
-      group: grp, is_output: isOut, simd: true, len: sv.len,
+      group: grp, is_output: isOut, simd: true, len: sv.len, out_index: outIdx,
     });
     for (const mid of ids) { map.set(mid, sv.id); dropped.add(mid); }
   }
@@ -354,6 +372,7 @@ function computeVisible() {
       isOutput: !!n.is_output, consts: cs,
       simd: !!n.simd, len: n.len,
     };
+    if (n.out_index != null) d.outIndex = n.out_index; // output declaration order
     if (n.group && expanded.has(n.group)) d.parent = n.group;
     if (n.bk) { d.bk = n.bk; d.bcol = n.bcol; d.brow = n.brow; }
     els.push({ data: d });
@@ -573,6 +592,12 @@ function style() {
     {
       selector: "edge",
       style: {
+        // Edges are PURELY VISUAL — they receive no pointer events at all, so an
+        // edge can never be tapped/selected/marked, and a click on an edge passes
+        // straight through to the node or background behind it (no dead clicks
+        // where a long edge crosses a node). Highlighting still works (it's driven
+        // by node.connectedEdges(), not edge events).
+        events: "no",
         // Bezier (not straight) so multiple edges between the SAME node pair fan
         // out into distinct curves instead of stacking on one line — e.g. a gate's
         // slot-0 input, slot-1 input, and its output to that same neighbor all stay
@@ -648,6 +673,199 @@ function wrapWideRanks() {
   });
 }
 
+// CANONICAL-LAYOUT-STAMP — step 1 (mechanism proof on the simplest motif: a SIMD
+// lane-block). A SIMD block is N same-kind gates, lane-aligned, no inter-lane
+// wiring; its canonical shape is a clean horizontal row. We STAMP that shape onto
+// every visible (un-merged) block: order lanes by their intrinsic LANE INDEX
+// (position in the block's `gate_ids` — deterministic, identical across
+// instances, independent of var numbering), and place them at fixed spacing
+// centered on the block's dagre centroid. So every same-size block becomes the
+// same row (a translate), proving capture(trivial row)+key-by-index+stamp. Later
+// steps compose these rigid rows into higher motifs (extract_bits, …).
+const SIMD_LANE_SPACING = 64;
+function stampSimdBlocks() {
+  if (!cy || !rawGraph) return;
+  for (const b of rawGraph.simd_blocks || []) {
+    const ids = b.gate_ids || [];
+    if (ids.length < 2) continue;
+    // Visible lane gates (skip if merged into one node or only partly present).
+    const lanes = ids.map((id) => cy.getElementById(id)).filter((n) => n && n.nonempty() && !n.isParent());
+    if (lanes.length < 2) continue;
+    let cx = 0, cy0 = 0;
+    lanes.forEach((n) => { const p = n.position(); cx += p.x; cy0 += p.y; });
+    cx /= lanes.length; cy0 /= lanes.length;
+    const x0 = cx - ((lanes.length - 1) * SIMD_LANE_SPACING) / 2;
+    cy.batch(() => lanes.forEach((n) => {
+      const idx = ids.indexOf(n.id()); // intrinsic lane index → stable offset
+      n.position({ x: x0 + idx * SIMD_LANE_SPACING, y: cy0 });
+    }));
+  }
+}
+
+// The canonical per-motif LADDER ENGINE. Registry of motif group labels whose
+// interiors are laid out by `stampMotifLadders` (rather than left to dagre). This
+// is the seam where new motifs opt into the canonical layout — add a label here
+// (eventually derived from the catalog). The ENGINE is motif-agnostic; it depends
+// only on a group's own subgraph, so every motif/instance lays out deterministically
+// and identically.
+const LADDER_MOTIFS = new Set(["extract_bits"]);
+
+// CANONICAL-LAYOUT-STAMP engine — lay each registered MOTIF group's members out as
+// a deterministic DATAFLOW LADDER: rank every member by its topological depth in the
+// group's INTERNAL wire DAG (longest path from an internal source — intrinsic to the
+// subgraph, so two instances rank identically → identical layout, no var-id
+// dependence), then stack rank-rows top→bottom. Within a row, a SIMD block's lanes
+// stay contiguous and in lane order (the step-1 row), loose gates follow. Adjacent
+// rungs feed each other → short edges (objective §1). Overrides the generic
+// stampSimdBlocks for these members; non-motif blocks keep their step-1 rows.
+const LADDER_ROW_H = 92;
+function stampMotifLadders() {
+  if (!cy || !rawGraph) return;
+  // gate id -> [blockId, laneIndex] for ordering lanes within a rank row.
+  const laneOf = new Map();
+  for (const b of rawGraph.simd_blocks || []) {
+    (b.gate_ids || []).forEach((id, i) => laneOf.set(id, [b.id, i]));
+  }
+  cy.nodes().filter((n) => n.isParent() && LADDER_MOTIFS.has(n.data("label"))).forEach((g) => {
+    const members = g.children().filter((n) => !n.isParent());
+    if (members.length < 4) return;
+    const ids = new Set(members.map((n) => n.id()));
+    const preds = new Map();
+    members.forEach((n) => preds.set(n.id(), []));
+    cy.edges('[rel = "wire"]').forEach((e) => {
+      const s = e.source().id(), t = e.target().id();
+      if (ids.has(s) && ids.has(t)) preds.get(t).push(s);
+    });
+    // Longest-path rank (memoized; cycle-guarded — eq constraints can loop).
+    const rank = new Map();
+    const compute = (id, seen) => {
+      if (rank.has(id)) return rank.get(id);
+      if (seen.has(id)) return 0;
+      seen.add(id);
+      const ps = preds.get(id) || [];
+      const r = ps.length ? 1 + Math.max(...ps.map((p) => compute(p, seen))) : 0;
+      seen.delete(id);
+      rank.set(id, r);
+      return r;
+    };
+    members.forEach((n) => compute(n.id(), new Set()));
+    // Pull SOURCE nodes (no internal predecessor — the lsb guesses, const) DOWN to
+    // just above their earliest consumer instead of stranding them all at rank 0
+    // with long edges (objective §1: short edges). Sources feeding nothing internal
+    // stay at 0. High-fan-out sources (a broadcast const) still land one above
+    // their nearest consumer — fine, their other edges are exempt from the cost.
+    const succ = new Map();
+    members.forEach((n) => succ.set(n.id(), []));
+    cy.edges('[rel = "wire"]').forEach((e) => {
+      const s = e.source().id(), t = e.target().id();
+      if (ids.has(s) && ids.has(t)) succ.get(s).push(t);
+    });
+    members.forEach((n) => {
+      const id = n.id();
+      if ((preds.get(id) || []).length === 0) {
+        const outs = succ.get(id) || [];
+        if (outs.length) rank.set(id, Math.max(0, Math.min(...outs.map((c) => rank.get(c))) - 1));
+      }
+    });
+    // Keep OUTPUTS at the bottom (user rule): force every output member into a
+    // dedicated bottom row below the deepest rank, regardless of its dataflow
+    // depth (extract_bits' output bits are also consumed mid-chain — their wires
+    // run up from this row, the accepted tradeoff).
+    const isOut = (n) => n.data("isOutput") || n.data("kind") === "out";
+    const outIds = new Set(members.filter(isOut).map((n) => n.id()));
+    // TAIL = the pure side-check downstream of outputs only: the lsb² assert-square
+    // (consumes its lsb, an output) and its eq (consumes lsb + the square). Found
+    // by fixpoint: a non-output node all of whose internal preds are outputs/tail.
+    const tail = new Set();
+    let grew = true;
+    while (grew) {
+      grew = false;
+      members.forEach((n) => {
+        const id = n.id();
+        if (outIds.has(id) || tail.has(id)) return;
+        const ps = preds.get(id) || [];
+        // Must be downstream of outputs only AND be a SINK (no live wire-successor
+        // — feeds nothing but other tail nodes / its eq). The latter is essential:
+        // the FIRST chain `sub`'s only INTERNAL pred is its lsb (an output; its real
+        // data input is a top-level input outside the group), but it FEEDS the chain
+        // `mul`, so it is NOT tail and must stay near its inputs — not pushed to the
+        // bottom (which both overlapped a square and stranded it from its inputs).
+        const ss = succ.get(id) || [];
+        const isSink = ss.every((s) => tail.has(s));
+        if (ps.length && isSink && ps.every((p) => outIds.has(p) || tail.has(p))) { tail.add(id); grew = true; }
+      });
+    }
+    // The reduction chain occupies ranks 0..chainMax. Place the TAIL just above the
+    // output row, and OUTPUTS as the ABSOLUTE bottom row (user rule). So the square
+    // sits one row above its lsb (short edge DOWN to the output), and outputs stay
+    // bottom-most. (lsb also feeds the chain `sub` far above — that long upward edge
+    // is the accepted dual-role / outputs-at-bottom tradeoff.)
+    let chainMax = 0;
+    members.forEach((n) => { if (!isOut(n) && !tail.has(n.id())) chainMax = Math.max(chainMax, rank.get(n.id())); });
+    members.forEach((n) => {
+      const id = n.id();
+      if (outIds.has(id)) rank.set(id, chainMax + 2);
+      else if (tail.has(id)) rank.set(id, chainMax + 1);
+    });
+    let cx = 0, minY = Infinity;
+    members.forEach((n) => { cx += n.position("x"); minY = Math.min(minY, n.position("y")); });
+    cx /= members.length;
+    // High-fan-out constants (e.g. inv_two, feeding every reduction mul) go to a
+    // LEFT side column rather than inline in a dataflow row — they can't be near
+    // all consumers anyway (DESIGN.md §9; their edges are already cost-exempt §1).
+    const HIGH_FANOUT = 3;
+    const sideConsts = members.filter((n) => n.data("kind") === "const" && (succ.get(n.id()) || []).length >= HIGH_FANOUT);
+    const sideSet = new Set(sideConsts.map((n) => n.id()));
+    const byRank = new Map();
+    members.forEach((n) => {
+      if (sideSet.has(n.id())) return; // parked on the left, not in a rank row
+      const r = rank.get(n.id());
+      if (!byRank.has(r)) byRank.set(r, []);
+      byRank.get(r).push(n);
+    });
+    // Stable within-row order. OUTPUTS sort by their DECLARATION ordinal (the
+    // order the circuit `output()`-ed them — lsb..msb, not node id), so the bottom
+    // row reads meaningfully. Everything else: block lanes (by blockId, lane index)
+    // first, then loose gates by kind+id — deterministic, id-stable across instances.
+    const sortKey = (n) => {
+      const oi = n.data("outIndex");
+      if (oi != null) return `0|${String(oi).padStart(6, "0")}`;
+      const l = laneOf.get(n.id());
+      return l ? `1|${l[0]}|${String(l[1]).padStart(4, "0")}` : `2|${n.data("kind")}|${n.id()}`;
+    };
+    let maxHalf = 0;
+    cy.batch(() => {
+      [...byRank.keys()].sort((a, b) => a - b).forEach((r) => {
+        const row = byRank.get(r).sort((a, b) => (sortKey(a) < sortKey(b) ? -1 : 1));
+        const half = ((row.length - 1) * SIMD_LANE_SPACING) / 2;
+        if (half > maxHalf) maxHalf = half;
+        const x0 = cx - half;
+        row.forEach((nd, j) => nd.position({ x: x0 + j * SIMD_LANE_SPACING, y: minY + r * LADDER_ROW_H }));
+      });
+      // Park the side consts in a left column, each centered on the mean rank of
+      // its consumers (so its fan of edges spreads rightward across the body).
+      const leftX = cx - maxHalf - SIMD_LANE_SPACING * 1.8;
+      sideConsts.forEach((n, i) => {
+        const cs = (succ.get(n.id()) || []).map((c) => rank.get(c));
+        const meanR = cs.length ? cs.reduce((a, b) => a + b, 0) / cs.length : 0;
+        n.position({ x: leftX - i * SIMD_LANE_SPACING, y: minY + meanR * LADDER_ROW_H });
+      });
+      // eq-connected nodes as CLOSE as possible (DESIGN §12 #10): column-align each
+      // eq pair so the dashed link is a short straight edge — e.g. the lsb² square
+      // sits directly above its lsb. Move the non-output endpoint onto the other's
+      // x (outputs keep their bottom-row x); if neither is an output, meet halfway.
+      cy.edges('[rel = "eq"]').forEach((e) => {
+        const s = e.source(), t = e.target();
+        if (!ids.has(s.id()) || !ids.has(t.id()) || sideSet.has(s.id()) || sideSet.has(t.id())) return;
+        const sOut = outIds.has(s.id()), tOut = outIds.has(t.id());
+        if (sOut && !tOut) t.position({ x: s.position("x") });
+        else if (tOut && !sOut) s.position({ x: t.position("x") });
+        else { const mx = (s.position("x") + t.position("x")) / 2; s.position({ x: mx }); t.position({ x: mx }); }
+      });
+    });
+  });
+}
+
 // Place every group's output-flagged nodes in a row at the BOTTOM of the group,
 // below its other gates (inputs sit at the top — see alignInputsOutputs). Applies
 // to ALL circuits. For an entangled group like extract_bits (whose output bits
@@ -682,7 +900,9 @@ function runLayout(fit = true, onDone) {
   });
   layout.one("layoutstop", () => {
     wrapWideRanks();
+    stampSimdBlocks();
     moveOutputsToGroupBottom();
+    stampMotifLadders(); // canonical motif ladder — runs last so it owns motif members
     alignInputsOutputs();
     arrangeBlakeBlocks();
     arrangeBlakeReduction();
