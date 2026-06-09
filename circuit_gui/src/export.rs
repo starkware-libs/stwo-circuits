@@ -31,7 +31,7 @@ use stwo::core::fields::qm31::QM31;
 
 use crate::catalog::{Catalog, ExtractBitsSig};
 use crate::const_registry::named_constants;
-use crate::model::{Edge, Graph, Group, Meta, Node, SimdBlock, SimdValue};
+use crate::model::{ConstTag, Edge, Graph, Group, Meta, Node, SimdBlock, SimdValue};
 
 /// Gate kinds in the order they appear in `Circuit`, as `(abbrev, short-label)`.
 /// The index into this array is the "kind index" used against gate-count
@@ -81,7 +81,7 @@ fn collect<G: Gate>(recs: &mut Vec<GateRecord>, kind_idx: usize, gates: &[G]) {
     }
 }
 
-pub fn export(ctx: &Context<NoValue>, spans: &[ScopeSpan]) -> Graph {
+pub fn export(ctx: &Context<NoValue>, spans: &[ScopeSpan], declared_inputs: &[usize]) -> Graph {
     let circuit = &ctx.circuit;
     let catalog = crate::catalog::build();
 
@@ -148,6 +148,15 @@ pub fn export(ctx: &Context<NoValue>, spans: &[ScopeSpan]) -> Graph {
     let simd_blocks = recognize_simd(&recs, &finalize_gates);
     // `value` (chain-entry) input ports promoted from witness -> input.
     let mut input_ports: HashSet<usize> = HashSet::new();
+    // Genuine boundary inputs the builder DECLARED via `input()` (e.g. blake's
+    // message words) — mark them `input` so they render in the top row instead of
+    // as witnesses. (A boundary input and a prover witness are both guessed vars
+    // at the circuit level; only the builder knows which guesses are inputs.)
+    for &v in declared_inputs {
+        if guessed.contains(&v) {
+            input_ports.insert(v);
+        }
+    }
     // Source-level names for recognized motif guesses (var -> name, e.g. "lsb"),
     // populated by motif recognition and used to label witness nodes/vectors.
     let mut guess_names: HashMap<usize, String> = HashMap::new();
@@ -405,6 +414,12 @@ pub fn export(ctx: &Context<NoValue>, spans: &[ScopeSpan]) -> Graph {
     // `(source, target, var, slot)`, where `slot` is the operand position on the
     // target gate (so `op(x, x)` keeps two distinct slot-0/slot-1 edges).
     let mut raw: Vec<(String, String, usize, usize)> = Vec::new();
+    // Per-use SCALAR consts are INLINED as a badge on the consuming gate (its
+    // `consts` vec) instead of a separate node + wire edge — this drops the huge
+    // per-use const-node count (e.g. ~25k on the fibonacci verifier) that cluttered
+    // expanded views. Broadcast consts (fed to a whole SIMD block) stay shared
+    // nodes; eq-operand consts stay nodes (an eq edge needs two endpoints).
+    let mut gate_consts: HashMap<String, Vec<ConstTag>> = HashMap::new();
     for r in &recs {
         if collapsed.contains(&r.id) || finalize_gates.contains(&r.id) {
             continue;
@@ -444,11 +459,22 @@ pub fn export(ctx: &Context<NoValue>, spans: &[ScopeSpan]) -> Graph {
                     });
                     raw.push((cnode.clone(), r.id.clone(), u, slot));
                 } else {
-                    let cnode = const_node_id(u, &r.id, slot);
-                    raw.push((cnode, r.id.clone(), u, slot));
+                    // Inline this per-use scalar const as a badge on the consumer
+                    // (no node, no edge). Falls back to a node only if the gate
+                    // node was collapsed away (shouldn't happen here).
+                    let name = const_names.get(&u).cloned().unwrap_or_else(|| format!("{u}"));
+                    gate_consts.entry(r.id.clone()).or_default().push(ConstTag { name, var: u });
                 }
             } else if let Some(p) = producer.get(&u) {
                 raw.push((p.clone(), r.id.clone(), u, slot));
+            }
+        }
+    }
+    // Attach inlined const badges to their consuming gate nodes.
+    if !gate_consts.is_empty() {
+        for n in nodes.iter_mut() {
+            if let Some(tags) = gate_consts.remove(&n.id) {
+                n.consts = tags;
             }
         }
     }
@@ -1128,42 +1154,48 @@ fn recognize_extract_bits(
     let mut used_blocks: HashSet<&str> = HashSet::new();
     let mut block_id = 0usize;
 
-    // Anchor on `sub`-blocks: a chain entry's in0 vars are NOT the yields of a
-    // reduction `mul`-block of an earlier step. We grow greedily and require
-    // exactly `subs_per_packed` sub/mul block pairs.
-    for sv in views.iter().filter(|v| v.kind == "sub") {
+    // A `sub`-block is a chain ENTRY if its in0 is not the output of a REDUCTION
+    // mul (a `· inv_two` mul, i.e. a pmul that itself consumes a sub) — i.e. it's
+    // not the continuation of an earlier reduction step. We must exclude only
+    // reduction muls, NOT any pmul: in a nested motif (e.g. the verifier) the
+    // chain's `value` input is computed by some unrelated prior pmul, and that
+    // must still count as an entry. Anchoring on entries lets us grow each chain
+    // to its NATURAL length, so `extract_bits` of ANY `n_bits` is recognized (the
+    // catalog's `subs_per_packed` is only a sanity floor, not an exact match — #3).
+    let reduction_mul_yields: Vec<&HashSet<usize>> = views
+        .iter()
+        .filter(|m| m.kind == "pmul" && views.iter().any(|s| s.kind == "sub" && consumes(m, s)))
+        .map(|m| &m.yields)
+        .collect();
+    let is_entry = |sv: &BlockView| -> bool {
+        !sv.in0.is_empty() && !reduction_mul_yields.iter().any(|y| **y == sv.in0)
+    };
+    // Minimum chain length to accept as extract_bits (avoid matching a lone
+    // sub→mul that isn't a bit-extraction); 2 reduction steps is a safe floor and
+    // still ≤ any real extract_bits (n_bits ≥ 3).
+    let min_subs = sig.subs_per_packed.clamp(1, 2);
+
+    for sv in views.iter().filter(|v| v.kind == "sub" && is_entry(v)) {
         if used_blocks.contains(sv.block.id.as_str()) {
             continue;
         }
-        let mut chain_subs: Vec<&BlockView> = Vec::new();
+        // Grow the reduction chain greedily: sub → mul → sub → mul → … as far as
+        // it goes. Each `sub` feeds a `· inv_two` mul; each mul feeds the next sub.
+        let mut chain_subs: Vec<&BlockView> = vec![sv];
         let mut chain_muls: Vec<&BlockView> = Vec::new();
         let mut cur: &BlockView = sv;
-        let mut ok = true;
-        for step in 0..sig.subs_per_packed {
-            chain_subs.push(cur);
-            // The sub block's yields feed a reduction mul block (`· inv_two`).
-            let Some(mul) = views
-                .iter()
-                .find(|m| m.kind == "pmul" && consumes(m, cur))
-            else {
-                ok = false;
+        loop {
+            let Some(mul) = views.iter().find(|m| m.kind == "pmul" && consumes(m, cur)) else {
                 break;
             };
             chain_muls.push(mul);
-            if step + 1 == sig.subs_per_packed {
-                break;
+            match views.iter().find(|s| s.kind == "sub" && consumes(s, mul)) {
+                Some(next_sub) => { chain_subs.push(next_sub); cur = next_sub; }
+                None => break,
             }
-            // The mul block's yields feed the next sub block's in0.
-            let Some(next_sub) = views
-                .iter()
-                .find(|s| s.kind == "sub" && consumes(s, mul))
-            else {
-                ok = false;
-                break;
-            };
-            cur = next_sub;
         }
-        if !ok || chain_subs.len() != sig.subs_per_packed {
+        // A well-formed chain has one reduction mul per sub. Require the floor.
+        if chain_muls.len() != chain_subs.len() || chain_subs.len() < min_subs {
             continue;
         }
 
@@ -1175,10 +1207,10 @@ fn recognize_extract_bits(
         let mut lsbs: Vec<usize> = Vec::new();
         for s in &chain_subs {
             for gid in &s.block.gate_ids {
-                if let Some(r) = by_id.get(gid.as_str()) {
-                    if let Some(&v) = r.uses.get(1) {
-                        lsbs.push(v);
-                    }
+                if let Some(r) = by_id.get(gid.as_str())
+                    && let Some(&v) = r.uses.get(1)
+                {
+                    lsbs.push(v);
                 }
             }
         }

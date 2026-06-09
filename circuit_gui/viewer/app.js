@@ -339,9 +339,19 @@ function computeVisible() {
   // Nodes: render those whose parent group is expanded (or ungrouped).
   for (const n of G.nodes) {
     if (!isParentExpanded(n.id)) continue;
+    // Inlined consts (per-use scalars folded onto the gate, no node) get a small,
+    // uniform visible cue on the label — a `ₖ` subscript — so you can SEE at a
+    // glance which gates fold a constant, without crowding the glyph with the
+    // value (some values are long raw QM31 tuples). The value(s) stay in the hover
+    // tooltip. Compact short symbolic names (≤4 chars, e.g. `2⁻¹`, `7`) are shown
+    // inline since they're informative and tidy; longer ones collapse to `ₖ`.
+    const cs = n.consts || [];
+    let label = n.label;
+    if (cs.length === 1 && cs[0].name.length <= 4) label = `${n.label} ${cs[0].name}`;
+    else if (cs.length >= 1) label = `${n.label}ₖ${cs.length > 1 ? cs.length : ""}`;
     const d = {
-      id: n.id, label: n.label, kind: n.kind, detail: n.detail || "",
-      isOutput: !!n.is_output, consts: n.consts || [],
+      id: n.id, label, kind: n.kind, detail: n.detail || "",
+      isOutput: !!n.is_output, consts: cs,
       simd: !!n.simd, len: n.len,
     };
     if (n.group && expanded.has(n.group)) d.parent = n.group;
@@ -638,6 +648,31 @@ function wrapWideRanks() {
   });
 }
 
+// Place every group's output-flagged nodes in a row at the BOTTOM of the group,
+// below its other gates (inputs sit at the top — see alignInputsOutputs). Applies
+// to ALL circuits. For an entangled group like extract_bits (whose output bits
+// are also consumed mid-chain) this stretches those wires up from the bottom row;
+// that tradeoff is accepted — outputs always read at the bottom.
+function moveOutputsToGroupBottom() {
+  if (!cy) return;
+  cy.nodes().filter((n) => n.isParent()).forEach((g) => {
+    const kids = g.children().filter((n) => !n.isParent());
+    const isOut = (n) => n.data("isOutput") || n.data("kind") === "out";
+    const outs = kids.filter(isOut);
+    const rest = kids.filter((n) => !isOut(n));
+    if (!outs.length || !rest.length) return;
+    let maxY = -Infinity, minX = Infinity, maxX = -Infinity;
+    rest.forEach((n) => { maxY = Math.max(maxY, n.position("y")); });
+    kids.forEach((n) => { minX = Math.min(minX, n.position("x")); maxX = Math.max(maxX, n.position("x")); });
+    if (!isFinite(maxY)) return;
+    const sorted = outs.sort((a, b) => a.position("x") - b.position("x"));
+    const n = sorted.length, y = maxY + 52;
+    const span = Math.max(maxX - minX, (n - 1) * 46), x0 = (minX + maxX) / 2 - span / 2;
+    cy.batch(() => sorted.forEach((nd, i) =>
+      nd.position({ x: n === 1 ? (minX + maxX) / 2 : x0 + (span * i) / (n - 1), y })));
+  });
+}
+
 function runLayout(fit = true, onDone) {
   // Align inputs/outputs and fit only after the layout has committed positions
   // (the layout applies positions asynchronously).
@@ -647,6 +682,7 @@ function runLayout(fit = true, onDone) {
   });
   layout.one("layoutstop", () => {
     wrapWideRanks();
+    moveOutputsToGroupBottom();
     alignInputsOutputs();
     arrangeBlakeBlocks();
     arrangeBlakeReduction();

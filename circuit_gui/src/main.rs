@@ -32,9 +32,11 @@ fn main() {
             // Recording is thread-local: clear, build (push/pop populate it),
             // then drain this circuit's spans before the next builder runs.
             circuits::scopes::reset();
+            menu::reset_inputs();
             let ctx = build();
             let spans = circuits::scopes::take_spans();
-            let graph = export::export(&ctx, &spans);
+            let inputs = menu::take_inputs();
+            let graph = export::export(&ctx, &spans, &inputs);
             eprintln!(
                 "  {name:<18} {:>6} gates  {:>4} groups  depth {}",
                 graph.meta.n_gates, graph.meta.n_groups, graph.meta.max_depth

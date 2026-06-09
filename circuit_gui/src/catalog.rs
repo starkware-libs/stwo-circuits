@@ -55,15 +55,47 @@ pub struct ExtractBitsSig {
     pub guess_name: &'static str,
 }
 
+/// Every catalogued motif must DEFINE its inputs (entry ports). Recognition,
+/// input-marking, and canonical layout all depend on knowing a motif's inputs, so
+/// a motif with no defined inputs is a bug. Implementing this trait is what makes
+/// a new motif eligible for the catalog; `build()` asserts `inputs_defined()` for
+/// each — so the check runs automatically for every motif added.
+pub trait Motif {
+    fn name(&self) -> &'static str;
+    /// True iff this motif has declared/learned its input ports.
+    fn inputs_defined(&self) -> bool;
+}
+impl Motif for ExtractBitsSig {
+    fn name(&self) -> &'static str {
+        "extract_bits"
+    }
+    fn inputs_defined(&self) -> bool {
+        // The `value` vector fed into the reduction chain (length learned).
+        self.input_len > 0
+    }
+}
+
 /// The full catalog of learned motifs.
 #[derive(Debug, Clone)]
 pub struct Catalog {
     pub extract_bits: ExtractBitsSig,
 }
 
-/// Builds the catalog by running each motif once in a fresh context.
+impl Catalog {
+    /// Every motif in the catalog (add new motifs here — they must `impl Motif`).
+    fn motifs(&self) -> Vec<&dyn Motif> {
+        vec![&self.extract_bits]
+    }
+}
+
+/// Builds the catalog by running each motif once in a fresh context, then asserts
+/// every motif has defined inputs (runs for each motif, including new ones).
 pub fn build() -> Catalog {
-    Catalog { extract_bits: learn_extract_bits() }
+    let cat = Catalog { extract_bits: learn_extract_bits() };
+    for m in cat.motifs() {
+        assert!(m.inputs_defined(), "catalog motif `{}` has no defined inputs", m.name());
+    }
+    cat
 }
 
 /// Runs `extract_bits` ONCE over a known input (mirroring the demo:

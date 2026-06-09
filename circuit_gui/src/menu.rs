@@ -22,8 +22,28 @@ use stwo::core::pcs::PcsConfig;
 
 type Ctx = Context<NoValue>;
 
+// Genuine boundary inputs are created with `input()` (a `guess()` the builder
+// DECLARES as an input). At the circuit level a boundary input and a prover
+// witness are both guessed vars — indistinguishable — so we record which guesses
+// are inputs here (thread-local, mirroring `circuits::scopes`) and hand the set
+// to the exporter, which marks them `kind:"input"` (top row). This is how blake's
+// message words (and any builder's inputs) get marked as inputs, not witnesses.
+thread_local! {
+    static INPUT_VARS: std::cell::RefCell<Vec<usize>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+/// Clear the declared-input set (call before building a circuit).
+pub fn reset_inputs() {
+    INPUT_VARS.with(|v| v.borrow_mut().clear());
+}
+/// Drain the declared-input var indices recorded during the last build.
+pub fn take_inputs() -> Vec<usize> {
+    INPUT_VARS.with(|v| std::mem::take(&mut *v.borrow_mut()))
+}
+
 fn input(ctx: &mut Ctx) -> Var {
-    guess(ctx, NoValue)
+    let g = guess(ctx, NoValue);
+    INPUT_VARS.with(|v| v.borrow_mut().push(g.idx));
+    g
 }
 
 /// The STARK verifier circuit for the example Fibonacci AIR, built with
