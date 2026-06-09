@@ -35,50 +35,48 @@ impl CircuitComponents {
         let eq_component = eq::Component::new(
             tree_span_provider,
             eq::Eval {
-                log_size: component_log_sizes[ComponentList::Eq as usize],
+                log_size: component_log_sizes[ComponentList::Eq.idx()],
                 common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
             },
-            interaction_claim.claimed_sums[ComponentList::Eq as usize],
+            interaction_claim.claimed_sums[ComponentList::Eq.idx()],
         );
         let qm31_ops_component = qm_31_ops::Component::new(
             tree_span_provider,
-            qm_31_ops::Eval {
-                claim: qm_31_ops::Claim {
-                    log_size: component_log_sizes[ComponentList::Qm31Ops as usize],
-                },
+            qm31_ops::Eval {
+                log_size: component_log_sizes[ComponentList::Qm31Ops.idx()],
                 common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
             },
-            interaction_claim.claimed_sums[ComponentList::Qm31Ops as usize],
+            interaction_claim.claimed_sums[ComponentList::Qm31Ops.idx()],
         );
         let triple_xor_component = triple_xor::Component::new(
             tree_span_provider,
             triple_xor::Eval {
                 claim: triple_xor::Claim {
-                    log_size: component_log_sizes[ComponentList::TripleXor as usize],
+                    log_size: component_log_sizes[ComponentList::TripleXor.idx()],
                 },
                 common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
             },
-            interaction_claim.claimed_sums[ComponentList::TripleXor as usize],
+            interaction_claim.claimed_sums[ComponentList::TripleXor.idx()],
         );
         let m_31_to_u_32_component = m_31_to_u_32::Component::new(
             tree_span_provider,
             m_31_to_u_32::Eval {
                 claim: m_31_to_u_32::Claim {
-                    log_size: component_log_sizes[ComponentList::M31ToU32 as usize],
+                    log_size: component_log_sizes[ComponentList::M31ToU32.idx()],
                 },
                 common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
             },
-            interaction_claim.claimed_sums[ComponentList::M31ToU32 as usize],
+            interaction_claim.claimed_sums[ComponentList::M31ToU32.idx()],
         );
         let blake_g_gate_component = blake_g_gate::Component::new(
             tree_span_provider,
             blake_g_gate::Eval {
                 claim: blake_g_gate::Claim {
-                    log_size: component_log_sizes[ComponentList::BlakeGGate as usize],
+                    log_size: component_log_sizes[ComponentList::BlakeGGate.idx()],
                 },
                 common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
             },
-            interaction_claim.claimed_sums[ComponentList::BlakeGGate as usize],
+            interaction_claim.claimed_sums[ComponentList::BlakeGGate.idx()],
         );
         let verify_bitwise_xor_8_component = verify_bitwise_xor_8::Component::new(
             tree_span_provider,
@@ -86,7 +84,7 @@ impl CircuitComponents {
                 claim: verify_bitwise_xor_8::Claim {},
                 common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
             },
-            interaction_claim.claimed_sums[ComponentList::VerifyBitwiseXor8 as usize],
+            interaction_claim.claimed_sums[ComponentList::VerifyBitwiseXor8.idx()],
         );
         let verify_bitwise_xor_12_component = verify_bitwise_xor_12::Component::new(
             tree_span_provider,
@@ -94,7 +92,7 @@ impl CircuitComponents {
                 claim: verify_bitwise_xor_12::Claim {},
                 common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
             },
-            interaction_claim.claimed_sums[ComponentList::VerifyBitwiseXor12 as usize],
+            interaction_claim.claimed_sums[ComponentList::VerifyBitwiseXor12.idx()],
         );
         let verify_bitwise_xor_4_component = verify_bitwise_xor_4::Component::new(
             tree_span_provider,
@@ -102,7 +100,7 @@ impl CircuitComponents {
                 claim: verify_bitwise_xor_4::Claim {},
                 common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
             },
-            interaction_claim.claimed_sums[ComponentList::VerifyBitwiseXor4 as usize],
+            interaction_claim.claimed_sums[ComponentList::VerifyBitwiseXor4.idx()],
         );
         let verify_bitwise_xor_7_component = verify_bitwise_xor_7::Component::new(
             tree_span_provider,
@@ -110,7 +108,7 @@ impl CircuitComponents {
                 claim: verify_bitwise_xor_7::Claim {},
                 common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
             },
-            interaction_claim.claimed_sums[ComponentList::VerifyBitwiseXor7 as usize],
+            interaction_claim.claimed_sums[ComponentList::VerifyBitwiseXor7.idx()],
         );
         let verify_bitwise_xor_9_component = verify_bitwise_xor_9::Component::new(
             tree_span_provider,
@@ -118,7 +116,7 @@ impl CircuitComponents {
                 claim: verify_bitwise_xor_9::Claim {},
                 common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
             },
-            interaction_claim.claimed_sums[ComponentList::VerifyBitwiseXor9 as usize],
+            interaction_claim.claimed_sums[ComponentList::VerifyBitwiseXor9.idx()],
         );
         let range_check_16_component = range_check_16::Component::new(
             tree_span_provider,
@@ -126,7 +124,7 @@ impl CircuitComponents {
                 claim: range_check_16::Claim {},
                 common_lookup_elements: interaction_elements.common_lookup_elements.clone(),
             },
-            interaction_claim.claimed_sums[ComponentList::RangeCheck16 as usize],
+            interaction_claim.claimed_sums[ComponentList::RangeCheck16.idx()],
         );
         Self {
             eq: eq_component,
