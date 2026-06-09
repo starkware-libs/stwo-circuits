@@ -2,7 +2,7 @@
 
 use crate::circuit_air::components::prelude::*;
 
-#[derive(Copy, Clone, Serialize)]
+#[derive(Copy, Clone)]
 pub struct Split16LowPartSize8 {}
 
 impl Split16LowPartSize8 {

@@ -1,10 +1,12 @@
+// This file was created by the AIR team.
+
 use crate::circuit_air::components::prelude::*;
-use crate::circuit_air::components::subroutines::triple_sum_32::TripleSum32;
-use crate::circuit_air::components::subroutines::verify_triple_sum_32::VerifyTripleSum32;
-use crate::circuit_air::components::subroutines::verify_xor_rot_32_r_7::VerifyXorRot32R7;
-use crate::circuit_air::components::subroutines::verify_xor_rot_32_r_8::VerifyXorRot32R8;
-use crate::circuit_air::components::subroutines::xor_rot_32_r_12::XorRot32R12;
-use crate::circuit_air::components::subroutines::xor_rot_32_r_16::XorRot32R16;
+use subroutines::triple_sum_32::TripleSum32;
+use subroutines::verify_triple_sum_32::VerifyTripleSum32;
+use subroutines::verify_xor_rot_32_r_7::VerifyXorRot32R7;
+use subroutines::verify_xor_rot_32_r_8::VerifyXorRot32R8;
+use subroutines::xor_rot_32_r_12::XorRot32R12;
+use subroutines::xor_rot_32_r_16::XorRot32R16;
 
 pub const N_TRACE_COLUMNS: usize = 52;
 pub const RELATION_USES_PER_ROW: [RelationUse; 7] = [
@@ -30,7 +32,7 @@ impl Claim {
     pub fn log_sizes(&self) -> TreeVec<Vec<u32>> {
         let trace_log_sizes = vec![self.log_size; N_TRACE_COLUMNS];
         let interaction_log_sizes = vec![self.log_size; SECURE_EXTENSION_DEGREE * 13];
-        TreeVec::new(vec![vec![], trace_log_sizes, interaction_log_sizes])
+        TreeVec::new(vec![trace_log_sizes, interaction_log_sizes])
     }
 }
 
@@ -78,6 +80,9 @@ impl FrameworkEval for Eval {
         let blake_g_gate_output_addr_a = eval.get_preprocessed_column(PreProcessedColumnId {
             id: "blake_g_gate_output_addr_a".to_owned(),
         });
+        let blake_g_gate_multiplicity = eval.get_preprocessed_column(PreProcessedColumnId {
+            id: "blake_g_gate_multiplicity".to_owned(),
+        });
         let blake_g_gate_output_addr_b = eval.get_preprocessed_column(PreProcessedColumnId {
             id: "blake_g_gate_output_addr_b".to_owned(),
         });
@@ -86,9 +91,6 @@ impl FrameworkEval for Eval {
         });
         let blake_g_gate_output_addr_d = eval.get_preprocessed_column(PreProcessedColumnId {
             id: "blake_g_gate_output_addr_d".to_owned(),
-        });
-        let blake_g_gate_multiplicity = eval.get_preprocessed_column(PreProcessedColumnId {
-            id: "blake_g_gate_multiplicity".to_owned(),
         });
         let input_a_limb_0_col0 = eval.next_trace_mask();
         let input_a_limb_1_col1 = eval.next_trace_mask();
@@ -102,14 +104,14 @@ impl FrameworkEval for Eval {
         let input_f0_limb_1_col9 = eval.next_trace_mask();
         let input_f1_limb_0_col10 = eval.next_trace_mask();
         let input_f1_limb_1_col11 = eval.next_trace_mask();
-        let input_a_tag_limb_0_col12 = eval.next_trace_mask();
-        let input_a_tag_limb_1_col13 = eval.next_trace_mask();
-        let input_b_tag_limb_0_col14 = eval.next_trace_mask();
-        let input_b_tag_limb_1_col15 = eval.next_trace_mask();
-        let input_c_tag_limb_0_col16 = eval.next_trace_mask();
-        let input_c_tag_limb_1_col17 = eval.next_trace_mask();
-        let input_d_tag_limb_0_col18 = eval.next_trace_mask();
-        let input_d_tag_limb_1_col19 = eval.next_trace_mask();
+        let input_a_out_limb_0_col12 = eval.next_trace_mask();
+        let input_a_out_limb_1_col13 = eval.next_trace_mask();
+        let input_b_out_limb_0_col14 = eval.next_trace_mask();
+        let input_b_out_limb_1_col15 = eval.next_trace_mask();
+        let input_c_out_limb_0_col16 = eval.next_trace_mask();
+        let input_c_out_limb_1_col17 = eval.next_trace_mask();
+        let input_d_out_limb_0_col18 = eval.next_trace_mask();
+        let input_d_out_limb_1_col19 = eval.next_trace_mask();
         let triple_sum32_res_limb_0_col20 = eval.next_trace_mask();
         let triple_sum32_res_limb_1_col21 = eval.next_trace_mask();
         let ms_8_bits_col22 = eval.next_trace_mask();
@@ -160,8 +162,8 @@ impl FrameworkEval for Eval {
         #[allow(clippy::unused_unit)]
         #[allow(unused_variables)]
         let [
-            xor_rot_32_r_16_output_tmp_754f3_21_limb_0,
-            xor_rot_32_r_16_output_tmp_754f3_21_limb_1,
+            xor_rot_32_r_16_output_tmp_86b8b_21_limb_0,
+            xor_rot_32_r_16_output_tmp_86b8b_21_limb_1,
         ] = XorRot32R16::evaluate(
             [
                 triple_sum32_res_limb_0_col20.clone(),
@@ -184,8 +186,8 @@ impl FrameworkEval for Eval {
             [
                 input_c_limb_0_col4.clone(),
                 input_c_limb_1_col5.clone(),
-                xor_rot_32_r_16_output_tmp_754f3_21_limb_0.clone(),
-                xor_rot_32_r_16_output_tmp_754f3_21_limb_1.clone(),
+                xor_rot_32_r_16_output_tmp_86b8b_21_limb_0.clone(),
+                xor_rot_32_r_16_output_tmp_86b8b_21_limb_1.clone(),
                 M31_0.clone(),
                 M31_0.clone(),
             ],
@@ -197,8 +199,8 @@ impl FrameworkEval for Eval {
         #[allow(clippy::unused_unit)]
         #[allow(unused_variables)]
         let [
-            xor_rot_32_r_12_output_tmp_754f3_43_limb_0,
-            xor_rot_32_r_12_output_tmp_754f3_43_limb_1,
+            xor_rot_32_r_12_output_tmp_86b8b_43_limb_0,
+            xor_rot_32_r_12_output_tmp_86b8b_43_limb_1,
         ] = XorRot32R12::evaluate(
             [
                 input_b_limb_0_col2.clone(),
@@ -221,24 +223,24 @@ impl FrameworkEval for Eval {
             [
                 triple_sum32_res_limb_0_col20.clone(),
                 triple_sum32_res_limb_1_col21.clone(),
-                xor_rot_32_r_12_output_tmp_754f3_43_limb_0.clone(),
-                xor_rot_32_r_12_output_tmp_754f3_43_limb_1.clone(),
+                xor_rot_32_r_12_output_tmp_86b8b_43_limb_0.clone(),
+                xor_rot_32_r_12_output_tmp_86b8b_43_limb_1.clone(),
                 input_f1_limb_0_col10.clone(),
                 input_f1_limb_1_col11.clone(),
-                input_a_tag_limb_0_col12.clone(),
-                input_a_tag_limb_1_col13.clone(),
+                input_a_out_limb_0_col12.clone(),
+                input_a_out_limb_1_col13.clone(),
             ],
             &self.common_lookup_elements,
             &mut eval,
         );
         VerifyXorRot32R8::evaluate(
             [
-                input_a_tag_limb_0_col12.clone(),
-                input_a_tag_limb_1_col13.clone(),
-                xor_rot_32_r_16_output_tmp_754f3_21_limb_0.clone(),
-                xor_rot_32_r_16_output_tmp_754f3_21_limb_1.clone(),
-                input_d_tag_limb_0_col18.clone(),
-                input_d_tag_limb_1_col19.clone(),
+                input_a_out_limb_0_col12.clone(),
+                input_a_out_limb_1_col13.clone(),
+                xor_rot_32_r_16_output_tmp_86b8b_21_limb_0.clone(),
+                xor_rot_32_r_16_output_tmp_86b8b_21_limb_1.clone(),
+                input_d_out_limb_0_col18.clone(),
+                input_d_out_limb_1_col19.clone(),
             ],
             ms_8_bits_col40.clone(),
             ms_8_bits_col41.clone(),
@@ -253,24 +255,24 @@ impl FrameworkEval for Eval {
             [
                 triple_sum32_res_limb_0_col30.clone(),
                 triple_sum32_res_limb_1_col31.clone(),
-                input_d_tag_limb_0_col18.clone(),
-                input_d_tag_limb_1_col19.clone(),
+                input_d_out_limb_0_col18.clone(),
+                input_d_out_limb_1_col19.clone(),
                 M31_0.clone(),
                 M31_0.clone(),
-                input_c_tag_limb_0_col16.clone(),
-                input_c_tag_limb_1_col17.clone(),
+                input_c_out_limb_0_col16.clone(),
+                input_c_out_limb_1_col17.clone(),
             ],
             &self.common_lookup_elements,
             &mut eval,
         );
         VerifyXorRot32R7::evaluate(
             [
-                xor_rot_32_r_12_output_tmp_754f3_43_limb_0.clone(),
-                xor_rot_32_r_12_output_tmp_754f3_43_limb_1.clone(),
-                input_c_tag_limb_0_col16.clone(),
-                input_c_tag_limb_1_col17.clone(),
-                input_b_tag_limb_0_col14.clone(),
-                input_b_tag_limb_1_col15.clone(),
+                xor_rot_32_r_12_output_tmp_86b8b_43_limb_0.clone(),
+                xor_rot_32_r_12_output_tmp_86b8b_43_limb_1.clone(),
+                input_c_out_limb_0_col16.clone(),
+                input_c_out_limb_1_col17.clone(),
+                input_b_out_limb_0_col14.clone(),
+                input_b_out_limb_1_col15.clone(),
             ],
             ms_9_bits_col46.clone(),
             ms_9_bits_col47.clone(),
@@ -353,8 +355,8 @@ impl FrameworkEval for Eval {
             &[
                 M31_378353459.clone(),
                 blake_g_gate_output_addr_a.clone(),
-                input_a_tag_limb_0_col12.clone(),
-                input_a_tag_limb_1_col13.clone(),
+                input_a_out_limb_0_col12.clone(),
+                input_a_out_limb_1_col13.clone(),
             ],
         ));
 
@@ -364,8 +366,8 @@ impl FrameworkEval for Eval {
             &[
                 M31_378353459.clone(),
                 blake_g_gate_output_addr_b.clone(),
-                input_b_tag_limb_0_col14.clone(),
-                input_b_tag_limb_1_col15.clone(),
+                input_b_out_limb_0_col14.clone(),
+                input_b_out_limb_1_col15.clone(),
             ],
         ));
 
@@ -375,8 +377,8 @@ impl FrameworkEval for Eval {
             &[
                 M31_378353459.clone(),
                 blake_g_gate_output_addr_c.clone(),
-                input_c_tag_limb_0_col16.clone(),
-                input_c_tag_limb_1_col17.clone(),
+                input_c_out_limb_0_col16.clone(),
+                input_c_out_limb_1_col17.clone(),
             ],
         ));
 
@@ -386,12 +388,41 @@ impl FrameworkEval for Eval {
             &[
                 M31_378353459.clone(),
                 blake_g_gate_output_addr_d.clone(),
-                input_d_tag_limb_0_col18.clone(),
-                input_d_tag_limb_1_col19.clone(),
+                input_d_out_limb_0_col18.clone(),
+                input_d_out_limb_1_col19.clone(),
             ],
         ));
 
         eval.finalize_logup_in_pairs();
         eval
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use num_traits::Zero;
+    use rand::rngs::SmallRng;
+    use rand::{Rng, SeedableRng};
+    use stwo::core::fields::qm31::QM31;
+    use stwo_constraint_framework::expr::ExprEvaluator;
+
+    use super::*;
+
+    #[test]
+    fn blake_g_gate_constraints_regression() {
+        let mut rng = SmallRng::seed_from_u64(0);
+        let eval = Eval {
+            claim: Claim { log_size: 4 },
+            common_lookup_elements: relations::CommonLookupElements::dummy(),
+        };
+        let expr_eval = eval.evaluate(ExprEvaluator::new());
+        let assignment = expr_eval.random_assignment();
+
+        let mut sum = QM31::zero();
+        for c in expr_eval.constraints {
+            sum += c.assign(&assignment) * rng.r#gen::<QM31>();
+        }
+
+        constraints_regression_test_values::BLAKE_G_GATE.assert_debug_eq(&sum);
     }
 }
