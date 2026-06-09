@@ -17,8 +17,10 @@ use circuit_common::preprocessed::PreProcessedTrace;
 use circuit_verifier::circuit_claim::CircuitClaim;
 use circuit_verifier::circuit_claim::CircuitInteractionClaim;
 use circuit_verifier::circuit_claim::CircuitInteractionElements;
-use circuit_verifier::circuit_components::N_COMPONENTS;
+use circuit_verifier::circuit_components::COMPONENT_NAMES;
+use circuit_verifier::circuit_components::ComponentList;
 use circuits::context::U_VAR_IDX;
+use circuits_stark_verifier::order_hash_map::OrderedHashMap;
 use itertools::Itertools;
 use num_traits::Zero;
 use rayon::scope;
@@ -41,7 +43,7 @@ pub fn write_trace<MC: MerkleChannel>(
     tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, MC>,
     trace_generator: &TraceGenerator,
     twiddles: &TwiddleTree<SimdBackend>,
-) -> (CircuitClaim, [u32; N_COMPONENTS], CircuitInteractionClaimGenerator)
+) -> (CircuitClaim, OrderedHashMap<&'static str, u32>, CircuitInteractionClaimGenerator)
 where
     SimdBackend: BackendForChannel<MC>,
 {
@@ -266,19 +268,23 @@ where
         .map(|addr| context_values[addr])
         .collect_vec();
 
-    let log_sizes = [
-        eq_log_size,
-        qm31_ops_log_size,
-        triple_xor_claim.log_size,
-        m_31_to_u_32_claim.log_size,
-        blake_g_gate_claim.log_size,
-        crate::circuit_air::components::verify_bitwise_xor_8::LOG_SIZE,
-        crate::circuit_air::components::verify_bitwise_xor_12::LOG_SIZE,
-        crate::circuit_air::components::verify_bitwise_xor_4::LOG_SIZE,
-        crate::circuit_air::components::verify_bitwise_xor_7::LOG_SIZE,
-        crate::circuit_air::components::verify_bitwise_xor_9::LOG_SIZE,
-        crate::circuit_air::components::range_check_16::LOG_SIZE,
-    ];
+    // Per-component log sizes, in `COMPONENT_NAMES` (i.e. `ComponentList`) order.
+    let log_sizes: OrderedHashMap<&'static str, u32> = COMPONENT_NAMES
+        .into_iter()
+        .zip_eq([
+            eq_log_size,
+            qm31_ops_log_size,
+            triple_xor_claim.log_size,
+            m_31_to_u_32_claim.log_size,
+            blake_g_gate_claim.log_size,
+            crate::circuit_air::components::verify_bitwise_xor_8::LOG_SIZE,
+            crate::circuit_air::components::verify_bitwise_xor_12::LOG_SIZE,
+            crate::circuit_air::components::verify_bitwise_xor_4::LOG_SIZE,
+            crate::circuit_air::components::verify_bitwise_xor_7::LOG_SIZE,
+            crate::circuit_air::components::verify_bitwise_xor_9::LOG_SIZE,
+            crate::circuit_air::components::range_check_16::LOG_SIZE,
+        ])
+        .collect();
 
     (
         CircuitClaim { output_values },
@@ -314,7 +320,7 @@ pub struct CircuitInteractionClaimGenerator {
 }
 
 pub fn write_interaction_trace<MC: MerkleChannel>(
-    component_log_sizes: &[u32; N_COMPONENTS],
+    component_log_sizes: &OrderedHashMap<&'static str, u32>,
     circuit_interaction_claim_generator: CircuitInteractionClaimGenerator,
     tree_builder: &mut TreeBuilder<'_, '_, SimdBackend, MC>,
     interaction_elements: &CircuitInteractionElements,
@@ -323,11 +329,9 @@ pub fn write_interaction_trace<MC: MerkleChannel>(
 where
     SimdBackend: BackendForChannel<MC>,
 {
-    let mut component_log_size_iter = component_log_sizes.iter();
-
     // Extract log sizes before parallel section.
-    let eq_log_size = *component_log_size_iter.next().unwrap();
-    let qm31_ops_log_size = *component_log_size_iter.next().unwrap();
+    let eq_log_size = component_log_sizes[ComponentList::Eq.name()];
+    let qm31_ops_log_size = component_log_sizes[ComponentList::Qm31Ops.name()];
 
     // Write all interaction traces in parallel, including interpolation.
     // Preallocate poly slots; each spawned task writes into its own mutable slice.
