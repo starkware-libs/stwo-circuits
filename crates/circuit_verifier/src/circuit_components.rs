@@ -3,6 +3,12 @@ macro_rules! define_component_list {
         pub enum ComponentList {
             $($variant),*
         }
+        impl ComponentList {
+            /// The index of this component, in the static circuit components array.
+            pub const fn idx(self) -> usize {
+                self as usize
+            }
+        }
         pub const N_COMPONENTS: usize = [$(stringify!($variant)),*].len();
     };
 }
