@@ -20,7 +20,6 @@ use circuits_stark_verifier::proof::ProofConfig;
 use expect_test::expect;
 use itertools::Itertools;
 use num_traits::{One, Zero};
-use stwo::core::air::Component;
 use stwo::core::channel::Blake2sM31Channel;
 use stwo::core::channel::Channel;
 use stwo::core::fields::qm31::QM31;
@@ -237,10 +236,9 @@ fn stwo_verify(
         &interaction_claim,
         &log_sizes,
         &preprocessed_circuit.preprocessed_trace.ids(),
-    )
-    .components();
+    );
     stwo::core::verifier::verify_ex(
-        &components.iter().map(|c| c.as_ref()).collect::<Vec<&dyn Component>>(),
+        &components.components(),
         verifier_channel,
         commitment_scheme,
         proof.proof,
