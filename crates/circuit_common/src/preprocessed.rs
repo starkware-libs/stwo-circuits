@@ -540,6 +540,8 @@ fn gen_xor_columns(n_bits: usize) -> [Vec<usize>; 3] {
     let size = 1_usize << (2 * n_bits);
     let mask = (1_usize << n_bits) - 1;
     let mut columns: [Vec<usize>; 3] = std::array::from_fn(|_| vec![0; size]);
+    // `i` is used for bit arithmetic (lhs/rhs), not merely to index the columns.
+    #[allow(clippy::needless_range_loop)]
     for i in 0..size {
         let lhs = i & mask;
         let rhs = i >> n_bits;
