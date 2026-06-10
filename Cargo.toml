@@ -35,14 +35,14 @@ serde = "1.0.219"
 serde_json = "1.0"
 
 # stwo
-stwo = { git = "https://github.com/starkware-libs/stwo", rev = "93dd93e0", features = [
+stwo = { git = "https://github.com/starkware-libs/stwo", rev = "d27635cb", features = [
     "parallel",
 ], default-features = false }
-stwo-constraint-framework = { git = "https://github.com/starkware-libs/stwo", rev = "93dd93e0", features = [
+stwo-constraint-framework = { git = "https://github.com/starkware-libs/stwo", rev = "d27635cb", features = [
     "parallel",
 ] }
-stwo-air-utils-derive = { git = "https://github.com/starkware-libs/stwo", rev = "93dd93e0" }
-stwo-air-utils = { git = "https://github.com/starkware-libs/stwo", rev = "93dd93e0" }
+stwo-air-utils-derive = { git = "https://github.com/starkware-libs/stwo", rev = "d27635cb" }
+stwo-air-utils = { git = "https://github.com/starkware-libs/stwo", rev = "d27635cb" }
 
 # stwo-cairo
 cairo-air = { git = "https://github.com/starkware-libs/stwo-cairo", rev = "3a3f592" }
