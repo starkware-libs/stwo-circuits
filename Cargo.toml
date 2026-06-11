@@ -35,8 +35,6 @@ serde = "1.0.219"
 serde_json = "1.0"
 
 # stwo
-# 1.94-compatible stwo (v2.2.0 + 1.94 compile fixes). Git rev rather than crates.io so consumers
-# don't need a [patch]; unifies with the stwo pulled in transitively via stwo-cairo.
 stwo = { git = "https://github.com/starkware-libs/stwo", rev = "489a0f3e", features = [
     "parallel",
 ], default-features = false }
