@@ -17,7 +17,6 @@ use circuits::ivalue::NoValue;
 use circuits::ivalue::{IValue, qm31_from_u32s};
 use circuits::ops::permute;
 use circuits::{context::Context, ops::guess};
-use circuits_stark_verifier::proof::ProofConfig;
 use expect_test::expect;
 use num_traits::{One, Zero};
 use stwo::core::channel::Blake2sM31Channel;
@@ -347,21 +346,13 @@ fn circuit_verify(
     preprocessed_circuit: &PreprocessedCircuit,
     preprocessed_root: [u32; 8],
 ) {
-    let all_components = all_circuit_components::<QM31>();
-    let proof_config = ProofConfig::new(
-        &all_components,
-        preprocessed_circuit.preprocessed_trace.n_columns(),
-        &circuit_proof.pcs_config,
-        INTERACTION_POW_BITS,
-    );
     let circuit_config = CircuitConfig {
         config: circuit_proof.pcs_config,
         n_outputs: preprocessed_circuit.n_outputs,
         preprocessed_column_log_sizes: preprocessed_circuit.preprocessed_trace.log_sizes(),
         preprocessed_root: preprocessed_root.into(),
     };
-    let (proof, public_data) =
-        prepare_circuit_proof_for_circuit_verifier(circuit_proof, &proof_config);
+    let (proof, public_data) = prepare_circuit_proof_for_circuit_verifier(circuit_proof);
     verify_circuit(circuit_config, proof, public_data).unwrap();
 }
 

@@ -173,7 +173,6 @@ pub fn build_cairo_verifier_circuit(
 /// Converts a [CairoProof] to a [Proof] and [PublicData] for the circuit verifier.
 pub fn prepare_cairo_proof_for_circuit_verifier(
     proof: &CairoProof<Blake2sM31MerkleHasher>,
-    proof_config: &ProofConfig,
     enabled_bits: &[bool],
 ) -> (Proof<QM31>, PublicData) {
     let CairoProof {
@@ -182,12 +181,25 @@ pub fn prepare_cairo_proof_for_circuit_verifier(
         interaction_claim,
         extended_stark_proof,
         channel_salt,
-        preprocessed_trace_variant: _,
+        preprocessed_trace_variant,
     } = proof;
 
     let FlatClaim { component_enable_bits, component_log_sizes, public_data } =
         claim.flatten_claim();
     let claimed_sums = interaction_claim.flatten_interaction_claim();
+
+    let components = all_components::<QM31>()
+        .into_iter()
+        .zip(&component_enable_bits)
+        .filter_map(|(component, enable)| enable.then_some(component))
+        .collect::<IndexMap<_, _>>();
+
+    let proof_config = ProofConfig::new(
+        &components,
+        preprocessed_trace_variant.n_columns(),
+        &extended_stark_proof.proof.config,
+        INTERACTION_POW_BITS,
+    );
 
     debug_assert_eq!(component_enable_bits, enabled_bits);
     debug_assert_eq!(component_log_sizes.len(), proof_config.n_components());
@@ -195,7 +207,7 @@ pub fn prepare_cairo_proof_for_circuit_verifier(
 
     let proof = proof_from_stark_proof(
         extended_stark_proof,
-        proof_config,
+        &proof_config,
         claimed_sums,
         *interaction_pow,
         *channel_salt,

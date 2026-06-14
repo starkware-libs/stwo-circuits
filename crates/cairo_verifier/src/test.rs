@@ -81,11 +81,8 @@ pub fn verify_cairo_with_component_set(
         INTERACTION_POW_BITS,
     );
 
-    let (proof, public_data) = prepare_cairo_proof_for_circuit_verifier(
-        cairo_proof,
-        &proof_config,
-        &component_enable_bits,
-    );
+    let (proof, public_data) =
+        prepare_cairo_proof_for_circuit_verifier(cairo_proof, &component_enable_bits);
     let (mut public_claim, outputs, program) = public_data.pack_into_u32s();
     public_claim.extend(component_log_sizes);
     let outputs = outputs

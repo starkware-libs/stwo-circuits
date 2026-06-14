@@ -7,6 +7,7 @@ use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_verifier::circuit_claim::{CircuitInteractionElements, lookup_sum};
 pub use circuit_verifier::circuit_proof::CircuitProof;
 use circuit_verifier::statement::INTERACTION_POW_BITS;
+use circuit_verifier::statement::all_circuit_components;
 use circuit_verifier::verify::CircuitPublicData;
 use circuits_stark_verifier::proof::Proof;
 use circuits_stark_verifier::proof::ProofConfig;
@@ -27,6 +28,7 @@ pub use stwo::prover::mempool::BaseColumnPool;
 use stwo::prover::poly::circle::PolyOps;
 use stwo::prover::poly::twiddles::TwiddleTree;
 use stwo::prover::{ProvingError, prove_ex};
+use stwo_constraint_framework::PREPROCESSED_TRACE_IDX;
 
 const COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND: u32 = 1;
 
@@ -199,10 +201,9 @@ where
 
 pub fn prepare_circuit_proof_for_circuit_verifier(
     circuit_proof: CircuitProof<Blake2sM31MerkleHasher>,
-    proof_config: &ProofConfig,
 ) -> (Proof<QM31>, CircuitPublicData) {
     let CircuitProof {
-        pcs_config: _,
+        pcs_config,
         claim,
         interaction_pow_nonce,
         interaction_claim,
@@ -212,11 +213,18 @@ pub fn prepare_circuit_proof_for_circuit_verifier(
 
     let public_data = CircuitPublicData { output_values: claim.output_values.clone() };
 
+    let proof_config = ProofConfig::new(
+        &all_circuit_components::<QM31>(),
+        stark_proof.proof.sampled_values[PREPROCESSED_TRACE_IDX].len(),
+        &pcs_config,
+        INTERACTION_POW_BITS,
+    );
+
     let claimed_sums = interaction_claim.claimed_sums.to_vec();
 
     let proof = proof_from_stark_proof(
         &stark_proof,
-        proof_config,
+        &proof_config,
         claimed_sums,
         interaction_pow_nonce,
         channel_salt,
