@@ -119,8 +119,6 @@ pub fn build_fixed_cairo_circuit(
     public_claim: Vec<u32>,
     outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
 ) -> FinalizedContext<QM31> {
-    let config = &verifier_config.proof_config;
-
     let public_claim = public_claim.iter().map(|u32| M31::from(*u32)).collect_vec();
     let mut context = Context::new(N_RESERVED);
     let statement = CairoStatement::<QM31>::new(
@@ -134,7 +132,7 @@ pub fn build_fixed_cairo_circuit(
     );
 
     let proof_vars = proof.guess(&mut context);
-    verify(&mut context, &proof_vars, config, &statement);
+    verify(&mut context, &proof_vars, &statement);
 
     context.finalize(false)
 }
@@ -166,7 +164,7 @@ pub fn build_cairo_verifier_circuit(
     );
 
     let proof_vars = empty_proof(config).guess(&mut context);
-    verify(&mut context, &proof_vars, config, &statement);
+    verify(&mut context, &proof_vars, &statement);
     context.finalize(false)
 }
 

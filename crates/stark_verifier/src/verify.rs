@@ -48,10 +48,9 @@ pub fn validate_logup_sum(
 pub fn verify<Value: IValue>(
     context: &mut Context<Value>,
     proof: &Proof<Var>,
-    config: &ProofConfig,
     statement: &impl Statement<Value>,
 ) {
-    proof.validate_structure(config);
+    let config = &proof.config;
     assert!(config.log_trace_size() <= 30);
     let mut channel = Channel::new(context);
 
@@ -196,8 +195,7 @@ pub fn verify<Value: IValue>(
     );
 
     // Compute FRI input.
-    let oods_responses =
-        collect_oods_responses(context, config, oods_point, &component_sizes_bits, proof);
+    let oods_responses = collect_oods_responses(context, oods_point, &component_sizes_bits, proof);
     let fri_input = compute_fri_input(
         context,
         &oods_responses,

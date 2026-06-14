@@ -74,7 +74,7 @@ pub fn build_multiverifier_circuit<Value: IValue>(
         let statement = CircuitStatement::new(&mut context, &circuit_config, &output_values);
         let proof_vars = proof.guess(&mut context);
 
-        verify(&mut context, &proof_vars, &shared_config.proof_config, &statement);
+        verify(&mut context, &proof_vars, &statement);
         outer_verifier_output_preimage.extend(chain!(
             [statement.preprocessed_root.0, statement.preprocessed_root.1],
             statement.get_output_values().iter().copied()

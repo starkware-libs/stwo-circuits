@@ -182,11 +182,11 @@ pub struct OodsResponse {
 /// The order is consistent with the order dictated by the stwo prover.
 pub fn collect_oods_responses(
     context: &mut Context<impl IValue>,
-    config: &ProofConfig,
     oods_point: CirclePoint<Var>,
     component_sizes_bits: &[Simd],
     proof: &Proof<Var>,
 ) -> Vec<OodsResponse> {
+    let config = &proof.config;
     // Build the periodicity sample points for each column in the interaction trace.
     let trace_gen = generator_point(config.log_trace_size());
     let period_generators_per_component =

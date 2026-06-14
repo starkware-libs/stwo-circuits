@@ -130,6 +130,7 @@ pub fn deserialize_proof_with_config(
         pow_nonce,
         interaction_pow_nonce,
         fri,
+        config: config.clone(),
     })
 }
 

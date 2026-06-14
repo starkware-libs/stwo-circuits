@@ -6,15 +6,11 @@ use circuits::{
     ops::Guess,
 };
 use circuits_stark_verifier::order_hash_map::OrderedHashMap;
-use circuits_stark_verifier::{
-    proof::{Proof, ProofConfig},
-    statement::Statement,
-    verify::verify,
-};
+use circuits_stark_verifier::{proof::Proof, statement::Statement, verify::verify};
 use stwo::core::{fields::qm31::QM31, pcs::PcsConfig};
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
-use crate::statement::{CircuitStatement, INTERACTION_POW_BITS};
+use crate::statement::CircuitStatement;
 
 pub struct CircuitPublicData {
     pub output_values: Vec<QM31>,
@@ -50,15 +46,9 @@ pub fn build_verification_circuit<Value: IValue>(
     let statement =
         CircuitStatement::new(&mut context, &circuit_config, &public_data.output_values);
 
-    let proof_config = ProofConfig::new(
-        statement.get_components(),
-        circuit_config.preprocessed_column_log_sizes.len(),
-        &circuit_config.config,
-        INTERACTION_POW_BITS,
-    );
     let proof_vars = proof.guess(&mut context);
 
-    verify(&mut context, &proof_vars, &proof_config, &statement);
+    verify(&mut context, &proof_vars, &statement);
 
     // Deal with the outputs: hash the preprocessed root and all the output values except `u` (= the
     // last one). This is fine for soundness because `u` is checked as part of the logup sum.

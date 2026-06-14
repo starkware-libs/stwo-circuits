@@ -76,6 +76,7 @@ pub fn proof_from_stark_proof(
         pow_nonce: qm31_from_u32s(pow_low, pow_high, 0, 0),
         interaction_pow_nonce: qm31_from_u32s(interaction_pow_low, interaction_pow_high, 0, 0),
         channel_salt: qm31_from_u32s(channel_salt, 0, 0, 0),
+        config: (*config).clone(),
     }
 }
 

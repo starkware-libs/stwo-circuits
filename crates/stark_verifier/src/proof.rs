@@ -401,6 +401,8 @@ pub struct Proof<T> {
     pub pow_nonce: T,
     pub interaction_pow_nonce: T,
     pub fri: FriProof<T>,
+
+    pub config: ProofConfig,
 }
 impl<T> Proof<T> {
     /// Validates that the size of the members of the struct are consistent with the config.
@@ -420,6 +422,7 @@ impl<T> Proof<T> {
             pow_nonce: _,
             interaction_pow_nonce: _,
             fri,
+            config: _,
         } = self;
 
         assert_eq!(claimed_sums.len(), config.n_components());
@@ -497,6 +500,7 @@ pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
         interaction_pow_nonce: NoValue,
         fri: empty_fri_proof(&config.fri),
         channel_salt: NoValue,
+        config: config.clone(),
     }
 }
 
@@ -519,6 +523,7 @@ impl<Value: IValue> Guess<Value> for Proof<Value> {
             interaction_pow_nonce: self.interaction_pow_nonce.guess(context),
             fri: self.fri.guess(context),
             channel_salt: self.channel_salt.guess(context),
+            config: self.config.clone(),
         }
     }
 }

@@ -29,6 +29,7 @@ impl CircuitSerialize for Proof<QM31> {
             pow_nonce,
             interaction_pow_nonce,
             fri,
+            config: _,
         } = self;
 
         channel_salt.serialize(output);

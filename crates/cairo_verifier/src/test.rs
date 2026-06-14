@@ -153,7 +153,7 @@ fn test_verify() {
     let empty_proof = empty_proof(&config);
 
     let proof_vars = empty_proof.guess(&mut novalue_context);
-    verify(&mut novalue_context, &proof_vars, &config, &statement);
+    verify(&mut novalue_context, &proof_vars, &statement);
     let novalue_context = novalue_context.finalize(true);
     novalue_context.circuit().check_yields();
 
