@@ -8,7 +8,7 @@ use circuit_prover::prover::{
     BaseColumnPool, CircuitProof, SimdBackend, prepare_circuit_proof_for_circuit_verifier,
     prove_circuit_assignment,
 };
-use circuit_verifier::statement::{CircuitStatement, all_circuit_components};
+use circuit_verifier::statement::CircuitStatement;
 use circuit_verifier::verify::{CircuitConfig, CircuitPublicData, verify_circuit};
 use circuits::blake::HashValue;
 use circuits::context::{Context, FinalizedContext};
@@ -33,21 +33,13 @@ fn verify_circuit_proof(
     circuit_proof: CircuitProof<Blake2sM31MerkleHasher>,
     preprocessed_root: HashValue<QM31>,
 ) -> FinalizedContext<QM31> {
-    let components = all_circuit_components::<QM31>();
-    let proof_config = ProofConfig::new(
-        &components,
-        preprocessed_circuit.preprocessed_trace.n_columns(),
-        &circuit_proof.pcs_config,
-        circuit_verifier::statement::INTERACTION_POW_BITS,
-    );
     let circuit_config = CircuitConfig {
         config: circuit_proof.pcs_config,
         n_outputs: preprocessed_circuit.n_outputs,
         preprocessed_column_log_sizes: preprocessed_circuit.preprocessed_trace.log_sizes(),
         preprocessed_root,
     };
-    let (proof, public_data) =
-        prepare_circuit_proof_for_circuit_verifier(circuit_proof, &proof_config);
+    let (proof, public_data) = prepare_circuit_proof_for_circuit_verifier(circuit_proof);
     verify_circuit(circuit_config, proof, public_data).unwrap()
 }
 
