@@ -63,13 +63,11 @@ impl<Value: IValue> CircuitStatement<Value> {
                 .guess(context);
 
         let components = all_circuit_components::<Value>();
-        let component_log_sizes = components
-            .values()
-            .map(|c| {
-                c.log_size(preprocessed_column_log_sizes)
-                    .expect("The circuit components can't have a dynamic log_size.")
-            })
-            .collect_vec();
+        let component_log_sizes =
+            circuit_component_log_sizes(&components, preprocessed_column_log_sizes)
+                .values()
+                .cloned()
+                .collect_vec();
 
         let n_components = component_log_sizes.len();
         let packed_log_sizes = pack_into_qm31s(component_log_sizes.iter().cloned())
@@ -187,4 +185,20 @@ pub fn all_circuit_components<Value: IValue>() -> IndexMap<&'static str, Box<dyn
         ),
         ("range_check_16", Box::new(range_check_16::Component {}) as Box<dyn CircuitEval<Value>>),
     ])
+}
+
+/// Resolves the (static) log size of every circuit component, keyed by component name.
+pub fn circuit_component_log_sizes<Value: IValue>(
+    components: &IndexMap<&'static str, Box<dyn CircuitEval<Value>>>,
+    preprocessed_column_log_sizes: &OrderedHashMap<PreProcessedColumnId, u32>,
+) -> OrderedHashMap<&'static str, u32> {
+    components
+        .iter()
+        .map(|(name, c)| {
+            let log_size = c
+                .log_size(preprocessed_column_log_sizes)
+                .expect("The circuit components can't have a dynamic log_size.");
+            (*name, log_size)
+        })
+        .collect()
 }
