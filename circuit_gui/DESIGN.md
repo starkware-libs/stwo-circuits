@@ -220,10 +220,22 @@ _(empty — populated by the first audit-mode run; each item: dimension · what 
 
 ---
 
-## 12. Layout objectives (how to spread the graph) — RANKED
+## 12. Layout — the edge-min optimizer (+ alternatives kept for future use)
+
+A group's interior is laid out by the **edge-min optimizer** (§12.3): a general constrained
+optimizer that works for ANY DAG (not just recognized motifs) — it builds its own *feasible*
+layered seed, then contracts it under hard constraints via feasible coordinate descent. It's
+selected by the toolbar toggle (**Layout: ladder ↔ edge-min**).
+
+Two alternatives are documented here as **OPTIONS for future use**, so the design isn't lost:
+the hand-tuned **ladder** (§12.2 — still the runtime fallback when edge-min is off), and a set
+of **secondary refinements** (end of §12.3 — uniform spacing, clearance, axis-exact edges:
+designed but not currently active). All three pursue the same ranked objectives (§12.1).
+
+### 12.1 Objectives (RANKED — higher wins, lower break ties; both engines aim for these)
 
 When laying out nodes (especially the canonical motif layout, §13), optimize these in
-priority order. Higher = more important; lower objectives break ties.
+priority order:
 
 1. **Minimize total edge length** — short edges read as locality; the primary objective.
    **EXCLUDE from the cost** edges incident to *broadcast* nodes: **inputs** (pinned to the
@@ -255,11 +267,91 @@ priority order. Higher = more important; lower objectives break ties.
     equality) edge should be placed adjacent, ideally column-aligned so the eq reads as a
     short straight link. An eq asserts two values are the same thing, so they belong next to
     each other. Stronger than the general §1 for eq edges specifically.
+11. **Prefer edges to be EXACTLY horizontal or vertical** — edges read most cleanly when
+    truly axis-aligned. Optimize the COUNT of axis-exact edges, NOT the average angle: snap
+    edges that are already near an axis to exact, and leave genuine diagonals alone (chasing
+    them costs length without becoming exact). A tie-breaker below short edges (§1): worth a
+    small length cost, not a large one.
 
 **Canonical vs. short-edges tension (LOCKED):** short edges define a motif's INTERNAL
 canonical shape only (minimize length within the isolated motif, once). At the parent level
 you place rigid motif BOXES minimizing their EXTERNAL edge length — you never reflow a box's
 insides. Instances stay pixel-identical (no in-context flexing).
+
+### 12.2 Ladder engine — hand-tuned motif ladder (ALTERNATIVE / fallback, kept for future use)
+
+Lays a registered motif group's interior out as a deterministic **dataflow ladder**: rank
+every member by its topological depth in the group's INTERNAL wire DAG (longest path from an
+internal source — intrinsic to the subgraph, so every instance ranks identically → identical
+layout, independent of variable ids), then stack rank-rows top→bottom. Within a row, a SIMD
+block's lanes stay contiguous and in lane order; loose gates follow. Source nodes with no
+internal predecessor are pulled DOWN to just above their earliest consumer (short edges)
+rather than stranded in the top row. Adjacent rungs feed each other, so edges stay short.
+Deterministic, no randomness; identical across instances. This is the current default, and
+the fallback whenever edge-min is off.
+
+### 12.3 Edge-min engine — feasible coordinate descent (the current layout; general, any DAG)
+
+Positions members by an OBJECTIVE minimized UNDER hard constraints, with NO per-graph
+heuristics and nothing pinned to a hand-picked coordinate. It is **feasible coordinate
+descent**: start from a feasible layout, then move one node at a time, each move kept inside
+the feasible region — so the layout is feasible at *every* step and there is no
+move-then-correct overshoot.
+
+**Seed (option A) — a feasible LAYERED layout built from the graph's own structure** (works
+for any DAG): rank each node by its longest path over the NON-EXEMPT wire edges (so a
+dual-role output — one that is also consumed — doesn't drag its consumers below it); force
+outputs to a dedicated bottom rank; place `y = rank·ROW`, `x = (index-in-rank)·COL` with
+`ROW, COL ≥ D`. Feasible by construction (no-up & below-body from the ordering, min-distance
+from the spacing), so the descent never has to *repair* the seed — it only maintains feasibility.
+
+**Per-node move** (each non-const node, in turn):
+1. **Swap** — exchange full positions with the node that most reduces their *combined* edge
+   length, if feasible. A swap only relabels two occupied positions, so min-distance is
+   preserved automatically; the only check is each node's y stays in the other's band.
+   Accepted only if strictly shorter ⇒ monotone, no oscillation. This is what escapes
+   ORDERING local minima (a node can't *translate* past a min-dist neighbour, but it can swap).
+2. **Line-search toward the centroid** — step as far along the ray to the neighbour centroid
+   (the edge-shortening direction) as stays feasible: capped by the node's y-band and by every
+   other node's min-distance disk. Feasibility holds by construction (never step past a
+   boundary); a fully boxed node simply doesn't move.
+
+The layout is RE-CENTERED each pass (constraints are translation-invariant → this kills drift).
+Then two deterministic POST-steps: **outputs co-linear** (move every output DOWN to the lowest
+output's y — down only adds below-body slack, so always feasible — then re-space in x to ≥ D);
+and **high-fan-out consts placed** at `leftmost − D`, centered on their consumers (consts are
+excluded from the solve — broadcast fans, not locality).
+
+**Hard constraints** — feasible at every step (feasible seed + boundary-capped moves):
+- **H1 · Minimum distance** — every node pair ≥ `D` apart.
+- **H2 · Outputs below the body** — every output ≥ `D` below every (non-const) body node (a per-node y-bound). Co-linearity is the post-step above, *not* a during-solve constraint.
+- **H3 · No upward edges** — `consumer.y ≥ producer.y + D`. EXEMPT: edges whose producer is an output or a high-fan-out const (dual-role / broadcast).
+
+**Objective:** minimize total edge length (the centroid pull, incl. eq edges so eq endpoints
+pull together). High-fan-out const edges are excluded (broadcast fans, not locality).
+
+**Known limitation (open):** the line-search moves only along the straight centroid ray, and
+swaps don't always free a wedged node, so the descent can settle in a LOCAL minimum (a node
+blocked from its ideal spot by a neighbour it can't route around). Seed quality matters —
+option A's *arbitrary within-rank x-order* can create such blockages. The general fix (future):
+order each rank's nodes by their neighbours' average x (barycentric / crossing-reduction) so
+the seed roughly aligns columns and far fewer blockages form. A size cap (`EDGEMIN_MAX_NODES`)
+skips groups too large for the O(n³)/pass swaps; those keep their dagre layout.
+
+**Secondary refinements (OPTIONS for future use — designed, NOT currently active).** When the
+engine was switched to feasible coordinate descent these were removed; re-add them as *feasible
+moves* (each respecting the hard constraints), not as the old budgeted projection they used to
+be. They realize §12.1 objectives 8/10/11:
+- **Uniform spacing** — drive neighbour edge lengths toward equal (each edge → the mean).
+- **Clearance (count)** — BOOLEAN per node: clear iff ≥ C from every non-incident edge;
+  MINIMIZE the count of not-clear nodes (push each off its nearest edge). A count objective.
+- **Axis-exact edges (count)** — MAXIMIZE the count of edges that are EXACTLY horizontal/vertical:
+  snap edges already near an axis to exact; leave genuine diagonals alone. A count objective.
+  Note: clearance and axis-exact CONFLICT (axis packs rows/columns → node-on-edge; clearance
+  spreads them); run sequentially, order by which count matters more.
+
+Maps to §12.1: 1 → objective; 2 → H2/H3; 9 → const post-step; 10 → in the cost; 8/11 → the
+secondary options above.
 
 ## 13. Motif catalog checklist — every motif MUST define these
 

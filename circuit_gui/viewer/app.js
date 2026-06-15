@@ -866,6 +866,216 @@ function stampMotifLadders() {
   });
 }
 
+// EXPERIMENT (opt-in via window.__layoutMode === "edgemin"; default is the ladder
+// above, kept as the FALLBACK). The generalized GENERIC layout: NO ladder, NO
+// tail-detection / source-pull / eq-align. Pin the boundary (outputs bottom in
+// declaration order, high-fan-out const left); SEED interior
+// from dagre's positions (non-degenerate, deterministic); then alternate
+// (a) edge-length ATTRACTION — each interior node eased toward the average of its
+// wire-neighbors — with (b) a SEPARATION pass that pushes any too-close pair apart,
+// so single-neighbor nodes (e.g. an assert-square whose only neighbor is its lsb)
+// don't collapse onto a pinned node and the chain doesn't crowd. Deterministic
+// (no randomness). Array-based for speed. Lets us compare a principled
+// edge-length-min against the hand-tuned ladder.
+const EDGEMIN_MIN_DIST = 64;     // hard min-distance gap between any two nodes (tunable)
+const EDGEMIN_MAX_NODES = 120;   // skip edge-min on groups larger than this (the O(n³)/iter swaps would be slow); they keep their dagre layout (tunable)
+const EDGEMIN_LEN_BUDGET = 0.05; // PER-secondary: each phase-2 objective may grow length up to +5% above its start (tunable)
+function stampMotifEdgeMin() {
+  if (!cy || !rawGraph) return;
+  cy.nodes().filter((n) => n.isParent()).forEach((g) => {
+    const members = g.children().filter((n) => !n.isParent());
+    if (members.length < 4 || members.length > EDGEMIN_MAX_NODES) return;
+    const ids = new Set(members.map((n) => n.id()));
+    const idx = new Map(members.map((n, i) => [n.id(), i]));
+    const adjI = members.map(() => []);
+    const dir = []; // directed member→member wire edges [producerIdx, consumerIdx]
+    const edgesU = []; // unique member→member edges [i,j] (wire+eq) for uniform + clearance terms
+    cy.edges('[rel = "wire"]').forEach((e) => {
+      const s = e.source().id(), t = e.target().id();
+      if (ids.has(s) && ids.has(t)) { adjI[idx.get(s)].push(idx.get(t)); adjI[idx.get(t)].push(idx.get(s)); dir.push([idx.get(s), idx.get(t)]); edgesU.push([idx.get(s), idx.get(t)]); }
+    });
+    // eq-edges count toward the OBJECTIVE (attraction) but NOT toward no-up (eq is
+    // symmetric, not producer→consumer).
+    cy.edges('[rel = "eq"]').forEach((e) => {
+      const s = e.source().id(), t = e.target().id();
+      if (ids.has(s) && ids.has(t)) { adjI[idx.get(s)].push(idx.get(t)); adjI[idx.get(t)].push(idx.get(s)); edgesU.push([idx.get(s), idx.get(t)]); }
+    });
+    const isOut = (n) => n.data("isOutput") || n.data("kind") === "out";
+    const isConst = (n) => n.data("kind") === "const" && adjI[idx.get(n.id())].length >= 3;
+    const consts = members.filter(isConst);
+    const outputs = members.filter(isOut).sort((a, b) => (a.data("outIndex") ?? 0) - (b.data("outIndex") ?? 0));
+    const outSet = new Set(outputs.map((n) => idx.get(n.id())));
+    const constIdxSet = new Set(consts.map((n) => idx.get(n.id())));
+    // Index lists for the relational boundary constraints (#2, #4). NO node is pinned
+    // to a hand-picked coordinate — the boundary is enforced purely by ordering.
+    const all = members.map((_, i) => i);
+    const nonOutIdx = all.filter((i) => !outSet.has(i));
+    const nonConstIdx = all.filter((i) => !constIdxSet.has(i));
+    // "the body" outputs sit below = every non-output, non-const node (consts are placed
+    // after the solve). Pendant assert-squares ARE included: a SYMMETRIC below-by-D
+    // inequality keeps them ABOVE the row, so they can't drag it (no pendant special-case).
+    const solveBody = nonOutIdx.filter((i) => !constIdxSet.has(i));
+    const D = EDGEMIN_MIN_DIST;
+    const upExempt = (s) => outSet.has(s) || constIdxSet.has(s);
+    // Per-node no-up adjacency: for each non-exempt producer edge p→c, c sits ≥ D below p.
+    const prodOf = members.map(() => []), consOf = members.map(() => []);
+    for (const [p, c] of dir) { if (upExempt(p)) continue; prodOf[c].push(p); consOf[p].push(c); }
+    // SEED = OPTION A — a feasible LAYERED layout built from the graph's OWN structure, so it
+    // works for ANY DAG (not just recognized motifs): rank each node by its longest path over
+    // NON-EXEMPT wire edges (so a dual-role output doesn't drag its consumers below it), force
+    // outputs to a dedicated bottom rank, then place y = rank·ROW, x = (index-in-rank)·COL with
+    // ROW,COL ≥ D. Feasible by construction — no-up & below-body from the ordering, min-distance
+    // from the spacing — so the line-search below only maintains it; the seed needs no repair.
+    const ROW = Math.round(D * 1.3), COL = Math.round(D * 1.3);
+    const rank = new Array(members.length).fill(-1);
+    const rankOf = (i, stk) => {
+      if (rank[i] >= 0) return rank[i];
+      if (stk.has(i)) return 0;               // cycle guard (wire graph is a DAG; this is just safety)
+      stk.add(i);
+      let r = 0;
+      for (const p of prodOf[i]) { const rp = rankOf(p, stk) + 1; if (rp > r) r = rp; }
+      stk.delete(i); rank[i] = r; return r;
+    };
+    for (let i = 0; i < members.length; i++) if (!constIdxSet.has(i)) rankOf(i, new Set());
+    let maxBodyRank = 0;
+    for (const i of solveBody) if (rank[i] > maxBodyRank) maxBodyRank = rank[i];
+    for (const o of outSet) rank[o] = maxBodyRank + 1; // outputs → a dedicated bottom rank
+    const px = new Array(members.length).fill(0), py = new Array(members.length).fill(0);
+    const perRank = new Map();
+    for (let i = 0; i < members.length; i++) {
+      if (constIdxSet.has(i)) continue;
+      const r = rank[i], n = perRank.get(r) || 0; perRank.set(r, n + 1);
+      px[i] = n * COL; py[i] = r * ROW;
+    }
+    // CONSTRAINED OPTIMIZER — FEASIBLE COORDINATE DESCENT. Each non-const node, in turn,
+    // eases toward its neighbor centroid (shorten edges = the objective) and is PLACED only
+    // where it stays feasible. So the layout is always legal and there is NO move-then-correct
+    // overshoot (which caused the earlier artifacts). NO global projection step.
+    // HARD constraints, each a per-node feasibility check on the move:
+    //   #1 min-distance ≥ D from every other node (resolved by X-separation; the chain is
+    //      already Y-separated by no-up, so X handles same-row clusters),
+    //   #2 outputs below the body: every output ≥ D below every (non-const) body node — a
+    //      per-node y-bound (output's floor / body's ceiling),
+    //   #3 no upward edges: consumer ≥ producer + D, EXEMPT edges whose producer is an output
+    //      or a high-fan-out const (dual-role / broadcast).
+    // Two deterministic POST-steps (cosmetic placements, NOT during-solve constraints):
+    //   - outputs CO-LINEAR: after the solve, move every output DOWN to the lowest output's y
+    //     (down only adds below-body slack → always feasible) and re-space in x → a straight
+    //     strict-bottom row,
+    //   - high-fan-out consts placed at (leftmost − D), centered on their consumers (excluded
+    //     from the solve — broadcast fans, not locality).
+    // RE-CENTERED each pass (no absolute anchor → kill the translation-neutral drift).
+    // OBJECTIVE: minimize total edge length (the centroid pull). [Secondaries — axis-exact,
+    // clearance — to be re-added on this feasible-move model.]
+    // Feasible y-band for node i: #3 no-up (below its producers, above its consumers) + #2
+    // outputs-below-body (an output ≥ D below every body node; a body node ≥ D above every output).
+    const yRange = (i) => {
+      let lo = -Infinity, hi = Infinity;
+      for (const p of prodOf[i]) if (py[p] + D > lo) lo = py[p] + D;
+      for (const c of consOf[i]) if (py[c] - D < hi) hi = py[c] - D;
+      if (outSet.has(i)) { for (const n of solveBody) if (py[n] + D > lo) lo = py[n] + D; }
+      else { for (const o of outSet) if (py[o] - D < hi) hi = py[o] - D; }
+      return [lo, hi];
+    };
+    // Edge length of node n placed at (x,y), summed over its (non-const) neighbours, with one
+    // neighbour optionally skipped (a swap partner — its edge is invariant under the swap).
+    const elen = (n, x, y, skip) => {
+      let s = 0;
+      for (const j of adjI[n]) if (j !== skip && !constIdxSet.has(j)) s += Math.hypot(x - px[j], y - py[j]);
+      return s;
+    };
+    // NOTE: no separate feasibility-init — we seed from the LADDER, which is already feasible
+    // (clean rows, min-distance = D, correct ordering). The per-node line-search below only
+    // maintains feasibility; it never needs to repair the seed.
+    // Seed centroid (non-const) — re-center target (kills the translation-neutral drift).
+    let mx0 = 0, my0 = 0; for (const i of nonConstIdx) { mx0 += px[i]; my0 += py[i]; }
+    mx0 /= nonConstIdx.length; my0 /= nonConstIdx.length;
+    for (let it = 0; it < 160; it++) {
+      for (let i = 0; i < members.length; i++) {
+        if (constIdxSet.has(i)) continue; // consts placed after the solve
+        // SWAP move — exchange FULL positions with the node j that most reduces their combined
+        // edge length, if feasible. A swap only relabels two occupied positions, so min-distance
+        // is automatically preserved; the only check is that each node's y is valid in the
+        // other's band (no-up / below-body) — yRange catches no-up- or output-violating swaps.
+        // Accepted only if strictly shorter ⇒ monotone, no oscillation. This is what escapes
+        // ordering local minima: a node can't translate past a min-dist neighbour, but it can
+        // swap with it.
+        {
+          const [loI, hiI] = yRange(i);
+          let bestGain = 0.5, bestJ = -1;
+          for (let j = 0; j < members.length; j++) {
+            if (j === i || constIdxSet.has(j)) continue;
+            if (py[j] < loI || py[j] > hiI) continue;       // i can't sit at j's y
+            const [loJ, hiJ] = yRange(j);
+            if (py[i] < loJ || py[i] > hiJ) continue;        // j can't sit at i's y
+            const gain = (elen(i, px[i], py[i], j) + elen(j, px[j], py[j], i))
+                       - (elen(i, px[j], py[j], j) + elen(j, px[i], py[i], i));
+            if (gain > bestGain) { bestGain = gain; bestJ = j; }
+          }
+          if (bestJ >= 0) {
+            const tx = px[i], ty = py[i];
+            px[i] = px[bestJ]; py[i] = py[bestJ]; px[bestJ] = tx; py[bestJ] = ty;
+          }
+        }
+        // (objective) LINE-SEARCH toward the neighbor centroid: step as far along the ray to
+        // the centroid as stays feasible — capped by the y-band (#2/#3) and by every other
+        // node's min-distance disk (#1). Feasibility holds by construction (never step past a
+        // boundary); a fully boxed node simply doesn't move (f→0).
+        let sx = 0, sy = 0, k = 0;
+        for (const j of adjI[i]) { if (constIdxSet.has(j)) continue; sx += px[j]; sy += py[j]; k++; }
+        if (k) {
+          const dx = sx / k - px[i], dy = sy / k - py[i]; // full vector to the centroid
+          let f = 1; // 1 = reach the centroid; capped below
+          const [lo, hi] = yRange(i);
+          if (dy > 1e-9) f = Math.min(f, (hi - py[i]) / dy);       // moving down → cap at band floor
+          else if (dy < -1e-9) f = Math.min(f, (lo - py[i]) / dy); // moving up → cap at band ceiling
+          const a = dx * dx + dy * dy;
+          if (a > 1e-12) for (let j = 0; j < members.length; j++) {
+            if (j === i || constIdxSet.has(j)) continue;
+            const ex = px[i] - px[j], ey = py[i] - py[j];
+            const b = 2 * (ex * dx + ey * dy), c = ex * ex + ey * ey - D * D;
+            if (b >= 0) continue;                     // moving away from j → can't enter its disk
+            const disc = b * b - 4 * a * c;
+            if (disc <= 0) continue;                  // ray never reaches distance D of j
+            // first f where it would enter j's disk; clamp ≥0 so a pair sitting AT D (the ladder
+            // packs at exactly D) and moving inward is capped to 0 instead of slipping through.
+            const t1 = (-b - Math.sqrt(disc)) / (2 * a), cap = t1 < 0 ? 0 : t1;
+            if (cap < f) f = cap;
+          }
+          if (f > 0) { px[i] += f * dx; py[i] += f * dy; }
+        }
+      }
+      // RE-CENTER (non-const): shift so the body's centroid returns to its seed value.
+      let mx = 0, my = 0; for (const i of nonConstIdx) { mx += px[i]; my += py[i]; }
+      mx /= nonConstIdx.length; my /= nonConstIdx.length;
+      const shx = mx0 - mx, shy = my0 - my;
+      for (const i of nonConstIdx) { px[i] += shx; py[i] += shy; }
+    }
+    // POST-STEP — outputs co-linear at the strict bottom: move every output DOWN to the
+    // lowest output's y (down only adds below-body slack → always feasible; pendant squares
+    // stay above), then re-space them in x to keep ≥ D, preserving left-right order.
+    if (outSet.size) {
+      let lowest = -Infinity; for (const o of outSet) if (py[o] > lowest) lowest = py[o];
+      for (const o of outSet) py[o] = lowest;
+      const ord = [...outSet].sort((a, b) => px[a] - px[b]);
+      for (let pass = 0; pass < 3; pass++) for (let q = 1; q < ord.length; q++)
+        if (px[ord[q]] - px[ord[q - 1]] < D) px[ord[q]] = px[ord[q - 1]] + D;
+    }
+    // PLACE high-fan-out consts AFTER the solve: one min-distance LEFT of the leftmost body
+    // node, vertically centered on their own consumers. Multiple consts step further left.
+    if (consts.length) {
+      let minX = Infinity; for (const i of nonConstIdx) if (px[i] < minX) minX = px[i];
+      consts.forEach((c, s) => {
+        const ci = idx.get(c.id());
+        let sy = 0, k = 0; for (const j of adjI[ci]) { sy += py[j]; k++; }
+        px[ci] = minX - D - s * D;
+        py[ci] = k ? sy / k : my0;
+      });
+    }
+    cy.batch(() => members.forEach((n, i) => n.position({ x: px[i], y: py[i] })));
+  });
+}
+
 // Place every group's output-flagged nodes in a row at the BOTTOM of the group,
 // below its other gates (inputs sit at the top — see alignInputsOutputs). Applies
 // to ALL circuits. For an entangled group like extract_bits (whose output bits
@@ -902,7 +1112,11 @@ function runLayout(fit = true, onDone) {
     wrapWideRanks();
     stampSimdBlocks();
     moveOutputsToGroupBottom();
-    stampMotifLadders(); // canonical motif ladder — runs last so it owns motif members
+    // Default = ladder (the motif fallback). Edge-min is self-contained — it builds its own
+    // feasible layered seed (option A) from each group's structure, for ANY group (not just
+    // registered motifs), so it doesn't need the ladder.
+    if (window.__layoutMode === "edgemin") stampMotifEdgeMin();
+    else stampMotifLadders();
     alignInputsOutputs();
     arrangeBlakeBlocks();
     arrangeBlakeReduction();
@@ -1424,6 +1638,16 @@ function init() {
     cy.zoom({ level: sliderToZoom(+e.target.value), renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 } });
   });
   document.getElementById("collapse-all").addEventListener("click", () => setLevel(0));
+  // Motif layout toggle (experiment): flip the canonical ladder ↔ the generalized
+  // edge-length-min, re-laying out in place. Ladder is the default/fallback.
+  document.getElementById("layout-mode").addEventListener("click", (e) => {
+    window.__layoutMode = window.__layoutMode === "edgemin" ? "ladder" : "edgemin";
+    e.target.textContent = `Layout: ${window.__layoutMode === "edgemin" ? "edge-min" : "ladder"}`;
+    e.target.classList.toggle("active", window.__layoutMode === "edgemin");
+    // runLayout (not rebuild) — the node set is unchanged, so rebuild would
+    // no-op-skip the relayout; we need to actually re-run the motif placement.
+    runLayout(false);
+  });
   document.getElementById("fit").addEventListener("click", () => {
     if (cy) { fitView(); anchorZoom(); }
   });
