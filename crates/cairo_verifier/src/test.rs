@@ -1,4 +1,3 @@
-use std::array;
 use std::collections::HashSet;
 use std::fs::{File, OpenOptions};
 use std::sync::Arc;
@@ -25,6 +24,7 @@ use stwo::core::fri::FriConfig;
 use stwo::core::pcs::PcsConfig;
 use stwo::core::vcs_lifted::blake2_merkle::{Blake2sM31MerkleChannel, Blake2sM31MerkleHasher};
 use stwo_cairo_common::preprocessed_columns::preprocessed_trace::PreProcessedTraceVariant;
+use stwo_cairo_common::prover_types::felt::split_f252;
 use stwo_cairo_dev_utils::utils::get_compiled_cairo_program_path;
 use stwo_cairo_dev_utils::vm_utils::{ProgramType, run_and_adapt};
 use stwo_cairo_prover::prover::{ChannelHash, ProverParameters, prove_cairo};
@@ -56,7 +56,7 @@ pub fn verify_cairo_with_component_set(
     cairo_proof: &CairoProof<Blake2sM31MerkleHasher>,
     component_set: HashSet<&str>,
 ) -> Result<FinalizedContext<QM31>, String> {
-    let FlatClaim { component_enable_bits, component_log_sizes, public_data: _ } =
+    let FlatClaim { component_enable_bits, component_log_sizes: _, public_data } =
         cairo_proof.claim.flatten_claim();
     let components: indexmap::IndexMap<&'static str, Box<dyn CircuitEval<QM31>>> =
         zip_eq(all_components::<QM31>().into_iter(), &component_enable_bits)
@@ -81,18 +81,16 @@ pub fn verify_cairo_with_component_set(
         INTERACTION_POW_BITS,
     );
 
-    let (proof, public_data) =
+    let (proof, serialized_proof_header) =
         prepare_cairo_proof_for_circuit_verifier(cairo_proof, &component_enable_bits);
-    let (mut serialized_aux_data, outputs, program) = public_data.pack_into_u32s();
-    serialized_aux_data.extend(component_log_sizes);
-    let outputs = outputs
-        .chunks_exact(MEMORY_VALUES_LIMBS)
-        .map(|chunk| array::from_fn(|i| M31::from_u32_unchecked(chunk[i])))
+    let outputs = public_data
+        .public_memory
+        .output
+        .iter()
+        .map(|(_id, value)| split_f252(*value))
         .collect_vec();
-    let program = program
-        .chunks_exact(MEMORY_VALUES_LIMBS)
-        .map(|chunk| array::from_fn(|i| M31::from_u32_unchecked(chunk[i])))
-        .collect();
+    let program =
+        public_data.public_memory.program.iter().map(|(_id, value)| split_f252(*value)).collect();
 
     let ppt_root = cairo_proof.extended_stark_proof.proof.commitments[0];
     let verifier_config = CairoVerifierConfig {
@@ -104,7 +102,8 @@ pub fn verify_cairo_with_component_set(
         preprocessed_trace_variant: cairo_proof.preprocessed_trace_variant,
     };
 
-    verify_fixed_cairo_circuit(&verifier_config, proof, serialized_aux_data, outputs)
+    let proof_header_u32s = serialized_proof_header.iter().map(|x| x.0).collect::<Vec<_>>();
+    verify_fixed_cairo_circuit(&verifier_config, proof, proof_header_u32s, outputs)
 }
 
 #[test]
