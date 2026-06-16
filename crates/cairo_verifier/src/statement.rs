@@ -6,6 +6,7 @@ use crate::preprocessed_columns::MAX_SEQUENCE_LOG_SIZE;
 use crate::utils::safe_div;
 use crate::verify::enabled_components;
 use cairo_air::components::memory_address_to_id::MEMORY_ADDRESS_TO_ID_SPLIT;
+use cairo_air::flat_claims::FlatClaim;
 use cairo_air::relations::{
     MEMORY_ADDRESS_TO_ID_RELATION_ID, MEMORY_ID_TO_BIG_RELATION_ID, OPCODES_RELATION_ID,
 };
@@ -95,19 +96,19 @@ pub struct SegmentRange<T> {
 }
 
 // Auxiliary data that is used for verifying an execution of a Cairo program.
-pub struct AuxData<T> {
-    pub initial_state: CasmState<T>,
-    pub final_state: CasmState<T>,
-    pub segment_ranges: [SegmentRange<T>; N_SEGMENTS],
-    pub safe_call_ids: [T; 2],
-    pub output_ids: Vec<T>,
-    pub program_ids: Vec<T>,
+pub struct AuxData {
+    pub initial_state: CasmState<Var>,
+    pub final_state: CasmState<Var>,
+    pub segment_ranges: [SegmentRange<Var>; N_SEGMENTS],
+    pub safe_call_ids: [Var; 2],
+    pub output_ids: Vec<Var>,
+    pub program_ids: Vec<Var>,
     // TODO(ilya): Store the component log sizes as `T` values (e.g. `Vec<T>`) rather than a packed
     // `Simd`, so that `AuxData<M31>` makes sense.
     pub component_log_sizes: Simd,
 }
 
-impl AuxData<Var> {
+impl AuxData {
     /// Parses the auxiliary data from a slice of variables.
     pub fn parse_from_vars(
         data: &[Var],
@@ -150,6 +151,33 @@ impl AuxData<Var> {
     }
 }
 
+// Serialize a claim into the format expected by CairoStatement::new
+pub fn serialize_aux_data(claim: &FlatClaim) -> Vec<M31> {
+    let mut result = vec![];
+
+    for state in [&claim.public_data.initial_state, &claim.public_data.final_state] {
+        result.push(state.pc);
+        result.push(state.ap);
+        result.push(state.fp);
+    }
+
+    let public_memory = &claim.public_data.public_memory;
+
+    for segment in public_memory.public_segments.present_segments().iter() {
+        result.push(segment.start_ptr.id.into());
+        result.push(segment.start_ptr.value.into());
+        result.push(segment.stop_ptr.id.into());
+        result.push(segment.stop_ptr.value.into());
+    }
+
+    result.extend(public_memory.safe_call_ids.iter().map(|id| M31::from(*id)));
+    result.extend(public_memory.output.iter().map(|(id, _value)| M31::from(*id)));
+    result.extend(public_memory.program.iter().map(|(id, _value)| M31::from(*id)));
+    result.extend(claim.component_log_sizes.iter().map(|size| M31::from(*size)));
+
+    result
+}
+
 pub struct CairoStatement<Value: IValue> {
     pub components: IndexMap<&'static str, Box<dyn CircuitEval<Value>>>,
     /// One flag per component in the full list of components (in the order returned by
@@ -158,7 +186,7 @@ pub struct CairoStatement<Value: IValue> {
     /// the AIR can be set dynamically.
     pub enabled_bits: Vec<bool>,
     pub packed_aux_data: Simd,
-    pub aux_data: AuxData<Var>,
+    pub aux_data: AuxData,
     pub program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
     pub packed_outputs: Simd,
     pub preprocessed_root: HashValue<QM31>,
@@ -328,7 +356,7 @@ impl<Value: IValue> CairoStatement<Value> {
             .collect_vec();
         let component_log_sizes = Simd::from_packed(packed_log_sizes, n_components);
 
-        let aux_data = AuxData::<Var>::parse_from_vars(
+        let aux_data = AuxData::parse_from_vars(
             &unpacked_simd[..],
             outputs.len(),
             program.len(),
@@ -618,7 +646,7 @@ pub fn memory_segment_logup_sum(
 
 pub fn public_logup_sum(
     context: &mut Context<impl IValue>,
-    aux_data: &AuxData<Var>,
+    aux_data: &AuxData,
     program: &[[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]],
     outputs: &[[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]],
     interaction_elements: [Var; 2],
