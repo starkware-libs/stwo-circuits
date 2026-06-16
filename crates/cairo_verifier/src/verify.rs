@@ -1,9 +1,10 @@
 use std::sync::Arc;
 
 use crate::all_components::all_components;
-use crate::statement::{AUX_DATA_FIXED_LEN, CairoStatement, MEMORY_VALUES_LIMBS};
+use crate::statement::{
+    AUX_DATA_FIXED_LEN, CairoStatement, MEMORY_VALUES_LIMBS, serialize_cairo_claim,
+};
 use cairo_air::CairoProof;
-use cairo_air::air::PublicData;
 use cairo_air::flat_claims::FlatClaim;
 use circuit_common::N_RESERVED;
 use circuits::blake::HashValue;
@@ -15,7 +16,7 @@ use circuits_stark_verifier::proof::{Proof, ProofConfig, empty_proof};
 use circuits_stark_verifier::proof_from_stark_proof::proof_from_stark_proof;
 use circuits_stark_verifier::verify::verify;
 use indexmap::IndexMap;
-use itertools::{Itertools, zip_eq};
+use itertools::zip_eq;
 use num_traits::Zero;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
@@ -80,7 +81,7 @@ pub struct CairoVerifierConfig {
 pub fn verify_fixed_cairo_circuit(
     verifier_config: &CairoVerifierConfig,
     proof: Proof<QM31>,
-    serialized_aux_data: Vec<u32>,
+    serialized_aux_data: Vec<M31>,
     outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
 ) -> Result<FinalizedContext<QM31>, String> {
     if outputs.len() != verifier_config.n_outputs {
@@ -116,12 +117,11 @@ pub fn enabled_components<V: IValue>(
 pub fn build_fixed_cairo_circuit(
     verifier_config: &CairoVerifierConfig,
     proof: Proof<QM31>,
-    serialized_aux_data: Vec<u32>,
+    serialized_aux_data: Vec<M31>,
     outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
 ) -> FinalizedContext<QM31> {
     let config = &verifier_config.proof_config;
 
-    let serialized_aux_data = serialized_aux_data.iter().map(|u32| M31::from(*u32)).collect_vec();
     let mut context = Context::new(N_RESERVED);
     let statement = CairoStatement::<QM31>::new(
         &mut context,
@@ -171,11 +171,11 @@ pub fn build_cairo_verifier_circuit(
     context.finalize(false)
 }
 
-/// Converts a [CairoProof] to a [Proof] and [PublicData] for the circuit verifier.
+/// Converts a [CairoProof] to a [Proof] and serialized aux data for the circuit verifier.
 pub fn prepare_cairo_proof_for_circuit_verifier(
     proof: &CairoProof<Blake2sM31MerkleHasher>,
     enabled_bits: &[bool],
-) -> (Proof<QM31>, PublicData) {
+) -> (Proof<QM31>, Vec<M31>) {
     let CairoProof {
         claim,
         interaction_pow,
@@ -185,13 +185,13 @@ pub fn prepare_cairo_proof_for_circuit_verifier(
         preprocessed_trace_variant,
     } = proof;
 
-    let FlatClaim { component_enable_bits, component_log_sizes, public_data } =
-        claim.flatten_claim();
+    let flat_claim = claim.flatten_claim();
+    let FlatClaim { component_enable_bits, component_log_sizes, public_data: _ } = &flat_claim;
     let claimed_sums = interaction_claim.flatten_interaction_claim();
 
     let components = all_components::<QM31>()
         .into_iter()
-        .zip(&component_enable_bits)
+        .zip(component_enable_bits)
         .filter_map(|(component, enable)| enable.then_some(component))
         .collect::<IndexMap<_, _>>();
 
@@ -214,5 +214,7 @@ pub fn prepare_cairo_proof_for_circuit_verifier(
         *channel_salt,
     );
 
-    (proof, public_data)
+    let proof_header = serialize_cairo_claim(&flat_claim);
+
+    (proof, proof_header)
 }
