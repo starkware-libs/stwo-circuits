@@ -63,8 +63,20 @@ pub fn eq<Value: IValue>(context: &mut Context<Value>, a: Var, b: Var) {
     context.circuit.eq.push(Eq { in0: a.idx, in1: b.idx });
 }
 
-/// Adds an addition gate to the circuit, and returns the output variable.
+/// Returns a variable constrained to hold the result of `a + b`.
+///
+/// Typically adds an addition gate to the circuit, but as an optimization, if either operand is the
+/// canonical zero variable, no gate is added and the other operand is returned directly.
 pub fn add(context: &mut Context<impl IValue>, a: Var, b: Var) -> Var {
+    let zero = context.zero();
+    // Note that if both are zero, we return zero.
+    if a.idx == zero.idx {
+        return b;
+    }
+    if b.idx == zero.idx {
+        return a;
+    }
+
     let out = context.new_var(context.get(a) + context.get(b));
     add_into(context, a, b, out);
     out
@@ -91,8 +103,26 @@ pub fn sub_into(context: &mut Context<impl IValue>, a: Var, b: Var, out: Var) {
     context.circuit.sub.push(Sub { in0: a.idx, in1: b.idx, out: out.idx });
 }
 
-/// Adds a multiplication gate to the circuit, and returns the output variable.
+/// Returns a variable constrained to hold the result of `a * b`.
+///
+/// Typically adds a multiplication gate to the circuit, but as an optimization, no gate is added if
+/// either operand is the canonical zero variable (the canonical zero is returned) or the canonical
+/// one variable (the other operand is returned).
 pub fn mul(context: &mut Context<impl IValue>, a: Var, b: Var) -> Var {
+    let zero = context.zero();
+    if a.idx == zero.idx || b.idx == zero.idx {
+        return zero;
+    }
+
+    let one = context.one();
+    // Note that if both are one, we return one.
+    if a.idx == one.idx {
+        return b;
+    }
+    if b.idx == one.idx {
+        return a;
+    }
+
     let out = context.new_var(context.get(a) * context.get(b));
     mul_into(context, a, b, out);
     out
