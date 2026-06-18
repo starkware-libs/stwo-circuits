@@ -30,7 +30,7 @@ impl<Value: IValue> Guess<Value> for AuthPath<Value> {
 }
 
 /// Represents the collection of authentication paths for a set of trees.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct AuthPaths<T> {
     // For each tree, for each query, the authentication path.
     pub data: Vec<Vec<AuthPath<T>>>,

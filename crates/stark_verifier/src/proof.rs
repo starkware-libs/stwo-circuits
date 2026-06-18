@@ -376,7 +376,7 @@ impl<Value: IValue> Guess<Value> for InteractionAtOods<Value> {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Proof<T> {
     pub channel_salt: T,
 
