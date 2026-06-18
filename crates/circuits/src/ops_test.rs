@@ -206,7 +206,12 @@ fn test_stats() {
     let stats = Stats { equals: 1, ..stats };
     assert_eq!(context.stats, stats);
 
+    // `0 + 0` is elided by the add-zero optimization, so it creates no gate.
     eval!(&mut context, (0) + (0));
+    assert_eq!(context.stats, stats);
+
+    // A non-trivial add creates a gate and bumps the stat.
+    eval!(&mut context, (1) + (1));
     let stats = Stats { add: 1, ..stats };
     assert_eq!(context.stats, stats);
 
