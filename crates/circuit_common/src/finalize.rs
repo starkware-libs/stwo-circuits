@@ -10,9 +10,10 @@ use rand_chacha::rand_core::{RngCore, SeedableRng};
 fn pad_qm31_ops(context: &mut Context<impl IValue>, target: usize) {
     let qm31_ops_n_rows = qm31_ops_n_rows(&context.circuit);
     assert!(qm31_ops_n_rows <= target);
-    let zero = context.zero();
+    let one = context.one();
     for _ in qm31_ops_n_rows..target {
-        eval!(context, (zero) + (zero));
+        // Use 1 + 1 to work around + zero optimization.
+        eval!(context, (one) + (one));
     }
 }
 
