@@ -116,9 +116,6 @@ pub fn blake<Value: IValue>(
     // Sanity check: check the number of bytes is consistent with the number of [QM31] values.
     assert_eq!(input.len(), n_bytes.div_ceil(16));
 
-    const BLOCK_BYTES: usize = 64;
-    const WORDS_PER_BLOCK: usize = 16;
-
     // Unpack each QM31 message chunk into four u32 limbs.
     let mut message_u32s: Vec<Var> = Vec::new();
     for &var in input {
@@ -128,6 +125,38 @@ pub fn blake<Value: IValue>(
             message_u32s.push(m31_to_u32(ctx, comp));
         }
     }
+
+    let h = blake_u32s(ctx, message_u32s, n_bytes);
+
+    let c_2_pow_16 = ctx.constant(M31::from(1u32 << 16).into());
+    let reduced: [Var; 8] = std::array::from_fn(|i| {
+        let h_simd = Simd::from_packed(vec![h[i]], 2);
+        let low = Simd::unpack_idx(ctx, &h_simd, 0);
+        let high = Simd::unpack_idx(ctx, &h_simd, 1);
+        eval!(ctx, (low) + ((high) * (c_2_pow_16)))
+    });
+
+    let out0 = from_partial_evals(ctx, [reduced[0], reduced[1], reduced[2], reduced[3]]);
+    let out1 = from_partial_evals(ctx, [reduced[4], reduced[5], reduced[6], reduced[7]]);
+
+    HashValue(out0, out1)
+}
+
+/// Adds the Blake2s block-compression gates to the circuit and returns the eight `h` state words
+/// *before* the final 16-bit-limb reduction.
+///
+/// Each entry of `message_u32s` is a single message word encoded as QM31 `(low_u16, high_u16, 0,
+/// 0)`. The vector is zero-padded up to a whole number of 64-byte blocks.
+///
+/// NOTE: If the number of bytes is not a multiple of 4, the caller must make sure that the
+/// remaining bytes of the last word are zero.
+pub fn blake_u32s<Value: IValue>(
+    ctx: &mut Context<Value>,
+    mut message_u32s: Vec<Var>,
+    n_bytes: usize,
+) -> [Var; 8] {
+    const BLOCK_BYTES: usize = 64;
+    const WORDS_PER_BLOCK: usize = 16;
 
     let n_blocks = std::cmp::max(1, n_bytes.div_ceil(BLOCK_BYTES));
     let total_words = n_blocks * WORDS_PER_BLOCK;
@@ -192,19 +221,8 @@ pub fn blake<Value: IValue>(
         }
     }
 
-    let c_2_pow_16 = ctx.constant(M31::from(1u32 << 16).into());
-    let reduced: [Var; 8] = std::array::from_fn(|i| {
-        let h_simd = Simd::from_packed(vec![h[i]], 2);
-        let low = Simd::unpack_idx(ctx, &h_simd, 0);
-        let high = Simd::unpack_idx(ctx, &h_simd, 1);
-        eval!(ctx, (low) + ((high) * (c_2_pow_16)))
-    });
-
-    let out0 = from_partial_evals(ctx, [reduced[0], reduced[1], reduced[2], reduced[3]]);
-    let out1 = from_partial_evals(ctx, [reduced[4], reduced[5], reduced[6], reduced[7]]);
-
     ctx.stats.blake_updates += n_blocks;
-    HashValue(out0, out1)
+    h
 }
 
 /// Adds a TripleXor gate to the circuit: XOR three u32 values encoded as QM31 `(u16, u16, 0, 0)`
