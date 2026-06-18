@@ -27,7 +27,7 @@ impl FriConfig {
 }
 
 /// Represents the information for the FRI commitment phase of the proof.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct FriCommitProof<T> {
     pub layer_commitments: Vec<HashValue<T>>,
     pub last_layer_coefs: Vec<T>,
@@ -59,7 +59,7 @@ impl<Value: IValue> Guess<Value> for FriCommitProof<Value> {
 ///
 /// For each FRI layer, for each query, the values of the layer polynomial on the FRI witness domain
 /// (either a circle domain or a coset), containing that query.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct FriWitness<T>(pub Vec<Vec<Vec<T>>>);
 
 impl<Value: IValue> Guess<Value> for FriWitness<Value> {
@@ -82,7 +82,7 @@ impl<T> FriWitness<T> {
 }
 
 /// Represents the information required to verify a FRI proof.
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct FriProof<T> {
     /// Information regarding the FRI commitment phase.
     pub commit: FriCommitProof<T>,
