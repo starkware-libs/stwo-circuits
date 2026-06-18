@@ -50,10 +50,9 @@ pub struct Context<Value: IValue> {
     /// Counters tracking how many of each gate/operation were emitted while building the circuit.
     ///
     /// NOTE: These stats are independent of the arithmetization of the circuit — they count
-    /// circuit-level operations, not AIR component rows, and do NOT account for the extra gates
-    /// that constant generation/finalization appends (e.g. the padding gates added by
-    /// `finalize_context` and the Add/Mul gates `finalize_constants` emits to yield and
-    /// constrain each circuit constant). Do not rely on them to size AIR components.
+    /// circuit-level operations, not AIR component rows, and do NOT account for all the extra
+    /// gates that finalization appends (e.g. the padding gates added by `finalize_context`).
+    /// Do not rely on them to size AIR components.
     // TODO(Ilya): Consider removing `stats` entirely.
     pub stats: Stats,
     /// Set of variables that were marked by the code as "unused".
