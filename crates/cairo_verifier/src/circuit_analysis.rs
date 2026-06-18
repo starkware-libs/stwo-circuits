@@ -1,10 +1,10 @@
 //! Analyzes the Cairo-verifier [`circuits::circuit::Circuit`].
 
-use circuits::context::Var;
 use hashbrown::{HashMap, HashSet};
 use std::ops::Deref;
 
-use circuits::circuit::Circuit;
+use circuits::circuit::{BlakeGGate, Circuit};
+use circuits::context::Var;
 use circuits::ivalue::{IValue, qm31_from_u32s};
 use num_traits::{One, Zero};
 use stwo::core::fields::qm31::QM31;
@@ -46,6 +46,12 @@ struct CircuitEx<'a> {
     producers: HashMap<usize, (Op, usize, usize)>,
     /// Guessed (unconstrained) variables, yielded by the trivial gate `[v] = [v] + [0]`.
     guessed: HashSet<usize>,
+    /// Map `out` -> `in` where `[out] = m31_to_u32([in])`.
+    m31_out_to_in: HashMap<usize, usize>,
+    // blake output -> index into `circuit.blake_g_gate`
+    blake_of: HashMap<usize, usize>,
+    // TripleXor output -> index into `circuit.triple_xor`.
+    xor_of: HashMap<usize, usize>,
 }
 
 impl Deref for CircuitEx<'_> {
@@ -53,6 +59,11 @@ impl Deref for CircuitEx<'_> {
     fn deref(&self) -> &Circuit {
         self.circuit
     }
+}
+
+/// The six inputs of a Blake G gate, in `(a, b, c, d, f0, f1)` order.
+fn blake_gate_inputs(g: &BlakeGGate) -> [usize; 6] {
+    [g.input_a, g.input_b, g.input_c, g.input_d, g.input_f0, g.input_f1]
 }
 
 /// Records one arithmetic gate `[out] = [a] op [b]`.
@@ -73,6 +84,9 @@ fn build_analysis(circuit: &Circuit) -> CircuitEx<'_> {
         arith: Vec::new(),
         producers: HashMap::new(),
         guessed: HashSet::new(),
+        m31_out_to_in: HashMap::new(),
+        blake_of: HashMap::new(),
+        xor_of: HashMap::new(),
     };
 
     for g in &circuit.add {
@@ -86,6 +100,20 @@ fn build_analysis(circuit: &Circuit) -> CircuitEx<'_> {
     }
     for g in &circuit.pointwise_mul {
         add_arith(&mut c, Op::Pointwise, g.in0, g.in1, g.out);
+    }
+
+    for g in &circuit.m31_to_u32 {
+        c.m31_out_to_in.insert(g.out, g.input);
+    }
+
+    for (i, g) in circuit.blake_g_gate.iter().enumerate() {
+        for o in [g.out_a, g.out_b, g.out_c, g.out_d] {
+            c.blake_of.insert(o, i);
+        }
+    }
+
+    for (i, g) in circuit.triple_xor.iter().enumerate() {
+        c.xor_of.insert(g.out, i);
     }
 
     c
@@ -162,15 +190,9 @@ fn propagate_constants(c: &CircuitEx) -> HashMap<usize, QM31> {
 #[derive(Clone, Copy)]
 enum Idiom {
     // X = 1/Y, from the `div(1, Y)` idiom.
-    Inverse {
-        #[expect(unused)]
-        y: usize,
-    },
+    Inverse { y: usize },
     // A bit of `root`'s binary decomposition.
-    Bit {
-        #[expect(unused)]
-        root: usize,
-    },
+    Bit { root: usize },
 }
 
 /// Returns every bit-constrained variable: variable with a constraint forcing `v == v²`
@@ -291,8 +313,217 @@ fn detect_inverses(
     }
 }
 
+/// Variables reachable from `root` through `+`/`-`/`*`, skipping the indeterminate α and constants.
+/// With `add_intermediates`, every reachable variable is returned; otherwise returns only the
+/// leaves.
+fn add_mul_cone(
+    c: &CircuitEx,
+    const_values: &HashMap<usize, QM31>,
+    root: usize,
+    add_intermediates: bool,
+    int_alpha: usize,
+) -> HashSet<usize> {
+    let mut res = HashSet::new();
+    let mut seen = HashSet::new();
+    let mut stack = vec![root];
+    while let Some(v) = stack.pop() {
+        if v == int_alpha || const_values.contains_key(&v) {
+            continue;
+        }
+        let is_first_visit = seen.insert(v);
+        if !is_first_visit {
+            continue;
+        }
+        // `v != a` keeps a guessed leaf `[v] = [v] + [0]` from expanding into itself.
+        if let Some(&(Op::Add | Op::Sub | Op::Mul, a, b)) = c.producers.get(&v)
+            && v != a
+        {
+            stack.push(a);
+            stack.push(b);
+            if add_intermediates {
+                res.insert(v);
+            }
+        } else {
+            // A leaf.
+            res.insert(v);
+        }
+    }
+    res
+}
+
+// Groundedness.
+
+/// Computes groundedness against a challenge. A value is considered grounded to a challenge if it
+/// is in the challenge's dependency closure or it is a deterministic function of such values.
+/// The challenge is not considered grounded to itself.
+struct Ground<'a> {
+    c: &'a CircuitEx<'a>,
+    const_values: &'a HashMap<usize, QM31>,
+    idiom: &'a HashMap<usize, Idiom>,
+}
+
+impl Ground<'_> {
+    /// Returns variables that `root` depends on, including `root`.
+    /// Note that it's possible that only a subset of the variables will be returned.
+    fn closure(&self, root: usize) -> HashSet<usize> {
+        let mut seen = HashSet::new();
+        let mut stack = vec![root];
+        while let Some(v) = stack.pop() {
+            let is_first_visit = seen.insert(v);
+            if is_first_visit {
+                stack.extend(self.gate_inputs(v).unwrap_or_default());
+            }
+        }
+        seen
+    }
+
+    /// Returns the input variables of the gate that produces `v`, or `None` if not known.
+    /// These inputs are considered grounded to `v`.
+    fn gate_inputs(&self, v: usize) -> Option<Vec<usize>> {
+        if let Some(&(_, a, b)) = self.c.producers.get(&v) {
+            Some(vec![a, b])
+        } else if let Some(&i) = self.c.m31_out_to_in.get(&v) {
+            Some(vec![i])
+        } else if let Some(&bi) = self.c.blake_of.get(&v) {
+            Some(blake_gate_inputs(&self.c.blake_g_gate[bi]).to_vec())
+        } else if let Some(&xi) = self.c.xor_of.get(&v) {
+            let g = &self.c.triple_xor[xi];
+            Some(vec![g.input_a, g.input_b, g.input_c])
+        } else {
+            None
+        }
+    }
+
+    /// Returns a list of variables that `v` deterministically depends on, or `None` on failure.
+    /// If every one of them is grounded, so is `v`.
+    ///
+    /// This differs from [`Self::gate_inputs`] for idioms. For example, a bit is grounded once its
+    /// root is, yet if the bit is grounded it doesn't follow that the root is.
+    /// A guess is considered a leaf.
+    fn grounding_inputs(&self, v: usize) -> Option<Vec<usize>> {
+        match self.idiom.get(&v) {
+            Some(Idiom::Bit { root }) => Some(vec![*root]),
+            Some(Idiom::Inverse { y }) => Some(vec![*y]),
+            None => {
+                if self.c.guessed.contains(&v) {
+                    None
+                } else {
+                    self.gate_inputs(v)
+                }
+            }
+        }
+    }
+
+    /// A memo for [`Self::grounded`] for a single challenge: its dependency closure and
+    /// the constants are grounded (`true`); the challenge itself is not (`false`).
+    fn init_memo(&self, challenge: usize) -> HashMap<usize, bool> {
+        let closure = self.closure(challenge);
+        let mut memo: HashMap<usize, bool> = closure.iter().map(|&v| (v, true)).collect();
+        memo.extend(self.const_values.keys().map(|&v| (v, true)));
+        memo.insert(challenge, false);
+        memo
+    }
+
+    /// Whether `root` is a deterministic function of the challenge's dependencies. `memo` must be
+    /// seeded by [`Self::init_memo`]; it caches results for that challenge across calls.
+    fn grounded(&self, root: usize, memo: &mut HashMap<usize, bool>) -> bool {
+        let mut stack = vec![root];
+        while let Some(&v) = stack.last() {
+            if memo.contains_key(&v) {
+                stack.pop();
+                continue;
+            }
+            let Some(inputs) = self.grounding_inputs(v) else {
+                memo.insert(v, false);
+                stack.pop();
+                continue;
+            };
+            // Check if there are children that were not resolved yet.
+            let pending: Vec<usize> =
+                inputs.iter().copied().filter(|i| !memo.contains_key(i)).collect();
+            if pending.is_empty() {
+                // All children were resolved. Update the status of `v`.
+                let grounded = inputs.iter().all(|i| memo[i]);
+                memo.insert(v, grounded);
+                stack.pop();
+            } else {
+                // Keep v in the stack. We will return to it once all its children were resolved.
+                stack.extend(pending);
+            }
+        }
+        memo[&root]
+    }
+
+    /// Whether every value in `vars` is grounded to the challenge (and there is at least one).
+    fn all_grounded(&self, vars: &[usize], memo: &mut HashMap<usize, bool>) -> bool {
+        !vars.is_empty() && vars.iter().all(|&v| self.grounded(v, memo))
+    }
+}
+
+// Sum tree and classification.
+
+/// Expands the add/sub tree at `root` into its leaf summands (left to right). A leaf is any
+/// variable not produced by a genuine `+`/`-` gate; zero-valued leaves are dropped.
+fn find_summands(c: &CircuitEx, const_values: &HashMap<usize, QM31>, root: usize) -> Vec<usize> {
+    let mut summands = Vec::new();
+    let mut stack = vec![root];
+    while let Some(v) = stack.pop() {
+        if let Some(&(Op::Add | Op::Sub, a, b)) = c.producers.get(&v)
+            && v != a
+            && v != b
+        {
+            // Push `b` first, so the left child expands first.
+            stack.push(b);
+            stack.push(a);
+        } else if const_values.get(&v) != Some(&QM31::zero()) {
+            // A non-zero leaf.
+            summands.push(v);
+        }
+    }
+    summands
+}
+
+/// Validates a logup summand `s`, asserting the expected groundedness of its values.
+///
+/// Arguments:
+/// - `composition_vars`: the `composition_eval` cone.
+/// - `int_z`: the `interaction_z` variable index.
+/// - `int_z_memo`: Memo for [`Ground::grounded`] for `int_z`.
+/// - `composition_coef_memo`: Memo for [`Ground::grounded`] for `composition_coef`.
+fn validate_logup_summand(
+    ground: &Ground,
+    int_z: usize,
+    int_z_memo: &mut HashMap<usize, bool>,
+    composition_coef_memo: &mut HashMap<usize, bool>,
+    composition_vars: &HashSet<usize>,
+    s: usize,
+) {
+    let c = ground.c;
+
+    // Case I: s = 1 / (X - int_z).
+    if let Some(&Idiom::Inverse { y: denom }) = ground.idiom.get(&s)
+        && let Some(&(Op::Sub, x, y)) = c.producers.get(&denom)
+    {
+        assert!(y == int_z, "Summand [{s}] is 1/(X-Y) with Y=[{y}], expected int_z=[{int_z}].");
+        // Check that X is grounded to int_z.
+        assert!(ground.all_grounded(&[x], int_z_memo), "Summand [{s}] = 1 / ([{x}] - [{y}]) is not grounded.");
+        return;
+    }
+
+    // Case II: s is a guess.
+    if c.guessed.contains(&s) {
+        // Make sure s participates in the constraints.
+        assert!(composition_vars.contains(&s));
+        // Make sure s is grounded to composition_coef.
+        assert!(ground.all_grounded(&[s], composition_coef_memo));
+        return;
+    }
+
+    panic!("Summand [{s}] is not a valid logup summand.");
+}
+
 /// Analyzes the circuit and writes the classified logup-sum summands to `summands.txt`.
-pub fn analyze(circuit: &Circuit, _debug_info: &HashMap<String, Var>) {
+pub fn analyze(circuit: &Circuit, debug_info: &HashMap<String, Var>) {
     let c = build_analysis(circuit);
     let const_values = propagate_constants(&c);
 
@@ -301,5 +532,30 @@ pub fn analyze(circuit: &Circuit, _debug_info: &HashMap<String, Var>) {
     detect_bits(&c, &const_values, &mut idiom);
     detect_inverses(&c, &const_values, &mut idiom);
 
-    // TODO(lior): complete the test.
+    let ground = Ground { c: &c, const_values: &const_values, idiom: &idiom };
+
+    // Seed each challenge's `grounded` cache with its dependency closure.
+    let int_z = debug_info["interaction_z"].idx;
+    let mut int_z_memo = ground.init_memo(int_z);
+
+    let composition_coef = debug_info["composition_polynomial_coeff"].idx;
+    let mut composition_coef_memo = ground.init_memo(composition_coef);
+
+    let logup_sum = debug_info["logup_sum"].idx;
+    let summands = find_summands(&c, &const_values, logup_sum);
+
+    let composition_eval = debug_info["composition_eval"].idx;
+    let int_alpha = debug_info["interaction_alpha"].idx;
+    let composition_vars = add_mul_cone(&c, &const_values, composition_eval, true, int_alpha);
+
+    for &s in &summands {
+        validate_logup_summand(
+            &ground,
+            int_z,
+            &mut int_z_memo,
+            &mut composition_coef_memo,
+            &composition_vars,
+            s,
+        );
+    }
 }
