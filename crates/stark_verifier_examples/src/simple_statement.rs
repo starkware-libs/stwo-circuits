@@ -181,8 +181,8 @@ impl<Value: IValue> Statement<Value> for SimpleStatement<Value> {
 
     fn get_preprocessed_root(&self, context: &mut Context<Value>) -> ReducedHashValue<Var> {
         ReducedHashValue(
-            context.constant(qm31_from_u32s(709984722, 1794174263, 414815104, 733903951)),
-            context.constant(qm31_from_u32s(1522975159, 1233861941, 1489692661, 512084637)),
+            context.constant(qm31_from_u32s(1715533920, 602108671, 544739379, 1352385240)),
+            context.constant(qm31_from_u32s(648595291, 1463553848, 1627440248, 306213366)),
         )
     }
 }

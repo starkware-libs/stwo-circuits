@@ -1336,6 +1336,7 @@ dependencies = [
  "cairo-air",
  "circuit-cairo-verifier",
  "circuit-common",
+ "circuit-prover",
  "circuit-verifier",
  "circuits",
  "circuits-stark-verifier",
@@ -1433,6 +1434,7 @@ dependencies = [
 name = "circuits-stark-verifier-examples"
 version = "0.1.0"
 dependencies = [
+ "circuit-prover",
  "circuit-serialize",
  "circuits",
  "circuits-stark-verifier",
