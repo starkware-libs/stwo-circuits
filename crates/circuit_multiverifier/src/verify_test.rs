@@ -68,7 +68,7 @@ fn test_regression_cairo_and_multiverifier_component_log_sizes() {
     let multiverifier_component_sizes = compute_padded_sizes(&novalue_multiverifier_context);
     let expected_sizes = ComponentSizes {
         eq: 1 << 15,
-        qm31_ops: 1 << 21,
+        qm31_ops: 1 << 20,
         m31_to_u32: 1 << 18,
         triple_xor: 1 << 17,
         blake_g_gate: 1 << 20,

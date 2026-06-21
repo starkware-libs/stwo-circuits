@@ -20,7 +20,7 @@ use itertools::zip_eq;
 use num_traits::Zero;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
-use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
+use stwo::core::vcs_lifted::blake2_merkle::Blake2sMerkleHasher;
 use stwo_cairo_common::preprocessed_columns::preprocessed_trace::PreProcessedTraceVariant;
 
 /// Logup security is defined by the `QM31` space (~124 bits) + `INTERACTION_POW_BITS` -
@@ -40,16 +40,16 @@ pub const INTERACTION_POW_BITS: u32 = 24;
 pub fn get_preprocessed_root(lifting_log_size: u32) -> ReducedHashValue<QM31> {
     let root = match lifting_log_size {
         21 => [
-            1318760383, 1968650180, 1092022781, 246736179, 768637788, 1782650371, 1631388100,
-            1492376542,
+            1712426246, 3975215561, 3393287716, 971513401, 2481352801, 3435847491, 949366627,
+            3962244455,
         ],
         22 => [
-            2019947850, 1578675143, 1485624323, 207118193, 636087281, 1354843492, 2101876892,
-            721181021,
+            1339935525, 1265118357, 1284994137, 2854722301, 3594581873, 3353940013, 4006659842,
+            3223691736,
         ],
         23 => [
-            403551725, 1198969136, 1544105195, 2074510234, 916191583, 1646435042, 649872328,
-            1026506463,
+            2271225220, 1855536874, 1802924152, 654143153, 3715309987, 1517124483, 206973071,
+            750452746,
         ],
         _ => panic!("Unsupported lifting_log_size: {lifting_log_size}"),
     };
@@ -173,7 +173,7 @@ pub fn build_cairo_verifier_circuit(
 
 /// Converts a [CairoProof] to a [Proof] and serialized aux data for the circuit verifier.
 pub fn prepare_cairo_proof_for_circuit_verifier(
-    proof: &CairoProof<Blake2sM31MerkleHasher>,
+    proof: &CairoProof<Blake2sMerkleHasher>,
     enabled_bits: &[bool],
 ) -> (Proof<QM31>, Vec<M31>) {
     let CairoProof {
