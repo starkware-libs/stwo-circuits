@@ -101,14 +101,15 @@ const G_STATE_INDICES: [(usize, usize, usize, usize); 8] = [
     (3, 4, 9, 14),
 ];
 
-/// Adds a Blake2s hash using decomposed gates (`m31_to_u32`, `blake_g_gate`, `triple_xor`) to the
-/// circuit, and returns the two output variables as [`HashValue`].
+/// Adds gates to compute the Blake2s hash with the 8 u32 limbs of the output reduced modulo M31.
+/// The input message is given as a sequence of QM31 values, and the two output variables are
+/// returned as [`HashValue`].
 ///
 /// NOTE: If the number of bytes is not a multiple of 16, the caller must make sure that the
 /// remaining bytes are zero.
 /// For example, if `n_bytes` is 4, only the first coordinate of the [`QM31`] may be non-zero.
 /// If `n_bytes` is 1, that coordinate must be < 256.
-pub fn blake<Value: IValue>(
+pub fn blake2s_m31<Value: IValue>(
     ctx: &mut Context<Value>,
     input: &[Var],
     n_bytes: usize,

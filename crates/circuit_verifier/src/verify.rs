@@ -1,6 +1,6 @@
 use circuit_common::N_RESERVED;
 use circuits::{
-    blake::{HashValue, blake},
+    blake::{HashValue, blake2s_m31},
     context::{Context, FinalizedContext},
     ivalue::IValue,
     ops::Guess,
@@ -67,7 +67,7 @@ pub fn build_verification_circuit<Value: IValue>(
         .into_iter()
         .chain(statement.get_output_values().iter().copied())
         .collect();
-    let output_hash = blake(&mut context, &output_preimage, 16 * output_preimage.len());
+    let output_hash = blake2s_m31(&mut context, &output_preimage, 16 * output_preimage.len());
     // Copy the resulting hash into the wires 3 and 4, and mark them as outputs.
     context.set_outputs(&[output_hash.0, output_hash.1]);
 

@@ -10,7 +10,7 @@ use circuit_verifier::statement::{
     INTERACTION_POW_BITS, all_circuit_components, circuit_component_log_sizes,
 };
 use circuit_verifier::verify::{CircuitConfig, verify_circuit};
-use circuits::blake::{blake, blake_g_gate, m31_to_u32, triple_xor};
+use circuits::blake::{blake_g_gate, blake2s_m31, m31_to_u32, triple_xor};
 use circuits::context::Var;
 use circuits::eval;
 use circuits::ivalue::NoValue;
@@ -73,7 +73,7 @@ pub fn build_blake_context() -> Context<QM31> {
         ));
     }
     for _ in 0..n_blakes {
-        let output = blake(&mut context, &inputs, n_bytes as usize);
+        let output = blake2s_m31(&mut context, &inputs, n_bytes as usize);
         eval!(&mut context, (output.0) + (output.1));
     }
 

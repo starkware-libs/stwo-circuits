@@ -1,7 +1,7 @@
 use stwo::core::circle::CirclePoint;
 use stwo::core::fields::m31::MODULUS_BITS;
 
-use circuits::blake::{HashValue, blake};
+use circuits::blake::{HashValue, blake2s_m31};
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::extract_bits::extract_bits;
@@ -53,7 +53,11 @@ impl Channel {
 
     /// Mixes the given root into the channel's digest.
     pub fn mix_commitment(&mut self, context: &mut Context<impl IValue>, root: HashValue<Var>) {
-        self.update_digest(blake(context, &[self.digest.0, self.digest.1, root.0, root.1], 16 * 4));
+        self.update_digest(blake2s_m31(
+            context,
+            &[self.digest.0, self.digest.1, root.0, root.1],
+            16 * 4,
+        ));
     }
 
     /// Mixes the given list of `QM31` values into the channel.
@@ -64,7 +68,7 @@ impl Channel {
     ) {
         let mut blake_input = vec![self.digest.0, self.digest.1];
         blake_input.extend(values);
-        self.update_digest(blake(context, &blake_input, 16 * blake_input.len()));
+        self.update_digest(blake2s_m31(context, &blake_input, 16 * blake_input.len()));
     }
 
     /// Draws one `QM31` random value from the channel.
@@ -93,7 +97,8 @@ impl Channel {
             context.constant(qm31_from_u32s(self.n_draws.try_into().unwrap(), 0, 0, 0));
         // Note that we add a zero byte for domain separation between generating randomness and
         // mixing a single u32.
-        let res = blake(context, &[self.digest.0, self.digest.1, n_draws_var], 16 + 16 + 4 + 1);
+        let res =
+            blake2s_m31(context, &[self.digest.0, self.digest.1, n_draws_var], 16 + 16 + 4 + 1);
         self.n_draws += 1;
         [res.0, res.1]
     }
@@ -121,7 +126,7 @@ impl Channel {
             self.digest.1,
             context.constant(qm31_from_u32s(n_bits, 0, 0, 0)),
         ];
-        let prefixed_digest = blake(context, &input, 52);
+        let prefixed_digest = blake2s_m31(context, &input, 52);
 
         // Check that `nonce` consists of only the first two M31 elements.
         let nonce_high_mask = context.constant(qm31_from_u32s(0, 0, 1, 1));
@@ -130,7 +135,7 @@ impl Channel {
 
         // Compute `H(prefixed_digest, nonce)`.
         let input = [prefixed_digest.0, prefixed_digest.1, nonce];
-        let HashValue(res0, res1) = blake(context, &input, 40);
+        let HashValue(res0, res1) = blake2s_m31(context, &input, 40);
         context.mark_as_unused(res1);
 
         // Take the first word.
@@ -148,6 +153,6 @@ impl Channel {
         }
 
         // Mix nonce into the channel.
-        self.update_digest(blake(context, &[self.digest.0, self.digest.1, nonce], 40));
+        self.update_digest(blake2s_m31(context, &[self.digest.0, self.digest.1, nonce], 40));
     }
 }

@@ -6,7 +6,7 @@ use stwo::core::vcs_lifted::verifier::PACKED_LEAF_SIZE;
 use crate::oods::EvalDomainSamples;
 use crate::proof::N_TRACES;
 use crate::sort_queries::QuerySorter;
-use circuits::blake::{HashValue, blake};
+use circuits::blake::{HashValue, blake2s_m31};
 use circuits::context::{Context, Var};
 use circuits::ivalue::IValue;
 use circuits::ops::{Guess, cond_flip, eq};
@@ -72,12 +72,12 @@ fn hash_leaf_m31s(
     values: &[M31Wrapper<Var>],
 ) -> HashValue<Var> {
     let leaf_packed = Simd::pack(context, values);
-    blake(context, leaf_packed.get_packed(), values.len() * 4)
+    blake2s_m31(context, leaf_packed.get_packed(), values.len() * 4)
 }
 
 /// Computes the hash of a Merkle leaf with a single `QM31` value.
 pub fn hash_leaf_qm31(context: &mut Context<impl IValue>, value: Var) -> HashValue<Var> {
-    blake(context, &[value], 16)
+    blake2s_m31(context, &[value], 16)
 }
 
 /// Computes the hash of a Merkle leaf with 4 `QM31` values.
@@ -85,7 +85,7 @@ pub fn hash_packed_leaf_qm31s(
     context: &mut Context<impl IValue>,
     values: [Var; PACKED_LEAF_SIZE],
 ) -> HashValue<Var> {
-    blake(context, &values, 64)
+    blake2s_m31(context, &values, 64)
 }
 
 /// Computes the hash of an internal node in the Merkle tree.
@@ -96,7 +96,7 @@ pub fn hash_node(
 ) -> HashValue<Var> {
     let data = [left.0, left.1, right.0, right.1];
 
-    blake(context, &data, 64)
+    blake2s_m31(context, &data, 64)
 }
 
 /// Validates that the leaf at the index given by `bits` has the value `leaf` in a Merkle tree
