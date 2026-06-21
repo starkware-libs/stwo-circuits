@@ -38,11 +38,12 @@ pub fn validate_logup_sum(
     public_logup_sum: Var,
     claimed_sums: &[Var],
 ) {
-    let mut log_up_sum = public_logup_sum;
+    let mut logup_sum = public_logup_sum;
     for claimed_sum in claimed_sums {
-        log_up_sum = eval!(context, (log_up_sum) + (*claimed_sum));
+        logup_sum = eval!(context, (logup_sum) + (*claimed_sum));
     }
-    eq(context, log_up_sum, context.zero());
+    context.debug_info.insert("logup_sum".into(), logup_sum);
+    eq(context, logup_sum, context.zero());
 }
 
 pub fn verify<Value: IValue>(
@@ -87,6 +88,8 @@ pub fn verify<Value: IValue>(
     channel.pow(context, config.n_interaction_pow_bits, proof.interaction_pow_nonce);
     // Pick the interaction elements.
     let [interaction_z, interaction_alpha] = channel.draw_two_qm31s(context);
+    context.debug_info.insert("interaction_z".into(), interaction_z);
+    context.debug_info.insert("interaction_alpha".into(), interaction_alpha);
 
     let public_logup_sum = statement.public_logup_sum(context, [interaction_z, interaction_alpha]);
     validate_logup_sum(context, public_logup_sum, &proof.claimed_sums);
@@ -96,6 +99,7 @@ pub fn verify<Value: IValue>(
 
     // Draw a random QM31 coefficient for the composition polynomial.
     let composition_polynomial_coeff = channel.draw_qm31(context);
+    context.debug_info.insert("composition_polynomial_coeff".into(), composition_polynomial_coeff);
 
     channel.mix_commitment(context, proof.composition_polynomial_root);
 
@@ -149,6 +153,7 @@ pub fn verify<Value: IValue>(
             n_instances_bits: &component_sizes_bits,
         },
     );
+    context.debug_info.insert("composition_eval".into(), composition_eval);
     let expected_composition_eval = extract_expected_composition_eval(
         context,
         &proof.composition_eval_at_oods,
