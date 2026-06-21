@@ -12,7 +12,9 @@ use stwo::core::pcs::PcsConfig;
 use stwo::core::poly::circle::CanonicCoset;
 use stwo::core::proof::ExtendedStarkProof;
 use stwo::core::proof_of_work::GrindOps;
-use stwo::core::vcs_lifted::blake2_merkle::{Blake2sM31MerkleChannel, Blake2sM31MerkleHasher};
+use stwo::core::vcs_lifted::blake2_merkle::Blake2sMerkleHasher;
+
+use circuit_prover::merkle_channel::MerkleChannelForCircuit;
 use stwo::prover::backend::Col;
 use stwo::prover::backend::Column;
 use stwo::prover::backend::simd::SimdBackend;
@@ -183,7 +185,7 @@ pub fn create_proof() -> (
     Vec<Box<dyn Component>>,
     Vec<QM31>,
     PcsConfig,
-    ExtendedStarkProof<Blake2sM31MerkleHasher>,
+    ExtendedStarkProof<Blake2sMerkleHasher>,
     u64,
     u32,
 ) {
@@ -198,7 +200,7 @@ pub fn create_proof_with_fold_step(
     Vec<Box<dyn Component>>,
     Vec<QM31>,
     PcsConfig,
-    ExtendedStarkProof<Blake2sM31MerkleHasher>,
+    ExtendedStarkProof<Blake2sMerkleHasher>,
     u64,
     u32,
 ) {
@@ -221,7 +223,7 @@ pub fn create_proof_with_fold_step(
     config.mix_into(prover_channel);
 
     let mut commitment_scheme =
-        CommitmentSchemeProver::<SimdBackend, Blake2sM31MerkleChannel>::new(config, &twiddles);
+        CommitmentSchemeProver::<SimdBackend, MerkleChannelForCircuit>::new(config, &twiddles);
     commitment_scheme.set_store_polynomials_coefficients();
 
     // Preprocessed trace
@@ -291,7 +293,7 @@ pub fn create_proof_with_fold_step(
         claimed_sum_2,
     );
 
-    let proof = prove_ex::<SimdBackend, Blake2sM31MerkleChannel>(
+    let proof = prove_ex::<SimdBackend, MerkleChannelForCircuit>(
         &[&component_1, &component_2],
         prover_channel,
         commitment_scheme,
