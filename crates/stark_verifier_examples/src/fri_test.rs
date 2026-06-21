@@ -19,8 +19,9 @@ use stwo::core::fields::qm31::{QM31, SecureField};
 use stwo::core::fri::{ExtendedFriProof, FriConfig};
 use stwo::core::poly::circle::CircleDomain;
 use stwo::core::queries::Queries;
-use stwo::core::vcs::blake2_hash::Blake2sM31Hasher;
-use stwo::core::vcs_lifted::blake2_merkle::{Blake2sM31MerkleChannel, Blake2sM31MerkleHasher};
+use stwo::core::vcs_lifted::blake2_merkle::Blake2sMerkleHasher;
+
+use circuit_prover::merkle_channel::MerkleChannelForCircuit;
 use stwo::core::vcs_lifted::verifier::LOG_PACKED_LEAF_SIZE;
 use stwo::prover::backend::CpuBackend;
 use stwo::prover::backend::cpu::CpuCirclePoly;
@@ -102,7 +103,7 @@ fn test_fri_decommit_with_jumps(
     );
     let alpha_values: Vec<_> = proof_layer_commitments
         .map(|commitment| {
-            Blake2sM31MerkleChannel::mix_root(&mut channel, commitment);
+            MerkleChannelForCircuit::mix_root(&mut channel, commitment);
             channel.draw_secure_felt()
         })
         .collect();
@@ -134,11 +135,11 @@ fn create_fri_proof(
     fold_step: usize,
     n_queries: usize,
     query_indices: &[usize],
-) -> ExtendedFriProof<Blake2sM31Hasher> {
+) -> ExtendedFriProof<Blake2sMerkleHasher> {
     let config = FriConfig::new(0, log_blowup_factor, n_queries, fold_step as u32);
     let column = polynomial_evaluation(log_trace_size, log_blowup_factor);
     let twiddles = CpuBackend::precompute_twiddles(column.domain.half_coset);
-    let prover = FriProver::<CpuBackend, Blake2sM31MerkleChannel>::commit(
+    let prover = FriProver::<CpuBackend, MerkleChannelForCircuit>::commit(
         &mut Blake2sM31Channel::default(),
         config,
         &column,
@@ -157,7 +158,7 @@ fn generate_query_indices(n_queries: usize, log_evaluation_domain_size: u32) -> 
 /// Constructs the witnesses for the FRI decommitment phase with the values from the given proof
 /// ([ExtendedFriProof]).
 fn test_construct_fri_witness(
-    proof: &ExtendedFriProof<Blake2sM31MerkleHasher>,
+    proof: &ExtendedFriProof<Blake2sMerkleHasher>,
     all_fold_steps: &[usize],
     query_locations: &[usize],
 ) -> FriWitness<QM31> {
@@ -183,7 +184,7 @@ fn test_construct_fri_witness(
 /// Constructs [AuthPaths] for the FRI trees with the values from the given proof
 /// ([ExtendedFriProof]).
 fn test_construct_fri_auth_paths(
-    proof: &ExtendedFriProof<Blake2sM31MerkleHasher>,
+    proof: &ExtendedFriProof<Blake2sMerkleHasher>,
     config: &ProofConfig,
     query_locations: &[usize],
     all_fold_steps: &[usize],
