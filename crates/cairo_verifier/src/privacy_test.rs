@@ -21,7 +21,7 @@ use num_traits::Zero;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::fri::FriConfig;
 use stwo::core::pcs::PcsConfig;
-use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
+use stwo::core::vcs_lifted::blake2_merkle::Blake2sMerkleHasher;
 
 use crate::privacy::{privacy_cairo_verifier_config, privacy_components};
 use crate::utils::get_proof_file_path;
@@ -30,7 +30,7 @@ use crate::verify::{build_cairo_verifier_circuit, verify_cairo_with_component_se
 /// Verifies with a circuit a proof of execution of another circuit.
 fn verify_circuit_proof(
     preprocessed_circuit: &PreprocessedCircuit,
-    circuit_proof: CircuitProof<Blake2sM31MerkleHasher>,
+    circuit_proof: CircuitProof<Blake2sMerkleHasher>,
     preprocessed_root: ReducedHashValue<QM31>,
 ) -> FinalizedContext<QM31> {
     let circuit_config = CircuitConfig {
@@ -87,24 +87,23 @@ fn test_verify_privacy_with_recursion() {
     //     --proof_path ../stwo-circuits/test_data/privacy/proof.bin --proof-format extended-binary
     let proof_path = get_proof_file_path("privacy");
     let proof_file = File::open(proof_path).unwrap();
-    let cairo_proof: CairoProof<Blake2sM31MerkleHasher> =
+    let cairo_proof: CairoProof<Blake2sMerkleHasher> =
         binary_deserialize_from_file(&proof_file).unwrap();
 
     // Build the preprocessed circuit from the NoValue topology (matching the real proving flow).
     let cairo_proof_log_blowup_factor = 3;
     let const_config = privacy_cairo_verifier_config(cairo_proof_log_blowup_factor);
-
     assert_eq!(
         const_config.preprocessed_root,
         cairo_proof.extended_stark_proof.proof.commitments.0[0].into(),
         "The preprocessed root in the config is not the same as the one in the proof"
     );
-
     let mut novalue_context = build_cairo_verifier_circuit(&const_config);
     let preprocessed = PreprocessedCircuit::preprocess_circuit(&mut novalue_context);
 
     let mut context = verify_cairo_with_component_set(&cairo_proof, privacy_components()).unwrap();
     pad_context(&mut context);
+    context.validate_circuit();
     let circuit_proof = prove_circuit_assignment(
         context.values(),
         &preprocessed,
