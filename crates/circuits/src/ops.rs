@@ -4,7 +4,7 @@ use stwo::core::circle::CirclePoint;
 use crate::circuit::{Add, Eq, Mul, Output, Permutation, PointwiseMul, Sub};
 use crate::context::{Context, GuessVar, Var};
 use crate::ivalue::{IValue, qm31_from_u32s};
-use crate::wrappers::M31Wrapper;
+use crate::wrappers::{M31Wrapper, U16Wrapper};
 
 #[cfg(test)]
 #[path = "ops_test.rs"]
@@ -234,6 +234,19 @@ pub fn guess_m31<Value: IValue>(
     let out = context.new_var(*value.get());
     context.guessed_vars.as_mut().unwrap().push(GuessVar::M31(out));
     M31Wrapper::new_unsafe(out)
+}
+
+/// Returns a new variable constrained to a 16-bit unsigned integer (the range `[0, 2^16)`) with
+/// the given value. The constraint is enforced during finalization (see
+/// `Context::finalize_guessed_vars`).
+pub fn guess_u16<Value: IValue>(
+    context: &mut Context<Value>,
+    value: U16Wrapper<Value>,
+) -> U16Wrapper<Var> {
+    context.stats.guess += 1;
+    let out = context.new_var(*value.get());
+    context.guessed_vars.as_mut().unwrap().push(GuessVar::U16(out));
+    U16Wrapper::new_unsafe(out)
 }
 
 /// Computes the map `(a, b, c, d) -> a + b * i + c * u + d * iu`. Note that the input values are
