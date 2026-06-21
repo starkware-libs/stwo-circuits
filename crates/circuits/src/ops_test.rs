@@ -8,7 +8,7 @@ use crate::context::TraceContext;
 use crate::eval;
 use crate::ivalue::qm31_from_u32s;
 use crate::ops::{
-    Guess, cond_flip, conj, eq, from_partial_evals, guess, im, inv, mul, pointwise_mul,
+    Guess, add, cond_flip, conj, eq, from_partial_evals, guess, im, inv, mul, pointwise_mul,
 };
 use crate::stats::Stats;
 
@@ -206,7 +206,12 @@ fn test_stats() {
     let stats = Stats { equals: 1, ..stats };
     assert_eq!(context.stats, stats);
 
+    // `0 + 0` is elided by the add-zero optimization, so it creates no gate.
     eval!(&mut context, (0) + (0));
+    assert_eq!(context.stats, stats);
+
+    // A non-trivial add creates a gate and bumps the stat.
+    eval!(&mut context, (1) + (1));
     let stats = Stats { add: 1, ..stats };
     assert_eq!(context.stats, stats);
 
@@ -224,6 +229,35 @@ fn test_stats() {
     pointwise_mul(&mut context, x, y);
     let stats = Stats { pointwise_mul: 1, ..stats };
     assert_eq!(context.stats, stats);
+
+    context.validate_circuit();
+}
+
+#[test]
+fn test_no_gate_optimizations() {
+    let mut context = TraceContext::default();
+    let zero = context.zero();
+    let one = context.one();
+    let x = guess(&mut context, 42.into());
+
+    // None of the optimized ops below should add a gate, so stats stay fixed.
+    let expected = Stats { outputs: 1, guess: 1, ..Stats::default() };
+    assert_eq!(context.stats, expected);
+
+    // `add`: zero is the identity, so the other operand is returned and no gate is created.
+    assert_eq!(add(&mut context, zero, x).idx, x.idx);
+    assert_eq!(add(&mut context, x, zero).idx, x.idx);
+    assert_eq!(add(&mut context, zero, zero).idx, zero.idx);
+
+    // `mul`: multiplying by zero yields zero, and one is the identity.
+    assert_eq!(mul(&mut context, zero, x).idx, zero.idx);
+    assert_eq!(mul(&mut context, x, zero).idx, zero.idx);
+    assert_eq!(mul(&mut context, zero, zero).idx, zero.idx);
+    assert_eq!(mul(&mut context, one, x).idx, x.idx);
+    assert_eq!(mul(&mut context, x, one).idx, x.idx);
+    assert_eq!(mul(&mut context, one, one).idx, one.idx);
+
+    assert_eq!(context.stats, expected);
 
     context.validate_circuit();
 }
