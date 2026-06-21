@@ -266,9 +266,13 @@ pub fn blake2s_g(a: u32, b: u32, c: u32, d: u32, f0: u32, f1: u32) -> (u32, u32,
 /// `(x, 0, 0, 0)` into `(x & 0xFFFF, x >> 16, 0, 0)`.
 pub fn m31_to_u32<Value: IValue>(ctx: &mut Context<Value>, input: Var) -> Var {
     let out = ctx.new_var(ctx.get(input).m31_to_u32());
+    m31_to_u32_into(ctx, input, out);
+    out
+}
+
+pub fn m31_to_u32_into<Value: IValue>(ctx: &mut Context<Value>, input: Var, out: Var) {
     ctx.stats.m31_to_u32 += 1;
     ctx.circuit.m31_to_u32.push(M31ToU32 { input: input.idx, out: out.idx });
-    out
 }
 
 /// Adds a Blake2s G function gate to the circuit: G(a, b, c, d, f0, f1) = (a', b', c', d').
