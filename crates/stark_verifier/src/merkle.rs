@@ -6,12 +6,12 @@ use stwo::core::vcs_lifted::verifier::PACKED_LEAF_SIZE;
 use crate::oods::EvalDomainSamples;
 use crate::proof::N_TRACES;
 use crate::sort_queries::QuerySorter;
-use circuits::blake::{ReducedHashValue, blake2s_m31};
+use circuits::blake::{HashValue, ReducedHashValue, blake2s, blake2s_u32s, reduce_hash_value};
 use circuits::context::{Context, Var};
 use circuits::ivalue::IValue;
 use circuits::ops::{Guess, cond_flip, eq};
 use circuits::simd::Simd;
-use circuits::wrappers::M31Wrapper;
+use circuits::wrappers::{M31Wrapper, U32Wrapper};
 
 #[cfg(test)]
 #[path = "merkle_test.rs"]
@@ -19,7 +19,7 @@ pub mod test;
 
 /// Represents an authentication path in a Merkle tree.
 #[derive(Clone, Debug, PartialEq)]
-pub struct AuthPath<T>(pub Vec<ReducedHashValue<T>>);
+pub struct AuthPath<T>(pub Vec<HashValue<T>>);
 
 impl<Value: IValue> Guess<Value> for AuthPath<Value> {
     type Target = AuthPath<Var>;
@@ -70,33 +70,40 @@ impl<Value: IValue> Guess<Value> for AuthPaths<Value> {
 fn hash_leaf_m31s(
     context: &mut Context<impl IValue>,
     values: &[M31Wrapper<Var>],
-) -> ReducedHashValue<Var> {
+) -> HashValue<Var> {
     let leaf_packed = Simd::pack(context, values);
-    blake2s_m31(context, leaf_packed.get_packed(), values.len() * 4)
+    blake2s(context, leaf_packed.get_packed(), values.len() * 4)
 }
 
 /// Computes the hash of a Merkle leaf with a single `QM31` value.
-pub fn hash_leaf_qm31(context: &mut Context<impl IValue>, value: Var) -> ReducedHashValue<Var> {
-    blake2s_m31(context, &[value], 16)
+pub fn hash_leaf_qm31(context: &mut Context<impl IValue>, value: Var) -> HashValue<Var> {
+    blake2s(context, &[value], 16)
 }
 
 /// Computes the hash of a Merkle leaf with 4 `QM31` values.
 pub fn hash_packed_leaf_qm31s(
     context: &mut Context<impl IValue>,
     values: [Var; PACKED_LEAF_SIZE],
-) -> ReducedHashValue<Var> {
-    blake2s_m31(context, &values, 64)
+) -> HashValue<Var> {
+    blake2s(context, &values, 64)
 }
 
-/// Computes the hash of an internal node in the Merkle tree.
+/// Computes the hash of an internal node in the Merkle tree by hashing `left || right` (64 bytes).
+///
+/// The children's eight words each are already in `blake2s_u32s` message-word form, so they are fed
+/// directly as the 16 message words without any unpacking, and the eight output words are returned
+/// in full as a [`HashValue`].
 pub fn hash_node(
     context: &mut Context<impl IValue>,
-    left: ReducedHashValue<Var>,
-    right: ReducedHashValue<Var>,
-) -> ReducedHashValue<Var> {
-    let data = [left.0, left.1, right.0, right.1];
+    left: &HashValue<Var>,
+    right: &HashValue<Var>,
+) -> HashValue<Var> {
+    let mut words = left.to_vec();
+    words.extend_from_slice(right.as_slice());
 
-    blake2s_m31(context, &data, 64)
+    // The words are already in `blake2s_u32s` message-word form (the result of a previous
+    // `blake2s_u32s`), so they are fed directly as the 16 message words.
+    HashValue(blake2s_u32s(context, words, 64))
 }
 
 /// Validates that the leaf at the index given by `bits` has the value `leaf` in a Merkle tree
@@ -108,7 +115,7 @@ pub fn hash_node(
 /// `root`.
 pub fn verify_merkle_path<Value: IValue>(
     context: &mut Context<Value>,
-    mut leaf: ReducedHashValue<Var>,
+    mut leaf: HashValue<Var>,
     bits: &[Var],
     root: ReducedHashValue<Var>,
     auth_path: &AuthPath<Var>,
@@ -116,24 +123,33 @@ pub fn verify_merkle_path<Value: IValue>(
     for (bit, sibling) in zip_eq(bits, &auth_path.0) {
         leaf = merkle_node(context, &leaf, sibling, *bit);
     }
-    eq(context, leaf.0, root.0);
-    eq(context, leaf.1, root.1);
+    // The Merkle tree is committed with blake2s `HashValue`s.
+    // The `root` committed to the Fiat-Shamir channel is `M31`-reduced, so reduce the computed root
+    // mod `M31::P` before comparing.
+    let reduced = reduce_hash_value(context, leaf);
+    eq(context, reduced.0, root.0);
+    eq(context, reduced.1, root.1);
 }
 
 /// Computes a node of a Merkle tree, given one child `node`, its sibling and the
 /// bit indicating which child is `node`.
 pub fn merkle_node<Value: IValue>(
     context: &mut Context<Value>,
-    node: &ReducedHashValue<Var>,
-    sibling: &ReducedHashValue<Var>,
+    node: &HashValue<Var>,
+    sibling: &HashValue<Var>,
     bit: Var,
-) -> ReducedHashValue<Var> {
-    // Store leaf and sibling in the left and right children.
-    let (left0, right0) = cond_flip(context, bit, node.0, sibling.0);
-    let (left1, right1) = cond_flip(context, bit, node.1, sibling.1);
+) -> HashValue<Var> {
+    // Conditionally flip each word of `node` and `sibling` into the (left, right) children
+    // according to `bit`, then split the pairs into the two children.
+    let flipped: [(Var, Var); 8] =
+        std::array::from_fn(|i| cond_flip(context, bit, *node[i].get(), *sibling[i].get()));
+    // `cond_flip` selects between two already-encoded `(low_u16, high_u16, 0, 0)` words,
+    // so the U32 encoding invariant is preserved — `new_unsafe` is safe here.
+    let left = HashValue(std::array::from_fn(|i| U32Wrapper::new_unsafe(flipped[i].0)));
+    let right = HashValue(std::array::from_fn(|i| U32Wrapper::new_unsafe(flipped[i].1)));
 
     // Compute the next layer's node.
-    hash_node(context, ReducedHashValue(left0, left1), ReducedHashValue(right0, right1))
+    hash_node(context, &left, &right)
 }
 
 /// Verifies that the queries in `eval_domain_samples` are consistent with the Merkle roots.

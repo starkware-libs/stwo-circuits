@@ -1,4 +1,5 @@
 use crate::circuit_air::circuit_components::CircuitComponents;
+use crate::merkle_channel::MerkleChannelForCircuit;
 use crate::prover::prepare_circuit_proof_for_circuit_verifier;
 use crate::prover::{BaseColumnPool, CircuitProof, SimdBackend, prove_circuit_assignment};
 use circuit_common::finalize::pad_context;
@@ -24,8 +25,7 @@ use stwo::core::channel::Channel;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::{CommitmentSchemeVerifier, PcsConfig};
 use stwo::core::vcs::blake2_hash::Blake2sHash;
-use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
-use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
+use stwo::core::vcs_lifted::blake2_merkle::Blake2sMerkleHasher;
 // Not a power of 2 so that we can test component padding.
 const N: usize = 1030;
 
@@ -181,7 +181,7 @@ pub fn build_blake_g_gate_context() -> Context<QM31> {
 /// Verifies a [`CircuitProof`] using the stwo verifier. Asserts that the proof is valid
 /// and that the logup sum is zero.
 fn stwo_verify(
-    circuit_proof: CircuitProof<Blake2sM31MerkleHasher>,
+    circuit_proof: CircuitProof<Blake2sMerkleHasher>,
     preprocessed_circuit: &PreprocessedCircuit,
 ) {
     let CircuitProof {
@@ -203,7 +203,7 @@ fn stwo_verify(
     verifier_channel.mix_felts(&[channel_salt.into()]);
     pcs_config.mix_into(verifier_channel);
     let commitment_scheme =
-        &mut CommitmentSchemeVerifier::<Blake2sM31MerkleChannel>::new(pcs_config);
+        &mut CommitmentSchemeVerifier::<MerkleChannelForCircuit>::new(pcs_config);
 
     let [trace_log_sizes, interaction_log_sizes] = column_log_sizes_per_tree(&log_sizes);
 
@@ -342,7 +342,7 @@ fn test_prove_and_stark_verify_blake_g_gate_context() {
 /// Verifies a [`CircuitProof`] using the circuit verifier. Requires the expected
 /// `preprocessed_root` of the preprocessed trace.
 fn circuit_verify(
-    circuit_proof: CircuitProof<Blake2sM31MerkleHasher>,
+    circuit_proof: CircuitProof<Blake2sMerkleHasher>,
     preprocessed_circuit: &PreprocessedCircuit,
     preprocessed_root: [u32; 8],
 ) {
@@ -370,16 +370,14 @@ fn test_prove_and_circuit_verify_triple_xor_context() {
     )
     .unwrap();
     let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);
-    expect![
-        "[310423764, 1094718060, 384987354, 802176090, 1094031759, 6758976, 1400223132, 38487464]"
-    ]
+    expect!["[559383118, 1255857488, 1344354401, 2360263672, 3046958987, 2092103241, 1295830770, 660589166]"]
     .assert_eq(&format!("{preprocessed_root:?}"));
     circuit_verify(circuit_proof, &preprocessed_circuit, preprocessed_root);
 }
 
 /// Extract the preprocessed-trace Merkle root (`commitments[0]`) from a `CircuitProof` as
 /// `[u32; 8]`, matching the layout `ReducedHashValue<QM31>` consumes via `From<[u32; 8]>`.
-fn preprocessed_root_from_proof(circuit_proof: &CircuitProof<Blake2sM31MerkleHasher>) -> [u32; 8] {
+fn preprocessed_root_from_proof(circuit_proof: &CircuitProof<Blake2sMerkleHasher>) -> [u32; 8] {
     let hash: Blake2sHash = circuit_proof.stark_proof.proof.commitments[0];
     std::array::from_fn(|i| u32::from_le_bytes(hash.0[i * 4..(i + 1) * 4].try_into().unwrap()))
 }
@@ -398,7 +396,7 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     )
     .unwrap();
     let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);
-    expect!["[998427887, 816884432, 28940745, 1559680675, 1777771605, 642009811, 1853268549, 1773040910]"]
+    expect!["[834735002, 594172773, 1583316646, 3249196940, 741016670, 2295728685, 4109491583, 2430221502]"]
     .assert_eq(&format!("{preprocessed_root:?}"));
     circuit_verify(circuit_proof, &preprocessed_circuit, preprocessed_root);
 }
@@ -417,8 +415,7 @@ fn test_prove_and_circuit_verify_m31_to_u32_context() {
     )
     .unwrap();
     let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);
-    expect!["[999943260, 142884396, 1641751767, 1233197676, 386806198, 1157281447, 1840593007, 64424447]"]
-    .assert_eq(&format!("{preprocessed_root:?}"));
+    expect!["[3771636404, 3055692813, 1894577333, 698197554, 2504506842, 900992605, 91068715, 318976758]"].assert_eq(&format!("{preprocessed_root:?}"));
     circuit_verify(circuit_proof, &preprocessed_circuit, preprocessed_root);
 }
 
@@ -436,8 +433,7 @@ fn test_prove_and_circuit_verify_blake_g_gate_context() {
     )
     .unwrap();
     let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);
-    expect!["[686827649, 824940088, 664395052, 1207615034, 1907388992, 52649654, 1401834427, 1790305060]"]
-    .assert_eq(&format!("{preprocessed_root:?}"));
+    expect!["[3717424067, 4197539191, 3778294694, 2399208116, 4267247572, 1361721549, 951663472, 1298806664]"].assert_eq(&format!("{preprocessed_root:?}"));
     circuit_verify(circuit_proof, &preprocessed_circuit, preprocessed_root);
 }
 

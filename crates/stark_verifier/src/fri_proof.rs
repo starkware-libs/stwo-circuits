@@ -1,5 +1,5 @@
 use crate::merkle::{AuthPath, AuthPaths};
-use circuits::blake::ReducedHashValue;
+use circuits::blake::{HashValue, ReducedHashValue};
 use circuits::context::{Context, Var};
 use circuits::ivalue::{IValue, NoValue};
 use circuits::ops::Guess;
@@ -133,7 +133,6 @@ impl<Value: IValue> Guess<Value> for FriProof<Value> {
 }
 
 pub fn empty_fri_proof(config: &FriConfig) -> FriProof<NoValue> {
-    let empty_hash = ReducedHashValue(NoValue, NoValue);
     let all_fold_steps = compute_all_fold_steps(
         config.log_trace_size - config.log_n_last_layer_coefs,
         config.fold_step,
@@ -145,7 +144,7 @@ pub fn empty_fri_proof(config: &FriConfig) -> FriProof<NoValue> {
         auth_paths.push(vec![
             // The verifier computes the Merkle node at height `log_layer_size - step`
             // from the witness.
-            AuthPath(vec![empty_hash; log_layer_size - step]);
+            AuthPath(vec![HashValue::no_value(); log_layer_size - step]);
             config.n_queries
         ]);
         log_layer_size -= step;
@@ -158,7 +157,7 @@ pub fn empty_fri_proof(config: &FriConfig) -> FriProof<NoValue> {
         .collect();
     FriProof {
         commit: FriCommitProof {
-            layer_commitments: vec![empty_hash; all_fold_steps.len()],
+            layer_commitments: vec![ReducedHashValue(NoValue, NoValue); all_fold_steps.len()],
             last_layer_coefs: vec![NoValue; 1 << config.log_n_last_layer_coefs],
         },
         auth_paths,

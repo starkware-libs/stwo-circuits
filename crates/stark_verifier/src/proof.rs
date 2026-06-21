@@ -4,7 +4,7 @@ use crate::fri_proof::{FriConfig, FriProof, compute_all_fold_steps, empty_fri_pr
 use crate::merkle::{AuthPath, AuthPaths};
 use crate::oods::{EvalDomainSamples, N_COMPOSITION_COLUMNS, empty_eval_domain_samples};
 use crate::proof_from_stark_proof::pack_into_qm31s;
-use circuits::blake::ReducedHashValue;
+use circuits::blake::{HashValue, ReducedHashValue};
 use circuits::context::{Context, Var};
 use circuits::ivalue::{IValue, NoValue};
 use circuits::ops::Guess;
@@ -463,8 +463,7 @@ impl<T> Proof<T> {
 }
 
 pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
-    let auth_path =
-        AuthPath(vec![ReducedHashValue(NoValue, NoValue); config.log_evaluation_domain_size()]);
+    let auth_path = AuthPath(vec![HashValue::no_value(); config.log_evaluation_domain_size()]);
 
     let n_components = config.n_components();
     Proof {

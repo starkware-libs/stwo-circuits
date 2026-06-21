@@ -8,7 +8,7 @@ use num_traits::Zero;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::proof::ExtendedStarkProof;
-use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
+use stwo::core::vcs_lifted::blake2_merkle::Blake2sMerkleHasherGeneric;
 use stwo::core::vcs_lifted::verifier::LOG_PACKED_LEAF_SIZE;
 
 use crate::fri_proof::FriWitness;
@@ -20,8 +20,8 @@ use crate::proof::{InteractionAtOods, N_TRACES, Proof, ProofConfig};
 use circuits::ivalue::qm31_from_u32s;
 
 /// Constructs [Proof] with the values from the given proof ([ExtendedStarkProof]).
-pub fn proof_from_stark_proof(
-    proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
+pub fn proof_from_stark_proof<const IS_M31_OUTPUT: bool>(
+    proof: &ExtendedStarkProof<Blake2sMerkleHasherGeneric<IS_M31_OUTPUT>>,
     config: &ProofConfig,
     claimed_sums: Vec<QM31>,
     interaction_pow_nonce: u64,
@@ -91,8 +91,8 @@ fn as_single_row(values: &[Vec<QM31>]) -> Vec<QM31> {
 }
 
 /// Constructs [EvalDomainSamples] with the values from the given proof ([ExtendedStarkProof]).
-fn construct_eval_domain_samples(
-    proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
+fn construct_eval_domain_samples<const IS_M31_OUTPUT: bool>(
+    proof: &ExtendedStarkProof<Blake2sMerkleHasherGeneric<IS_M31_OUTPUT>>,
     config: &ProofConfig,
 ) -> EvalDomainSamples<QM31> {
     let unsorted_query_locations = &proof.aux.unsorted_query_locations;
@@ -131,8 +131,8 @@ fn construct_eval_domain_samples(
 
 /// Constructs [AuthPaths] for the evaluation domain queries (the in-domain queries) with the values
 /// from the given proof ([ExtendedStarkProof]).
-fn construct_eval_domain_auth_paths(
-    proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
+fn construct_eval_domain_auth_paths<const IS_M31_OUTPUT: bool>(
+    proof: &ExtendedStarkProof<Blake2sMerkleHasherGeneric<IS_M31_OUTPUT>>,
     config: &ProofConfig,
 ) -> AuthPaths<QM31> {
     let unsorted_query_locations = &proof.aux.unsorted_query_locations;
@@ -162,8 +162,8 @@ fn construct_eval_domain_auth_paths(
 
 /// Constructs [AuthPaths] for the FRI trees with the values from the given proof
 /// ([ExtendedStarkProof]).
-fn construct_fri_auth_paths(
-    proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
+fn construct_fri_auth_paths<const IS_M31_OUTPUT: bool>(
+    proof: &ExtendedStarkProof<Blake2sMerkleHasherGeneric<IS_M31_OUTPUT>>,
     config: &ProofConfig,
     all_fold_steps: &[usize],
 ) -> AuthPaths<QM31> {
@@ -208,8 +208,8 @@ fn construct_fri_auth_paths(
 ///   circle-to-line fold is hardcoded to 1, so there is exactly one sibling per query.
 /// - the second member contains, for each inner layer, for each query, the coset witness for that
 ///   query.
-pub fn construct_fri_witness(
-    proof: &ExtendedStarkProof<Blake2sM31MerkleHasher>,
+pub fn construct_fri_witness<const IS_M31_OUTPUT: bool>(
+    proof: &ExtendedStarkProof<Blake2sMerkleHasherGeneric<IS_M31_OUTPUT>>,
     all_fold_steps: &[usize],
 ) -> FriWitness<QM31> {
     let all_layers: Vec<_> = chain![
