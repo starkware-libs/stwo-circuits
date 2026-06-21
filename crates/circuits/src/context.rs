@@ -8,7 +8,7 @@ use stwo::core::fields::qm31::QM31;
 use crate::circuit::{Add, Circuit};
 use crate::finalize_constants::finalize_constants;
 use crate::ivalue::IValue;
-use crate::ops::output;
+use crate::ops::{add_into, output, pointwise_mul_into};
 use crate::stats::Stats;
 
 #[cfg(test)]
@@ -25,7 +25,7 @@ pub const U_VALUE: QM31 = QM31::from_m31(M31(0), M31(0), M31(1), M31(0));
 /// A [Var] represents a `QM31` value.
 /// In some cases, it may be restricted to an `M31` or a boolean value by adding constraints to the
 /// circuit. For example, `x = x * x` will enforce that `x` is either `0` or `1`.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Var {
     pub idx: usize,
 }
@@ -33,6 +33,15 @@ impl std::fmt::Debug for Var {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "[{}]", self.idx)
     }
+}
+
+/// Represents a variable that is guessed.
+#[derive(PartialEq, Eq)]
+pub enum GuessVar {
+    // The guessed value is in the base field `M31`.
+    M31(Var),
+    // The guessed value is in the field `QM31`.
+    QM31(Var),
 }
 
 /// Represents the information required to build a [Circuit].
@@ -66,7 +75,7 @@ pub struct Context<Value: IValue> {
     /// `None` if the set of guessed variables has already been finalized.
     ///
     /// See [crate::ops::guess].
-    pub guessed_vars: Option<Vec<usize>>,
+    pub guessed_vars: Option<Vec<GuessVar>>,
     /// Variables allocated by [Self::reserve] whose values have not been supplied yet. Assignment
     /// happens through method [Self::set_outputs]. Reading a reserved variable via
     /// [Self::get] triggers a debug assertion.
@@ -196,7 +205,10 @@ impl<Value: IValue> Context<Value> {
     /// appears exactly once as a yield lookup.
     /// For guessed value, add a trivial constraint so that the new variable appears once as
     /// a yield.
-    fn finalize_guessed_vars(&mut self) {
+    ///
+    /// This is `pub(crate)` and only called internally by [`Self::finalize`]. Tests that need to
+    /// run this step in isolation go through [`crate::test_utils::finalize_guessed_vars`].
+    pub(crate) fn finalize_guessed_vars(&mut self) {
         // TODO(Leo): move the assertion to a new finalize method which calls finalize_constants and
         // finalize_guessed_vars.
         assert!(
@@ -204,8 +216,18 @@ impl<Value: IValue> Context<Value> {
             "Some reserved variables were never assigned (idxs: {:?})",
             self.reserved_vars,
         );
-        for idx in self.guessed_vars.take().unwrap().iter() {
-            self.circuit.add.push(Add { in0: *idx, in1: self.zero().idx, out: *idx });
+        for guessed_var in self.guessed_vars.take().unwrap() {
+            match guessed_var {
+                // An M31 guess must be constrained to the base field. Pointwise-multiplying by
+                // `one = (1, 0, 0, 0)` forces the upper three M31 limbs to zero, and yields `var`.
+                GuessVar::M31(var) => {
+                    pointwise_mul_into(self, var, self.one(), var);
+                }
+                // A QM31 guess is unrestricted; the trivial `var + 0 = var` gate only yields `var`.
+                GuessVar::QM31(var) => {
+                    add_into(self, var, self.zero(), var);
+                }
+            }
         }
     }
 

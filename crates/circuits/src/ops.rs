@@ -2,8 +2,9 @@ use itertools::Itertools;
 use stwo::core::circle::CirclePoint;
 
 use crate::circuit::{Add, Eq, Mul, Output, Permutation, PointwiseMul, Sub};
-use crate::context::{Context, Var};
+use crate::context::{Context, GuessVar, Var};
 use crate::ivalue::{IValue, qm31_from_u32s};
+use crate::wrappers::M31Wrapper;
 
 #[cfg(test)]
 #[path = "ops_test.rs"]
@@ -220,8 +221,19 @@ pub fn im(c: &mut Context<impl IValue>, a: Var) -> Var {
 pub fn guess<Value: IValue>(context: &mut Context<Value>, value: Value) -> Var {
     context.stats.guess += 1;
     let out = context.new_var(value);
-    context.guessed_vars.as_mut().unwrap().push(out.idx);
+    context.guessed_vars.as_mut().unwrap().push(GuessVar::QM31(out));
     out
+}
+
+/// Returns a new variable constrained to the base field `M31` with the given value.
+pub fn guess_m31<Value: IValue>(
+    context: &mut Context<Value>,
+    value: M31Wrapper<Value>,
+) -> M31Wrapper<Var> {
+    context.stats.guess += 1;
+    let out = context.new_var(*value.get());
+    context.guessed_vars.as_mut().unwrap().push(GuessVar::M31(out));
+    M31Wrapper::new_unsafe(out)
 }
 
 /// Computes the map `(a, b, c, d) -> a + b * i + c * u + d * iu`. Note that the input values are

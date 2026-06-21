@@ -464,9 +464,8 @@ fn test_scalar_mul_circuit() {
     "#]]
     .assert_debug_eq(&context.constants());
     expect![[r#"
-        [7] = [5] * [4]
-        [8] = [6] * [4]
-        [4] = [3] x [1]
+        [6] = [4] * [3]
+        [7] = [5] * [3]
         output [2]
 
     "#]]

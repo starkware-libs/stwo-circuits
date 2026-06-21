@@ -7,7 +7,7 @@ use crate::context::{Context, Var};
 use crate::eval;
 use crate::ivalue::IValue;
 use crate::ivalue::NoValue;
-use crate::ops::{Guess, pointwise_mul};
+use crate::ops::{Guess, guess_m31};
 
 #[cfg(test)]
 #[path = "wrappers_test.rs"]
@@ -53,11 +53,9 @@ impl<Value: IValue> Guess<Value> for M31Wrapper<Value> {
     type Target = M31Wrapper<Var>;
 
     fn guess(&self, context: &mut Context<Value>) -> Self::Target {
-        let value = self.0.guess(context);
-        // Mask the value with `1 + 0 * i + 0 * u + 0 * iu` to ensure (in the circuit) it is
-        // in the base field `M31`.
-        let masked_value = pointwise_mul(context, value, context.one());
-        M31Wrapper(masked_value)
+        // `guess_m31` constrains the guessed variable to the base field `M31` during
+        // finalization, so no further masking is required here.
+        guess_m31(context, self.clone())
     }
 }
 
