@@ -1,4 +1,4 @@
-use hashbrown::HashSet;
+use hashbrown::{HashMap, HashSet};
 use indexmap::IndexMap;
 use itertools::zip_eq;
 use num_traits::{One, Zero};
@@ -83,6 +83,8 @@ pub struct Context<Value: IValue> {
     /// Debug only. If true, equality is asserted when adding the `eq` gate; if false, no
     /// assertion is made during construction and equality can be checked later at validation.
     pub assert_eq_on_eval: bool,
+    /// Debug only. A map from variable name to the corresponding [Var].
+    pub debug_info: HashMap<String, Var>,
 }
 
 impl<Value: IValue> Context<Value> {
@@ -253,6 +255,7 @@ impl<Value: IValue> Default for Context<Value> {
             guessed_vars: Some(vec![]),
             reserved_vars: vec![],
             assert_eq_on_eval: false,
+            debug_info: HashMap::new(),
         };
         // Register zero, one, and u as the first constants.
         res.constant(QM31::zero());
