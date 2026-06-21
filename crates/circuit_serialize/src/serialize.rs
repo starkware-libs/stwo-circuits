@@ -1,7 +1,7 @@
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 
-use circuits::blake::ReducedHashValue;
+use circuits::blake::{HashValue, ReducedHashValue};
 use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::fri_proof::{FriCommitProof, FriProof, FriWitness};
 use circuits_stark_verifier::merkle::{AuthPath, AuthPaths};
@@ -85,6 +85,18 @@ impl CircuitSerialize for ReducedHashValue<QM31> {
         let Self(a, b) = self;
         a.serialize(output);
         b.serialize(output);
+    }
+}
+
+impl CircuitSerialize for HashValue<QM31> {
+    fn serialize(&self, output: &mut Vec<u8>) {
+        // Each word is stored as `(low_u16, high_u16, 0, 0)`; recombine it into its 32-bit value
+        // and write the four little-endian bytes, so the whole hash occupies exactly 32 bytes.
+        let Self(words) = self;
+        for word in words {
+            let (low, high) = (word.get().0.0.0, word.get().0.1.0);
+            output.extend_from_slice(&((high << 16) | low).to_le_bytes());
+        }
     }
 }
 

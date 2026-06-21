@@ -14,6 +14,11 @@ stwo.workspace = true
 stwo-constraint-framework.workspace = true
 circuits.workspace = true
 
+[features]
+# Enables the prover-side `BackendForChannel` impls for `MerkleChannelForCircuit`
+# (pulls in stwo's `prover` feature). Off by default so the crate stays verifier/stable-safe.
+prover = ["stwo/prover"]
+
 [dev-dependencies]
 circuits = { workspace = true, features = ["test-utils"] }
 indoc.workspace = true

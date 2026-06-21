@@ -17,7 +17,7 @@ stwo_cairo_common = { workspace = true, features = ["prover"] }
 circuits.workspace = true
 circuit-verifier.workspace = true
 circuit-common = { workspace = true, features = ["prover"] }
-circuits-stark-verifier.workspace = true
+circuits-stark-verifier = { workspace = true, features = ["prover"] }
 rand = "0.8.5"
 
 [dev-dependencies]

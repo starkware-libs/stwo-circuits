@@ -2,8 +2,9 @@ use std::fmt;
 
 use stwo::core::fields::m31::{M31, P};
 use stwo::core::fields::qm31::QM31;
+use stwo::core::vcs::blake2_hash::Blake2sHash;
 
-use circuits::blake::ReducedHashValue;
+use circuits::blake::{HashValue, ReducedHashValue};
 use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::fri_proof::{
     FriCommitProof, FriConfig, FriProof, FriWitness, compute_all_fold_steps,
@@ -71,6 +72,15 @@ impl<T: CircuitDeserialize, const N: usize> CircuitDeserialize for [T; N] {
 impl CircuitDeserialize for ReducedHashValue<QM31> {
     fn deserialize(data: &mut &[u8]) -> DeserializeResult<Self> {
         Ok(ReducedHashValue(QM31::deserialize(data)?, QM31::deserialize(data)?))
+    }
+}
+
+impl CircuitDeserialize for HashValue<QM31> {
+    fn deserialize(data: &mut &[u8]) -> DeserializeResult<Self> {
+        // A lossless hash is stored as its 32 raw bytes; split each 32-bit word back into
+        // `(low_u16, high_u16, 0, 0)` form, mirroring `HashValue::from(Blake2sHash)`.
+        let bytes: [u8; 32] = take_bytes(data, 32)?.try_into().unwrap();
+        Ok(HashValue::from(Blake2sHash(bytes)))
     }
 }
 
@@ -176,7 +186,7 @@ fn deserialize_eval_domain_auth_paths(
     for _ in 0..N_TRACES {
         let mut paths = Vec::with_capacity(n_queries);
         for _ in 0..n_queries {
-            let hashes: Vec<ReducedHashValue<QM31>> = deserialize_vec(data, path_len)?;
+            let hashes: Vec<HashValue<QM31>> = deserialize_vec(data, path_len)?;
             paths.push(AuthPath(hashes));
         }
         trees.push(paths);
@@ -213,7 +223,7 @@ fn deserialize_fri_proof(
         path_len -= step;
         let mut paths = Vec::with_capacity(fri_config.n_queries);
         for _ in 0..fri_config.n_queries {
-            let hashes: Vec<ReducedHashValue<QM31>> = deserialize_vec(data, path_len)?;
+            let hashes: Vec<HashValue<QM31>> = deserialize_vec(data, path_len)?;
             paths.push(AuthPath(hashes));
         }
         auth_path_trees.push(paths);
