@@ -176,8 +176,10 @@ fn register_constant(
 #[derive(Clone, Copy)]
 enum Idiom {
     // X = 1/Y, from the `div(1, Y)` idiom.
-    #[expect(unused)]
-    Inverse { y: usize },
+    Inverse {
+        #[expect(unused)]
+        y: usize,
+    },
     // One of the bits in `value`'s binary decomposition.
     Bit {
         #[expect(unused)]
@@ -281,6 +283,28 @@ fn detect_bits(
     }
 }
 
+/// Detects the `div(1, Y)` idiom: `[1] = [X] * [Y]` with `X` guessed, so `X = 1/Y`. Fills `idiom`
+/// with `Inverse`.
+fn detect_inverses(
+    c: &CircuitEx<'_>,
+    const_values: &HashMap<usize, QM31>,
+    idiom: &mut HashMap<usize, Idiom>,
+) {
+    for g in &c.arith {
+        if g.op != Op::Mul || const_values.get(&g.out) != Some(&QM31::one()) {
+            continue;
+        }
+        let (output, input) = if c.guessed.contains(&g.b) {
+            (g.b, g.a)
+        } else if c.guessed.contains(&g.a) {
+            (g.a, g.b)
+        } else {
+            continue;
+        };
+        idiom.entry(output).or_insert(Idiom::Inverse { y: input });
+    }
+}
+
 /// Analyzes the circuit and writes the classified logup-sum summands to `summands.txt`.
 pub fn analyze(circuit: &Circuit, _debug_info: &HashMap<String, Var>) {
     let c = build_analysis(circuit);
@@ -289,6 +313,7 @@ pub fn analyze(circuit: &Circuit, _debug_info: &HashMap<String, Var>) {
     // Recognize idioms layered over the raw producers.
     let mut idiom: HashMap<usize, Idiom> = HashMap::new();
     detect_bits(&c, &const_values, &mut idiom);
+    detect_inverses(&c, &const_values, &mut idiom);
 
     // TODO(lior): complete the test.
 }
