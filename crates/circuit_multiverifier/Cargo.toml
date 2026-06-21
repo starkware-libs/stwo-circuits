@@ -16,5 +16,6 @@ circuit-common.workspace = true
 stwo = { workspace = true, features = ["prover"] }
 stwo-constraint-framework = { workspace = true, features = ["prover"] }
 circuit-common = { workspace = true, features = ["prover"] }
+circuits-stark-verifier = { workspace = true, features = ["prover"] }
 cairo-air.workspace = true
 circuit-cairo-verifier = { path = "../cairo_verifier" }

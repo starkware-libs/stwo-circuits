@@ -1,10 +1,10 @@
 use stwo::core::air::Component;
 use stwo::core::channel::{Blake2sM31Channel, Channel};
 use stwo::core::pcs::{CommitmentSchemeVerifier, TreeVec};
-use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::core::verifier::verify;
 
 use crate::simple_air::{INTERACTION_POW_BITS, LOG_SIZE_LONG, LOG_SIZE_SHORT, create_proof};
+use circuits_stark_verifier::merkle_channel::MerkleChannelForCircuit;
 
 #[test]
 fn verify_simple_proof() {
@@ -15,7 +15,7 @@ fn verify_simple_proof() {
     let verifier_channel = &mut Blake2sM31Channel::default();
     verifier_channel.mix_felts(&[channel_salt.into()]);
     config.mix_into(verifier_channel);
-    let commitment_scheme = &mut CommitmentSchemeVerifier::<Blake2sM31MerkleChannel>::new(config);
+    let commitment_scheme = &mut CommitmentSchemeVerifier::<MerkleChannelForCircuit>::new(config);
 
     // Retrieve the expected column sizes in each commitment interaction, from the AIR.
     let sizes = TreeVec::concat_cols(components.iter().map(|c| c.trace_log_degree_bounds()));

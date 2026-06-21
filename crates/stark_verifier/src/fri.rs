@@ -1,4 +1,4 @@
-use circuits::blake::ReducedHashValue;
+use circuits::blake::HashValue;
 use circuits::utils::select_by_index;
 use itertools::{Itertools, zip_eq};
 use stwo::core::circle::CirclePoint;
@@ -90,7 +90,7 @@ pub fn fri_decommit<Value: IValue>(
         for (query_idx, witness) in witness_per_query.iter().enumerate() {
             let pack_leaves = log_layer_size >= LOG_PACKED_LEAF_SIZE as usize && step > 1;
             // Compute the leaves.
-            let (mut leaves, n_folds): (Vec<ReducedHashValue<Var>>, usize) = if pack_leaves {
+            let (mut leaves, n_folds): (Vec<HashValue<Var>>, usize) = if pack_leaves {
                 (
                     witness
                         .chunks(PACKED_LEAF_SIZE)
@@ -106,11 +106,10 @@ pub fn fri_decommit<Value: IValue>(
             let witness_root = {
                 for fold in 0..n_folds {
                     for i in 0..1 << (n_folds - fold - 1) {
-                        let (even, odd) = (leaves[2 * i], leaves[2 * i + 1]);
-                        leaves[i] = hash_node(context, even, odd);
+                        leaves[i] = hash_node(context, &leaves[2 * i], &leaves[2 * i + 1]);
                     }
                 }
-                leaves[0]
+                leaves[0].clone()
             };
             // Verify the rest of the authentication path.
             let auth_path = auth_paths.at(tree_idx, query_idx);

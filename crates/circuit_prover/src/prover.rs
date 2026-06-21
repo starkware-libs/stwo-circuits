@@ -9,6 +9,7 @@ pub use circuit_verifier::circuit_proof::CircuitProof;
 use circuit_verifier::statement::INTERACTION_POW_BITS;
 use circuit_verifier::statement::all_circuit_components;
 use circuit_verifier::verify::CircuitPublicData;
+use circuits_stark_verifier::merkle_channel::MerkleChannelForCircuit;
 use circuits_stark_verifier::proof::Proof;
 use circuits_stark_verifier::proof::ProofConfig;
 use circuits_stark_verifier::proof_from_stark_proof::proof_from_stark_proof;
@@ -19,8 +20,7 @@ use stwo::core::pcs::PcsConfig;
 use stwo::core::poly::circle::CanonicCoset;
 use stwo::core::proof_of_work::GrindOps;
 use stwo::core::utils::MaybeOwned;
-use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
-use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
+use stwo::core::vcs_lifted::blake2_merkle::Blake2sMerkleHasher;
 use stwo::prover::CommitmentSchemeProver;
 use stwo::prover::CommitmentTreeProver;
 pub use stwo::prover::backend::simd::SimdBackend;
@@ -41,8 +41,8 @@ pub fn prove_circuit_assignment(
     preprocessed_circuit: &PreprocessedCircuit,
     base_column_pool: &BaseColumnPool<SimdBackend>,
     pcs_config: PcsConfig,
-) -> Result<CircuitProof<Blake2sM31MerkleHasher>, ProvingError> {
-    prove_circuit_assignment_with_channel::<Blake2sM31MerkleChannel>(
+) -> Result<CircuitProof<Blake2sMerkleHasher>, ProvingError> {
+    prove_circuit_assignment_with_channel::<MerkleChannelForCircuit>(
         values,
         preprocessed_circuit,
         base_column_pool,
@@ -200,7 +200,7 @@ where
 }
 
 pub fn prepare_circuit_proof_for_circuit_verifier(
-    circuit_proof: CircuitProof<Blake2sM31MerkleHasher>,
+    circuit_proof: CircuitProof<Blake2sMerkleHasher>,
 ) -> (Proof<QM31>, CircuitPublicData) {
     let CircuitProof {
         pcs_config,

@@ -36,6 +36,20 @@ impl<Value: IValue> Guess<Value> for ReducedHashValue<Value> {
     }
 }
 
+/// A Merkle hash kept as its eight raw Blake2s output words (the result of [`blake2s_u32s`]), each
+/// encoded as a QM31 `(low_u16, high_u16, 0, 0)`.
+///
+/// Unlike [`ReducedHashValue`], the words are *not* reduced mod `M31::P`.
+#[derive(Clone, Debug, PartialEq)]
+pub struct HashValue<T>(pub [U32Wrapper<T>; 8]);
+
+impl<Value: IValue> Guess<Value> for HashValue<Value> {
+    type Target = HashValue<Var>;
+    fn guess(&self, context: &mut Context<Value>) -> Self::Target {
+        HashValue(self.0.guess(context))
+    }
+}
+
 impl From<Blake2sHash> for ReducedHashValue<QM31> {
     fn from(value: Blake2sHash) -> Self {
         ReducedHashValue(
@@ -51,6 +65,17 @@ impl From<[u32; 8]> for ReducedHashValue<QM31> {
             qm31_from_u32s(value[0], value[1], value[2], value[3]),
             qm31_from_u32s(value[4], value[5], value[6], value[7]),
         )
+    }
+}
+
+impl From<Blake2sHash> for HashValue<QM31> {
+    /// Encodes the [`Blake2sHash`] into eight [`U32Wrapper`]s, one per 32-bit (little-endian)
+    /// hash word, each word is held as a QM31 `(low_u16, high_u16, 0, 0)`.
+    fn from(value: Blake2sHash) -> Self {
+        HashValue(std::array::from_fn(|i| {
+            let word = u32::from_le_bytes(value.0[i * 4..i * 4 + 4].try_into().unwrap());
+            U32Wrapper::new_unsafe(IValue::pack_u32(word))
+        }))
     }
 }
 
@@ -125,6 +150,24 @@ pub fn blake2s_m31<Value: IValue>(
     input: &[Var],
     n_bytes: usize,
 ) -> ReducedHashValue<Var> {
+    let hash = blake2s(ctx, input, n_bytes);
+    reduce_hash_value(ctx, hash)
+}
+
+/// Same as [`blake2s_u32s`], but the input is given as QM31s.
+///
+/// Each input `Var` is a QM31 packing four message words; they are unpacked into single-word
+/// `(low_u16, high_u16, 0, 0)` form (via [`m31_to_u32`]) before being fed to [`blake2s_u32s`].
+///
+/// NOTE: If the number of bytes is not a multiple of 16, the caller must make sure that the
+/// remaining bytes are zero.
+/// For example, if `n_bytes` is 4, only the first coordinate of the [`QM31`] may be non-zero.
+/// If `n_bytes` is 1, that coordinate must be < 256.
+pub fn blake2s<Value: IValue>(
+    ctx: &mut Context<Value>,
+    input: &[Var],
+    n_bytes: usize,
+) -> HashValue<Var> {
     // Sanity check: check the number of bytes is consistent with the number of [QM31] values.
     assert_eq!(input.len(), n_bytes.div_ceil(16));
 
@@ -138,11 +181,21 @@ pub fn blake2s_m31<Value: IValue>(
         }
     }
 
-    let h = blake2s_u32s(ctx, message_u32s, n_bytes);
+    HashValue(blake2s_u32s(ctx, message_u32s, n_bytes))
+}
 
+/// Reduces the eight raw Blake2s output words of a [`HashValue`] mod `M31::P` and packs them
+/// into a [`ReducedHashValue`] (two QM31s of four `M31` words each).
+///
+/// Each word, stored as `(low_u16, high_u16, 0, 0)`, is recombined as `low + high * 2^16`; the
+/// field arithmetic reduces it mod `M31::P`, matching stwo's `reduce_to_m31`.
+pub fn reduce_hash_value<Value: IValue>(
+    ctx: &mut Context<Value>,
+    hash: HashValue<Var>,
+) -> ReducedHashValue<Var> {
     let c_2_pow_16 = ctx.constant(M31::from(1u32 << 16).into());
     let reduced: [Var; 8] = std::array::from_fn(|i| {
-        let h_simd = Simd::from_packed(vec![*h[i].get()], 2);
+        let h_simd = Simd::from_packed(vec![*hash.0[i].get()], 2);
         let low = Simd::unpack_idx(ctx, &h_simd, 0);
         let high = Simd::unpack_idx(ctx, &h_simd, 1);
         eval!(ctx, (low) + ((high) * (c_2_pow_16)))
