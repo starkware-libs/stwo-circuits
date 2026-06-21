@@ -3,7 +3,7 @@ use circuit_verifier::statement::CircuitStatement;
 use circuit_verifier::verify::CircuitConfig;
 use circuits::context::{Context, FinalizedContext};
 use circuits::{
-    blake::{HashValue, blake},
+    blake::{ReducedHashValue, blake2s_m31},
     ivalue::IValue,
     ops::Guess,
 };
@@ -30,7 +30,7 @@ pub struct MultiverifierInput<Value: IValue> {
     /// A circuit proof.
     pub proof: Proof<Value>,
     /// The preprocessed root of the circuit associated to `proof`.
-    pub preprocessed_root: HashValue<QM31>,
+    pub preprocessed_root: ReducedHashValue<QM31>,
     /// The output values of the circuit (excluding the value of the `u` wire at address
     /// [`circuits::context::U_VAR_IDX`]). The multiverifier only supports verification of circuits
     /// with two outputs.
@@ -90,7 +90,7 @@ pub fn build_multiverifier_circuit<Value: IValue>(
     //      preprocessed_rootB.0, preprocessed_rootB.1, outputsB.0, outputsB.1
     // ]
     // where A, B are the two circuits being verified.
-    let output_hash = blake(
+    let output_hash = blake2s_m31(
         &mut context,
         &outer_verifier_output_preimage,
         16 * outer_verifier_output_preimage.len(),

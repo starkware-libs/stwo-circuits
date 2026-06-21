@@ -7,7 +7,7 @@ use crate::statement::{
 use cairo_air::CairoProof;
 use cairo_air::flat_claims::FlatClaim;
 use circuit_common::N_RESERVED;
-use circuits::blake::HashValue;
+use circuits::blake::ReducedHashValue;
 use circuits::context::{Context, FinalizedContext};
 use circuits::ivalue::{IValue, NoValue};
 use circuits::ops::Guess;
@@ -37,7 +37,7 @@ pub const INTERACTION_POW_BITS: u32 = 24;
 /// `export_circuit_cairo_verifier_preprocessed_roots()`, where the small canonical preproessed
 /// trace is lifted to the lifting_log_size specified. Notice that lifting_log_size = 20 +
 /// log_blowup_factor.
-pub fn get_preprocessed_root(lifting_log_size: u32) -> HashValue<QM31> {
+pub fn get_preprocessed_root(lifting_log_size: u32) -> ReducedHashValue<QM31> {
     let root = match lifting_log_size {
         21 => [
             1318760383, 1968650180, 1092022781, 246736179, 768637788, 1782650371, 1631388100,
@@ -72,7 +72,7 @@ pub struct CairoVerifierConfig {
     /// Number of public outputs produced by the program.
     pub n_outputs: usize,
     /// Merkle root of the preprocessed (constant) trace columns.
-    pub preprocessed_root: HashValue<QM31>,
+    pub preprocessed_root: ReducedHashValue<QM31>,
     /// Which preprocessed trace variant to use (e.g. small canonical vs lifted).
     pub preprocessed_trace_variant: PreProcessedTraceVariant,
 }

@@ -1,5 +1,5 @@
 use crate::merkle::{AuthPath, AuthPaths};
-use circuits::blake::HashValue;
+use circuits::blake::ReducedHashValue;
 use circuits::context::{Context, Var};
 use circuits::ivalue::{IValue, NoValue};
 use circuits::ops::Guess;
@@ -29,7 +29,7 @@ impl FriConfig {
 /// Represents the information for the FRI commitment phase of the proof.
 #[derive(Clone, Debug, PartialEq)]
 pub struct FriCommitProof<T> {
-    pub layer_commitments: Vec<HashValue<T>>,
+    pub layer_commitments: Vec<ReducedHashValue<T>>,
     pub last_layer_coefs: Vec<T>,
 }
 
@@ -133,7 +133,7 @@ impl<Value: IValue> Guess<Value> for FriProof<Value> {
 }
 
 pub fn empty_fri_proof(config: &FriConfig) -> FriProof<NoValue> {
-    let empty_hash = HashValue(NoValue, NoValue);
+    let empty_hash = ReducedHashValue(NoValue, NoValue);
     let all_fold_steps = compute_all_fold_steps(
         config.log_trace_size - config.log_n_last_layer_coefs,
         config.fold_step,

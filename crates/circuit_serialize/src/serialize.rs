@@ -1,7 +1,7 @@
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 
-use circuits::blake::HashValue;
+use circuits::blake::ReducedHashValue;
 use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::fri_proof::{FriCommitProof, FriProof, FriWitness};
 use circuits_stark_verifier::merkle::{AuthPath, AuthPaths};
@@ -80,7 +80,7 @@ impl<T: CircuitSerialize> CircuitSerialize for Vec<T> {
     }
 }
 
-impl CircuitSerialize for HashValue<QM31> {
+impl CircuitSerialize for ReducedHashValue<QM31> {
     fn serialize(&self, output: &mut Vec<u8>) {
         let Self(a, b) = self;
         a.serialize(output);

@@ -1,7 +1,7 @@
 use crate::channel::Channel;
 use crate::fri::{fold_coset, validate_query_position_in_coset};
 use crate::fri_proof::FriCommitProof;
-use circuits::blake::HashValue;
+use circuits::blake::ReducedHashValue;
 use circuits::context::TraceContext;
 use circuits::ivalue::qm31_from_u32s;
 use circuits::ops::Guess;
@@ -27,19 +27,19 @@ fn test_fri_commit_regression() {
 
     let proof = FriCommitProof {
         layer_commitments: vec![
-            HashValue(
+            ReducedHashValue(
                 qm31_from_u32s(370372302, 356302922, 2040089875, 232934191),
                 qm31_from_u32s(1279830905, 1240360672, 1788604172, 465814885),
             ),
-            HashValue(
+            ReducedHashValue(
                 qm31_from_u32s(1558212721, 609186473, 1554074721, 1956195301),
                 qm31_from_u32s(1243917617, 135256448, 1193318416, 1792104990),
             ),
-            HashValue(
+            ReducedHashValue(
                 qm31_from_u32s(1017503040, 1411053946, 1805475392, 1906875756),
                 qm31_from_u32s(2035075097, 617472393, 571220918, 1577790110),
             ),
-            HashValue(
+            ReducedHashValue(
                 qm31_from_u32s(1290083578, 670256590, 203247471, 492011214),
                 qm31_from_u32s(353269841, 1619070080, 770215254, 1663098736),
             ),

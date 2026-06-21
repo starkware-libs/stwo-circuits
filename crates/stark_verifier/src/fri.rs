@@ -1,4 +1,4 @@
-use circuits::blake::HashValue;
+use circuits::blake::ReducedHashValue;
 use circuits::utils::select_by_index;
 use itertools::{Itertools, zip_eq};
 use stwo::core::circle::CirclePoint;
@@ -90,7 +90,7 @@ pub fn fri_decommit<Value: IValue>(
         for (query_idx, witness) in witness_per_query.iter().enumerate() {
             let pack_leaves = log_layer_size >= LOG_PACKED_LEAF_SIZE as usize && step > 1;
             // Compute the leaves.
-            let (mut leaves, n_folds): (Vec<HashValue<Var>>, usize) = if pack_leaves {
+            let (mut leaves, n_folds): (Vec<ReducedHashValue<Var>>, usize) = if pack_leaves {
                 (
                     witness
                         .chunks(PACKED_LEAF_SIZE)

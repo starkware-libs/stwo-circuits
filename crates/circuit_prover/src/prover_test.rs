@@ -10,7 +10,7 @@ use circuit_verifier::statement::{
     INTERACTION_POW_BITS, all_circuit_components, circuit_component_log_sizes,
 };
 use circuit_verifier::verify::{CircuitConfig, verify_circuit};
-use circuits::blake::{blake, blake_g_gate, m31_to_u32, triple_xor};
+use circuits::blake::{blake_g_gate, blake2s_m31, m31_to_u32, triple_xor};
 use circuits::context::Var;
 use circuits::eval;
 use circuits::ivalue::NoValue;
@@ -73,7 +73,7 @@ pub fn build_blake_context() -> Context<QM31> {
         ));
     }
     for _ in 0..n_blakes {
-        let output = blake(&mut context, &inputs, n_bytes as usize);
+        let output = blake2s_m31(&mut context, &inputs, n_bytes as usize);
         eval!(&mut context, (output.0) + (output.1));
     }
 
@@ -378,7 +378,7 @@ fn test_prove_and_circuit_verify_triple_xor_context() {
 }
 
 /// Extract the preprocessed-trace Merkle root (`commitments[0]`) from a `CircuitProof` as
-/// `[u32; 8]`, matching the layout `HashValue<QM31>` consumes via `From<[u32; 8]>`.
+/// `[u32; 8]`, matching the layout `ReducedHashValue<QM31>` consumes via `From<[u32; 8]>`.
 fn preprocessed_root_from_proof(circuit_proof: &CircuitProof<Blake2sM31MerkleHasher>) -> [u32; 8] {
     let hash: Blake2sHash = circuit_proof.stark_proof.proof.commitments[0];
     std::array::from_fn(|i| u32::from_le_bytes(hash.0[i * 4..(i + 1) * 4].try_into().unwrap()))

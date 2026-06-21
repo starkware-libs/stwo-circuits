@@ -15,28 +15,38 @@ use crate::simd::Simd;
 #[path = "blake_test.rs"]
 pub mod test;
 
+/// A Blake2s digest whose eight 32-bit output limbs have each been reduced modulo
+/// M31 (`p = 2^31 - 1`) and packed into two [`QM31`]s (four M31 limbs each).
+///
+/// "Reduced" refers to the `reduce_to_m31` step applied to the raw 256-bit Blake2s
+/// output: the digest is no longer a faithful 256-bit hash but a field-friendly
+/// representation usable directly inside the circuit. The two fields hold limbs
+/// `0..4` and `4..8` respectively.
+///
+/// `T` is the per-element representation: `QM31` for concrete witness values, or
+/// [`Var`] for variables inside a [`Context`].
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct HashValue<T>(pub T, pub T);
+pub struct ReducedHashValue<T>(pub T, pub T);
 
-impl<Value: IValue> Guess<Value> for HashValue<Value> {
-    type Target = HashValue<Var>;
+impl<Value: IValue> Guess<Value> for ReducedHashValue<Value> {
+    type Target = ReducedHashValue<Var>;
     fn guess(&self, context: &mut Context<Value>) -> Self::Target {
-        HashValue(self.0.guess(context), self.1.guess(context))
+        ReducedHashValue(self.0.guess(context), self.1.guess(context))
     }
 }
 
-impl From<Blake2sHash> for HashValue<QM31> {
+impl From<Blake2sHash> for ReducedHashValue<QM31> {
     fn from(value: Blake2sHash) -> Self {
-        HashValue(
+        ReducedHashValue(
             qm31_from_bytes(&value.0[0..16].try_into().unwrap()),
             qm31_from_bytes(&value.0[16..32].try_into().unwrap()),
         )
     }
 }
 
-impl From<[u32; 8]> for HashValue<QM31> {
+impl From<[u32; 8]> for ReducedHashValue<QM31> {
     fn from(value: [u32; 8]) -> Self {
-        HashValue(
+        ReducedHashValue(
             qm31_from_u32s(value[0], value[1], value[2], value[3]),
             qm31_from_u32s(value[4], value[5], value[6], value[7]),
         )
@@ -64,7 +74,7 @@ pub fn qm31_from_bytes(bytes: &[u8; 16]) -> QM31 {
 
 /// Blake2s hash function implementation for QM31.
 /// Takes [QM31] values as input and returns 2 [QM31] values as output.
-pub fn blake_qm31(input: &[QM31], n_bytes: usize) -> HashValue<QM31> {
+pub fn blake_qm31(input: &[QM31], n_bytes: usize) -> ReducedHashValue<QM31> {
     // Sanity check: check the number of bytes is consistent with the number of [QM31] values.
     assert_eq!(input.len(), n_bytes.div_ceil(16));
 
@@ -81,7 +91,7 @@ pub fn blake_qm31(input: &[QM31], n_bytes: usize) -> HashValue<QM31> {
     let res0 = qm31_from_bytes(hash[0..16].try_into().unwrap());
     let res1 = qm31_from_bytes(hash[16..32].try_into().unwrap());
 
-    HashValue(res0, res1)
+    ReducedHashValue(res0, res1)
 }
 
 /// Blake2s IV.
@@ -101,18 +111,19 @@ const G_STATE_INDICES: [(usize, usize, usize, usize); 8] = [
     (3, 4, 9, 14),
 ];
 
-/// Adds a Blake2s hash using decomposed gates (`m31_to_u32`, `blake_g_gate`, `triple_xor`) to the
-/// circuit, and returns the two output variables as [`HashValue`].
+/// Adds gates to compute the Blake2s hash with the 8 u32 limbs of the output reduced modulo M31.
+/// The input message is given as a sequence of QM31 values, and the two output variables are
+/// returned as [`ReducedHashValue`].
 ///
 /// NOTE: If the number of bytes is not a multiple of 16, the caller must make sure that the
 /// remaining bytes are zero.
 /// For example, if `n_bytes` is 4, only the first coordinate of the [`QM31`] may be non-zero.
 /// If `n_bytes` is 1, that coordinate must be < 256.
-pub fn blake<Value: IValue>(
+pub fn blake2s_m31<Value: IValue>(
     ctx: &mut Context<Value>,
     input: &[Var],
     n_bytes: usize,
-) -> HashValue<Var> {
+) -> ReducedHashValue<Var> {
     // Sanity check: check the number of bytes is consistent with the number of [QM31] values.
     assert_eq!(input.len(), n_bytes.div_ceil(16));
 
@@ -126,7 +137,7 @@ pub fn blake<Value: IValue>(
         }
     }
 
-    let h = blake_u32s(ctx, message_u32s, n_bytes);
+    let h = blake2s_u32s(ctx, message_u32s, n_bytes);
 
     let c_2_pow_16 = ctx.constant(M31::from(1u32 << 16).into());
     let reduced: [Var; 8] = std::array::from_fn(|i| {
@@ -139,7 +150,7 @@ pub fn blake<Value: IValue>(
     let out0 = from_partial_evals(ctx, [reduced[0], reduced[1], reduced[2], reduced[3]]);
     let out1 = from_partial_evals(ctx, [reduced[4], reduced[5], reduced[6], reduced[7]]);
 
-    HashValue(out0, out1)
+    ReducedHashValue(out0, out1)
 }
 
 /// Adds the Blake2s block-compression gates to the circuit and returns the hash state as the eight
@@ -151,7 +162,7 @@ pub fn blake<Value: IValue>(
 ///
 /// NOTE: If the number of bytes is not a multiple of 4, the caller must make sure that the
 /// remaining bytes of the last word are zero.
-pub fn blake_u32s<Value: IValue>(
+pub fn blake2s_u32s<Value: IValue>(
     ctx: &mut Context<Value>,
     mut message_u32s: Vec<Var>,
     n_bytes: usize,

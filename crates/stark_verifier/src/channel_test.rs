@@ -1,6 +1,6 @@
 use rstest::rstest;
 
-use circuits::blake::HashValue;
+use circuits::blake::ReducedHashValue;
 use circuits::context::TraceContext;
 use circuits::ivalue::qm31_from_u32s;
 use circuits::stats::Stats;
@@ -12,11 +12,11 @@ fn test_mix_commitment_regression() {
     let mut context = TraceContext::default();
 
     let mut channel = Channel::new(&mut context);
-    let root0 = HashValue(
+    let root0 = ReducedHashValue(
         context.new_var(qm31_from_u32s(637418335, 1672023491, 980858689, 607764934)),
         context.new_var(qm31_from_u32s(386900718, 430556311, 1187803054, 669301442)),
     );
-    let root1 = HashValue(
+    let root1 = ReducedHashValue(
         context.new_var(qm31_from_u32s(1477561267, 1244239078, 1979857528, 1316512771)),
         context.new_var(qm31_from_u32s(490980261, 2016799283, 79573118, 1350641448)),
     );
