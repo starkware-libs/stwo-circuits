@@ -1,12 +1,14 @@
 use blake2::{Blake2s256, Digest};
+use expect_test::expect;
 use rstest::rstest;
-use stwo::core::vcs::blake2_hash::reduce_to_m31;
+use stwo::core::vcs::blake2_hash::{Blake2sHash, reduce_to_m31};
 
-use crate::blake::{blake_qm31, blake2s_m31, qm31_from_bytes};
+use crate::blake::{HashValue, blake_qm31, blake2s_m31, qm31_from_bytes};
 use crate::context::TraceContext;
-use crate::ivalue::qm31_from_u32s;
+use crate::ivalue::{IValue, qm31_from_u32s};
 use crate::ops::{Guess, eq, guess};
 use crate::stats::Stats;
+use crate::test_utils::finalize_guessed_vars;
 
 #[rstest]
 #[case::success(false)]
@@ -97,4 +99,74 @@ fn test_blake_qm31() {
     let context = context.finalize(false);
     context.circuit().check_yields();
     assert!(context.is_circuit_valid());
+}
+
+#[test]
+fn test_hash_value_guess() {
+    let mut context = TraceContext::default();
+
+    // Eight raw Blake2s output words, chosen so each exercises both 16-bit limbs (including the
+    // boundary values `0x0000` and `0xFFFF` in either limb).
+    let words: [u32; 8] = [
+        0x0000_0001,
+        0x1234_5678,
+        0xFFFF_FFFF,
+        0xDEAD_BEEF,
+        0x0000_FFFF,
+        0xFFFF_0000,
+        0xCAFE_BABE,
+        0x8000_0001,
+    ];
+    let mut bytes = [0u8; 32];
+    for (i, word) in words.iter().enumerate() {
+        bytes[i * 4..i * 4 + 4].copy_from_slice(&word.to_le_bytes());
+    }
+    let hash_value = HashValue::from(Blake2sHash(bytes));
+    let guessed = hash_value.guess(&mut context);
+
+    // Each guessed word must round-trip back to the original raw u32 in full (no `M31::P`
+    // reduction, unlike `ReducedHashValue`).
+    for (i, &word) in words.iter().enumerate() {
+        assert_eq!(context.get(*guessed.0[i].get()).unpack_u32(), word);
+    }
+
+    finalize_guessed_vars(&mut context);
+
+    expect![[r#"
+        [7] = [3] + [6]
+        [11] = [8] + [10]
+        [15] = [12] + [14]
+        [19] = [16] + [18]
+        [23] = [20] + [22]
+        [27] = [24] + [26]
+        [31] = [28] + [30]
+        [35] = [32] + [34]
+        [6] = [4] * [5]
+        [10] = [9] * [5]
+        [14] = [13] * [5]
+        [18] = [17] * [5]
+        [22] = [21] * [5]
+        [26] = [25] * [5]
+        [30] = [29] * [5]
+        [34] = [33] * [5]
+        [3] = m31_to_u32([3])
+        [4] = m31_to_u32([4])
+        [8] = m31_to_u32([8])
+        [9] = m31_to_u32([9])
+        [12] = m31_to_u32([12])
+        [13] = m31_to_u32([13])
+        [16] = m31_to_u32([16])
+        [17] = m31_to_u32([17])
+        [20] = m31_to_u32([20])
+        [21] = m31_to_u32([21])
+        [24] = m31_to_u32([24])
+        [25] = m31_to_u32([25])
+        [28] = m31_to_u32([28])
+        [29] = m31_to_u32([29])
+        [32] = m31_to_u32([32])
+        [33] = m31_to_u32([33])
+        output [2]
+
+    "#]]
+    .assert_debug_eq(&context.circuit);
 }

@@ -13,7 +13,7 @@ use circuits::ops::guess;
 use num_traits::{One, Zero};
 use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::PcsConfig;
-use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleHasher;
+use stwo::core::vcs_lifted::blake2_merkle::Blake2sMerkleHasher;
 use stwo_cairo_serialize::{CairoDeserialize, CairoSerialize};
 
 use crate::claim::{CairoCircuitClaim, CairoCircuitInteractionClaim};
@@ -62,7 +62,7 @@ fn test_serialize_deserialize_cairo_proof() {
     );
     let felts = prepare_circuit_proof_for_cairo_verifier(circuit_proof, &component_log_sizes);
     let mut iter = felts.iter();
-    let deserialized: CairoCircuitProof<Blake2sM31MerkleHasher> =
+    let deserialized: CairoCircuitProof<Blake2sMerkleHasher> =
         CairoCircuitProof::deserialize(&mut iter);
     assert!(iter.next().is_none(), "trailing data after proof");
     let mut felts_after = Vec::new();

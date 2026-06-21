@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 circuits.workspace = true
+circuit-prover.workspace = true
 circuits-stark-verifier.workspace = true
 indexmap.workspace = true
 itertools.workspace = true
