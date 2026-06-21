@@ -198,19 +198,17 @@ impl<Value: IValue> Context<Value> {
     /// For guessed value, add a trivial constraint so that the new variable appears once as
     /// a yield.
     fn finalize_guessed_vars(&mut self) {
-        // TODO(Leo): move the assertion to a new finalize method which calls finalize_constants and
-        // finalize_guessed_vars.
-        assert!(
-            self.reserved_vars.is_empty(),
-            "Some reserved variables were never assigned (idxs: {:?})",
-            self.reserved_vars,
-        );
         for idx in self.guessed_vars.take().unwrap().iter() {
             self.circuit.add.push(Add { in0: *idx, in1: self.zero().idx, out: *idx });
         }
     }
 
     pub fn finalize(mut self, check_vars_used: bool) -> FinalizedContext<Value> {
+        assert!(
+            self.reserved_vars.is_empty(),
+            "Some reserved variables were never assigned (idxs: {:?})",
+            self.reserved_vars,
+        );
         finalize_constants(&mut self);
         if check_vars_used {
             self.check_vars_used();
