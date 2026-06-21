@@ -10,6 +10,7 @@ use crate::eval;
 use crate::ivalue::{IValue, qm31_from_u32s};
 use crate::ops::{Guess, from_partial_evals};
 use crate::simd::Simd;
+use crate::wrappers::U32Wrapper;
 
 #[cfg(test)]
 #[path = "blake_test.rs"]
@@ -117,12 +118,12 @@ pub fn blake<Value: IValue>(
     assert_eq!(input.len(), n_bytes.div_ceil(16));
 
     // Unpack each QM31 message chunk into four u32 limbs.
-    let mut message_u32s: Vec<Var> = Vec::new();
+    let mut message_u32s: Vec<U32Wrapper<Var>> = Vec::new();
     for &var in input {
         let simd = Simd::from_packed(vec![var], 4);
         for coord in 0..4 {
             let comp = Simd::unpack_idx(ctx, &simd, coord);
-            message_u32s.push(m31_to_u32(ctx, comp));
+            message_u32s.push(U32Wrapper::new_unsafe(m31_to_u32(ctx, comp)));
         }
     }
 
@@ -130,7 +131,7 @@ pub fn blake<Value: IValue>(
 
     let c_2_pow_16 = ctx.constant(M31::from(1u32 << 16).into());
     let reduced: [Var; 8] = std::array::from_fn(|i| {
-        let h_simd = Simd::from_packed(vec![h[i]], 2);
+        let h_simd = Simd::from_packed(vec![*h[i].get()], 2);
         let low = Simd::unpack_idx(ctx, &h_simd, 0);
         let high = Simd::unpack_idx(ctx, &h_simd, 1);
         eval!(ctx, (low) + ((high) * (c_2_pow_16)))
@@ -153,9 +154,9 @@ pub fn blake<Value: IValue>(
 /// remaining bytes of the last word are zero.
 pub fn blake_u32s<Value: IValue>(
     ctx: &mut Context<Value>,
-    mut message_u32s: Vec<Var>,
+    mut message_u32s: Vec<U32Wrapper<Var>>,
     n_bytes: usize,
-) -> [Var; 8] {
+) -> [U32Wrapper<Var>; 8] {
     const BLOCK_BYTES: usize = 64;
     const WORDS_PER_BLOCK: usize = 16;
 
@@ -163,7 +164,7 @@ pub fn blake_u32s<Value: IValue>(
     let total_words = n_blocks * WORDS_PER_BLOCK;
     let zero_u32 = ctx.constant(QM31::pack_u32(0));
     while message_u32s.len() < total_words {
-        message_u32s.push(zero_u32);
+        message_u32s.push(U32Wrapper::new_unsafe(zero_u32));
     }
 
     // `h`: IV XORed with the parameter block (depth 1, fanout 1, digest length 32, key length 0).
@@ -174,7 +175,7 @@ pub fn blake_u32s<Value: IValue>(
 
     for block_idx in 0..n_blocks {
         let block: [Var; WORDS_PER_BLOCK] =
-            std::array::from_fn(|i| message_u32s[block_idx * WORDS_PER_BLOCK + i]);
+            std::array::from_fn(|i| *message_u32s[block_idx * WORDS_PER_BLOCK + i].get());
         let t0 = std::cmp::min(n_bytes, (block_idx + 1) * BLOCK_BYTES) as u32;
         let t1 = 0u32;
         let last = block_idx == n_blocks - 1;
@@ -223,7 +224,7 @@ pub fn blake_u32s<Value: IValue>(
     }
 
     ctx.stats.blake_updates += n_blocks;
-    h
+    h.map(U32Wrapper::new_unsafe)
 }
 
 /// Adds a TripleXor gate to the circuit: XOR three u32 values encoded as QM31 `(u16, u16, 0, 0)`

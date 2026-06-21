@@ -236,6 +236,19 @@ pub fn guess_m31<Value: IValue>(
     M31Wrapper::new_unsafe(out)
 }
 
+/// Returns a new variable constrained to a 16-bit unsigned integer (the range `[0, 2^16)`) with
+/// the given value. The constraint is enforced during finalization (see
+/// [`Context::finalize_guessed_vars`](crate::context::Context::finalize_guessed_vars)).
+pub fn guess_u16<Value: IValue>(
+    context: &mut Context<Value>,
+    value: M31Wrapper<Value>,
+) -> M31Wrapper<Var> {
+    context.stats.guess += 1;
+    let out = context.new_var(*value.get());
+    context.guessed_vars.as_mut().unwrap().push(GuessVar::U16(out));
+    M31Wrapper::new_unsafe(out)
+}
+
 /// Computes the map `(a, b, c, d) -> a + b * i + c * u + d * iu`. Note that the input values are
 /// not necessarily in the base field `M31`.
 pub fn from_partial_evals(context: &mut Context<impl IValue>, values: [Var; 4]) -> Var {
