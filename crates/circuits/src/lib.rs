@@ -9,6 +9,7 @@ pub mod ivalue;
 pub mod ops;
 pub mod simd;
 pub mod stats;
+#[cfg(any(test, feature = "test-utils"))]
 pub mod test_utils;
 pub mod utils;
 pub mod wrappers;

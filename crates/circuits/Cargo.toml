@@ -3,6 +3,11 @@ name = "circuits"
 version.workspace = true
 edition.workspace = true
 
+[features]
+# Exposes `test_utils` to other crates' test builds. Off by default, so the helpers
+# are excluded from normal/release builds. Consumers enable it via dev-dependencies.
+test-utils = []
+
 [dependencies]
 blake2.workspace = true
 hashbrown.workspace = true
