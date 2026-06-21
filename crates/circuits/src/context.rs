@@ -5,6 +5,7 @@ use num_traits::{One, Zero};
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 
+use crate::blake::m31_to_u32_into;
 use crate::circuit::{Add, Circuit};
 use crate::finalize_constants::finalize_constants;
 use crate::ivalue::IValue;
@@ -42,6 +43,8 @@ pub enum GuessVar {
     M31(Var),
     // The guessed value is in the field `QM31`.
     QM31(Var),
+    // The guessed value is a 16-bit unsigned integer.
+    U16(Var),
 }
 
 /// Represents the information required to build a [Circuit].
@@ -226,6 +229,12 @@ impl<Value: IValue> Context<Value> {
                 // A QM31 guess is unrestricted; the trivial `var + 0 = var` gate only yields `var`.
                 GuessVar::QM31(var) => {
                     add_into(self, var, self.zero(), var);
+                }
+                GuessVar::U16(var) => {
+                    // A U16 guess must be constrained to a 16-bit unsigned integer.
+                    // Asserting `(x, 0, 0, 0) == (x & 0xFFFF, x >> 16, 0, 0)` forces `x >> 16`
+                    // to be zero, i.e. `x` to be a 16-bit unsigned integer.
+                    m31_to_u32_into(self, var, var);
                 }
             }
         }
