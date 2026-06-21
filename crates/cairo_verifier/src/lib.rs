@@ -8,4 +8,6 @@ pub mod utils;
 pub mod verify;
 
 #[cfg(test)]
+mod circuit_analysis;
+#[cfg(test)]
 pub mod test;

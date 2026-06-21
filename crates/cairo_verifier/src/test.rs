@@ -156,8 +156,8 @@ fn test_verify() {
     println!("Stats: {:?}", novalue_context.stats());
 }
 
-#[test]
-fn test_verify_all_opcodes() {
+/// Builds the verifier circuit for `all_opcode_components`.
+fn all_opcode_components_context() -> FinalizedContext<QM31> {
     let proof_path = get_proof_file_path("all_opcode_components");
     let preprocessed_trace_variant = PreProcessedTraceVariant::Canonical;
     let low_blowup_factor = 1;
@@ -192,7 +192,17 @@ fn test_verify_all_opcodes() {
 
     let proof_file = File::open(proof_path).unwrap();
     let cairo_proof = binary_deserialize_from_file(&proof_file).unwrap();
+    verify_cairo(&cairo_proof).unwrap()
+}
 
-    let context = verify_cairo(&cairo_proof).unwrap();
+#[test]
+fn test_verify_all_opcodes() {
+    let context = all_opcode_components_context();
     println!("Stats: {:?}", context.stats());
+}
+
+#[test]
+fn analyze_all_opcode_components() {
+    let context = all_opcode_components_context();
+    crate::circuit_analysis::analyze(context.circuit(), &context.context.debug_info);
 }
