@@ -78,7 +78,7 @@ pub fn verify<Value: IValue>(
         extract_bits(context, &component_sizes, config.log_trace_size() as u32 + 1);
 
     for claim_to_mix in statement.claims_to_mix(context) {
-        channel.mix_qm31s(context, claim_to_mix.iter().cloned());
+        channel.mix_u32s(context, claim_to_mix.into_iter());
     }
 
     // Mix the trace commitments into the channel.
