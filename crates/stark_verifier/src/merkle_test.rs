@@ -8,7 +8,7 @@ use crate::merkle::{
     verify_merkle_path,
 };
 use crate::oods::EvalDomainSamples;
-use circuits::blake::{HashValue, blake_qm31};
+use circuits::blake::{ReducedHashValue, blake_qm31};
 use circuits::context::TraceContext;
 use circuits::ivalue::qm31_from_u32s;
 use circuits::ops::Guess;
@@ -55,12 +55,12 @@ fn hash_leaf_qm31_regression() {
 fn hash_node_regression() {
     let mut context = TraceContext::default();
 
-    let left = HashValue(
+    let left = ReducedHashValue(
         qm31_from_u32s(1206199574, 725559475, 484842011, 871283881),
         qm31_from_u32s(1827188342, 1597668943, 763527182, 238830106),
     )
     .guess(&mut context);
-    let right = HashValue(
+    let right = ReducedHashValue(
         qm31_from_u32s(314780017, 161087059, 1415631711, 1712686715),
         qm31_from_u32s(873946371, 993675704, 1750257287, 1496441219),
     )
@@ -75,17 +75,20 @@ fn hash_node_regression() {
 }
 
 /// Similar to `hash_node`, but for `QM31` values rather than `Var`s.
-fn hash_node_qm31(left: HashValue<QM31>, right: HashValue<QM31>) -> HashValue<QM31> {
+fn hash_node_qm31(
+    left: ReducedHashValue<QM31>,
+    right: ReducedHashValue<QM31>,
+) -> ReducedHashValue<QM31> {
     blake_qm31(&[left.0, left.1, right.0, right.1], 64)
 }
 
 /// Similar to `hash_leaf_m31s` for an empty leaf.
-fn hash_empty_leaf() -> HashValue<QM31> {
+fn hash_empty_leaf() -> ReducedHashValue<QM31> {
     blake_qm31(&[], 0)
 }
 
 /// Similar to `hash_leaf_m31s`, but for one `M31` rather than `Var`s.
-fn hash_leaf(value: M31) -> HashValue<QM31> {
+fn hash_leaf(value: M31) -> ReducedHashValue<QM31> {
     blake_qm31(&[value.into()], 4)
 }
 
@@ -96,16 +99,21 @@ fn hash_leaf(value: M31) -> HashValue<QM31> {
 fn test_merkle_path(#[case] wrong_bit: bool, #[case] wrong_root: bool) {
     let mut context = TraceContext::default();
 
-    let leaf_val = HashValue(qm31_from_u32s(1, 2, 3, 4), qm31_from_u32s(5, 6, 7, 8));
-    let auth_path0 = HashValue(qm31_from_u32s(9, 10, 11, 12), qm31_from_u32s(13, 14, 15, 16));
-    let auth_path1 = HashValue(qm31_from_u32s(17, 18, 19, 20), qm31_from_u32s(21, 22, 23, 24));
-    let auth_path2 = HashValue(qm31_from_u32s(25, 26, 27, 28), qm31_from_u32s(29, 30, 31, 32));
-    let auth_path3 = HashValue(qm31_from_u32s(33, 34, 35, 36), qm31_from_u32s(37, 38, 39, 40));
-    let auth_path4 = HashValue(qm31_from_u32s(41, 42, 43, 44), qm31_from_u32s(45, 46, 47, 48));
+    let leaf_val = ReducedHashValue(qm31_from_u32s(1, 2, 3, 4), qm31_from_u32s(5, 6, 7, 8));
+    let auth_path0 =
+        ReducedHashValue(qm31_from_u32s(9, 10, 11, 12), qm31_from_u32s(13, 14, 15, 16));
+    let auth_path1 =
+        ReducedHashValue(qm31_from_u32s(17, 18, 19, 20), qm31_from_u32s(21, 22, 23, 24));
+    let auth_path2 =
+        ReducedHashValue(qm31_from_u32s(25, 26, 27, 28), qm31_from_u32s(29, 30, 31, 32));
+    let auth_path3 =
+        ReducedHashValue(qm31_from_u32s(33, 34, 35, 36), qm31_from_u32s(37, 38, 39, 40));
+    let auth_path4 =
+        ReducedHashValue(qm31_from_u32s(41, 42, 43, 44), qm31_from_u32s(45, 46, 47, 48));
     let auth_path = AuthPath(vec![auth_path0, auth_path1, auth_path2, auth_path3, auth_path4])
         .guess(&mut context);
 
-    let leaf = HashValue(leaf_val.0, leaf_val.1).guess(&mut context);
+    let leaf = ReducedHashValue(leaf_val.0, leaf_val.1).guess(&mut context);
     let bits = vec![
         qm31_from_u32s(if wrong_bit { 0 } else { 1 }, 0, 0, 0),
         qm31_from_u32s(1, 0, 0, 0),
@@ -124,7 +132,7 @@ fn test_merkle_path(#[case] wrong_bit: bool, #[case] wrong_root: bool) {
     if wrong_root {
         node.0 += qm31_from_u32s(0, 0, 1, 0);
     }
-    let root = HashValue(node.0, node.1).guess(&mut context);
+    let root = ReducedHashValue(node.0, node.1).guess(&mut context);
 
     verify_merkle_path(&mut context, leaf, &bits, root, &auth_path);
     let success = !wrong_bit && !wrong_root;
@@ -153,8 +161,9 @@ fn test_decommit_eval_domain_samples(#[case] wrong_root: Option<usize>, #[case] 
     let opt_column_log_sizes_by_trace: HashMap<usize, Vec<Var>> =
         HashMap::from([(1, vec![]), (2, vec![])]);
 
-    let auth_path_val0 = HashValue(qm31_from_u32s(1, 2, 3, 4), qm31_from_u32s(5, 6, 7, 8));
-    let auth_path_val1 = HashValue(qm31_from_u32s(9, 10, 11, 12), qm31_from_u32s(13, 14, 15, 16));
+    let auth_path_val0 = ReducedHashValue(qm31_from_u32s(1, 2, 3, 4), qm31_from_u32s(5, 6, 7, 8));
+    let auth_path_val1 =
+        ReducedHashValue(qm31_from_u32s(9, 10, 11, 12), qm31_from_u32s(13, 14, 15, 16));
     let auth_paths = AuthPaths {
         data: vec![
             vec![AuthPath(vec![auth_path_val0])],

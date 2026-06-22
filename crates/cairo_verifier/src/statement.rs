@@ -10,7 +10,7 @@ use cairo_air::flat_claims::FlatClaim;
 use cairo_air::relations::{
     MEMORY_ADDRESS_TO_ID_RELATION_ID, MEMORY_ID_TO_BIG_RELATION_ID, OPCODES_RELATION_ID,
 };
-use circuits::blake::{HashValue, blake};
+use circuits::blake::{ReducedHashValue, blake2s_m31};
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::extract_bits::extract_bits;
@@ -189,7 +189,7 @@ pub struct CairoStatement<Value: IValue> {
     pub aux_data: AuxData,
     pub program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
     pub packed_outputs: Simd,
-    pub preprocessed_root: HashValue<QM31>,
+    pub preprocessed_root: ReducedHashValue<QM31>,
     pub preprocessed_trace_variant: PreProcessedTraceVariant,
 }
 
@@ -332,7 +332,7 @@ impl<Value: IValue> CairoStatement<Value> {
         outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
         program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
         enabled_bits: Vec<bool>,
-        preprocessed_root: HashValue<QM31>,
+        preprocessed_root: ReducedHashValue<QM31>,
         preprocessed_trace_variant: PreProcessedTraceVariant,
     ) -> Self {
         let components = enabled_components::<Value>(&enabled_bits);
@@ -414,11 +414,12 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
 
         let program_len = context.constant(qm31_from_u32s(program.len() as u32, 0, 0, 0));
 
-        let output_hash = blake(context, packed_outputs.get_packed(), 4 * packed_outputs.len());
+        let output_hash =
+            blake2s_m31(context, packed_outputs.get_packed(), 4 * packed_outputs.len());
         context.set_outputs(&[output_hash.0, output_hash.1]);
 
         let flat_program = pack_into_qm31s(program.iter().flatten().cloned());
-        let program_hash = IValue::blake(&flat_program, flat_program.len() * 16);
+        let program_hash = IValue::blake2s_m31(&flat_program, flat_program.len() * 16);
         vec![
             vec![n_enable_bits],
             packed_enable_bits,
@@ -545,8 +546,8 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         );
     }
 
-    fn get_preprocessed_root(&self, context: &mut Context<Value>) -> HashValue<Var> {
-        HashValue(
+    fn get_preprocessed_root(&self, context: &mut Context<Value>) -> ReducedHashValue<Var> {
+        ReducedHashValue(
             context.constant(self.preprocessed_root.0),
             context.constant(self.preprocessed_root.1),
         )

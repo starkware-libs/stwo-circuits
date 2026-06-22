@@ -5,7 +5,7 @@ use crate::components::{
 };
 use crate::relations::GATE_RELATION_ID;
 use crate::verify::CircuitConfig;
-use circuits::blake::HashValue;
+use circuits::blake::ReducedHashValue;
 use circuits::context::{Context, U_VAR_IDX, Var};
 use circuits::eval;
 use circuits::ivalue::IValue;
@@ -38,7 +38,7 @@ pub struct CircuitStatement<Value: IValue> {
     /// trace.
     pub preprocessed_column_log_sizes: OrderedHashMap<PreProcessedColumnId, u32>,
     /// The preprocessed trace root.
-    pub preprocessed_root: HashValue<Var>,
+    pub preprocessed_root: ReducedHashValue<Var>,
 }
 impl<Value: IValue> CircuitStatement<Value> {
     pub fn new(
@@ -58,9 +58,11 @@ impl<Value: IValue> CircuitStatement<Value> {
         // Guess the preprocessed root. The guessed wires enter the hash that will be output by
         // this verifier. To ensure soundness in a recursive setup, it is *critical* that this hash
         // is reconstructed by the last verifier, which we can assume honest.
-        let preprocessed_root =
-            HashValue(Value::from_qm31(preprocessed_root.0), Value::from_qm31(preprocessed_root.1))
-                .guess(context);
+        let preprocessed_root = ReducedHashValue(
+            Value::from_qm31(preprocessed_root.0),
+            Value::from_qm31(preprocessed_root.1),
+        )
+        .guess(context);
 
         let components = all_circuit_components::<Value>();
         let component_log_sizes =
@@ -150,7 +152,7 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
         self.preprocessed_column_log_sizes.keys().cloned().collect()
     }
 
-    fn get_preprocessed_root(&self, _context: &mut Context<Value>) -> HashValue<Var> {
+    fn get_preprocessed_root(&self, _context: &mut Context<Value>) -> ReducedHashValue<Var> {
         self.preprocessed_root
     }
 }

@@ -1,7 +1,7 @@
 use stwo::core::circle::CirclePoint;
 use stwo::core::fields::m31::MODULUS_BITS;
 
-use circuits::blake::{HashValue, blake};
+use circuits::blake::{ReducedHashValue, blake2s_m31};
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::extract_bits::extract_bits;
@@ -15,7 +15,7 @@ pub mod test;
 
 pub struct Channel {
     /// The current digest of the channel.
-    digest: HashValue<Var>,
+    digest: ReducedHashValue<Var>,
     /// The number of times values were taken from the channel.
     n_draws: usize,
 }
@@ -26,17 +26,17 @@ impl Channel {
     /// Constructs a new channel, with a zero digest.
     pub fn new(context: &mut Context<impl IValue>) -> Self {
         let zero = context.zero();
-        Self { digest: HashValue(zero, zero), n_draws: 0 }
+        Self { digest: ReducedHashValue(zero, zero), n_draws: 0 }
     }
 
     /// Updates the digest with the given new digest, and resets the number of draws to zero.
-    fn update_digest(&mut self, new_digest: HashValue<Var>) {
+    fn update_digest(&mut self, new_digest: ReducedHashValue<Var>) {
         self.digest = new_digest;
         self.n_draws = 0;
     }
 
     #[cfg(test)]
-    pub fn digest(&self) -> HashValue<Var> {
+    pub fn digest(&self) -> ReducedHashValue<Var> {
         self.digest
     }
 
@@ -46,14 +46,25 @@ impl Channel {
         init_digest: [stwo::core::fields::qm31::QM31; 2],
     ) -> Self {
         Self {
-            digest: HashValue(context.constant(init_digest[0]), context.constant(init_digest[1])),
+            digest: ReducedHashValue(
+                context.constant(init_digest[0]),
+                context.constant(init_digest[1]),
+            ),
             n_draws: 0,
         }
     }
 
     /// Mixes the given root into the channel's digest.
-    pub fn mix_commitment(&mut self, context: &mut Context<impl IValue>, root: HashValue<Var>) {
-        self.update_digest(blake(context, &[self.digest.0, self.digest.1, root.0, root.1], 16 * 4));
+    pub fn mix_commitment(
+        &mut self,
+        context: &mut Context<impl IValue>,
+        root: ReducedHashValue<Var>,
+    ) {
+        self.update_digest(blake2s_m31(
+            context,
+            &[self.digest.0, self.digest.1, root.0, root.1],
+            16 * 4,
+        ));
     }
 
     /// Mixes the given list of `QM31` values into the channel.
@@ -64,7 +75,7 @@ impl Channel {
     ) {
         let mut blake_input = vec![self.digest.0, self.digest.1];
         blake_input.extend(values);
-        self.update_digest(blake(context, &blake_input, 16 * blake_input.len()));
+        self.update_digest(blake2s_m31(context, &blake_input, 16 * blake_input.len()));
     }
 
     /// Draws one `QM31` random value from the channel.
@@ -93,7 +104,8 @@ impl Channel {
             context.constant(qm31_from_u32s(self.n_draws.try_into().unwrap(), 0, 0, 0));
         // Note that we add a zero byte for domain separation between generating randomness and
         // mixing a single u32.
-        let res = blake(context, &[self.digest.0, self.digest.1, n_draws_var], 16 + 16 + 4 + 1);
+        let res =
+            blake2s_m31(context, &[self.digest.0, self.digest.1, n_draws_var], 16 + 16 + 4 + 1);
         self.n_draws += 1;
         [res.0, res.1]
     }
@@ -121,7 +133,7 @@ impl Channel {
             self.digest.1,
             context.constant(qm31_from_u32s(n_bits, 0, 0, 0)),
         ];
-        let prefixed_digest = blake(context, &input, 52);
+        let prefixed_digest = blake2s_m31(context, &input, 52);
 
         // Check that `nonce` consists of only the first two M31 elements.
         let nonce_high_mask = context.constant(qm31_from_u32s(0, 0, 1, 1));
@@ -130,7 +142,7 @@ impl Channel {
 
         // Compute `H(prefixed_digest, nonce)`.
         let input = [prefixed_digest.0, prefixed_digest.1, nonce];
-        let HashValue(res0, res1) = blake(context, &input, 40);
+        let ReducedHashValue(res0, res1) = blake2s_m31(context, &input, 40);
         context.mark_as_unused(res1);
 
         // Take the first word.
@@ -148,6 +160,6 @@ impl Channel {
         }
 
         // Mix nonce into the channel.
-        self.update_digest(blake(context, &[self.digest.0, self.digest.1, nonce], 40));
+        self.update_digest(blake2s_m31(context, &[self.digest.0, self.digest.1, nonce], 40));
     }
 }

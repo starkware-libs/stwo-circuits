@@ -3,7 +3,7 @@ use num_traits::Zero;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::fields::{cm31::CM31, m31::M31};
 
-use crate::blake::{HashValue, blake_qm31};
+use crate::blake::{ReducedHashValue, blake_qm31};
 
 #[cfg(test)]
 #[path = "ivalue_test.rs"]
@@ -47,7 +47,7 @@ pub trait IValue:
     /// Returns a [QM31] value that consists of the LSB of each of the four [M31] coordinates.
     fn pointwise_lsb(&self) -> Self;
 
-    fn blake(input: &[Self], n_bytes: usize) -> HashValue<Self>;
+    fn blake2s_m31(input: &[Self], n_bytes: usize) -> ReducedHashValue<Self>;
 
     /// Sorts the input by the u coordinate.
     fn sort_by_u_coordinate(input: &[Self]) -> Vec<Self>;
@@ -88,7 +88,7 @@ impl IValue for QM31 {
         qm31_from_u32s(self.0.0.0 % 2, self.0.1.0 % 2, self.1.0.0 % 2, self.1.1.0 % 2)
     }
 
-    fn blake(input: &[Self], n_bytes: usize) -> HashValue<Self> {
+    fn blake2s_m31(input: &[Self], n_bytes: usize) -> ReducedHashValue<Self> {
         blake_qm31(input, n_bytes)
     }
 
@@ -150,8 +150,8 @@ impl IValue for NoValue {
         0
     }
 
-    fn blake(_: &[Self], _: usize) -> HashValue<Self> {
-        HashValue(Self, Self)
+    fn blake2s_m31(_: &[Self], _: usize) -> ReducedHashValue<Self> {
+        ReducedHashValue(Self, Self)
     }
 
     fn sort_by_u_coordinate(input: &[Self]) -> Vec<Self> {

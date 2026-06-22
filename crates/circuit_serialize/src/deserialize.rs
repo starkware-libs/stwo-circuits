@@ -3,7 +3,7 @@ use std::fmt;
 use stwo::core::fields::m31::{M31, P};
 use stwo::core::fields::qm31::QM31;
 
-use circuits::blake::HashValue;
+use circuits::blake::ReducedHashValue;
 use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::fri_proof::{
     FriCommitProof, FriConfig, FriProof, FriWitness, compute_all_fold_steps,
@@ -68,9 +68,9 @@ impl<T: CircuitDeserialize, const N: usize> CircuitDeserialize for [T; N] {
     }
 }
 
-impl CircuitDeserialize for HashValue<QM31> {
+impl CircuitDeserialize for ReducedHashValue<QM31> {
     fn deserialize(data: &mut &[u8]) -> DeserializeResult<Self> {
-        Ok(HashValue(QM31::deserialize(data)?, QM31::deserialize(data)?))
+        Ok(ReducedHashValue(QM31::deserialize(data)?, QM31::deserialize(data)?))
     }
 }
 
@@ -101,9 +101,9 @@ pub fn deserialize_proof_with_config(
     config: &ProofConfig,
 ) -> DeserializeResult<Proof<QM31>> {
     let channel_salt = QM31::deserialize(data)?;
-    let trace_root = HashValue::<QM31>::deserialize(data)?;
-    let interaction_root = HashValue::<QM31>::deserialize(data)?;
-    let composition_polynomial_root = HashValue::<QM31>::deserialize(data)?;
+    let trace_root = ReducedHashValue::<QM31>::deserialize(data)?;
+    let interaction_root = ReducedHashValue::<QM31>::deserialize(data)?;
+    let composition_polynomial_root = ReducedHashValue::<QM31>::deserialize(data)?;
     let claimed_sums = deserialize_vec(data, config.n_components())?;
     let preprocessed_columns_at_oods = deserialize_vec(data, config.n_preprocessed_columns)?;
     let trace_at_oods = deserialize_vec(data, config.n_trace_columns)?;
@@ -176,7 +176,7 @@ fn deserialize_eval_domain_auth_paths(
     for _ in 0..N_TRACES {
         let mut paths = Vec::with_capacity(n_queries);
         for _ in 0..n_queries {
-            let hashes: Vec<HashValue<QM31>> = deserialize_vec(data, path_len)?;
+            let hashes: Vec<ReducedHashValue<QM31>> = deserialize_vec(data, path_len)?;
             paths.push(AuthPath(hashes));
         }
         trees.push(paths);
@@ -213,7 +213,7 @@ fn deserialize_fri_proof(
         path_len -= step;
         let mut paths = Vec::with_capacity(fri_config.n_queries);
         for _ in 0..fri_config.n_queries {
-            let hashes: Vec<HashValue<QM31>> = deserialize_vec(data, path_len)?;
+            let hashes: Vec<ReducedHashValue<QM31>> = deserialize_vec(data, path_len)?;
             paths.push(AuthPath(hashes));
         }
         auth_path_trees.push(paths);

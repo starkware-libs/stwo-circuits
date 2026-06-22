@@ -10,7 +10,7 @@ use circuit_prover::prover::{
 };
 use circuit_verifier::statement::CircuitStatement;
 use circuit_verifier::verify::{CircuitConfig, CircuitPublicData, verify_circuit};
-use circuits::blake::HashValue;
+use circuits::blake::ReducedHashValue;
 use circuits::context::{Context, FinalizedContext};
 use circuits::ivalue::{IValue, NoValue};
 use circuits_stark_verifier::proof::{ProofConfig, ProofInfo};
@@ -31,7 +31,7 @@ use crate::verify::build_cairo_verifier_circuit;
 fn verify_circuit_proof(
     preprocessed_circuit: &PreprocessedCircuit,
     circuit_proof: CircuitProof<Blake2sM31MerkleHasher>,
-    preprocessed_root: HashValue<QM31>,
+    preprocessed_root: ReducedHashValue<QM31>,
 ) -> FinalizedContext<QM31> {
     let circuit_config = CircuitConfig {
         config: circuit_proof.pcs_config,
@@ -106,7 +106,7 @@ fn test_verify_privacy_with_recursion() {
     )
     .unwrap();
 
-    let preprocessed_root: HashValue<QM31> =
+    let preprocessed_root: ReducedHashValue<QM31> =
         circuit_proof.stark_proof.proof.commitments.0[0].into();
 
     verify_circuit_proof(&preprocessed, circuit_proof, preprocessed_root);
@@ -204,7 +204,7 @@ fn test_privacy_proof_info() {
         },
         lifting_log_size: Some(lifting_log_size),
     };
-    let preprocessed_root = HashValue(QM31::zero(), QM31::zero());
+    let preprocessed_root = ReducedHashValue(QM31::zero(), QM31::zero());
     let circuit_config = CircuitConfig {
         config: pcs_config,
         n_outputs: preprocessed_circuit.n_outputs,

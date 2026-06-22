@@ -1,6 +1,6 @@
 use super::simple_air::FIB_SEQUENCE_LENGTH;
 use crate::simple_air::{FIB_PREPROCESSED_COLUMNS, LOG_SIZE_LONG, LOG_SIZE_SHORT};
-use circuits::blake::HashValue;
+use circuits::blake::ReducedHashValue;
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::ivalue::{IValue, qm31_from_u32s};
@@ -179,8 +179,8 @@ impl<Value: IValue> Statement<Value> for SimpleStatement<Value> {
             .collect()
     }
 
-    fn get_preprocessed_root(&self, context: &mut Context<Value>) -> HashValue<Var> {
-        HashValue(
+    fn get_preprocessed_root(&self, context: &mut Context<Value>) -> ReducedHashValue<Var> {
+        ReducedHashValue(
             context.constant(qm31_from_u32s(709984722, 1794174263, 414815104, 733903951)),
             context.constant(qm31_from_u32s(1522975159, 1233861941, 1489692661, 512084637)),
         )

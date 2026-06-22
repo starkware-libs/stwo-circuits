@@ -2,7 +2,7 @@ use blake2::{Blake2s256, Digest};
 use rstest::rstest;
 use stwo::core::vcs::blake2_hash::reduce_to_m31;
 
-use crate::blake::{blake, blake_qm31, qm31_from_bytes};
+use crate::blake::{blake_qm31, blake2s_m31, qm31_from_bytes};
 use crate::context::TraceContext;
 use crate::ivalue::qm31_from_u32s;
 use crate::ops::{Guess, eq, guess};
@@ -34,7 +34,7 @@ fn test_blake(#[case] wrong_output: bool) {
         expected_hash[0] += 1;
     }
 
-    let output = blake(&mut context, &input, 66);
+    let output = blake2s_m31(&mut context, &input, 66);
     let out0 = guess(&mut context, qm31_from_bytes(expected_hash[0..16].try_into().unwrap()));
     let out1 = guess(&mut context, qm31_from_bytes(expected_hash[16..32].try_into().unwrap()));
     eq(&mut context, output.0, out0);
@@ -87,7 +87,7 @@ fn test_blake_qm31() {
     let expected = blake_qm31(&input_values, n_bytes);
 
     let input = input_values.guess(&mut context);
-    let output = blake(&mut context, &input, n_bytes);
+    let output = blake2s_m31(&mut context, &input, n_bytes);
 
     let out0 = guess(&mut context, expected.0);
     let out1 = guess(&mut context, expected.1);
