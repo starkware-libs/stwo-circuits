@@ -2,7 +2,7 @@ use rstest::rstest;
 use stwo::core::channel::{Blake2sM31Channel, Channel as StwoChannel};
 use stwo::core::fields::qm31::QM31;
 
-use circuits::blake::ReducedHashValue;
+use circuits::blake::{ReducedHashValue, unpack_qm31s_to_u32_words};
 use circuits::context::TraceContext;
 use circuits::ivalue::{IValue, qm31_from_u32s};
 use circuits::stats::Stats;
@@ -209,4 +209,73 @@ fn test_pow_regression(#[case] n_bits: u32, #[case] nonce: u32, #[case] success:
             qm31_from_u32s(1921341900, 364315769, 339695133, 365135865)
         );
     }
+}
+
+/// Verifies the full `claims_to_mix` pipeline: `unpack_qm31s_to_u32_words` followed by
+/// `channel.mix_u32s` produces the same channel state as stwo's `Blake2sM31Channel::mix_felts`.
+#[test]
+fn test_unpack_then_mix_u32s_matches_mix_felts() {
+    use stwo::core::fields::m31::M31;
+    use stwo::core::fields::qm31::QM31 as StwoQM31;
+
+    // A few non-trivial QM31 values with all four M31 coordinates nonzero.
+    let felts: Vec<StwoQM31> = vec![
+        StwoQM31::from_m31_array([M31(42), M31(1337), M31(999999), M31(2147483646)]),
+        StwoQM31::from_m31_array([M31(1), M31(0), M31(0), M31(0)]),
+        StwoQM31::from_m31_array([
+            M31(485399786),
+            M31(1255952693),
+            M31(1939438763),
+            M31(1561715227),
+        ]),
+    ];
+
+    let mut context = TraceContext::default();
+    // Both channels start from a zero digest.
+    let mut channel = Channel::new(&mut context);
+    let mut stwo_channel = Blake2sM31Channel::default();
+
+    // Stwo prover-side: mix the felts directly.
+    stwo_channel.mix_felts(&felts);
+
+    // Circuit-side: convert QM31s to u32 words, then mix via mix_u32s.
+    let circuit_felts: Vec<_> = felts
+        .iter()
+        .map(|qm31| {
+            let [a, b, c, d] = qm31.to_m31_array();
+            context.new_var(qm31_from_u32s(a.0, b.0, c.0, d.0))
+        })
+        .collect();
+    let words = unpack_qm31s_to_u32_words(&mut context, circuit_felts);
+    channel.mix_u32s(&mut context, words.into_iter());
+
+    let expected = ReducedHashValue::<QM31>::from(stwo_channel.digest());
+    assert_eq!(context.get(channel.digest().0), expected.0);
+    assert_eq!(context.get(channel.digest().1), expected.1);
+
+    // Also verify a second round with a non-zero starting digest.
+    let felts2: Vec<StwoQM31> = vec![StwoQM31::from_m31_array([
+        M31(1757357815),
+        M31(8864493),
+        M31(674769946),
+        M31(1715431414),
+    ])];
+
+    stwo_channel.mix_felts(&felts2);
+
+    let circuit_felts2: Vec<_> = felts2
+        .iter()
+        .map(|qm31| {
+            let [a, b, c, d] = qm31.to_m31_array();
+            context.new_var(qm31_from_u32s(a.0, b.0, c.0, d.0))
+        })
+        .collect();
+    let words2 = unpack_qm31s_to_u32_words(&mut context, circuit_felts2);
+    channel.mix_u32s(&mut context, words2.into_iter());
+
+    let expected2 = ReducedHashValue::<QM31>::from(stwo_channel.digest());
+    assert_eq!(context.get(channel.digest().0), expected2.0);
+    assert_eq!(context.get(channel.digest().1), expected2.1);
+
+    context.validate_circuit();
 }
