@@ -6,7 +6,7 @@ use circuit_verifier::{
     statement::{INTERACTION_POW_BITS, all_circuit_components},
     verify::CircuitConfig,
 };
-use circuits::{blake::ReducedHashValue, context::FinalizedContext, ivalue::NoValue};
+use circuits::{blake::HashValue, context::FinalizedContext, ivalue::NoValue};
 use circuits_stark_verifier::proof::{ProofConfig, empty_proof};
 use stwo::core::{fields::qm31::QM31, pcs::PcsConfig};
 
@@ -40,7 +40,7 @@ pub fn get_preprocessed_multiverifier_from_circuit(
         config: pcs_config,
         n_outputs: preprocessed_leaf_circuit.n_outputs,
         preprocessed_column_log_sizes: preprocessed_leaf_circuit.preprocessed_trace.log_sizes(),
-        preprocessed_root: ReducedHashValue(QM31::from(0), QM31::from(0)),
+        preprocessed_root: HashValue::from([0u32; 8]),
     };
     let shared_config = SharedConfig {
         pcs_config,
@@ -49,7 +49,7 @@ pub fn get_preprocessed_multiverifier_from_circuit(
     };
     let empty_input = || MultiverifierInput {
         proof: empty_proof(&proof_config),
-        preprocessed_root: subcircuit_config.preprocessed_root,
+        preprocessed_root: subcircuit_config.preprocessed_root.clone(),
         output_values: [QM31::from(0); 2],
     };
     let mut multiverifier_context =
@@ -67,7 +67,7 @@ pub fn get_preprocessed_multiverifier_from_circuit(
 pub fn get_preprocessed_root(
     preprocessed_circuit: &PreprocessedCircuit,
     log_blowup_factor: u32,
-) -> ReducedHashValue<QM31> {
+) -> HashValue<QM31> {
     let lifting_log_size = preprocessed_circuit.trace_log_size + log_blowup_factor;
     let twiddles = SimdBackend::precompute_twiddles(
         CanonicCoset::new(lifting_log_size).circle_domain().half_coset,

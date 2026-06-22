@@ -3,7 +3,7 @@ use circuit_verifier::statement::CircuitStatement;
 use circuit_verifier::verify::CircuitConfig;
 use circuits::context::{Context, FinalizedContext};
 use circuits::{
-    blake::{ReducedHashValue, blake2s_m31},
+    blake::{HashValue, blake2s_m31, reduce_hash_value},
     ivalue::IValue,
     ops::Guess,
 };
@@ -30,7 +30,7 @@ pub struct MultiverifierInput<Value: IValue> {
     /// A circuit proof.
     pub proof: Proof<Value>,
     /// The preprocessed root of the circuit associated to `proof`.
-    pub preprocessed_root: ReducedHashValue<QM31>,
+    pub preprocessed_root: HashValue<QM31>,
     /// The output values of the circuit (excluding the value of the `u` wire at address
     /// [`circuits::context::U_VAR_IDX`]). The multiverifier only supports verification of circuits
     /// with two outputs.
@@ -79,8 +79,12 @@ pub fn build_multiverifier_circuit<Value: IValue>(
         let proof_vars = proof.guess(&mut context);
 
         verify(&mut context, &proof_vars, &shared_config.proof_config, &statement);
+        // The preprocessed root is committed losslessly; bind its `M31`-reduced form (two QM31s)
+        // in the outer output hash, keeping that hash's format unchanged.
+        let reduced_preprocessed_root =
+            reduce_hash_value(&mut context, statement.preprocessed_root.clone());
         outer_verifier_output_preimage.extend(chain!(
-            [statement.preprocessed_root.0, statement.preprocessed_root.1],
+            [reduced_preprocessed_root.0, reduced_preprocessed_root.1],
             statement.get_output_values().iter().copied()
         ));
     }

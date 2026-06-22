@@ -11,7 +11,7 @@ use circuit_prover::prover::{
 };
 use circuit_verifier::statement::CircuitStatement;
 use circuit_verifier::verify::{CircuitConfig, CircuitPublicData, verify_circuit};
-use circuits::blake::ReducedHashValue;
+use circuits::blake::HashValue;
 use circuits::context::{Context, FinalizedContext};
 use circuits::ivalue::{IValue, NoValue};
 use circuits_stark_verifier::proof::{ProofConfig, ProofInfo};
@@ -32,7 +32,7 @@ use crate::verify::build_cairo_verifier_circuit;
 fn verify_circuit_proof(
     preprocessed_circuit: &PreprocessedCircuit,
     circuit_proof: CircuitProof<Blake2sMerkleHasher>,
-    preprocessed_root: ReducedHashValue<QM31>,
+    preprocessed_root: HashValue<QM31>,
 ) -> FinalizedContext<QM31> {
     let circuit_config = CircuitConfig {
         config: circuit_proof.pcs_config,
@@ -113,7 +113,7 @@ fn test_verify_privacy_with_recursion() {
     )
     .unwrap();
 
-    let preprocessed_root: ReducedHashValue<QM31> =
+    let preprocessed_root: HashValue<QM31> =
         circuit_proof.stark_proof.proof.commitments.0[0].into();
 
     verify_circuit_proof(&preprocessed, circuit_proof, preprocessed_root);
@@ -159,9 +159,10 @@ fn test_privacy_recursion_with_preprocessed_context() {
 
     // Verify both circuit proofs and compare the resulting verifier contexts.
     // TODO(Gali): Add verify fixed circuit
-    let preprocessed_root = assignment_proof.stark_proof.proof.commitments.0[0].into();
+    let preprocessed_root: HashValue<QM31> =
+        assignment_proof.stark_proof.proof.commitments.0[0].into();
     let assignment_verifier_context =
-        verify_circuit_proof(&preprocessed, assignment_proof, preprocessed_root);
+        verify_circuit_proof(&preprocessed, assignment_proof, preprocessed_root.clone());
 
     let full_verifier_context =
         verify_circuit_proof(&full_preprocessed, full_proof, preprocessed_root);
@@ -211,7 +212,7 @@ fn test_privacy_proof_info() {
         },
         lifting_log_size: Some(lifting_log_size),
     };
-    let preprocessed_root = ReducedHashValue(QM31::zero(), QM31::zero());
+    let preprocessed_root = HashValue::from([0u32; 8]);
     let circuit_config = CircuitConfig {
         config: pcs_config,
         n_outputs: preprocessed_circuit.n_outputs,

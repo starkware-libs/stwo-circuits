@@ -3,7 +3,7 @@ use expect_test::expect;
 use rstest::rstest;
 use stwo::core::vcs::blake2_hash::{Blake2sHash, reduce_to_m31};
 
-use crate::blake::{HashValue, blake_qm31, blake2s_m31, qm31_from_bytes};
+use crate::blake::{HashValue, blake2s, blake2s_m31, qm31_from_bytes};
 use crate::context::TraceContext;
 use crate::ivalue::{IValue, qm31_from_u32s};
 use crate::ops::{Guess, eq, guess};
@@ -69,7 +69,7 @@ fn test_blake(#[case] wrong_output: bool) {
 }
 
 #[test]
-fn test_blake_qm31() {
+fn test_blake2s() {
     let mut context = TraceContext::default();
 
     let message: [u32; 16] = [
@@ -86,15 +86,16 @@ fn test_blake_qm31() {
         qm31_from_u32s(message[12], message[13], message[14], message[15]),
     ];
 
-    let expected = blake_qm31(&input_values, n_bytes);
+    let expected = IValue::blake2s(&input_values, n_bytes);
 
     let input = input_values.guess(&mut context);
-    let output = blake2s_m31(&mut context, &input, n_bytes);
+    let output = blake2s(&mut context, &input, n_bytes);
 
-    let out0 = guess(&mut context, expected.0);
-    let out1 = guess(&mut context, expected.1);
-    eq(&mut context, output.0, out0);
-    eq(&mut context, output.1, out1);
+    // The lossless circuit hash must match the value-level `IValue::blake2s`, word for word.
+    for (out_word, exp_word) in output.0.iter().zip(expected.0.iter()) {
+        let exp = guess(&mut context, *exp_word.get());
+        eq(&mut context, *out_word.get(), exp);
+    }
 
     let context = context.finalize(false);
     context.circuit().check_yields();

@@ -1,5 +1,5 @@
 use stwo::core::channel::{Blake2sM31Channel, MerkleChannel};
-use stwo::core::vcs::blake2_hash::{Blake2sHash, Blake2sHasherGeneric, reduce_to_m31};
+use stwo::core::vcs::blake2_hash::{Blake2sHash, Blake2sHasherGeneric};
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sMerkleHasher;
 use stwo::prover::backend::simd::SimdBackend;
 use stwo::prover::backend::{BackendForChannel, CpuBackend};
@@ -19,12 +19,10 @@ impl MerkleChannel for MerkleChannelForCircuit {
     type H = Blake2sMerkleHasher;
 
     fn mix_root(channel: &mut Self::C, root: Blake2sHash) {
-        // Reduce the (standard, lossless) Merkle root mod `M31::P` before mixing. The root's words
-        // can exceed `M31::P`, but the in-circuit channel represents the root as `M31` limbs, so
-        // reducing here keeps the out-of-circuit Fiat-Shamir consistent with the in-circuit logic.
-        let root = Blake2sHash(reduce_to_m31(root.0));
-        // Mix the reduced root into the `M31` channel, reducing the result mod `M31::P`
-        // (the `M31` channel's `concat_and_hash`).
+        // Mix the full, *unreduced* (standard, lossless) Merkle root into the channel. The output
+        // of `concat_and_hash::<true>` is still reduced mod `M31::P`, so the channel digest stays
+        // in the `M31` field for challenge/query derivation; only the hashed input is now the full
+        // 32-byte root. The in-circuit `Channel::mix_commitment` mirrors this exactly.
         channel
             .update_digest(Blake2sHasherGeneric::<true>::concat_and_hash(&channel.digest(), &root));
     }
