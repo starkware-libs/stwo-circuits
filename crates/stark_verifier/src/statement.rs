@@ -10,6 +10,7 @@ use crate::proof::InteractionAtOods;
 use circuits::context::{Context, Var};
 use circuits::ivalue::IValue;
 use circuits::simd::Simd;
+use circuits::wrappers::U32Wrapper;
 
 /// Values at the OODS point (and its previous point where applicable).
 pub struct OodsSamples<'a> {
@@ -31,10 +32,14 @@ pub struct EvaluateArgs<'a> {
 
 /// Represents an AIR and its public inputs.
 pub trait Statement<Value: IValue> {
-    /// Returns the statement's public inputs to mix into the channel, one `mix_qm31s` call per
+    /// Returns the statement's public inputs to mix into the channel, one `mix_u32s` call per
     /// inner `Vec`, in the exact order (and with the exact grouping) the prover mixed them.
     /// The concrete contents are statement-specific.
-    fn claims_to_mix(&self, context: &mut Context<Value>) -> Vec<Vec<Var>>;
+    ///
+    /// Each value is a `u32` word: a QM31 felt is encoded as its four coordinate words (matching
+    /// the little-endian byte stream `mix_u32s` feeds to Blake2s), so this produces the same
+    /// transcript as mixing the felts directly.
+    fn claims_to_mix(&self, context: &mut Context<Value>) -> Vec<Vec<U32Wrapper<Var>>>;
 
     /// Returns the AIR components that define the constraint system.
     fn get_components(&self) -> &IndexMap<&'static str, Box<dyn CircuitEval<Value>>>;
