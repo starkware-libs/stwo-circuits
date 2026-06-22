@@ -45,12 +45,12 @@ stwo-air-utils-derive = { git = "https://github.com/starkware-libs/stwo", rev = 
 stwo-air-utils = { git = "https://github.com/starkware-libs/stwo", rev = "74951f79" }
 
 # stwo-cairo
-cairo-air = { git = "https://github.com/starkware-libs/stwo-cairo", rev = "b0b74007" }
-stwo_cairo_prover = { package = "stwo-cairo-prover", git = "https://github.com/starkware-libs/stwo-cairo", rev = "b0b74007" }
-stwo_cairo_common = { package = "stwo-cairo-common", git = "https://github.com/starkware-libs/stwo-cairo", rev = "b0b74007" }
-stwo_cairo_dev_utils = { package = "stwo-cairo-dev-utils", git = "https://github.com/starkware-libs/stwo-cairo", rev = "b0b74007" }
-stwo_cairo_utils = { package = "stwo-cairo-utils", git = "https://github.com/starkware-libs/stwo-cairo", rev = "b0b74007" }
-stwo-cairo-serialize = { git = "https://github.com/starkware-libs/stwo-cairo", rev = "b0b74007" }
+cairo-air = { git = "https://github.com/starkware-libs/stwo-cairo", rev = "b4d16c77fd9a4ae5dd8305cef4e91bf3a40af8d4" }
+stwo_cairo_prover = { package = "stwo-cairo-prover", git = "https://github.com/starkware-libs/stwo-cairo", rev = "b4d16c77fd9a4ae5dd8305cef4e91bf3a40af8d4" }
+stwo_cairo_common = { package = "stwo-cairo-common", git = "https://github.com/starkware-libs/stwo-cairo", rev = "b4d16c77fd9a4ae5dd8305cef4e91bf3a40af8d4" }
+stwo_cairo_dev_utils = { package = "stwo-cairo-dev-utils", git = "https://github.com/starkware-libs/stwo-cairo", rev = "b4d16c77fd9a4ae5dd8305cef4e91bf3a40af8d4" }
+stwo_cairo_utils = { package = "stwo-cairo-utils", git = "https://github.com/starkware-libs/stwo-cairo", rev = "b4d16c77fd9a4ae5dd8305cef4e91bf3a40af8d4" }
+stwo-cairo-serialize = { git = "https://github.com/starkware-libs/stwo-cairo", rev = "b4d16c77fd9a4ae5dd8305cef4e91bf3a40af8d4" }
 starknet-ff = "0.3"
 
 # local crates
