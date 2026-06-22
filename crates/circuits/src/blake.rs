@@ -187,17 +187,26 @@ pub fn blake2s<Value: IValue>(
     // Sanity check: check the number of bytes is consistent with the number of [QM31] values.
     assert_eq!(input.len(), n_bytes.div_ceil(16));
 
-    // Unpack each QM31 message chunk into four u32 limbs.
-    let mut message_u32s: Vec<U32Wrapper<Var>> = Vec::new();
-    for &var in input {
+    let message_u32s = unpack_qm31s_to_u32_words(ctx, input.iter().copied());
+
+    HashValue(blake2s_u32s(ctx, message_u32s, n_bytes))
+}
+
+/// Unpacks each QM31 in `input` into its four message words, re-encoding each word as a `u32` in
+/// `(low_u16, high_u16, 0, 0)` form via [`m31_to_u32`].
+pub fn unpack_qm31s_to_u32_words<Value: IValue>(
+    ctx: &mut Context<Value>,
+    input: impl IntoIterator<Item = Var>,
+) -> Vec<U32Wrapper<Var>> {
+    let mut words = Vec::new();
+    for var in input {
         let simd = Simd::from_packed(vec![var], 4);
         for coord in 0..4 {
             let comp = Simd::unpack_idx(ctx, &simd, coord);
-            message_u32s.push(U32Wrapper::new_unsafe(m31_to_u32(ctx, comp)));
+            words.push(U32Wrapper::new_unsafe(m31_to_u32(ctx, comp)));
         }
     }
-
-    HashValue(blake2s_u32s(ctx, message_u32s, n_bytes))
+    words
 }
 
 /// Reduces the eight raw Blake2s output words of a [`HashValue`] mod `M31::P` and packs them
