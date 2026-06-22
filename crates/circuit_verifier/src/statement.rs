@@ -5,13 +5,13 @@ use crate::components::{
 };
 use crate::relations::GATE_RELATION_ID;
 use crate::verify::CircuitConfig;
-use circuits::blake::ReducedHashValue;
+use circuits::blake::{ReducedHashValue, unpack_qm31s_to_u32_words};
 use circuits::context::{Context, U_VAR_IDX, Var};
 use circuits::eval;
 use circuits::ivalue::IValue;
 use circuits::ops::Guess;
 use circuits::simd::Simd;
-use circuits::wrappers::M31Wrapper;
+use circuits::wrappers::{M31Wrapper, U32Wrapper};
 use circuits_stark_verifier::constraint_eval::CircuitEval;
 use circuits_stark_verifier::logup::logup_use_term;
 use circuits_stark_verifier::order_hash_map::OrderedHashMap;
@@ -94,8 +94,10 @@ impl<Value: IValue> CircuitStatement<Value> {
 }
 
 impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
-    fn claims_to_mix(&self, _context: &mut Context<Value>) -> Vec<Vec<Var>> {
-        vec![self.output_values.clone()]
+    fn claims_to_mix(&self, context: &mut Context<Value>) -> Vec<Vec<U32Wrapper<Var>>> {
+        // Encode each output felt into its four coordinate u32 words so that `mix_u32s` produces
+        // the same transcript as mixing the felts directly.
+        vec![unpack_qm31s_to_u32_words(context, self.output_values.iter().copied())]
     }
 
     fn get_components(&self) -> &IndexMap<&'static str, Box<dyn CircuitEval<Value>>> {
