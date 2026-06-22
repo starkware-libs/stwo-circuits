@@ -1303,6 +1303,7 @@ dependencies = [
  "circuit-verifier",
  "circuits",
  "circuits-stark-verifier",
+ "hashbrown 0.17.1",
  "indexmap",
  "itertools 0.12.1",
  "num-traits",
