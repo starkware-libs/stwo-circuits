@@ -1,5 +1,6 @@
 use std::fs::File;
 
+use cairo_air::CairoProof;
 use cairo_air::utils::binary_deserialize_from_file;
 use circuit_common::N_RESERVED;
 use circuit_common::finalize::{add_zk_blinding, pad_context};
@@ -87,16 +88,23 @@ fn test_verify_privacy_with_recursion() {
     //     --proof_path ../stwo-circuits/test_data/privacy/proof.bin --proof-format extended-binary
     let proof_path = get_proof_file_path("privacy");
     let proof_file = File::open(proof_path).unwrap();
-    let cairo_proof = binary_deserialize_from_file(&proof_file).unwrap();
+    let cairo_proof: CairoProof<Blake2sM31MerkleHasher> =
+        binary_deserialize_from_file(&proof_file).unwrap();
 
     // Build the preprocessed circuit from the NoValue topology (matching the real proving flow).
     let cairo_proof_log_blowup_factor = 3;
     let const_config = privacy_cairo_verifier_config(cairo_proof_log_blowup_factor);
+
+    assert_eq!(
+        const_config.preprocessed_root,
+        cairo_proof.extended_stark_proof.proof.commitments.0[0].into(),
+        "The preprocessed root in the config is not the same as the one in the proof"
+    );
+
     let mut novalue_context = build_cairo_verifier_circuit(&const_config);
     let preprocessed = PreprocessedCircuit::preprocess_circuit(&mut novalue_context);
 
     let mut context = verify_cairo_with_component_set(&cairo_proof, privacy_components()).unwrap();
-
     pad_context(&mut context);
     let circuit_proof = prove_circuit_assignment(
         context.values(),
