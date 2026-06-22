@@ -10,14 +10,14 @@ use cairo_air::flat_claims::FlatClaim;
 use cairo_air::relations::{
     MEMORY_ADDRESS_TO_ID_RELATION_ID, MEMORY_ID_TO_BIG_RELATION_ID, OPCODES_RELATION_ID,
 };
-use circuits::blake::{ReducedHashValue, blake2s_m31};
+use circuits::blake::{ReducedHashValue, blake2s_m31, unpack_qm31s_to_u32_words};
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::extract_bits::extract_bits;
 use circuits::ivalue::{IValue, qm31_from_u32s};
 use circuits::ops::{Guess, eq};
 use circuits::simd::Simd;
-use circuits::wrappers::M31Wrapper;
+use circuits::wrappers::{M31Wrapper, U32Wrapper};
 use circuits_stark_verifier::constraint_eval::CircuitEval;
 use circuits_stark_verifier::logup::logup_use_term;
 use circuits_stark_verifier::proof_from_stark_proof::{pack_enable_bits, pack_into_qm31s};
@@ -392,7 +392,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         &self.aux_data.component_log_sizes
     }
 
-    fn claims_to_mix(&self, context: &mut Context<Value>) -> Vec<Vec<Var>> {
+    fn claims_to_mix(&self, context: &mut Context<Value>) -> Vec<Vec<U32Wrapper<Var>>> {
         let Self {
             components: _components,
             enabled_bits,
@@ -420,7 +420,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
 
         let flat_program = pack_into_qm31s(program.iter().flatten().cloned());
         let program_hash = IValue::blake2s_m31(&flat_program, flat_program.len() * 16);
-        vec![
+        [
             vec![n_enable_bits],
             packed_enable_bits,
             aux_data.component_log_sizes.get_packed().to_vec(),
@@ -429,6 +429,9 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
             vec![output_hash.0, output_hash.1],
             vec![context.constant(program_hash.0), context.constant(program_hash.1)],
         ]
+        .into_iter()
+        .map(|felts| unpack_qm31s_to_u32_words(context, felts))
+        .collect()
     }
 
     fn public_logup_sum(
