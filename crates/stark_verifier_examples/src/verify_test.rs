@@ -90,14 +90,15 @@ fn test_verify(#[case] proof_modifier: ProofModifier) {
         }
         ProofModifier::WrongTraceAuthPath => {
             let err = result.unwrap_err();
-            // The error should be when comparing the main trace root.
-            let expected_value = context.get(proof_vars.trace_root.0);
+            // The error should be when comparing the main trace root (word-by-word, lossless).
+            let expected_value = context.get(*proof_vars.trace_root.0[0].get());
             assert!(err.contains(&expected_value.to_string()));
         }
         ProofModifier::WrongFriAuthPath => {
             let err = result.unwrap_err();
-            // The error should be when comparing the first layer Merkle root.
-            let expected_value = context.get(proof_vars.fri.commit.layer_commitments[0].0);
+            // The error should be when comparing the first layer Merkle root (word-by-word).
+            let expected_value =
+                context.get(*proof_vars.fri.commit.layer_commitments[0].0[0].get());
             assert!(err.contains(&expected_value.to_string()));
         }
         ProofModifier::WrongFriWitness => {

@@ -1,9 +1,9 @@
 use super::simple_air::FIB_SEQUENCE_LENGTH;
 use crate::simple_air::{FIB_PREPROCESSED_COLUMNS, LOG_SIZE_LONG, LOG_SIZE_SHORT};
-use circuits::blake::ReducedHashValue;
+use circuits::blake::HashValue;
 use circuits::context::{Context, Var};
 use circuits::eval;
-use circuits::ivalue::{IValue, qm31_from_u32s};
+use circuits::ivalue::IValue;
 use circuits::ops::{Guess, inv, mul};
 use circuits::simd::Simd;
 use circuits::wrappers::U32Wrapper;
@@ -18,6 +18,7 @@ use circuits_stark_verifier::statement::Statement;
 use indexmap::IndexMap;
 use num_traits::One;
 use stwo::core::fields::m31::M31;
+use stwo::core::fields::qm31::QM31;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 /// Log sizes of the components in [`SimpleStatement`].
@@ -180,10 +181,15 @@ impl<Value: IValue> Statement<Value> for SimpleStatement<Value> {
             .collect()
     }
 
-    fn get_preprocessed_root(&self, context: &mut Context<Value>) -> ReducedHashValue<Var> {
-        ReducedHashValue(
-            context.constant(qm31_from_u32s(1715533920, 602108671, 544739379, 1352385240)),
-            context.constant(qm31_from_u32s(648595291, 1463553848, 1627440248, 306213366)),
-        )
+    fn get_preprocessed_root(&self, context: &mut Context<Value>) -> HashValue<Var> {
+        // Full (unreduced) preprocessed trace root, one 32-bit word per limb.
+        let root: HashValue<QM31> = [
+            1715533920, 602108671, 544739379, 1352385240, 2796078938, 3611037495, 1627440248,
+            306213366,
+        ]
+        .into();
+        HashValue(std::array::from_fn(|i| {
+            U32Wrapper::new_unsafe(context.constant(*root.0[i].get()))
+        }))
     }
 }

@@ -1,4 +1,3 @@
-use num_traits::One;
 use rstest::rstest;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
@@ -9,7 +8,7 @@ use crate::merkle::{
     verify_merkle_path,
 };
 use crate::oods::EvalDomainSamples;
-use circuits::blake::{HashValue, ReducedHashValue};
+use circuits::blake::HashValue;
 use circuits::context::{TraceContext, Var};
 use circuits::ivalue::qm31_from_u32s;
 use circuits::ops::Guess;
@@ -20,7 +19,7 @@ fn get_hash(context: &TraceContext, hash: HashValue<Var>) -> HashValue<QM31> {
     HashValue(std::array::from_fn(|i| U32Wrapper::new_unsafe(context.get(*hash[i].get()))))
 }
 
-/// Blake2s hash of the little-endian bytes of `values`, matching `hash_leaf_m31s`.
+/// Lossless Blake2s hash of the little-endian bytes of `values`, matching `hash_leaf_m31s`.
 fn leaf_hash(values: &[M31]) -> Blake2sHash {
     let bytes: Vec<u8> = values.iter().flat_map(|v| v.0.to_le_bytes()).collect();
     Blake2sHasher::hash(&bytes)
@@ -82,7 +81,7 @@ fn hash_node_regression() {
 fn test_merkle_path(#[case] wrong_bit: bool, #[case] wrong_root: bool) {
     let mut context = TraceContext::default();
 
-    // Leaf and sibling hashes (the tree is committed with the Blake2s hasher).
+    // Lossless leaf and sibling hashes (the tree is committed with the standard Blake2s hasher).
     let leaf_hash = Blake2sHash(std::array::from_fn(|i| i as u8));
     let siblings: [Blake2sHash; 5] =
         std::array::from_fn(|i| Blake2sHash(std::array::from_fn(|j| ((i + 1) * 40 + j) as u8)));
@@ -99,21 +98,25 @@ fn test_merkle_path(#[case] wrong_bit: bool, #[case] wrong_root: bool) {
     ]
     .guess(&mut context);
 
-    // Recompute the root following the success-case bits [1, 1, 0, 0, 1] (bit =
-    // 1 puts the current node on the right, its sibling on the left), then reduce mod `M31::P`.
+    // Recompute the root losslessly following the success-case bits [1, 1, 0, 0, 1] (bit = 1 puts
+    // the current node on the right, its sibling on the left), then reduce mod `M31::P`.
     let mut node = leaf_hash;
     node = Blake2sHasher::concat_and_hash(&siblings[0], &node);
     node = Blake2sHasher::concat_and_hash(&siblings[1], &node);
     node = Blake2sHasher::concat_and_hash(&node, &siblings[2]);
     node = Blake2sHasher::concat_and_hash(&node, &siblings[3]);
     node = Blake2sHasher::concat_and_hash(&siblings[4], &node);
-    let mut root = ReducedHashValue::from(node);
-    if wrong_root {
-        root.0 += qm31_from_u32s(0, 0, 1, 0);
-    }
+    // The tree is committed losslessly, so the recomputed root is compared as a full `HashValue`.
+    let root = if wrong_root {
+        let mut bytes = node.0;
+        bytes[0] ^= 1;
+        HashValue::from(Blake2sHash(bytes))
+    } else {
+        HashValue::from(node)
+    };
     let root = root.guess(&mut context);
 
-    verify_merkle_path(&mut context, leaf, &bits, root, &auth_path);
+    verify_merkle_path(&mut context, leaf, &bits, &root, &auth_path);
     let success = !wrong_bit && !wrong_root;
     assert_eq!(context.is_circuit_valid(), success);
 }
@@ -138,7 +141,7 @@ fn test_decommit_eval_domain_samples(#[case] wrong_root: Option<usize>, #[case] 
     let opt_column_log_sizes_by_trace: HashMap<usize, Vec<Var>> =
         HashMap::from([(1, vec![]), (2, vec![])]);
 
-    // The tree is committed with the non-`M31`-reduced
+    // Sibling hashes are lossless: the tree is committed with the standard (non-`M31`-reduced)
     // Blake2s hasher, so each auth-path sibling is a full 32-byte hash.
     let sibling0 = Blake2sHash(std::array::from_fn(|i| i as u8));
     let sibling1 = Blake2sHash(std::array::from_fn(|i| (i as u8).wrapping_add(100)));
@@ -152,17 +155,20 @@ fn test_decommit_eval_domain_samples(#[case] wrong_root: Option<usize>, #[case] 
     };
     let bits: Vec<Vec<QM31>> = vec![vec![(if wrong_bit { 1 } else { 0 }).into()]];
 
-    // Recompute the roots, then reduce mod `M31::P` via
-    // `ReducedHashValue::from` to match the `M31`-reduced root bound by the Fiat-Shamir channel.
+    // Recompute the roots losslessly (standard Blake2s); the tree is committed losslessly, so each
+    // root is compared as a full `HashValue` (no `M31` reduction).
     let leaf0 = Blake2sHasher::hash(&M31::from(1).0.to_le_bytes());
     let empty_leaf = Blake2sHasher::hash(&[]);
-    let root0 = ReducedHashValue::from(Blake2sHasher::concat_and_hash(&leaf0, &sibling0));
-    let root1 = ReducedHashValue::from(Blake2sHasher::concat_and_hash(&empty_leaf, &sibling1));
+    let node0 = Blake2sHasher::concat_and_hash(&leaf0, &sibling0);
+    let node1 = Blake2sHasher::concat_and_hash(&empty_leaf, &sibling1);
 
-    let mut roots = [root0, root1, root1, root1];
+    let mut node_hashes = [node0, node1, node1, node1];
     if let Some(wrong_root) = wrong_root {
-        roots[wrong_root].1 += QM31::one();
+        let mut bytes = node_hashes[wrong_root].0;
+        bytes[0] ^= 1;
+        node_hashes[wrong_root] = Blake2sHash(bytes);
     }
+    let roots = node_hashes.map(HashValue::from);
 
     let eval_domain_samples_vars = eval_domain_samples.guess(&mut context);
     let auth_paths_vars = auth_paths.guess(&mut context);
