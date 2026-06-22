@@ -1,9 +1,12 @@
 use rstest::rstest;
+use stwo::core::channel::{Blake2sM31Channel, Channel as StwoChannel};
+use stwo::core::fields::qm31::QM31;
 
 use circuits::blake::ReducedHashValue;
 use circuits::context::TraceContext;
-use circuits::ivalue::qm31_from_u32s;
+use circuits::ivalue::{IValue, qm31_from_u32s};
 use circuits::stats::Stats;
+use circuits::wrappers::U32Wrapper;
 
 use super::Channel;
 
@@ -84,6 +87,31 @@ fn test_mix_qm31s_regression() {
         context.get(channel.digest.1),
         qm31_from_u32s(1524867388, 1224019906, 1564199416, 388718964)
     );
+    assert_eq!(channel.n_draws, 0);
+
+    context.validate_circuit();
+}
+
+#[test]
+fn test_mix_u32s_matches_stwo() {
+    // Includes full 32-bit words (>= 2^31) to exercise the path that bypasses `m31_to_u32`.
+    let data: [u32; 5] = [1, 0x8000_0000, 0xFFFF_FFFF, 2, 3];
+
+    let mut context = TraceContext::default();
+    // A fresh circuit channel starts from a zero digest, matching stwo's default channel.
+    let mut channel = Channel::new(&mut context);
+    let mut stwo_channel = Blake2sM31Channel::default();
+
+    // Mixing twice also exercises the non-zero-digest path on the second call.
+    for _ in 0..2 {
+        let words = data.map(|word| U32Wrapper::new_unsafe(context.new_var(QM31::pack_u32(word))));
+        channel.mix_u32s(&mut context, words.into_iter());
+        stwo_channel.mix_u32s(&data);
+
+        let expected = ReducedHashValue::<QM31>::from(stwo_channel.digest());
+        assert_eq!(context.get(channel.digest().0), expected.0);
+        assert_eq!(context.get(channel.digest().1), expected.1);
+    }
     assert_eq!(channel.n_draws, 0);
 
     context.validate_circuit();
