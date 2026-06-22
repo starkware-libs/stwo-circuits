@@ -63,7 +63,7 @@ pub fn verify<Value: IValue>(
 
     // Mix the preprocessed root (known from the statement) into the channel.
     let preprocessed_root = statement.get_preprocessed_root(context);
-    channel.mix_commitment(context, preprocessed_root);
+    channel.mix_commitment(context, preprocessed_root.clone());
 
     let component_log_sizes = statement.get_component_log_sizes().clone();
     let component_sizes = validate_and_compute_component_sizes(
@@ -82,7 +82,7 @@ pub fn verify<Value: IValue>(
     }
 
     // Mix the trace commitments into the channel.
-    channel.mix_commitment(context, proof.trace_root);
+    channel.mix_commitment(context, proof.trace_root.clone());
 
     channel.pow(context, config.n_interaction_pow_bits, proof.interaction_pow_nonce);
     // Pick the interaction elements.
@@ -92,12 +92,12 @@ pub fn verify<Value: IValue>(
     validate_logup_sum(context, public_logup_sum, &proof.claimed_sums);
 
     channel.mix_qm31s(context, proof.claimed_sums.iter().cloned());
-    channel.mix_commitment(context, proof.interaction_root);
+    channel.mix_commitment(context, proof.interaction_root.clone());
 
     // Draw a random QM31 coefficient for the composition polynomial.
     let composition_polynomial_coeff = channel.draw_qm31(context);
 
-    channel.mix_commitment(context, proof.composition_polynomial_root);
+    channel.mix_commitment(context, proof.composition_polynomial_root.clone());
 
     // Draw a random point for the OODS.
     let oods_point = channel.draw_point(context);

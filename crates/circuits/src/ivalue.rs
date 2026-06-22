@@ -1,9 +1,11 @@
+use blake2::{Blake2s256, Digest};
 use itertools::Itertools;
 use num_traits::Zero;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::fields::{cm31::CM31, m31::M31};
 
-use crate::blake::{ReducedHashValue, blake_qm31};
+use crate::blake::HashValue;
+use crate::wrappers::U32Wrapper;
 
 #[cfg(test)]
 #[path = "ivalue_test.rs"]
@@ -47,7 +49,9 @@ pub trait IValue:
     /// Returns a [QM31] value that consists of the LSB of each of the four [M31] coordinates.
     fn pointwise_lsb(&self) -> Self;
 
-    fn blake2s_m31(input: &[Self], n_bytes: usize) -> ReducedHashValue<Self>;
+    /// Hashes the [QM31] inputs with Blake2s, returning the eight raw output words losslessly as
+    /// a [`HashValue`] (no `M31::P` reduction). Mirrors the lossless `Blake2sMerkleHasher`.
+    fn blake2s(input: &[Self], n_bytes: usize) -> HashValue<Self>;
 
     /// Sorts the input by the u coordinate.
     fn sort_by_u_coordinate(input: &[Self]) -> Vec<Self>;
@@ -88,8 +92,25 @@ impl IValue for QM31 {
         qm31_from_u32s(self.0.0.0 % 2, self.0.1.0 % 2, self.1.0.0 % 2, self.1.1.0 % 2)
     }
 
-    fn blake2s_m31(input: &[Self], n_bytes: usize) -> ReducedHashValue<Self> {
-        blake_qm31(input, n_bytes)
+    fn blake2s(input: &[Self], n_bytes: usize) -> HashValue<Self> {
+        // Sanity check: check the number of bytes is consistent with the number of [QM31] values.
+        assert_eq!(input.len(), n_bytes.div_ceil(16));
+
+        // Serialize each QM31's four M31 coordinates as little-endian u32 words.
+        let mut input_bytes: Vec<u8> = Vec::new();
+        for x in input {
+            for coord in x.to_m31_array() {
+                input_bytes.extend_from_slice(&coord.0.to_le_bytes());
+            }
+        }
+
+        let mut hasher = Blake2s256::new();
+        hasher.update(&input_bytes[0..n_bytes]);
+        let hash: [u8; 32] = hasher.finalize().into();
+
+        let words: [u32; 8] =
+            std::array::from_fn(|i| u32::from_le_bytes(hash[i * 4..i * 4 + 4].try_into().unwrap()));
+        HashValue::from(words)
     }
 
     fn sort_by_u_coordinate(input: &[Self]) -> Vec<Self> {
@@ -150,8 +171,8 @@ impl IValue for NoValue {
         0
     }
 
-    fn blake2s_m31(_: &[Self], _: usize) -> ReducedHashValue<Self> {
-        ReducedHashValue(Self, Self)
+    fn blake2s(_: &[Self], _: usize) -> HashValue<Self> {
+        HashValue([U32Wrapper::new_unsafe(Self); 8])
     }
 
     fn sort_by_u_coordinate(input: &[Self]) -> Vec<Self> {

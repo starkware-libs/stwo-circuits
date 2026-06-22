@@ -30,7 +30,7 @@ pub fn fri_commit(
 ) -> Vec<Var> {
     let mut alphas = Vec::new();
     for root in &proof.layer_commitments {
-        channel.mix_commitment(context, *root);
+        channel.mix_commitment(context, root.clone());
         alphas.push(channel.draw_qm31(context));
     }
     channel.mix_qm31s(context, proof.last_layer_coefs.iter().cloned());
@@ -115,7 +115,7 @@ pub fn fri_decommit<Value: IValue>(
             // Verify the rest of the authentication path.
             let auth_path = auth_paths.at(tree_idx, query_idx);
             let bits_for_query = bits.iter().map(|b| b[query_idx]).collect_vec();
-            verify_merkle_path(context, witness_root, &bits_for_query, *root, auth_path);
+            verify_merkle_path(context, witness_root, &bits_for_query, root.clone(), auth_path);
         }
 
         // Compute alpha, alpha^2, ..., alpha^(2^(step - 1));
