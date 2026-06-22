@@ -1,13 +1,17 @@
 use stwo::core::circle::CirclePoint;
 use stwo::core::fields::m31::MODULUS_BITS;
 
-use circuits::blake::{ReducedHashValue, blake2s_m31};
+use circuits::blake::{
+    HashValue, ReducedHashValue, blake2s_m31, blake2s_u32s, reduce_hash_value,
+    unpack_qm31s_to_u32_words,
+};
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::extract_bits::extract_bits;
 use circuits::ivalue::{IValue, qm31_from_u32s};
 use circuits::ops::{eq, inv, pointwise_mul};
 use circuits::simd::Simd;
+use circuits::wrappers::U32Wrapper;
 
 #[cfg(test)]
 #[path = "channel_test.rs"]
@@ -76,6 +80,27 @@ impl Channel {
         let mut blake_input = vec![self.digest.0, self.digest.1];
         blake_input.extend(values);
         self.update_digest(blake2s_m31(context, &blake_input, 16 * blake_input.len()));
+    }
+
+    /// Mixes the given list of `u32` values into the channel.
+    ///
+    /// Mirrors stwo's `Blake2sM31Channel::mix_u32s`: the new digest is the `M31`-reduced
+    /// `Blake2s(digest_words ++ values)`, where `digest_words` is the current digest's eight 32-bit
+    /// words and each value contributes its four little-endian bytes. Unlike
+    /// [`Channel::mix_qm31s`], the inputs are full 32-bit words rather than `M31` field elements.
+    pub fn mix_u32s(
+        &mut self,
+        context: &mut Context<impl IValue>,
+        values: impl ExactSizeIterator<Item = U32Wrapper<Var>>,
+    ) {
+        let digest_words = unpack_qm31s_to_u32_words(context, [self.digest.0, self.digest.1]);
+        let mut message = Vec::with_capacity(digest_words.len() + values.len());
+        message.extend(digest_words);
+        message.extend(values);
+        // Each word is four bytes: the eight digest words followed by the mixed values.
+        let n_bytes = 4 * message.len();
+        let hash = blake2s_u32s(context, message, n_bytes);
+        self.update_digest(reduce_hash_value(context, HashValue(hash)));
     }
 
     /// Draws one `QM31` random value from the channel.
