@@ -1,5 +1,4 @@
 use crate::circuit_air::circuit_components::CircuitComponents;
-use crate::merkle_channel::MerkleChannelForCircuit;
 use crate::prover::prepare_circuit_proof_for_circuit_verifier;
 use crate::prover::{BaseColumnPool, CircuitProof, SimdBackend, prove_circuit_assignment};
 use circuit_common::finalize::pad_context;
@@ -25,7 +24,7 @@ use stwo::core::channel::Channel;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::{CommitmentSchemeVerifier, PcsConfig};
 use stwo::core::vcs::blake2_hash::Blake2sHash;
-use stwo::core::vcs_lifted::blake2_merkle::Blake2sMerkleHasher;
+use stwo::core::vcs_lifted::blake2_merkle::{Blake2sM31MerkleChannel, Blake2sMerkleHasher};
 // Not a power of 2 so that we can test component padding.
 const N: usize = 1030;
 
@@ -203,7 +202,7 @@ fn stwo_verify(
     verifier_channel.mix_felts(&[channel_salt.into()]);
     pcs_config.mix_into(verifier_channel);
     let commitment_scheme =
-        &mut CommitmentSchemeVerifier::<MerkleChannelForCircuit>::new(pcs_config);
+        &mut CommitmentSchemeVerifier::<Blake2sM31MerkleChannel>::new(pcs_config);
 
     let [trace_log_sizes, interaction_log_sizes] = column_log_sizes_per_tree(&log_sizes);
 
