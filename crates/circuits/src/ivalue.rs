@@ -4,7 +4,7 @@ use num_traits::Zero;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::fields::{cm31::CM31, m31::M31};
 
-use crate::blake::HashValue;
+use crate::blake::{BLAKE2S_DIGEST_N_WORDS, HashValue};
 use crate::wrappers::U32Wrapper;
 
 #[cfg(test)]
@@ -108,7 +108,7 @@ impl IValue for QM31 {
         hasher.update(&input_bytes[0..n_bytes]);
         let hash: [u8; 32] = hasher.finalize().into();
 
-        let words: [u32; 8] =
+        let words: [u32; BLAKE2S_DIGEST_N_WORDS] =
             std::array::from_fn(|i| u32::from_le_bytes(hash[i * 4..i * 4 + 4].try_into().unwrap()));
         HashValue::from(words)
     }
@@ -172,7 +172,7 @@ impl IValue for NoValue {
     }
 
     fn blake2s(_: &[Self], _: usize) -> HashValue<Self> {
-        HashValue([U32Wrapper::new_unsafe(Self); 8])
+        HashValue([U32Wrapper::new_unsafe(Self); BLAKE2S_DIGEST_N_WORDS])
     }
 
     fn sort_by_u_coordinate(input: &[Self]) -> Vec<Self> {

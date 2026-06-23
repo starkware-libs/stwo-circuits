@@ -1,6 +1,6 @@
 use circuit_common::N_RESERVED;
 use circuits::{
-    blake::{HashValue, blake2s_m31, reduce_hash_value},
+    blake::{HashValue, blake2s, reduce_hash_value},
     context::{Context, FinalizedContext},
     ivalue::IValue,
     ops::Guess,
@@ -11,6 +11,7 @@ use circuits_stark_verifier::{
     statement::Statement,
     verify::verify,
 };
+use itertools::Itertools;
 use stwo::core::{fields::qm31::QM31, pcs::PcsConfig};
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
@@ -37,9 +38,10 @@ pub struct CircuitConfig {
 ///    log sizes, and preprocessed root.
 /// 2. Guesses the proof values into the circuit and runs the STARK verification.
 /// 3. Hashes the preprocessed root together with all output values except the last (`u`) via Blake,
-///    and copies the resulting hash into the reserved output wires (3 and 4). To ensure soundness
-///    in a recursive setup, the outer-most verifier (assumed honest) must reconstruct the whole
-///    chain of output hashes computed during the recursive steps.
+///    and copies the resulting unreduced digest into the reserved output wires (`3..3 +
+///    N_RESERVED`). To ensure soundness in a recursive setup, the outer-most verifier (assumed
+///    honest) must reconstruct the whole chain of output hashes computed during the recursive
+///    steps.
 /// 4. Finalizes constants and guessed variables.
 pub fn build_verification_circuit<Value: IValue>(
     circuit_config: CircuitConfig,
@@ -62,18 +64,15 @@ pub fn build_verification_circuit<Value: IValue>(
 
     // Deal with the outputs: hash the preprocessed root and all the output values except `u` (= the
     // last one). This is fine for soundness because `u` is checked as part of the logup sum.
-    // The preprocessed root is committed losslessly, but the recursive output hash binds its
-    // `M31`-reduced form (two QM31s), keeping this output-hash format unchanged; the full root is
-    // still bound by the Fiat-Shamir channel via `mix_commitment`.
     let preprocessed_root = statement.get_preprocessed_root(&mut context);
     let preprocessed_root = reduce_hash_value(&mut context, preprocessed_root);
     let output_preimage: Vec<_> = [preprocessed_root.0, preprocessed_root.1]
         .into_iter()
         .chain(statement.get_output_values().iter().copied())
         .collect();
-    let output_hash = blake2s_m31(&mut context, &output_preimage, 16 * output_preimage.len());
-    // Copy the resulting hash into the wires 3 and 4, and mark them as outputs.
-    context.set_outputs(&[output_hash.0, output_hash.1]);
+    let output_hash = blake2s(&mut context, &output_preimage, 16 * output_preimage.len());
+    // Set the output hash as the outputs.
+    context.set_outputs(&output_hash.iter().map(|word| *word.get()).collect_vec());
 
     let context = context.finalize(false);
     #[cfg(test)]
