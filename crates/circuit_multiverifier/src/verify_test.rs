@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::Write;
 
+use blake2::{Blake2s256, Digest};
 use cairo_air::utils::binary_deserialize_from_file;
 use circuit_cairo_verifier::privacy::{
     get_pcs_config, privacy_cairo_verifier_config, privacy_components,
@@ -8,6 +9,7 @@ use circuit_cairo_verifier::privacy::{
 use circuit_cairo_verifier::utils::get_proof_file_path;
 use circuit_cairo_verifier::verify::build_cairo_verifier_circuit;
 use circuit_cairo_verifier::verify::verify_cairo_with_component_set;
+use circuit_common::N_RESERVED;
 use circuit_common::finalize::{ComponentSizes, compute_padded_sizes, pad_to_targets};
 use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_prover::prover::{
@@ -17,13 +19,12 @@ use circuit_serialize::deserialize::deserialize_proof_with_config;
 use circuit_serialize::serialize::CircuitSerialize;
 use circuit_verifier::statement::{INTERACTION_POW_BITS, all_circuit_components};
 use circuit_verifier::verify::CircuitPublicData;
-use circuits::blake::{HashValue, ReducedHashValue};
+use circuits::blake::HashValue;
 use circuits::context::FinalizedContext;
 use circuits::ivalue::{IValue, NoValue};
 use circuits_stark_verifier::order_hash_map::OrderedHashMap;
 use circuits_stark_verifier::proof::{Proof, ProofConfig};
 use itertools::chain;
-use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::PcsConfig;
 use stwo::prover::backend::simd::SimdBackend;
@@ -49,17 +50,16 @@ const CIRCUIT_N_PREPROCESSED_COLUMNS: usize = 45;
 
 /// Constants related to the cairo verifier circuit.
 const PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT: [u32; 8] =
-    [3006813117, 3539069985, 700767931, 3268872586, 3311801985, 1116002764, 87498105, 4128805877];
+    [1000331179, 2681434797, 3806553994, 1868679953, 3615184069, 3937104268, 679470514, 520074062];
 const PRIVACY_CAIRO_VERIFIER_PROOF_PATH: &str =
     concat!(env!("CARGO_MANIFEST_DIR"), "/../../test_data/circuit_multiverifier/proof_cairo.bin");
-const PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES: [QM31; 2] = [
-    QM31::from_m31_array([M31(151966945), M31(1514947052), M31(87572453), M31(633358207)]),
-    QM31::from_m31_array([M31(462231094), M31(464091325), M31(2016711704), M31(1173534648)]),
-];
+/// The Blake2s digest of the output in the proof above.
+const PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES: [u32; 8] =
+    [2299450592, 1514947052, 87572453, 633358207, 462231094, 464091325, 2016711704, 1173534648];
 
 /// Constants related to the multiverifier circuit.
 const MULTIVERIFIER_PREPROCESSED_ROOT: [u32; 8] =
-    [943195749, 4294734027, 1924817186, 2179785428, 2810443530, 3883023738, 3489583435, 1307433107];
+    [4268871180, 1648605015, 1518856044, 936813334, 8391980, 3571729286, 3315525509, 1034558230];
 const MULTIVERIFIER_OF_TWO_CAIRO_PROOFS_PATH: &str =
     concat!(env!("CARGO_MANIFEST_DIR"), "/../../test_data/circuit_multiverifier/proof.bin");
 
@@ -67,6 +67,17 @@ const MULTIVERIFIER_OF_TWO_CAIRO_PROOFS_PATH: &str =
 /// `(low_u16, high_u16, 0, 0)`).
 fn hash_value_to_u32s(hash: &HashValue<QM31>) -> [u32; 8] {
     std::array::from_fn(|i| hash[i].get().unpack_u32())
+}
+
+/// Host-side mirror of the in-circuit [`circuits::blake::blake2s_u32s`]: Blake2s over the
+/// little-endian bytes of the `u32` words, returning the eight raw (unreduced) digest words.
+fn blake2s_u32s_host(words: &[u32]) -> [u32; 8] {
+    let mut hasher = Blake2s256::new();
+    for word in words {
+        hasher.update(word.to_le_bytes());
+    }
+    let hash: [u8; 32] = hasher.finalize().into();
+    std::array::from_fn(|i| u32::from_le_bytes(hash[i * 4..i * 4 + 4].try_into().unwrap()))
 }
 
 fn multiverifier_preprocessed_column_log_sizes() -> OrderedHashMap<PreProcessedColumnId, u32> {
@@ -225,7 +236,7 @@ fn build_cairo_input(proof: &Proof<QM31>) -> MultiverifierInput<QM31> {
     MultiverifierInput {
         proof: proof.clone(),
         preprocessed_root: HashValue::<QM31>::from(PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT),
-        output_values: PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES,
+        output_values: PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES.map(QM31::pack_u32),
     }
 }
 
@@ -266,7 +277,7 @@ fn prove_privacy_with_recursion_and_prepare() -> (Proof<QM31>, CircuitPublicData
 #[test]
 fn test_cairo_proof_regression() {
     let (proof, public_data) = prove_privacy_with_recursion_and_prepare();
-    assert_eq!(public_data.output_values, PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES);
+    assert_eq!(public_data.output_values, PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES.map(QM31::pack_u32));
     if std::env::var("FIX_PROOF").is_err() {
         let proof_config = ProofConfig::new(
             &all_circuit_components::<QM31>(),
@@ -358,23 +369,25 @@ fn test_verify_cairo_proof_and_multiverifier_proof() {
     let bytes = std::fs::read(MULTIVERIFIER_OF_TWO_CAIRO_PROOFS_PATH).unwrap();
     let multiverifier_proof =
         deserialize_proof_with_config(&mut bytes.as_slice(), &shared_config.proof_config).unwrap();
-    let preprocessed_root_cairo_verifier: ReducedHashValue<QM31> =
-        PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT.into();
-    let output_preimage = [
-        preprocessed_root_cairo_verifier.0,
-        preprocessed_root_cairo_verifier.1,
-        PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES[0],
-        PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES[1],
-    ];
-    let payload: Vec<QM31> = chain!(output_preimage, output_preimage).collect();
-    // Mirror the in-circuit `blake2s_m31`: hash the payload, then reduce the eight output words
-    // mod `M31::P` into a `ReducedHashValue`.
-    let hash_of_payload =
-        ReducedHashValue::from(hash_value_to_u32s(&QM31::blake2s(&payload, 16 * payload.len())));
+    // Mirror the in-circuit preimage `build_multiverifier_circuit` hashes for each verified input:
+    // the eight full 32-bit words of the preprocessed root, followed by each output word split into
+    // its low/high 16-bit halves `[low, high, 0, 0]` (as `unpack_qm31s_to_u32_words` does).
+    let cairo_input_preimage_words: Vec<u32> = PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT
+        .into_iter()
+        .chain(
+            PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES.iter().flat_map(|&w| [w & 0xFFFF, w >> 16, 0, 0]),
+        )
+        .collect();
+    // The proven multiverifier verified two identical Cairo verifier inputs.
+    let payload_words: Vec<u32> =
+        chain!(&cairo_input_preimage_words, &cairo_input_preimage_words).copied().collect();
+    // The circuit keeps the full unreduced eight-word digest as its output.
+    let hash_of_payload: [QM31; N_RESERVED] =
+        HashValue::<QM31>::from(blake2s_u32s_host(&payload_words)).0.map(|w| *w.get());
 
     let multiverifier_of_two_cairo_input = MultiverifierInput {
         proof: multiverifier_proof,
-        output_values: [hash_of_payload.0, hash_of_payload.1],
+        output_values: hash_of_payload,
         preprocessed_root: MULTIVERIFIER_PREPROCESSED_ROOT.into(),
     };
 

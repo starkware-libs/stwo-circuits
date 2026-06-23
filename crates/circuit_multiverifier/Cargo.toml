@@ -13,6 +13,7 @@ circuit-verifier.workspace = true
 circuit-common.workspace = true
 
 [dev-dependencies]
+blake2.workspace = true
 stwo = { workspace = true, features = ["prover"] }
 stwo-constraint-framework = { workspace = true, features = ["prover"] }
 circuit-common = { workspace = true, features = ["prover"] }
