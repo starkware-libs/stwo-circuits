@@ -19,9 +19,8 @@ use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::fri::FriConfig;
 use stwo::core::pcs::PcsConfig;
-use stwo::core::vcs_lifted::blake2_merkle::Blake2sMerkleHasher;
+use stwo::core::vcs_lifted::blake2_merkle::{Blake2sM31MerkleChannel, Blake2sMerkleHasher};
 
-use circuit_prover::merkle_channel::MerkleChannelForCircuit;
 use stwo_cairo_common::preprocessed_columns::preprocessed_trace::PreProcessedTraceVariant;
 use stwo_cairo_dev_utils::utils::get_compiled_cairo_program_path;
 use stwo_cairo_dev_utils::vm_utils::{ProgramType, run_and_adapt};
@@ -124,7 +123,7 @@ fn all_opcode_components_context() -> FinalizedContext<QM31> {
             include_all_preprocessed_columns: true,
             opt_n_id_to_big_components: None,
         };
-        let cairo_proof = prove_cairo::<MerkleChannelForCircuit>(input, prover_params).unwrap();
+        let cairo_proof = prove_cairo::<Blake2sM31MerkleChannel>(input, prover_params).unwrap();
 
         let proof_file =
             OpenOptions::new().create(true).write(true).truncate(true).open(&proof_path).unwrap();
