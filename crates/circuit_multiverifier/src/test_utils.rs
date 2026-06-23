@@ -1,4 +1,5 @@
 use circuit_common::{
+    N_RESERVED,
     finalize::{ComponentSizes, pad_to_targets},
     preprocessed::PreprocessedCircuit,
 };
@@ -50,7 +51,7 @@ pub fn get_preprocessed_multiverifier_from_circuit(
     let empty_input = || MultiverifierInput {
         proof: empty_proof(&proof_config),
         preprocessed_root: subcircuit_config.preprocessed_root.clone(),
-        output_values: [QM31::from(0); 2],
+        output_values: [QM31::from(0); N_RESERVED],
     };
     let mut multiverifier_context =
         build_multiverifier_circuit::<NoValue>(empty_input(), empty_input(), &shared_config);

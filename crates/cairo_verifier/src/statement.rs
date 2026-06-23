@@ -10,7 +10,7 @@ use cairo_air::flat_claims::FlatClaim;
 use cairo_air::relations::{
     MEMORY_ADDRESS_TO_ID_RELATION_ID, MEMORY_ID_TO_BIG_RELATION_ID, OPCODES_RELATION_ID,
 };
-use circuits::blake::{HashValue, blake2s, reduce_hash_value, unpack_qm31s_to_u32_words};
+use circuits::blake::{HashValue, blake2s, unpack_qm31s_to_u32_words};
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::extract_bits::extract_bits;
@@ -416,8 +416,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
 
         // Hash the output.
         let output_hash = blake2s(context, packed_outputs.get_packed(), 4 * packed_outputs.len());
-        let output_hash_reduced = reduce_hash_value(context, output_hash.clone());
-        context.set_outputs(&[output_hash_reduced.0, output_hash_reduced.1]);
+        context.set_outputs(&output_hash.iter().map(|word| *word.get()).collect_vec());
 
         // Compute the program hash at circuit construction time.
         let flat_program = pack_into_qm31s(program.iter().flatten().cloned());

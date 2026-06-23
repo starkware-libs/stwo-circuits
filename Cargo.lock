@@ -1334,6 +1334,7 @@ dependencies = [
 name = "circuit-multiverifier"
 version = "0.1.0"
 dependencies = [
+ "blake2",
  "cairo-air",
  "circuit-cairo-verifier",
  "circuit-common",
