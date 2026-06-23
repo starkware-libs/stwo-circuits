@@ -305,8 +305,35 @@ fn detect_inverses(
     }
 }
 
+// Sum tree and classification.
+
+/// Expands the add/sub tree at `root` into its leaf summands (left to right). A leaf is any
+/// variable not produced by a genuine `+`/`-` gate; zero-valued leaves are dropped.
+fn find_summands(
+    c: &CircuitEx<'_>,
+    const_values: &HashMap<usize, QM31>,
+    root: usize,
+) -> Vec<usize> {
+    let mut summands = Vec::new();
+    let mut stack = vec![root];
+    while let Some(v) = stack.pop() {
+        if let Some(&(Op::Add | Op::Sub, a, b)) = c.producers.get(&v)
+            && v != a
+            && v != b
+        {
+            // Push `b` first, so the left child expands first.
+            stack.push(b);
+            stack.push(a);
+        } else if const_values.get(&v) != Some(&QM31::zero()) {
+            // A non-zero leaf.
+            summands.push(v);
+        }
+    }
+    summands
+}
+
 /// Analyzes the circuit and writes the classified logup-sum summands to `summands.txt`.
-pub fn analyze(circuit: &Circuit, _debug_info: &HashMap<String, Var>) {
+pub fn analyze(circuit: &Circuit, debug_info: &HashMap<String, Var>) {
     let c = build_analysis(circuit);
     let const_values = propagate_constants(&c);
 
@@ -315,5 +342,10 @@ pub fn analyze(circuit: &Circuit, _debug_info: &HashMap<String, Var>) {
     detect_bits(&c, &const_values, &mut idiom);
     detect_inverses(&c, &const_values, &mut idiom);
 
-    // TODO(lior): complete the test.
+    let logup_sum = debug_info["logup_sum"].idx;
+    let summands = find_summands(&c, &const_values, logup_sum);
+
+    for _ in summands {
+        // TODO(lior): Validate each summand.
+    }
 }
