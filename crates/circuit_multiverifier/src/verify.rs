@@ -3,7 +3,7 @@ use circuit_verifier::statement::CircuitStatement;
 use circuit_verifier::verify::CircuitConfig;
 use circuits::context::{Context, FinalizedContext};
 use circuits::{
-    blake::{HashValue, blake2s_u32s, reduce_hash_value, unpack_qm31s_to_u32_words},
+    blake::{HashValue, blake2s_u32s, unpack_qm31s_to_u32_words},
     ivalue::IValue,
     ops::Guess,
 };
@@ -12,7 +12,7 @@ use circuits_stark_verifier::{
     proof::{Proof, ProofConfig},
     verify::verify,
 };
-use itertools::chain;
+use itertools::{Itertools, chain};
 use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::PcsConfig;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
@@ -23,7 +23,7 @@ mod verify_test;
 
 /// A circuit proof together with metadata needed to build the [`CircuitStatement`] against which
 /// the proof will be verified. The multiverifier expects that output values of an input circuit
-/// consist of 2 QM31 (usually representing an hash) + 1 QM31 equal to
+/// consist of `N_RESERVED` QM31 (the unreduced output hash) + 1 QM31 equal to
 /// [`circuits::context::U_VALUE`] coming from the constant finalization mechanism (see
 /// [`circuits::finalize_constants`]).
 pub struct MultiverifierInput<Value: IValue> {
@@ -33,7 +33,7 @@ pub struct MultiverifierInput<Value: IValue> {
     pub preprocessed_root: HashValue<QM31>,
     /// The output values of the circuit (excluding the value of the `u` wire at address
     /// [`circuits::context::U_VAR_IDX`]). The multiverifier only supports verification of circuits
-    /// with two outputs.
+    /// whose output is the unreduced Blake2s digest (`N_RESERVED` words).
     pub output_values: [QM31; N_RESERVED],
 }
 
@@ -52,9 +52,9 @@ pub struct SharedConfig {
 /// `preprocessed_root` and `outputs`, and runs the STARK verifier.
 ///
 /// After both proofs are verified, the preprocessed roots and the inner
-/// circuits' output values are concatenated and hashed. the
-/// resulting hash is written into the two reserved output variables
-/// of the outer circuit. The circuit is then finalized.
+/// circuits' output values are concatenated and hashed. The resulting unreduced Blake2s digest
+/// is written into the `N_RESERVED` reserved output variables of the outer circuit.
+/// The circuit is then finalized.
 ///
 /// Both proofs must have been produced with the same [`SharedConfig`].
 pub fn build_multiverifier_circuit<Value: IValue>(
@@ -93,9 +93,8 @@ pub fn build_multiverifier_circuit<Value: IValue>(
     // where A, B are the two circuits being verified. Each word is 4 bytes.
     let n_bytes = 4 * outer_verifier_output_preimage.len();
     let output_hash = blake2s_u32s(&mut context, outer_verifier_output_preimage, n_bytes);
-    let reduced_hash = reduce_hash_value(&mut context, HashValue(output_hash));
-    // Copy the resulting hash into the reserved variables
-    context.set_outputs(&[reduced_hash.0, reduced_hash.1]);
+    // Copy the unreduced digest words into the reserved variables.
+    context.set_outputs(&output_hash.iter().map(|word| *word.get()).collect_vec());
 
     let context = context.finalize(false);
     #[cfg(test)]

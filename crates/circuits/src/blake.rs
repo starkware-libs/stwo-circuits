@@ -15,6 +15,9 @@ use crate::wrappers::U32Wrapper;
 #[path = "blake_test.rs"]
 pub mod test;
 
+/// Number of 32-bit words in a Blake2s-256 digest (256 bits / 32).
+pub const BLAKE2S_DIGEST_N_WORDS: usize = 8;
+
 /// A Blake2s digest kept as its eight raw 32-bit output words (the result of [`blake2s_u32s`]),
 /// each encoded as a QM31 `(low_u16, high_u16, 0, 0)`.
 ///
@@ -25,10 +28,10 @@ pub mod test;
 /// `T` is the per-element representation: `QM31` for concrete witness values, or [`Var`] for
 /// variables inside a [`Context`].
 #[derive(Clone, Debug, PartialEq)]
-pub struct HashValue<T>(pub [U32Wrapper<T>; 8]);
+pub struct HashValue<T>(pub [U32Wrapper<T>; BLAKE2S_DIGEST_N_WORDS]);
 
 impl<T> std::ops::Deref for HashValue<T> {
-    type Target = [U32Wrapper<T>; 8];
+    type Target = [U32Wrapper<T>; BLAKE2S_DIGEST_N_WORDS];
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -93,8 +96,8 @@ impl From<Blake2sHash> for ReducedHashValue<QM31> {
     }
 }
 
-impl From<[u32; 8]> for ReducedHashValue<QM31> {
-    fn from(value: [u32; 8]) -> Self {
+impl From<[u32; BLAKE2S_DIGEST_N_WORDS]> for ReducedHashValue<QM31> {
+    fn from(value: [u32; BLAKE2S_DIGEST_N_WORDS]) -> Self {
         ReducedHashValue(
             qm31_from_u32s(value[0], value[1], value[2], value[3]),
             qm31_from_u32s(value[4], value[5], value[6], value[7]),
@@ -102,11 +105,11 @@ impl From<[u32; 8]> for ReducedHashValue<QM31> {
     }
 }
 
-impl From<[u32; 8]> for HashValue<QM31> {
-    /// Encodes the eight raw 32-bit hash words, each held as a QM31
+impl From<[u32; BLAKE2S_DIGEST_N_WORDS]> for HashValue<QM31> {
+    /// Encodes the eight raw 32-bit hash words losslessly, each held as a QM31
     /// `(low_u16, high_u16, 0, 0)`. Unlike [`ReducedHashValue`], the words are *not* reduced
     /// mod `M31::P`.
-    fn from(value: [u32; 8]) -> Self {
+    fn from(value: [u32; BLAKE2S_DIGEST_N_WORDS]) -> Self {
         HashValue(value.map(|word| U32Wrapper::new_unsafe(IValue::pack_u32(word))))
     }
 }
@@ -203,7 +206,7 @@ pub fn reduce_hash_value<Value: IValue>(
     hash: HashValue<Var>,
 ) -> ReducedHashValue<Var> {
     let c_2_pow_16 = ctx.constant(M31::from(1u32 << 16).into());
-    let reduced: [Var; 8] = std::array::from_fn(|i| {
+    let reduced: [Var; BLAKE2S_DIGEST_N_WORDS] = std::array::from_fn(|i| {
         let h_simd = Simd::from_packed(vec![*hash[i].get()], 2);
         let low = Simd::unpack_idx(ctx, &h_simd, 0);
         let high = Simd::unpack_idx(ctx, &h_simd, 1);
@@ -229,7 +232,7 @@ pub fn blake2s_u32s<Value: IValue>(
     ctx: &mut Context<Value>,
     mut message_u32s: Vec<U32Wrapper<Var>>,
     n_bytes: usize,
-) -> [U32Wrapper<Var>; 8] {
+) -> [U32Wrapper<Var>; BLAKE2S_DIGEST_N_WORDS] {
     const BLOCK_BYTES: usize = 64;
     const WORDS_PER_BLOCK: usize = 16;
 
