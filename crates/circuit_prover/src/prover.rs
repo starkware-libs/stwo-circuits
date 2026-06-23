@@ -1,5 +1,4 @@
 use crate::circuit_air::circuit_components::CircuitComponents;
-use crate::merkle_channel::MerkleChannelForCircuit;
 use crate::witness::trace::TraceGenerator;
 use crate::witness::trace::write_interaction_trace;
 use crate::witness::trace::write_trace;
@@ -20,7 +19,7 @@ use stwo::core::pcs::PcsConfig;
 use stwo::core::poly::circle::CanonicCoset;
 use stwo::core::proof_of_work::GrindOps;
 use stwo::core::utils::MaybeOwned;
-use stwo::core::vcs_lifted::blake2_merkle::Blake2sMerkleHasher;
+use stwo::core::vcs_lifted::blake2_merkle::{Blake2sM31MerkleChannel, Blake2sMerkleHasher};
 use stwo::prover::CommitmentSchemeProver;
 use stwo::prover::CommitmentTreeProver;
 pub use stwo::prover::backend::simd::SimdBackend;
@@ -42,7 +41,7 @@ pub fn prove_circuit_assignment(
     base_column_pool: &BaseColumnPool<SimdBackend>,
     pcs_config: PcsConfig,
 ) -> Result<CircuitProof<Blake2sMerkleHasher>, ProvingError> {
-    prove_circuit_assignment_with_channel::<MerkleChannelForCircuit>(
+    prove_circuit_assignment_with_channel::<Blake2sM31MerkleChannel>(
         values,
         preprocessed_circuit,
         base_column_pool,
