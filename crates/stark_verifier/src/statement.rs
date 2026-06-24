@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use circuits::blake::ReducedHashValue;
+use circuits::blake::HashValue;
 use indexmap::IndexMap;
 use stwo::core::circle::CirclePoint;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
@@ -50,7 +50,7 @@ pub trait Statement<Value: IValue> {
     fn get_preprocessed_column_ids(&self) -> Vec<PreProcessedColumnId>;
 
     /// Returns the expected preprocessed trace root as circuit variables.
-    fn get_preprocessed_root(&self, context: &mut Context<Value>) -> ReducedHashValue<Var>;
+    fn get_preprocessed_root(&self, context: &mut Context<Value>) -> HashValue<Var>;
 
     /// Returns the part of the logup sum determined by the public statement.
     fn public_logup_sum(&self, context: &mut Context<Value>, interaction_elements: [Var; 2])
