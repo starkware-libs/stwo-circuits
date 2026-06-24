@@ -2,6 +2,12 @@
 name = "circuit-serialize"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Serialization and deserialization of circuit STARK proofs for the stwo-circuits stack."
+keywords = ["stark", "circuit", "serialization", "zk", "cryptography"]
+categories = ["cryptography", "encoding"]
 
 [dependencies]
 stwo.workspace = true

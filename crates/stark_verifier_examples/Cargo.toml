@@ -2,6 +2,11 @@
 name = "circuits-stark-verifier-examples"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Example verifiers and test utilities for the stwo-circuits STARK verifier (not published)."
+publish = false
 
 [dependencies]
 circuits.workspace = true

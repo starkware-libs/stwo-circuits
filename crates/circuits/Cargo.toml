@@ -2,6 +2,12 @@
 name = "circuits"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Circuit DSL for building arithmetic constraint circuits (gates, variables, context) over the Mersenne31 field."
+keywords = ["stark", "circuit", "zk", "cryptography"]
+categories = ["cryptography", "mathematics"]
 
 [features]
 # Exposes `test_utils` to other crates' test builds. Off by default, so the helpers

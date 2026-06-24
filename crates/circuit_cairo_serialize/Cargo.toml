@@ -2,7 +2,12 @@
 name = "circuit-cairo-serialize"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
 description = "Serializes circuit proofs into the Cairo verifier's input format."
+keywords = ["stark", "cairo", "serialization", "zk", "cryptography"]
+categories = ["cryptography", "encoding"]
 
 [dependencies]
 cairo-air.workspace = true
