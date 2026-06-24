@@ -17,13 +17,9 @@ fn test_plus_one_chain_topology() {
     let mut context = TraceContext::default();
     context.constant(M31::from(2u32).into());
     context.constant(M31::from(4u32).into());
-    let m31_constants = IndexMap::from([
-        (0.into(), Var { idx: 0 }),
-        (1.into(), Var { idx: 1 }),
-        (2.into(), Var { idx: 3 }),
-        (4.into(), Var { idx: 4 }),
-    ]);
-    assert_eq!(find_max_consecutive(&m31_constants), 2);
+    // Values {0, 1, 2, 4} have a consecutive prefix [0, 2] with a gap at 3.
+    let m31_values = HashSet::from([0, 1, 2, 4]);
+    assert_eq!(find_max_consecutive(&m31_values), 2);
     // `min_base = 6` and `find_max_consecutive` returns 2 (gap at 3), so the chain runs 2..=6.
     finalize_constants_with_min_base(&mut context, 6);
 
@@ -194,6 +190,69 @@ fn test_mixed_m31_and_qm31_constants_large() {
     context.constant(qm31_from_u32s(0, 0, 1234, 0));
     context.constant(qm31_from_u32s(0, 0, 0, 1234));
     finalize_constants(&mut context);
+    context.circuit.check_yields();
+    context.validate_circuit();
+}
+
+#[test]
+fn test_find_max_consecutive() {
+    // Empty input would panic (no zero); a lone zero is the smallest valid input.
+    assert_eq!(find_max_consecutive(&HashSet::from([0])), 0);
+    // A gap right after zero caps the prefix at 0.
+    assert_eq!(find_max_consecutive(&HashSet::from([0, 2, 3])), 0);
+    // A full run with no gap returns the largest element.
+    assert_eq!(find_max_consecutive(&HashSet::from([0, 1, 2, 3])), 3);
+    // Values beyond the first gap don't extend the prefix.
+    assert_eq!(find_max_consecutive(&HashSet::from([0, 1, 2, 100, 101])), 2);
+}
+
+#[test]
+#[should_panic = "m31_values must contain zero"]
+fn test_find_max_consecutive_without_zero_panics() {
+    find_max_consecutive(&HashSet::from([1, 2, 3]));
+}
+
+#[test]
+fn test_qm31_limbs_extend_plus_one_chain() {
+    let mut context = TraceContext::default();
+    // A single QM31 constant whose limbs (2, 3, 4, 5) fill the consecutive prefix above
+    // `min_base = 2`. No *pure* M31 constant requires 3, 4 or 5, but because the limbs are fed into
+    // `find_max_consecutive` the decomposition base grows to 5, so the `+1` chain runs 2..=5 and
+    // each limb is produced by the chain rather than by base decomposition.
+    context.constant(qm31_from_u32s(2, 3, 4, 5));
+    finalize_constants_with_min_base(&mut context, 2);
+
+    expect![[r#"
+        [0] = [0] + [0]
+        [1] = [1] + [0]
+        [4] = [1] + [1]
+        [5] = [4] + [1]
+        [6] = [5] + [1]
+        [7] = [6] + [1]
+        [10] = [9] + [1]
+        [12] = [10] + [11]
+        [14] = [4] + [13]
+        [16] = [6] + [15]
+        [3] = [14] + [17]
+        [9] = [8] - [4]
+        [2] = [2] * [1]
+        [8] = [2] * [2]
+        [11] = [10] * [2]
+        [13] = [9] * [5]
+        [15] = [9] * [7]
+        [17] = [16] * [2]
+        output [2]
+    "#]]
+    .assert_eq(&format!("{:?}", context.circuit));
+
+    // The chain populated vars [4]..=[7] for values 2..=5, all built by `+1` Add gates above.
+    assert_eq!(context.get(Var { idx: 4 }), M31::from(2u32).into());
+    assert_eq!(context.get(Var { idx: 5 }), M31::from(3u32).into());
+    assert_eq!(context.get(Var { idx: 6 }), M31::from(4u32).into());
+    assert_eq!(context.get(Var { idx: 7 }), M31::from(5u32).into());
+    // The QM31 constant itself is assembled into its reserved var [3].
+    assert_eq!(context.get(Var { idx: 3 }), qm31_from_u32s(2, 3, 4, 5));
+
     context.circuit.check_yields();
     context.validate_circuit();
 }

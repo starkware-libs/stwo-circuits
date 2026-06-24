@@ -1,8 +1,7 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
 use indexmap::IndexMap;
-use itertools::Itertools;
 use num_traits::Zero;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
@@ -51,16 +50,22 @@ pub(crate) fn finalize_constants_with_min_base(
     let mut qm31_constants = IndexMap::<QM31, Var>::new();
     let mut m31_cache = HashMap::<M31, Var>::new();
     let mut qm31_cache = HashMap::<QM31, Var>::new();
+    // The set of M31 limb values across every constant. Each limb is eventually built (via the
+    // `+1` chain or `build_m31_from_base`), so they are all fed into `find_max_consecutive` to size
+    // the base: a limb that extends the consecutive prefix [0, N] is then produced by the chain for
+    // free.
+    let mut m31_limbs = HashSet::<u32>::new();
     // Populate the maps.
     context.constants().iter().for_each(|(val, var)| {
-        if let [x, M31(0), M31(0), M31(0)] = val.to_m31_array() {
+        let limbs = val.to_m31_array();
+        m31_limbs.extend(limbs.iter().map(|limb| limb.0));
+        if let [x, M31(0), M31(0), M31(0)] = limbs {
             m31_constants.insert(x, *var);
         } else {
             qm31_constants.insert(*val, *var);
         }
     });
-    // TODO(dan): Consider adding the limbs from all cm31s and qm31s into find_max_consecutive.
-    let m31_base = find_max_consecutive(&m31_constants).max(min_base);
+    let m31_base = find_max_consecutive(&m31_limbs).max(min_base);
 
     // Yield and constrain the `zero` wire by adding a gate x + x = x.
     let zero_var = context.zero();
@@ -138,20 +143,20 @@ pub(crate) fn finalize_constants_with_min_base(
     assert!(qm31_constants.is_empty());
 }
 
-/// Finds the largest integer N such that all values in [0, N] are present as constants.
+/// Finds the largest integer N such that all values in [0, N] are present in `m31_values`.
 ///
 /// # Panics
 ///
-/// Panics if `m31_constants` doesn't contain zero.
-fn find_max_consecutive(m31_constants: &IndexMap<M31, Var>) -> usize {
-    assert!(m31_constants.contains_key(&M31(0)));
-    let m31_values = m31_constants.keys().map(|k| k.0).sorted();
-    // After sorting, a consecutive run from 0 satisfies m31_values[i] == i.
-    let n_consecutive =
-        m31_values.enumerate().position(|(i, v)| i != v as usize).unwrap_or(m31_constants.len());
-    // The assert at the beginning ensures that n_consecutive > 0, so this subtraction does not
-    // overflow.
-    n_consecutive - 1
+/// Panics if `m31_values` doesn't contain zero.
+fn find_max_consecutive(m31_values: &HashSet<u32>) -> usize {
+    assert!(m31_values.contains(&0), "m31_values must contain zero");
+    // Walk up from 0 while each successive value is present. The values are M31 limbs, all < 2^31,
+    // so `n + 1` never overflows a u32.
+    let mut n = 0;
+    while m31_values.contains(&(n + 1)) {
+        n += 1;
+    }
+    n as usize
 }
 
 /// Builds the +1 chain: Add gates for 1+1=2, 2+1=3, ..., up to `m31_base`. This yields
