@@ -1,6 +1,6 @@
 use circuit_common::N_RESERVED;
 use circuits::{
-    blake::{ReducedHashValue, blake2s_m31},
+    blake::{HashValue, blake2s_m31, reduce_hash_value},
     context::{Context, FinalizedContext},
     ivalue::IValue,
     ops::Guess,
@@ -27,7 +27,7 @@ pub struct CircuitConfig {
     /// (at address [`circuits::context::U_VAR_IDX`]).
     pub n_outputs: usize,
     pub preprocessed_column_log_sizes: OrderedHashMap<PreProcessedColumnId, u32>,
-    pub preprocessed_root: ReducedHashValue<QM31>,
+    pub preprocessed_root: HashValue<QM31>,
 }
 
 /// Builds the circuit that verifies a proof of execution of another circuit.
@@ -62,7 +62,11 @@ pub fn build_verification_circuit<Value: IValue>(
 
     // Deal with the outputs: hash the preprocessed root and all the output values except `u` (= the
     // last one). This is fine for soundness because `u` is checked as part of the logup sum.
+    // The preprocessed root is committed losslessly, but the recursive output hash binds its
+    // `M31`-reduced form (two QM31s), keeping this output-hash format unchanged; the full root is
+    // still bound by the Fiat-Shamir channel via `mix_commitment`.
     let preprocessed_root = statement.get_preprocessed_root(&mut context);
+    let preprocessed_root = reduce_hash_value(&mut context, preprocessed_root);
     let output_preimage: Vec<_> = [preprocessed_root.0, preprocessed_root.1]
         .into_iter()
         .chain(statement.get_output_values().iter().copied())

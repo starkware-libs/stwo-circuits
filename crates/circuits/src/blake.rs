@@ -1,7 +1,6 @@
-use blake2::{Blake2s256, Digest};
 use stwo::core::fields::m31::M31;
+use stwo::core::fields::qm31::QM31;
 use stwo::core::vcs::blake2_hash::Blake2sHash;
-use stwo::core::{fields::qm31::QM31, vcs::blake2_hash::reduce_to_m31};
 use stwo_cairo_common::preprocessed_columns::blake::BLAKE_SIGMA;
 
 use crate::circuit::{BlakeGGate, M31ToU32, TripleXor};
@@ -103,14 +102,13 @@ impl From<[u32; 8]> for ReducedHashValue<QM31> {
     }
 }
 
-/// Convert QM31 to 16 bytes (4 u32s)
-fn to_bytes(value: QM31) -> [u8; 16] {
-    let mut bytes = [0u8; 16];
-    bytes[0..4].copy_from_slice(&value.0.0.0.to_le_bytes());
-    bytes[4..8].copy_from_slice(&value.0.1.0.to_le_bytes());
-    bytes[8..12].copy_from_slice(&value.1.0.0.to_le_bytes());
-    bytes[12..16].copy_from_slice(&value.1.1.0.to_le_bytes());
-    bytes
+impl From<[u32; 8]> for HashValue<QM31> {
+    /// Encodes the eight raw 32-bit hash words losslessly, each held as a QM31
+    /// `(low_u16, high_u16, 0, 0)`. Unlike [`ReducedHashValue`], the words are *not* reduced
+    /// mod `M31::P`.
+    fn from(value: [u32; 8]) -> Self {
+        HashValue(value.map(|word| U32Wrapper::new_unsafe(IValue::pack_u32(word))))
+    }
 }
 
 /// Create QM31 from 16 bytes (4 u32s)
@@ -120,28 +118,6 @@ pub fn qm31_from_bytes(bytes: &[u8; 16]) -> QM31 {
     let c = u32::from_le_bytes([bytes[8], bytes[9], bytes[10], bytes[11]]);
     let d = u32::from_le_bytes([bytes[12], bytes[13], bytes[14], bytes[15]]);
     qm31_from_u32s(a, b, c, d)
-}
-
-/// Blake2s hash function implementation for QM31.
-/// Takes [QM31] values as input and returns 2 [QM31] values as output.
-pub fn blake_qm31(input: &[QM31], n_bytes: usize) -> ReducedHashValue<QM31> {
-    // Sanity check: check the number of bytes is consistent with the number of [QM31] values.
-    assert_eq!(input.len(), n_bytes.div_ceil(16));
-
-    // Convert [QM31] inputs to bytes.
-    let mut input_bytes: Vec<u8> = vec![];
-    for x in input {
-        input_bytes.extend_from_slice(&to_bytes(*x));
-    }
-
-    let mut hasher = Blake2s256::new();
-    hasher.update(&input_bytes[0..n_bytes]);
-    let hash: [u8; 32] = reduce_to_m31(hasher.finalize().into());
-
-    let res0 = qm31_from_bytes(hash[0..16].try_into().unwrap());
-    let res1 = qm31_from_bytes(hash[16..32].try_into().unwrap());
-
-    ReducedHashValue(res0, res1)
 }
 
 /// Blake2s IV.

@@ -4,10 +4,11 @@ use crate::fri_proof::{FriConfig, FriProof, compute_all_fold_steps, empty_fri_pr
 use crate::merkle::{AuthPath, AuthPaths};
 use crate::oods::{EvalDomainSamples, N_COMPOSITION_COLUMNS, empty_eval_domain_samples};
 use crate::proof_from_stark_proof::pack_into_qm31s;
-use circuits::blake::{HashValue, ReducedHashValue};
+use circuits::blake::HashValue;
 use circuits::context::{Context, Var};
 use circuits::ivalue::{IValue, NoValue};
 use circuits::ops::Guess;
+use circuits::wrappers::U32Wrapper;
 use indexmap::IndexMap;
 use itertools::{Itertools, zip_eq};
 
@@ -29,14 +30,14 @@ pub struct ProofInfo {
     pub log_blowup_factor: usize,
     pub n_queries: usize,
     pub n_columns_per_trace: [usize; N_TRACES],
-    // Fixed scalars (QM31): channel_salt + 3 roots (2 QM31 each) + pow_nonce +
-    // interaction_pow_nonce.
+    // Fixed scalars: channel_salt (QM31) + 3 roots (HashValue, 32 bytes each) + pow_nonce (QM31) +
+    // interaction_pow_nonce (QM31).
     pub fixed: usize,
     // Claim (serialized in packed format): enable bits + log sizes + claimed sums.
     pub claim: usize,
     // OODS evaluations (QM31 per column, plus cumulative sum prev-point samples).
     pub oods: usize,
-    // FRI commitments: one ReducedHashValue (2 QM31) per layer.
+    // FRI commitments: one HashValue (32 bytes each) per layer.
     pub fri_commitments: usize,
     // FRI last layer coefs (QM31).
     pub fri_last_layer: usize,
@@ -44,7 +45,7 @@ pub struct ProofInfo {
     // Eval domain samples per query: M31 values, kept as-is.
     pub eval_samples_per_query: usize,
     // Eval domain auth paths per query: N_TRACES trees (all lifted/split to eval domain size),
-    // each path of depth log_eval_domain, each node is a ReducedHashValue (2 QM31).
+    // each path of depth log_eval_domain, each node is a lossless HashValue (8 words).
     pub eval_auth_per_query: usize,
     // FRI auth paths per query.
     pub fri_auth_per_query: usize,
@@ -381,9 +382,9 @@ pub struct Proof<T> {
     pub channel_salt: T,
 
     // Merkle roots.
-    pub trace_root: ReducedHashValue<T>,
-    pub interaction_root: ReducedHashValue<T>,
-    pub composition_polynomial_root: ReducedHashValue<T>,
+    pub trace_root: HashValue<T>,
+    pub interaction_root: HashValue<T>,
+    pub composition_polynomial_root: HashValue<T>,
 
     // Claimed sum for each component in the AIR.
     pub claimed_sums: Vec<T>,
@@ -454,11 +455,15 @@ impl<T> Proof<T> {
 
     /// Returns the 3 witness Merkle roots (trace, interaction, composition polynomial).
     /// The preprocessed root is excluded since it is not stored in the proof.
-    pub fn merkle_roots(&self) -> [ReducedHashValue<T>; N_TRACES - 1]
+    pub fn merkle_roots(&self) -> [HashValue<T>; N_TRACES - 1]
     where
-        T: Copy,
+        T: Clone,
     {
-        [self.trace_root, self.interaction_root, self.composition_polynomial_root]
+        [
+            self.trace_root.clone(),
+            self.interaction_root.clone(),
+            self.composition_polynomial_root.clone(),
+        ]
     }
 }
 
@@ -467,9 +472,9 @@ pub fn empty_proof(config: &ProofConfig) -> Proof<NoValue> {
 
     let n_components = config.n_components();
     Proof {
-        trace_root: ReducedHashValue(NoValue, NoValue),
-        interaction_root: ReducedHashValue(NoValue, NoValue),
-        composition_polynomial_root: ReducedHashValue(NoValue, NoValue),
+        trace_root: HashValue([U32Wrapper::new_unsafe(NoValue); 8]),
+        interaction_root: HashValue([U32Wrapper::new_unsafe(NoValue); 8]),
+        composition_polynomial_root: HashValue([U32Wrapper::new_unsafe(NoValue); 8]),
         preprocessed_columns_at_oods: vec![NoValue; config.n_preprocessed_columns],
         trace_at_oods: vec![NoValue; config.n_trace_columns],
         interaction_at_oods: config
