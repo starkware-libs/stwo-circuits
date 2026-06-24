@@ -14,8 +14,11 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
+license = "Apache-2.0"
+repository = "https://github.com/starkware-libs/stwo-circuits"
+homepage = "https://github.com/starkware-libs/stwo-circuits"
 
 [workspace.dependencies]
 blake2 = { version = "0.10.6", default-features = false }
@@ -54,13 +57,15 @@ stwo-cairo-serialize = { git = "https://github.com/starkware-libs/stwo-cairo", r
 starknet-ff = "0.3"
 
 # local crates
-circuits = { path = "crates/circuits"}
-circuit-verifier = { path = "crates/circuit_verifier"}
-circuit-common = { path = "crates/circuit_common" }
-circuit-multiverifier = { path = "crates/circuit_multiverifier"}
-circuit-prover = { path = "crates/circuit_prover"}
-circuits-stark-verifier = { path = "crates/stark_verifier"}
-circuits-stark-verifier-examples = { path = "crates/stark_verifier_examples"}
+circuits = { path = "crates/circuits", version = "~1.0.0" }
+circuit-verifier = { path = "crates/circuit_verifier", version = "~1.0.0" }
+circuit-common = { path = "crates/circuit_common", version = "~1.0.0" }
+circuit-multiverifier = { path = "crates/circuit_multiverifier", version = "~1.0.0" }
+circuit-prover = { path = "crates/circuit_prover", version = "~1.0.0" }
+circuit-cairo-verifier = { path = "crates/cairo_verifier", version = "~1.0.0" }
+circuit-serialize = { path = "crates/circuit_serialize", version = "~1.0.0" }
+circuits-stark-verifier = { path = "crates/stark_verifier", version = "~1.0.0" }
+circuits-stark-verifier-examples = { path = "crates/stark_verifier_examples", version = "~1.0.0" }
 
 # Compile the circuit-prover and stwo crates with optimization level 3 to speed up the blake related tests.
 [profile.test.package.circuit-prover]

@@ -1269,7 +1269,7 @@ checksum = "613afe47fcd5fac7ccf1db93babcb082c5994d996f20b8b159f2ad1658eb5724"
 
 [[package]]
 name = "circuit-cairo-serialize"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "cairo-air",
  "circuit-common",
@@ -1285,7 +1285,7 @@ dependencies = [
 
 [[package]]
 name = "circuit-cairo-verifier"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "cairo-air",
  "cairo-vm",
@@ -1308,7 +1308,7 @@ dependencies = [
 
 [[package]]
 name = "circuit-common"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "circuits",
  "circuits-stark-verifier",
@@ -1322,7 +1322,7 @@ dependencies = [
 
 [[package]]
 name = "circuit-multiverifier"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "circuit-common",
  "circuit-verifier",
@@ -1335,7 +1335,7 @@ dependencies = [
 
 [[package]]
 name = "circuit-prover"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "circuit-common",
  "circuit-verifier",
@@ -1356,7 +1356,7 @@ dependencies = [
 
 [[package]]
 name = "circuit-serialize"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "circuits",
  "circuits-stark-verifier",
@@ -1369,7 +1369,7 @@ dependencies = [
 
 [[package]]
 name = "circuit-verifier"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "circuit-common",
  "circuits",
@@ -1386,7 +1386,7 @@ dependencies = [
 
 [[package]]
 name = "circuits"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "blake2",
  "expect-test",
@@ -1402,7 +1402,7 @@ dependencies = [
 
 [[package]]
 name = "circuits-stark-verifier"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "circuits",
  "expect-test",
@@ -1419,7 +1419,7 @@ dependencies = [
 
 [[package]]
 name = "circuits-stark-verifier-examples"
-version = "0.1.0"
+version = "1.0.0"
 dependencies = [
  "circuit-serialize",
  "circuits",
