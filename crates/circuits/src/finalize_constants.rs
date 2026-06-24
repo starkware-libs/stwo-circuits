@@ -1,8 +1,7 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
 use indexmap::IndexMap;
-use itertools::Itertools;
 use num_traits::Zero;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
@@ -18,7 +17,7 @@ mod test;
 /// Wraps `finalize_constants_with_min_base` and calls it with a default value. The main reason
 /// is to make testing easier by choosing a smaller minimum base.
 pub fn finalize_constants(context: &mut Context<impl IValue>) {
-    const DEFAULT_MIN_BASE: usize = 256;
+    const DEFAULT_MIN_BASE: u32 = 256;
     finalize_constants_with_min_base(context, DEFAULT_MIN_BASE);
 }
 
@@ -42,25 +41,26 @@ pub fn finalize_constants(context: &mut Context<impl IValue>) {
 /// rebuilding them, so each distinct M31 value gets at most one yield gate.
 ///
 /// `IndexMap` is used (rather than `HashMap`) so that iteration order is deterministic.
-pub(crate) fn finalize_constants_with_min_base(
-    context: &mut Context<impl IValue>,
-    min_base: usize,
-) {
+pub(crate) fn finalize_constants_with_min_base(context: &mut Context<impl IValue>, min_base: u32) {
     assert!(min_base >= 2);
     let mut m31_constants = IndexMap::<M31, Var>::new();
     let mut qm31_constants = IndexMap::<QM31, Var>::new();
     let mut m31_cache = HashMap::<M31, Var>::new();
     let mut qm31_cache = HashMap::<QM31, Var>::new();
+    // All M31 limbs across every constant, fed into `find_max_consecutive` to size the base: a limb
+    // continuing the consecutive run above `min_base` is then produced by the `+1` chain for free.
+    let mut m31_limbs = HashSet::<u32>::new();
     // Populate the maps.
     context.constants().iter().for_each(|(val, var)| {
-        if let [x, M31(0), M31(0), M31(0)] = val.to_m31_array() {
+        let limbs = val.to_m31_array();
+        m31_limbs.extend(limbs.iter().map(|limb| limb.0));
+        if let [x, M31(0), M31(0), M31(0)] = limbs {
             m31_constants.insert(x, *var);
         } else {
             qm31_constants.insert(*val, *var);
         }
     });
-    // TODO(dan): Consider adding the limbs from all cm31s and qm31s into find_max_consecutive.
-    let m31_base = find_max_consecutive(&m31_constants).max(min_base);
+    let m31_base = find_max_consecutive(&m31_limbs, min_base);
 
     // Yield and constrain the `zero` wire by adding a gate x + x = x.
     let zero_var = context.zero();
@@ -140,20 +140,16 @@ pub(crate) fn finalize_constants_with_min_base(
     assert!(qm31_constants.is_empty());
 }
 
-/// Finds the largest integer N such that all values in [0, N] are present as constants.
-///
-/// # Panics
-///
-/// Panics if `m31_constants` doesn't contain zero.
-fn find_max_consecutive(m31_constants: &IndexMap<M31, Var>) -> usize {
-    assert!(m31_constants.contains_key(&M31(0)));
-    let m31_values = m31_constants.keys().map(|k| k.0).sorted();
-    // After sorting, a consecutive run from 0 satisfies m31_values[i] == i.
-    let n_consecutive =
-        m31_values.enumerate().position(|(i, v)| i != v as usize).unwrap_or(m31_constants.len());
-    // The assert at the beginning ensures that n_consecutive > 0, so this subtraction does not
-    // overflow.
-    n_consecutive - 1
+/// Returns the base for the `+1` chain: the largest `n >= min_base` such that every value in
+/// `(min_base, n]` is present in `m31_values`. The chain always builds `2..=min_base`, so only
+/// limbs continuing the run *above* `min_base` can extend the base.
+fn find_max_consecutive(m31_values: &HashSet<u32>, min_base: u32) -> u32 {
+    // M31 limbs are all < 2^31, so `n + 1` never overflows a u32.
+    let mut n = min_base;
+    while m31_values.contains(&(n + 1)) {
+        n += 1;
+    }
+    n
 }
 
 /// Builds the +1 chain: Add gates for 1+1=2, 2+1=3, ..., up to `m31_base`. This yields
@@ -165,7 +161,7 @@ fn build_plus_one_chain(
     context: &mut Context<impl IValue>,
     m31_constants: &mut IndexMap<M31, Var>,
     m31_cache: &mut HashMap<M31, Var>,
-    m31_base: usize,
+    m31_base: u32,
 ) {
     let one_var = context.one();
     let mut prev_var = context.one();
