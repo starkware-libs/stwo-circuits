@@ -1,6 +1,6 @@
 use circuit_common::N_RESERVED;
 use circuits::{
-    blake::{ReducedHashValue, blake2s_m31},
+    blake::{HashValue, blake2s_u32s, reduce_hash_value, unpack_qm31s_to_u32_words},
     context::{Context, FinalizedContext},
     ivalue::IValue,
     ops::Guess,
@@ -27,7 +27,7 @@ pub struct CircuitConfig {
     /// (at address [`circuits::context::U_VAR_IDX`]).
     pub n_outputs: usize,
     pub preprocessed_column_log_sizes: OrderedHashMap<PreProcessedColumnId, u32>,
-    pub preprocessed_root: ReducedHashValue<QM31>,
+    pub preprocessed_root: HashValue<QM31>,
 }
 
 /// Builds the circuit that verifies a proof of execution of another circuit.
@@ -62,14 +62,23 @@ pub fn build_verification_circuit<Value: IValue>(
 
     // Deal with the outputs: hash the preprocessed root and all the output values except `u` (= the
     // last one). This is fine for soundness because `u` is checked as part of the logup sum.
+    // The preprocessed root is committed as full 32-bit words, but the recursive output hash binds
+    // its `M31`-reduced form (two QM31s), keeping this output-hash format unchanged; the full root
+    // is still bound by the Fiat-Shamir channel via `mix_commitment`.
     let preprocessed_root = statement.get_preprocessed_root(&mut context);
-    let output_preimage: Vec<_> = [preprocessed_root.0, preprocessed_root.1]
+    let output_preimage: Vec<_> = preprocessed_root
+        .0
         .into_iter()
-        .chain(statement.get_output_values().iter().copied())
+        .chain(unpack_qm31s_to_u32_words(
+            &mut context,
+            statement.get_output_values().iter().copied(),
+        ))
         .collect();
-    let output_hash = blake2s_m31(&mut context, &output_preimage, 16 * output_preimage.len());
+    let n_bytes = 4 * output_preimage.len();
+    let output_hash = blake2s_u32s(&mut context, output_preimage, n_bytes);
+    let reduced_hash = reduce_hash_value(&mut context, HashValue(output_hash));
     // Copy the resulting hash into the wires 3 and 4, and mark them as outputs.
-    context.set_outputs(&[output_hash.0, output_hash.1]);
+    context.set_outputs(&[reduced_hash.0, reduced_hash.1]);
 
     let context = context.finalize(false);
     #[cfg(test)]

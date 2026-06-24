@@ -6,7 +6,7 @@ use stwo::core::vcs_lifted::verifier::PACKED_LEAF_SIZE;
 use crate::oods::EvalDomainSamples;
 use crate::proof::N_TRACES;
 use crate::sort_queries::QuerySorter;
-use circuits::blake::{HashValue, ReducedHashValue, blake2s, blake2s_u32s, reduce_hash_value};
+use circuits::blake::{HashValue, blake2s, blake2s_u32s};
 use circuits::context::{Context, Var};
 use circuits::ivalue::IValue;
 use circuits::ops::{Guess, cond_flip, eq};
@@ -92,7 +92,7 @@ pub fn hash_packed_leaf_qm31s(
 ///
 /// The children's eight words each are already in `blake2s_u32s` message-word form, so they are fed
 /// directly as the 16 message words without any unpacking, and the eight output words are returned
-/// in full as a [`HashValue`].
+/// as a [`HashValue`] (no `M31::P` reduction).
 pub fn hash_node(
     context: &mut Context<impl IValue>,
     left: &HashValue<Var>,
@@ -117,18 +117,18 @@ pub fn verify_merkle_path<Value: IValue>(
     context: &mut Context<Value>,
     mut leaf: HashValue<Var>,
     bits: &[Var],
-    root: ReducedHashValue<Var>,
+    root: &HashValue<Var>,
     auth_path: &AuthPath<Var>,
 ) {
     for (bit, sibling) in zip_eq(bits, &auth_path.0) {
         leaf = merkle_node(context, &leaf, sibling, *bit);
     }
-    // The Merkle tree is committed with blake2s `HashValue`s.
-    // The `root` committed to the Fiat-Shamir channel is `M31`-reduced, so reduce the computed root
-    // mod `M31::P` before comparing.
-    let reduced = reduce_hash_value(context, leaf);
-    eq(context, reduced.0, root.0);
-    eq(context, reduced.1, root.1);
+    // The Merkle tree is committed over full 32-bit words, so the path is computed over unreduced
+    // `HashValue`s and the recomputed root is compared word-for-word against the `root` bound by
+    // the Fiat-Shamir channel.
+    for (recomputed, expected) in zip_eq(leaf.0, root.0) {
+        eq(context, *recomputed.get(), *expected.get());
+    }
 }
 
 /// Computes a node of a Merkle tree, given one child `node`, its sibling and the
@@ -166,7 +166,7 @@ pub fn decommit_eval_domain_samples<Value: IValue>(
     eval_domain_samples: &EvalDomainSamples<Var>,
     auth_paths: &AuthPaths<Var>,
     bits: &[Vec<Var>],
-    roots: &[ReducedHashValue<Var>; N_TRACES],
+    roots: &[HashValue<Var>; N_TRACES],
 ) {
     assert_eq!(eval_domain_samples.n_traces(), roots.len());
     assert_eq!(auth_paths.n_trees(), roots.len());
@@ -187,7 +187,7 @@ pub fn decommit_eval_domain_samples<Value: IValue>(
             let leaf = hash_leaf_m31s(context, &sorted);
             let auth_path = auth_paths.at(trace_idx, query_idx);
             let bits_for_query = bits.iter().map(|b| b[query_idx]).collect_vec();
-            verify_merkle_path(context, leaf, &bits_for_query, *root, auth_path);
+            verify_merkle_path(context, leaf, &bits_for_query, root, auth_path);
         }
     }
 }

@@ -2,9 +2,10 @@ use rstest::rstest;
 use stwo::core::channel::{Blake2sM31Channel, Channel as StwoChannel};
 use stwo::core::fields::qm31::QM31;
 
-use circuits::blake::{ReducedHashValue, unpack_qm31s_to_u32_words};
+use circuits::blake::{HashValue, ReducedHashValue, unpack_qm31s_to_u32_words};
 use circuits::context::TraceContext;
 use circuits::ivalue::{IValue, qm31_from_u32s};
+use circuits::ops::Guess;
 use circuits::stats::Stats;
 use circuits::wrappers::U32Wrapper;
 
@@ -15,17 +16,17 @@ fn test_mix_commitment_regression() {
     let mut context = TraceContext::default();
 
     let mut channel = Channel::new(&mut context);
-    let root0 = ReducedHashValue(
-        context.new_var(qm31_from_u32s(637418335, 1672023491, 980858689, 607764934)),
-        context.new_var(qm31_from_u32s(386900718, 430556311, 1187803054, 669301442)),
-    );
-    let root1 = ReducedHashValue(
-        context.new_var(qm31_from_u32s(1477561267, 1244239078, 1979857528, 1316512771)),
-        context.new_var(qm31_from_u32s(490980261, 2016799283, 79573118, 1350641448)),
-    );
-    channel.mix_commitment(&mut context, root0);
+    let root0 = HashValue::from([
+        637418335, 1672023491, 980858689, 607764934, 386900718, 430556311, 1187803054, 669301442,
+    ])
+    .guess(&mut context);
+    let root1 = HashValue::from([
+        1477561267, 1244239078, 1979857528, 1316512771, 490980261, 2016799283, 79573118, 1350641448,
+    ])
+    .guess(&mut context);
+    channel.mix_commitment(&mut context, &root0);
     let digest0 = channel.digest;
-    channel.mix_commitment(&mut context, root1);
+    channel.mix_commitment(&mut context, &root1);
     let digest1 = channel.digest;
 
     assert_eq!(
@@ -42,12 +43,13 @@ fn test_mix_commitment_regression() {
     assert_eq!(
         context.stats,
         Stats {
-            add: 28,
-            mul: 68,
-            pointwise_mul: 64,
+            add: 44,
+            mul: 72,
+            pointwise_mul: 48,
+            guess: 32,
             blake_updates: 2,
             triple_xor: 16,
-            m31_to_u32: 32,
+            m31_to_u32: 16,
             // The context constructor marks `u` as an output.
             outputs: 1,
             ..Stats::default()
