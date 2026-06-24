@@ -470,6 +470,46 @@ fn find_summands(
     summands
 }
 
+/// Validates a logup summand `s`, asserting the expected groundedness of its values.
+///
+/// Arguments:
+/// - `composition_vars`: the `composition_eval` cone.
+/// - `int_z`: the `interaction_z` variable index.
+/// - `int_z_cache`: Cache for [`Ground::grounded`] for `int_z`.
+/// - `composition_coef_cache`: Cache for [`Ground::grounded`] for `composition_coef`.
+fn validate_logup_summand(
+    ground: &Ground<'_>,
+    int_z: usize,
+    int_z_cache: &mut GroundingCache,
+    composition_coef_cache: &mut GroundingCache,
+    s: usize,
+) {
+    let c = ground.c;
+
+    // Case I: s = 1 / (X - int_z).
+    if let Some(&Idiom::Inverse { y: denom }) = ground.idiom.get(&s)
+        && let Some(&(Op::Sub, x, y)) = c.producers.get(&denom)
+    {
+        assert!(y == int_z, "Summand [{s}] is 1/(X-Y) with Y=[{y}], expected Y=[{int_z}].");
+        // Check that X is grounded to int_z.
+        assert!(
+            ground.grounded(x, int_z_cache),
+            "Summand [{s}] = 1 / ([{x}] - [{y}]) is not grounded."
+        );
+        return;
+    }
+
+    // Case II: s is a guess.
+    if c.guessed.contains(&s) {
+        // TODO(lior): Make sure s participates in the constraints.
+        // Make sure s is grounded to composition_coef.
+        assert!(ground.grounded(s, composition_coef_cache));
+        return;
+    }
+
+    panic!("Summand [{s}] is not a valid logup summand.");
+}
+
 /// Analyzes the circuit and writes the classified logup-sum summands to `summands.txt`.
 pub fn analyze(circuit: &Circuit, debug_info: &HashMap<String, Var>) {
     let c = build_analysis(circuit);
@@ -484,15 +524,15 @@ pub fn analyze(circuit: &Circuit, debug_info: &HashMap<String, Var>) {
 
     // Seed each challenge's `grounded` cache with its dependency closure.
     let int_z = debug_info["interaction_z"].idx;
-    let mut _int_z_cache = ground.init_grounding_cache(int_z);
+    let mut int_z_cache = ground.init_grounding_cache(int_z);
 
     let composition_coef = debug_info["composition_polynomial_coeff"].idx;
-    let mut _composition_coef_cache = ground.init_grounding_cache(composition_coef);
+    let mut composition_coef_cache = ground.init_grounding_cache(composition_coef);
 
     let logup_sum = debug_info["logup_sum"].idx;
     let summands = find_summands(&c, &const_values, logup_sum);
 
-    for _ in summands {
-        // TODO(lior): Validate each summand.
+    for s in summands {
+        validate_logup_summand(&ground, int_z, &mut int_z_cache, &mut composition_coef_cache, s);
     }
 }
