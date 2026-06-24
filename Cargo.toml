@@ -10,6 +10,7 @@ members = [
     "crates/circuit_prover",
     "crates/stark_verifier",
     "crates/stark_verifier_examples",
+    "crates/unpacker",
 ]
 resolver = "2"
 
@@ -61,6 +62,7 @@ circuit-multiverifier = { path = "crates/circuit_multiverifier"}
 circuit-prover = { path = "crates/circuit_prover"}
 circuits-stark-verifier = { path = "crates/stark_verifier"}
 circuits-stark-verifier-examples = { path = "crates/stark_verifier_examples"}
+circuits-unpacker = { path = "crates/unpacker" }
 
 # Compile the circuit-prover and stwo crates with optimization level 3 to speed up the blake related tests.
 [profile.test.package.circuit-prover]
