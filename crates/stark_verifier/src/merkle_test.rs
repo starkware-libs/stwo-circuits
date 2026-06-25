@@ -2,37 +2,43 @@ use num_traits::One;
 use rstest::rstest;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
+use stwo::core::vcs::blake2_hash::{Blake2sHash, Blake2sHasher};
 
 use crate::merkle::{
     AuthPath, AuthPaths, decommit_eval_domain_samples, hash_leaf_m31s, hash_leaf_qm31, hash_node,
     verify_merkle_path,
 };
 use crate::oods::EvalDomainSamples;
-use circuits::blake::{ReducedHashValue, blake_qm31};
-use circuits::context::TraceContext;
+use circuits::blake::{HashValue, ReducedHashValue};
+use circuits::context::{TraceContext, Var};
 use circuits::ivalue::qm31_from_u32s;
 use circuits::ops::Guess;
-use circuits::wrappers::M31Wrapper;
+use circuits::wrappers::{M31Wrapper, U32Wrapper};
+
+/// Reads the circuit's value of a [`HashValue<Var>`] back as a [`HashValue<QM31>`].
+fn get_hash(context: &TraceContext, hash: HashValue<Var>) -> HashValue<QM31> {
+    HashValue(std::array::from_fn(|i| U32Wrapper::new_unsafe(context.get(*hash[i].get()))))
+}
+
+/// Blake2s hash of the little-endian bytes of `values`, matching `hash_leaf_m31s`.
+fn leaf_hash(values: &[M31]) -> Blake2sHash {
+    let bytes: Vec<u8> = values.iter().flat_map(|v| v.0.to_le_bytes()).collect();
+    Blake2sHasher::hash(&bytes)
+}
 
 #[test]
 fn hash_leaf_m31s_regression() {
     let mut context = TraceContext::default();
 
-    let values = [M31Wrapper::from(M31::from(1641251221)).guess(&mut context)];
-
+    let m31s = [M31::from(1641251221)];
+    let values = m31s.map(|v| M31Wrapper::from(v).guess(&mut context));
     let hash = hash_leaf_m31s(&mut context, &values);
+    assert_eq!(get_hash(&context, hash), HashValue::from(leaf_hash(&m31s)));
 
-    assert_eq!(context.get(hash.0), qm31_from_u32s(1763208116, 1774406625, 1336068069, 373311810));
-    assert_eq!(context.get(hash.1), qm31_from_u32s(1118127454, 2086392865, 1278012663, 1611750530));
-
-    let values = [1, 1641251221, 1176667027, 568581975]
-        .map(|v: u32| M31Wrapper::from(M31::from(v)))
-        .guess(&mut context);
-
+    let m31s = [1, 1641251221, 1176667027, 568581975].map(M31::from);
+    let values = m31s.map(|v| M31Wrapper::from(v).guess(&mut context));
     let hash = hash_leaf_m31s(&mut context, &values);
-
-    assert_eq!(context.get(hash.0), qm31_from_u32s(181015110, 1959144033, 1304935871, 355199825));
-    assert_eq!(context.get(hash.1), qm31_from_u32s(2146552944, 1626387857, 1235174401, 2030212627));
+    assert_eq!(get_hash(&context, hash), HashValue::from(leaf_hash(&m31s)));
 
     context.validate_circuit();
 }
@@ -41,12 +47,13 @@ fn hash_leaf_m31s_regression() {
 fn hash_leaf_qm31_regression() {
     let mut context = TraceContext::default();
 
-    let value = qm31_from_u32s(106879334, 2000582330, 760086299, 1036436096).guess(&mut context);
+    let words = [106879334u32, 2000582330, 760086299, 1036436096];
+    let value = qm31_from_u32s(words[0], words[1], words[2], words[3]).guess(&mut context);
 
     let hash = hash_leaf_qm31(&mut context, value);
 
-    assert_eq!(context.get(hash.0), qm31_from_u32s(78597555, 2084880944, 445883625, 1079411638));
-    assert_eq!(context.get(hash.1), qm31_from_u32s(380666281, 278000547, 348716377, 469685670));
+    let bytes: Vec<u8> = words.iter().flat_map(|w| w.to_le_bytes()).collect();
+    assert_eq!(get_hash(&context, hash), HashValue::from(Blake2sHasher::hash(&bytes)));
 
     context.validate_circuit();
 }
@@ -55,41 +62,17 @@ fn hash_leaf_qm31_regression() {
 fn hash_node_regression() {
     let mut context = TraceContext::default();
 
-    let left = ReducedHashValue(
-        qm31_from_u32s(1206199574, 725559475, 484842011, 871283881),
-        qm31_from_u32s(1827188342, 1597668943, 763527182, 238830106),
-    )
-    .guess(&mut context);
-    let right = ReducedHashValue(
-        qm31_from_u32s(314780017, 161087059, 1415631711, 1712686715),
-        qm31_from_u32s(873946371, 993675704, 1750257287, 1496441219),
-    )
-    .guess(&mut context);
+    let left_hash = Blake2sHash(std::array::from_fn(|i| i as u8));
+    let right_hash = Blake2sHash(std::array::from_fn(|i| (i as u8).wrapping_add(50)));
+    let left = HashValue::from(left_hash).guess(&mut context);
+    let right = HashValue::from(right_hash).guess(&mut context);
 
-    let hash = hash_node(&mut context, left, right);
+    let hash = hash_node(&mut context, &left, &right);
 
-    assert_eq!(context.get(hash.0), qm31_from_u32s(450130627, 1497612920, 983682843, 197153269));
-    assert_eq!(context.get(hash.1), qm31_from_u32s(627331459, 1812913354, 171180653, 1839567716));
+    let expected = Blake2sHasher::concat_and_hash(&left_hash, &right_hash);
+    assert_eq!(get_hash(&context, hash), HashValue::from(expected));
 
     context.validate_circuit();
-}
-
-/// Similar to `hash_node`, but for `QM31` values rather than `Var`s.
-fn hash_node_qm31(
-    left: ReducedHashValue<QM31>,
-    right: ReducedHashValue<QM31>,
-) -> ReducedHashValue<QM31> {
-    blake_qm31(&[left.0, left.1, right.0, right.1], 64)
-}
-
-/// Similar to `hash_leaf_m31s` for an empty leaf.
-fn hash_empty_leaf() -> ReducedHashValue<QM31> {
-    blake_qm31(&[], 0)
-}
-
-/// Similar to `hash_leaf_m31s`, but for one `M31` rather than `Var`s.
-fn hash_leaf(value: M31) -> ReducedHashValue<QM31> {
-    blake_qm31(&[value.into()], 4)
 }
 
 #[rstest]
@@ -99,21 +82,14 @@ fn hash_leaf(value: M31) -> ReducedHashValue<QM31> {
 fn test_merkle_path(#[case] wrong_bit: bool, #[case] wrong_root: bool) {
     let mut context = TraceContext::default();
 
-    let leaf_val = ReducedHashValue(qm31_from_u32s(1, 2, 3, 4), qm31_from_u32s(5, 6, 7, 8));
-    let auth_path0 =
-        ReducedHashValue(qm31_from_u32s(9, 10, 11, 12), qm31_from_u32s(13, 14, 15, 16));
-    let auth_path1 =
-        ReducedHashValue(qm31_from_u32s(17, 18, 19, 20), qm31_from_u32s(21, 22, 23, 24));
-    let auth_path2 =
-        ReducedHashValue(qm31_from_u32s(25, 26, 27, 28), qm31_from_u32s(29, 30, 31, 32));
-    let auth_path3 =
-        ReducedHashValue(qm31_from_u32s(33, 34, 35, 36), qm31_from_u32s(37, 38, 39, 40));
-    let auth_path4 =
-        ReducedHashValue(qm31_from_u32s(41, 42, 43, 44), qm31_from_u32s(45, 46, 47, 48));
-    let auth_path = AuthPath(vec![auth_path0, auth_path1, auth_path2, auth_path3, auth_path4])
-        .guess(&mut context);
+    // Leaf and sibling hashes (the tree is committed with the Blake2s hasher).
+    let leaf_hash = Blake2sHash(std::array::from_fn(|i| i as u8));
+    let siblings: [Blake2sHash; 5] =
+        std::array::from_fn(|i| Blake2sHash(std::array::from_fn(|j| ((i + 1) * 40 + j) as u8)));
 
-    let leaf = ReducedHashValue(leaf_val.0, leaf_val.1).guess(&mut context);
+    let auth_path =
+        AuthPath(siblings.iter().map(|s| HashValue::from(*s)).collect()).guess(&mut context);
+    let leaf = HashValue::from(leaf_hash).guess(&mut context);
     let bits = vec![
         qm31_from_u32s(if wrong_bit { 0 } else { 1 }, 0, 0, 0),
         qm31_from_u32s(1, 0, 0, 0),
@@ -123,16 +99,19 @@ fn test_merkle_path(#[case] wrong_bit: bool, #[case] wrong_root: bool) {
     ]
     .guess(&mut context);
 
-    let mut node = leaf_val;
-    node = hash_node_qm31(auth_path0, node);
-    node = hash_node_qm31(auth_path1, node);
-    node = hash_node_qm31(node, auth_path2);
-    node = hash_node_qm31(node, auth_path3);
-    node = hash_node_qm31(auth_path4, node);
+    // Recompute the root following the success-case bits [1, 1, 0, 0, 1] (bit =
+    // 1 puts the current node on the right, its sibling on the left), then reduce mod `M31::P`.
+    let mut node = leaf_hash;
+    node = Blake2sHasher::concat_and_hash(&siblings[0], &node);
+    node = Blake2sHasher::concat_and_hash(&siblings[1], &node);
+    node = Blake2sHasher::concat_and_hash(&node, &siblings[2]);
+    node = Blake2sHasher::concat_and_hash(&node, &siblings[3]);
+    node = Blake2sHasher::concat_and_hash(&siblings[4], &node);
+    let mut root = ReducedHashValue::from(node);
     if wrong_root {
-        node.0 += qm31_from_u32s(0, 0, 1, 0);
+        root.0 += qm31_from_u32s(0, 0, 1, 0);
     }
-    let root = ReducedHashValue(node.0, node.1).guess(&mut context);
+    let root = root.guess(&mut context);
 
     verify_merkle_path(&mut context, leaf, &bits, root, &auth_path);
     let success = !wrong_bit && !wrong_root;
@@ -149,8 +128,6 @@ fn test_merkle_path(#[case] wrong_bit: bool, #[case] wrong_root: bool) {
 fn test_decommit_eval_domain_samples(#[case] wrong_root: Option<usize>, #[case] wrong_bit: bool) {
     use std::collections::HashMap;
 
-    use circuits::context::Var;
-
     let mut context = TraceContext::default();
 
     // 1 preprocessed trace with a single column + 3 traces with no columns.
@@ -161,21 +138,26 @@ fn test_decommit_eval_domain_samples(#[case] wrong_root: Option<usize>, #[case] 
     let opt_column_log_sizes_by_trace: HashMap<usize, Vec<Var>> =
         HashMap::from([(1, vec![]), (2, vec![])]);
 
-    let auth_path_val0 = ReducedHashValue(qm31_from_u32s(1, 2, 3, 4), qm31_from_u32s(5, 6, 7, 8));
-    let auth_path_val1 =
-        ReducedHashValue(qm31_from_u32s(9, 10, 11, 12), qm31_from_u32s(13, 14, 15, 16));
+    // The tree is committed with the non-`M31`-reduced
+    // Blake2s hasher, so each auth-path sibling is a full 32-byte hash.
+    let sibling0 = Blake2sHash(std::array::from_fn(|i| i as u8));
+    let sibling1 = Blake2sHash(std::array::from_fn(|i| (i as u8).wrapping_add(100)));
     let auth_paths = AuthPaths {
         data: vec![
-            vec![AuthPath(vec![auth_path_val0])],
-            vec![AuthPath(vec![auth_path_val1])],
-            vec![AuthPath(vec![auth_path_val1])],
-            vec![AuthPath(vec![auth_path_val1])],
+            vec![AuthPath(vec![HashValue::from(sibling0)])],
+            vec![AuthPath(vec![HashValue::from(sibling1)])],
+            vec![AuthPath(vec![HashValue::from(sibling1)])],
+            vec![AuthPath(vec![HashValue::from(sibling1)])],
         ],
     };
     let bits: Vec<Vec<QM31>> = vec![vec![(if wrong_bit { 1 } else { 0 }).into()]];
 
-    let root0 = hash_node_qm31(hash_leaf(M31::from(1)), auth_path_val0);
-    let root1 = hash_node_qm31(hash_empty_leaf(), auth_path_val1);
+    // Recompute the roots, then reduce mod `M31::P` via
+    // `ReducedHashValue::from` to match the `M31`-reduced root bound by the Fiat-Shamir channel.
+    let leaf0 = Blake2sHasher::hash(&M31::from(1).0.to_le_bytes());
+    let empty_leaf = Blake2sHasher::hash(&[]);
+    let root0 = ReducedHashValue::from(Blake2sHasher::concat_and_hash(&leaf0, &sibling0));
+    let root1 = ReducedHashValue::from(Blake2sHasher::concat_and_hash(&empty_leaf, &sibling1));
 
     let mut roots = [root0, root1, root1, root1];
     if let Some(wrong_root) = wrong_root {

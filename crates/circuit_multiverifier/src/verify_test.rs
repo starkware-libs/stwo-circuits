@@ -50,7 +50,7 @@ const CIRCUIT_N_PREPROCESSED_COLUMNS: usize = 45;
 
 /// Constants related to the cairo verifier circuit.
 const PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT: [u32; 8] =
-    [970567598, 251036753, 2009938064, 826332483, 1837689082, 826082056, 1126374250, 959093044];
+    [621273520, 2035095538, 679078274, 1622262568, 348918022, 1808125849, 440683205, 812905237];
 const PRIVACY_CAIRO_VERIFIER_PROOF_PATH: &str =
     concat!(env!("CARGO_MANIFEST_DIR"), "/../../test_data/circuit_multiverifier/proof_cairo.bin");
 const PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES: [QM31; 2] = [
@@ -60,7 +60,7 @@ const PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES: [QM31; 2] = [
 
 /// Constants related to the multiverifier circuit.
 const MULTIVERIFIER_PREPROCESSED_ROOT: [u32; 8] =
-    [778951848, 885594902, 1758472868, 1127144105, 1954335151, 768982897, 1124415006, 946386533];
+    [1227926531, 548074148, 781991637, 98700789, 1323153843, 1334950351, 1171890730, 1458037579];
 const MULTIVERIFIER_OF_TWO_CAIRO_PROOFS_PATH: &str =
     concat!(env!("CARGO_MANIFEST_DIR"), "/../../test_data/circuit_multiverifier/proof.bin");
 
@@ -163,7 +163,7 @@ fn test_regression_cairo_and_multiverifier_component_log_sizes() {
     let multiverifier_component_sizes = compute_padded_sizes(&novalue_multiverifier_context);
     let expected_sizes = ComponentSizes {
         eq: 1 << 15,
-        qm31_ops: 1 << 21,
+        qm31_ops: 1 << 20,
         m31_to_u32: 1 << 18,
         triple_xor: 1 << 17,
         blake_g_gate: 1 << 20,
