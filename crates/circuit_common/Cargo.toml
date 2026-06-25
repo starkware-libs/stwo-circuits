@@ -1,5 +1,5 @@
 [package]
-name = "circuit-common"
+name = "stwo-circuit-common"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,6 +8,9 @@ homepage.workspace = true
 description = "Shared circuit types, parameters, finalization, and preprocessing for the stwo-circuits prover and verifier."
 keywords = ["stark", "circuit", "zk", "cryptography"]
 categories = ["cryptography", "mathematics"]
+
+[lib]
+name = "circuit_common"
 
 [features]
 prover = ["stwo/parallel", "stwo/prover", "stwo-constraint-framework/parallel", "stwo-constraint-framework/prover"]

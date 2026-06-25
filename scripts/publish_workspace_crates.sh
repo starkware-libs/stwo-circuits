@@ -59,27 +59,27 @@ WORKSPACE_ROOT="${SCRIPT_DIR}/.."
 # Hard-coded publish order. Keep in sync with workspace crates.
 # Crates are listed in topological dependency order: every crate appears
 # after all of the workspace crates it depends on.
-#   circuits                      -> (no local deps)
-#   circuits-stark-verifier       -> circuits
-#   circuit-common                -> circuits, circuits-stark-verifier
-#   circuit-verifier              -> circuits, circuits-stark-verifier, circuit-common
-#   circuit-serialize             -> circuits, circuits-stark-verifier
-#   circuit-prover                -> circuits, circuit-verifier, circuit-common, circuits-stark-verifier
-#   circuit-cairo-verifier        -> circuits, circuit-common, circuits-stark-verifier
-#   circuit-multiverifier         -> circuits, circuits-stark-verifier, circuit-verifier, circuit-common
-#   circuit-cairo-serialize       -> circuit-verifier
+#   stwo-circuits-core            -> (no local deps)
+#   stwo-circuits-stark-verifier  -> stwo-circuits-core
+#   stwo-circuit-common           -> stwo-circuits-core, stwo-circuits-stark-verifier
+#   stwo-circuit-verifier         -> stwo-circuits-core, stwo-circuits-stark-verifier, stwo-circuit-common
+#   stwo-circuit-serialize        -> stwo-circuits-core, stwo-circuits-stark-verifier
+#   stwo-circuit-prover           -> stwo-circuits-core, stwo-circuit-verifier, stwo-circuit-common, stwo-circuits-stark-verifier
+#   stwo-circuit-cairo-verifier   -> stwo-circuits-core, stwo-circuit-common, stwo-circuits-stark-verifier
+#   stwo-circuit-multiverifier    -> stwo-circuits-core, stwo-circuits-stark-verifier, stwo-circuit-verifier, stwo-circuit-common
+#   stwo-circuit-cairo-serialize  -> stwo-circuit-verifier
 #
-# Not published (publish = false): circuits-stark-verifier-examples (examples/test utilities).
+# Not published (publish = false): stwo-circuits-stark-verifier-examples (examples/test utilities).
 CRATES_TO_PUBLISH=(
-  circuits
-  circuits-stark-verifier
-  circuit-common
-  circuit-verifier
-  circuit-serialize
-  circuit-prover
-  circuit-cairo-verifier
-  circuit-multiverifier
-  circuit-cairo-serialize
+  stwo-circuits-core
+  stwo-circuits-stark-verifier
+  stwo-circuit-common
+  stwo-circuit-verifier
+  stwo-circuit-serialize
+  stwo-circuit-prover
+  stwo-circuit-cairo-verifier
+  stwo-circuit-multiverifier
+  stwo-circuit-cairo-serialize
 )
 
 echo "Publish order:"

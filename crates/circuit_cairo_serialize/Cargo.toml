@@ -1,5 +1,5 @@
 [package]
-name = "circuit-cairo-serialize"
+name = "stwo-circuit-cairo-serialize"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,6 +8,9 @@ homepage.workspace = true
 description = "Serializes circuit proofs into the Cairo verifier's input format."
 keywords = ["stark", "cairo", "serialization", "zk", "cryptography"]
 categories = ["cryptography", "encoding"]
+
+[lib]
+name = "circuit_cairo_serialize"
 
 [dependencies]
 cairo-air.workspace = true

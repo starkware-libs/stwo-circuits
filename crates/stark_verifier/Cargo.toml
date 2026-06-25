@@ -1,5 +1,5 @@
 [package]
-name = "circuits-stark-verifier"
+name = "stwo-circuits-stark-verifier"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,6 +8,9 @@ homepage.workspace = true
 description = "Standalone Circle STARK proof verifier (FRI, out-of-domain sampling, Blake2s Merkle authentication)."
 keywords = ["stark", "verifier", "fri", "zk", "cryptography"]
 categories = ["cryptography", "mathematics"]
+
+[lib]
+name = "circuits_stark_verifier"
 
 [dependencies]
 indexmap = { workspace = true, features = ["serde"] }

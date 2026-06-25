@@ -1,5 +1,5 @@
 [package]
-name = "circuit-prover"
+name = "stwo-circuit-prover"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,6 +8,9 @@ homepage.workspace = true
 description = "Circuit STARK proof generation: witness and interaction trace generation and FRI proving."
 keywords = ["stark", "prover", "circuit", "zk", "cryptography"]
 categories = ["cryptography", "mathematics"]
+
+[lib]
+name = "circuit_prover"
 
 [dependencies]
 itertools.workspace = true

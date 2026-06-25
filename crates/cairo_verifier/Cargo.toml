@@ -1,5 +1,5 @@
 [package]
-name = "circuit-cairo-verifier"
+name = "stwo-circuit-cairo-verifier"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,6 +8,9 @@ homepage.workspace = true
 description = "Cairo AIR constraint definitions and circuit-based verifier for Cairo program execution proofs."
 keywords = ["stark", "cairo", "verifier", "zk", "cryptography"]
 categories = ["cryptography", "mathematics"]
+
+[lib]
+name = "circuit_cairo_verifier"
 
 [dependencies]
 indexmap.workspace = true

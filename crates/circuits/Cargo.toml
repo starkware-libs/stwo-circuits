@@ -1,5 +1,5 @@
 [package]
-name = "circuits"
+name = "stwo-circuits-core"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -8,6 +8,9 @@ homepage.workspace = true
 description = "Circuit DSL for building arithmetic constraint circuits (gates, variables, context) over the Mersenne31 field."
 keywords = ["stark", "circuit", "zk", "cryptography"]
 categories = ["cryptography", "mathematics"]
+
+[lib]
+name = "circuits"
 
 [dependencies]
 blake2.workspace = true
