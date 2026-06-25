@@ -19,9 +19,8 @@ use stwo::core::fields::qm31::{QM31, SecureField};
 use stwo::core::fri::{ExtendedFriProof, FriConfig};
 use stwo::core::poly::circle::CircleDomain;
 use stwo::core::queries::Queries;
-use stwo::core::vcs_lifted::blake2_merkle::Blake2sMerkleHasher;
+use stwo::core::vcs_lifted::blake2_merkle::{Blake2sM31MerkleChannel, Blake2sMerkleHasher};
 
-use circuit_prover::merkle_channel::MerkleChannelForCircuit;
 use stwo::core::vcs_lifted::verifier::LOG_PACKED_LEAF_SIZE;
 use stwo::prover::backend::CpuBackend;
 use stwo::prover::backend::cpu::CpuCirclePoly;
@@ -103,7 +102,7 @@ fn test_fri_decommit_with_jumps(
     );
     let alpha_values: Vec<_> = proof_layer_commitments
         .map(|commitment| {
-            MerkleChannelForCircuit::mix_root(&mut channel, commitment);
+            Blake2sM31MerkleChannel::mix_root(&mut channel, commitment);
             channel.draw_secure_felt()
         })
         .collect();
@@ -139,7 +138,7 @@ fn create_fri_proof(
     let config = FriConfig::new(0, log_blowup_factor, n_queries, fold_step as u32);
     let column = polynomial_evaluation(log_trace_size, log_blowup_factor);
     let twiddles = CpuBackend::precompute_twiddles(column.domain.half_coset);
-    let prover = FriProver::<CpuBackend, MerkleChannelForCircuit>::commit(
+    let prover = FriProver::<CpuBackend, Blake2sM31MerkleChannel>::commit(
         &mut Blake2sM31Channel::default(),
         config,
         &column,
