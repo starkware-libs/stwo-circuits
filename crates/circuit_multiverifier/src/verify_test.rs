@@ -359,17 +359,16 @@ fn test_verify_cairo_proof_and_multiverifier_proof() {
     let bytes = std::fs::read(MULTIVERIFIER_OF_TWO_CAIRO_PROOFS_PATH).unwrap();
     let multiverifier_proof =
         deserialize_proof_with_config(&mut bytes.as_slice(), &shared_config.proof_config).unwrap();
-    let preprocessed_root_cairo_verifier: ReducedHashValue<QM31> =
-        PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT.into();
-    let output_preimage = [
-        preprocessed_root_cairo_verifier.0,
-        preprocessed_root_cairo_verifier.1,
+    // Mirror the in-circuit output hash: the preimage consists of the preprocessed root's raw
+    // u32 words followed by the output values' M31 coordinates, for each of the two sub-circuits.
+    let root = PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT;
+    let per_circuit = [
+        QM31::from_m31_array([M31(root[0]), M31(root[1]), M31(root[2]), M31(root[3])]),
+        QM31::from_m31_array([M31(root[4]), M31(root[5]), M31(root[6]), M31(root[7])]),
         PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES[0],
         PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES[1],
     ];
-    let payload: Vec<QM31> = chain!(output_preimage, output_preimage).collect();
-    // Mirror the in-circuit `blake2s_m31`: hash the payload, then reduce the eight output words
-    // mod `M31::P` into a `ReducedHashValue`.
+    let payload: Vec<QM31> = chain!(per_circuit, per_circuit).collect();
     let hash_of_payload =
         ReducedHashValue::from(hash_value_to_u32s(&QM31::blake2s(&payload, 16 * payload.len())));
 
