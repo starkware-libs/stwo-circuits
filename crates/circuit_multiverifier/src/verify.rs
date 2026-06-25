@@ -79,9 +79,6 @@ pub fn build_multiverifier_circuit<Value: IValue>(
         let proof_vars = proof.guess(&mut context);
 
         verify(&mut context, &proof_vars, &shared_config.proof_config, &statement);
-        // Include the preprocessed root as full 32-bit words, and the output values unpacked into
-        // u32 words. The recursive output hash binds the `M31`-reduced form (computed below); the
-        // full root is still bound by the Fiat-Shamir channel via `mix_commitment`.
         let preprocessed_root = statement.preprocessed_root.clone();
         let output_words =
             unpack_qm31s_to_u32_words(&mut context, statement.get_output_values().iter().copied());

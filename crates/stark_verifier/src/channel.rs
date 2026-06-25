@@ -66,9 +66,8 @@ impl Channel {
     /// mod `M31::P` so the channel digest stays in the `M31` field for challenge/query derivation.
     pub fn mix_commitment(&mut self, context: &mut Context<impl IValue>, root: &HashValue<Var>) {
         // Eight message words from the current (reduced) digest, unpacked from its two QM31s into
-        // single-word `(low_u16, high_u16, 0, 0)` form, matching the digest's serialized bytes.
+        // single-word `(low_u16, high_u16, 0, 0)` form.
         let mut message = unpack_qm31s_to_u32_words(context, [self.digest.0, self.digest.1]);
-        // Eight message words from the full, unreduced root.
         message.extend(root.0);
 
         let hash = HashValue(blake2s_u32s(context, message, 16 * 4));

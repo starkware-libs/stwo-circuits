@@ -62,9 +62,6 @@ pub fn build_verification_circuit<Value: IValue>(
 
     // Deal with the outputs: hash the preprocessed root and all the output values except `u` (= the
     // last one). This is fine for soundness because `u` is checked as part of the logup sum.
-    // The preprocessed root is committed as full 32-bit words, but the recursive output hash binds
-    // its `M31`-reduced form (two QM31s), keeping this output-hash format unchanged; the full root
-    // is still bound by the Fiat-Shamir channel via `mix_commitment`.
     let preprocessed_root = statement.get_preprocessed_root(&mut context);
     let output_preimage: Vec<_> = preprocessed_root
         .into_iter()
