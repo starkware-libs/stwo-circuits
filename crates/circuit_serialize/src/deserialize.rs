@@ -111,9 +111,9 @@ pub fn deserialize_proof_with_config(
     config: &ProofConfig,
 ) -> DeserializeResult<Proof<QM31>> {
     let channel_salt = QM31::deserialize(data)?;
-    let trace_root = ReducedHashValue::<QM31>::deserialize(data)?;
-    let interaction_root = ReducedHashValue::<QM31>::deserialize(data)?;
-    let composition_polynomial_root = ReducedHashValue::<QM31>::deserialize(data)?;
+    let trace_root = HashValue::<QM31>::deserialize(data)?;
+    let interaction_root = HashValue::<QM31>::deserialize(data)?;
+    let composition_polynomial_root = HashValue::<QM31>::deserialize(data)?;
     let claimed_sums = deserialize_vec(data, config.n_components())?;
     let preprocessed_columns_at_oods = deserialize_vec(data, config.n_preprocessed_columns)?;
     let trace_at_oods = deserialize_vec(data, config.n_trace_columns)?;
