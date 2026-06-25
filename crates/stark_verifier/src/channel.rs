@@ -58,17 +58,20 @@ impl Channel {
         }
     }
 
-    /// Mixes the given root into the channel's digest.
-    pub fn mix_commitment(
-        &mut self,
-        context: &mut Context<impl IValue>,
-        root: ReducedHashValue<Var>,
-    ) {
-        self.update_digest(blake2s_m31(
-            context,
-            &[self.digest.0, self.digest.1, root.0, root.1],
-            16 * 4,
-        ));
+    /// Mixes the given (unreduced) Merkle root into the channel's digest.
+    ///
+    /// Mirrors the out-of-circuit `MerkleChannelForCircuit::mix_root`: the current
+    /// (`M31`-reduced) digest and the full, *unreduced* 32-byte root are concatenated as sixteen
+    /// 32-bit words and hashed with the standard Blake2s, then the eight output words are reduced
+    /// mod `M31::P` so the channel digest stays in the `M31` field for challenge/query derivation.
+    pub fn mix_commitment(&mut self, context: &mut Context<impl IValue>, root: &HashValue<Var>) {
+        // Eight message words from the current (reduced) digest, unpacked from its two QM31s into
+        // single-word `(low_u16, high_u16, 0, 0)` form.
+        let mut message = unpack_qm31s_to_u32_words(context, [self.digest.0, self.digest.1]);
+        message.extend(root.0);
+
+        let hash = HashValue(blake2s_u32s(context, message, 16 * 4));
+        self.update_digest(reduce_hash_value(context, hash));
     }
 
     /// Mixes the given list of `QM31` values into the channel.
