@@ -127,18 +127,14 @@ impl QuerySorter {
 
         let sorted = permute(context, &tagged_values, IValue::sort_by_u_coordinate);
 
-        let mut sorted_keys = Vec::with_capacity(sorted.len());
-        let sorted_values = sorted
+        let (sorted_values, sorted_keys): (Vec<_>, Vec<_>) = sorted
             .iter()
             .map(|var| {
                 let value = pointwise_mul(context, *var, context.one());
-
                 let u_key = eval!(context, (*var) - (value));
-                sorted_keys.push(u_key);
-
-                M31Wrapper::new_unsafe(value)
+                (M31Wrapper::new_unsafe(value), u_key)
             })
-            .collect_vec();
+            .unzip();
 
         if self.sorted_keys.is_empty() {
             // If this is the first sort, verify the sorted keys and store them for future
