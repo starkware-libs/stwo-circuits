@@ -6,8 +6,6 @@ license.workspace = true
 repository.workspace = true
 homepage.workspace = true
 description = "Circuit constraint definitions and component evaluators for verifying circuit STARK proofs."
-keywords = ["stark", "circuit", "verifier", "zk", "cryptography"]
-categories = ["cryptography", "mathematics"]
 
 [lib]
 name = "circuit_verifier"

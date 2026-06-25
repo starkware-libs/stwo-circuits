@@ -6,8 +6,6 @@ license.workspace = true
 repository.workspace = true
 homepage.workspace = true
 description = "Aggregated verification of multiple circuit STARK proofs in the stwo-circuits stack."
-keywords = ["stark", "circuit", "verifier", "zk", "cryptography"]
-categories = ["cryptography", "mathematics"]
 
 [lib]
 name = "circuit_multiverifier"

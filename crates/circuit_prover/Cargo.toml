@@ -6,8 +6,6 @@ license.workspace = true
 repository.workspace = true
 homepage.workspace = true
 description = "Circuit STARK proof generation: witness and interaction trace generation and FRI proving."
-keywords = ["stark", "prover", "circuit", "zk", "cryptography"]
-categories = ["cryptography", "mathematics"]
 
 [lib]
 name = "circuit_prover"

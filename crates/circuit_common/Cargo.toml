@@ -6,8 +6,6 @@ license.workspace = true
 repository.workspace = true
 homepage.workspace = true
 description = "Shared circuit types, parameters, finalization, and preprocessing for the stwo-circuits prover and verifier."
-keywords = ["stark", "circuit", "zk", "cryptography"]
-categories = ["cryptography", "mathematics"]
 
 [lib]
 name = "circuit_common"
