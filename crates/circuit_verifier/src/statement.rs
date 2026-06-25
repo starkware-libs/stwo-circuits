@@ -1,7 +1,7 @@
 use crate::components::{
-    blake_g_gate, eq::CircuitEqComponent, m_31_to_u_32, qm31_ops::CircuitQm31OpsComponent,
-    range_check_16, triple_xor, verify_bitwise_xor_4, verify_bitwise_xor_7, verify_bitwise_xor_8,
-    verify_bitwise_xor_9, verify_bitwise_xor_12,
+    blake_g_gate, eq::CircuitEqComponent, m_31_to_u_32, qm_31_ops, range_check_16, triple_xor,
+    verify_bitwise_xor_4, verify_bitwise_xor_7, verify_bitwise_xor_8, verify_bitwise_xor_9,
+    verify_bitwise_xor_12,
 };
 use crate::relations::GATE_RELATION_ID;
 use crate::verify::CircuitConfig;
@@ -162,7 +162,7 @@ pub fn all_circuit_components<Value: IValue>() -> IndexMap<&'static str, Box<dyn
 {
     IndexMap::from([
         ("eq", Box::new(CircuitEqComponent {}) as Box<dyn CircuitEval<Value>>),
-        ("qm31_ops", Box::new(CircuitQm31OpsComponent {}) as Box<dyn CircuitEval<Value>>),
+        ("qm31_ops", Box::new(qm_31_ops::Component {}) as Box<dyn CircuitEval<Value>>),
         ("triple_xor", Box::new(triple_xor::Component {}) as Box<dyn CircuitEval<Value>>),
         ("m_31_to_u_32", Box::new(m_31_to_u_32::Component {}) as Box<dyn CircuitEval<Value>>),
         ("blake_g_gate", Box::new(blake_g_gate::Component {}) as Box<dyn CircuitEval<Value>>),
