@@ -10,7 +10,7 @@ use cairo_air::flat_claims::FlatClaim;
 use cairo_air::relations::{
     MEMORY_ADDRESS_TO_ID_RELATION_ID, MEMORY_ID_TO_BIG_RELATION_ID, OPCODES_RELATION_ID,
 };
-use circuits::blake::{ReducedHashValue, blake2s_m31, unpack_qm31s_to_u32_words};
+use circuits::blake::{HashValue, blake2s, reduce_hash_value, unpack_qm31s_to_u32_words};
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::extract_bits::extract_bits;
@@ -189,7 +189,7 @@ pub struct CairoStatement<Value: IValue> {
     pub aux_data: AuxData,
     pub program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
     pub packed_outputs: Simd,
-    pub preprocessed_root: ReducedHashValue<QM31>,
+    pub preprocessed_root: HashValue<QM31>,
     pub preprocessed_trace_variant: PreProcessedTraceVariant,
 }
 
@@ -332,7 +332,7 @@ impl<Value: IValue> CairoStatement<Value> {
         outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
         program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
         enabled_bits: Vec<bool>,
-        preprocessed_root: ReducedHashValue<QM31>,
+        preprocessed_root: HashValue<QM31>,
         preprocessed_trace_variant: PreProcessedTraceVariant,
     ) -> Self {
         let components = enabled_components::<Value>(&enabled_bits);
@@ -414,23 +414,31 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
 
         let program_len = context.constant(qm31_from_u32s(program.len() as u32, 0, 0, 0));
 
-        let output_hash =
-            blake2s_m31(context, packed_outputs.get_packed(), 4 * packed_outputs.len());
-        context.set_outputs(&[output_hash.0, output_hash.1]);
+        // Hash the output.
+        let output_hash = blake2s(context, packed_outputs.get_packed(), 4 * packed_outputs.len());
+        let output_hash_reduced = reduce_hash_value(context, output_hash.clone());
+        context.set_outputs(&[output_hash_reduced.0, output_hash_reduced.1]);
 
+        // Compute the program hash at circuit construction time.
         let flat_program = pack_into_qm31s(program.iter().flatten().cloned());
-        let program_hash = IValue::blake2s_m31(&flat_program, flat_program.len() * 16);
-        [
-            vec![n_enable_bits],
-            packed_enable_bits,
-            aux_data.component_log_sizes.get_packed().to_vec(),
-            vec![program_len],
-            packed_aux_data.get_packed().to_vec(),
-            vec![output_hash.0, output_hash.1],
-            vec![context.constant(program_hash.0), context.constant(program_hash.1)],
-        ]
-        .into_iter()
-        .map(|felts| unpack_qm31s_to_u32_words(context, felts))
+        let program_hash = IValue::blake2s(&flat_program, flat_program.len() * 16);
+        let program_hash_words = program_hash
+            .0
+            .iter()
+            .map(|word| U32Wrapper::new_unsafe(context.constant(*word.get())))
+            .collect_vec();
+
+        chain!(
+            [
+                [n_enable_bits].as_slice(),
+                packed_enable_bits.as_slice(),
+                aux_data.component_log_sizes.get_packed(),
+                [program_len].as_slice(),
+                packed_aux_data.get_packed(),
+            ]
+            .map(|felts| unpack_qm31s_to_u32_words(context, felts.iter().copied())),
+            [output_hash.to_vec(), program_hash_words],
+        )
         .collect()
     }
 
@@ -549,11 +557,10 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         );
     }
 
-    fn get_preprocessed_root(&self, context: &mut Context<Value>) -> ReducedHashValue<Var> {
-        ReducedHashValue(
-            context.constant(self.preprocessed_root.0),
-            context.constant(self.preprocessed_root.1),
-        )
+    fn get_preprocessed_root(&self, context: &mut Context<Value>) -> HashValue<Var> {
+        HashValue(std::array::from_fn(|i| {
+            U32Wrapper::new_unsafe(context.constant(*self.preprocessed_root[i].get()))
+        }))
     }
 }
 

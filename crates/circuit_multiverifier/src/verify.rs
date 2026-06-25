@@ -3,7 +3,7 @@ use circuit_verifier::statement::CircuitStatement;
 use circuit_verifier::verify::CircuitConfig;
 use circuits::context::{Context, FinalizedContext};
 use circuits::{
-    blake::{ReducedHashValue, blake2s_m31},
+    blake::{HashValue, blake2s_u32s, reduce_hash_value, unpack_qm31s_to_u32_words},
     ivalue::IValue,
     ops::Guess,
 };
@@ -30,7 +30,7 @@ pub struct MultiverifierInput<Value: IValue> {
     /// A circuit proof.
     pub proof: Proof<Value>,
     /// The preprocessed root of the circuit associated to `proof`.
-    pub preprocessed_root: ReducedHashValue<QM31>,
+    pub preprocessed_root: HashValue<QM31>,
     /// The output values of the circuit (excluding the value of the `u` wire at address
     /// [`circuits::context::U_VAR_IDX`]). The multiverifier only supports verification of circuits
     /// with two outputs.
@@ -79,24 +79,23 @@ pub fn build_multiverifier_circuit<Value: IValue>(
         let proof_vars = proof.guess(&mut context);
 
         verify(&mut context, &proof_vars, &shared_config.proof_config, &statement);
-        outer_verifier_output_preimage.extend(chain!(
-            [statement.preprocessed_root.0, statement.preprocessed_root.1],
-            statement.get_output_values().iter().copied()
-        ));
+        let preprocessed_root = statement.preprocessed_root.clone();
+        let output_words =
+            unpack_qm31s_to_u32_words(&mut context, statement.get_output_values().iter().copied());
+        outer_verifier_output_preimage.extend(chain!(preprocessed_root.into_iter(), output_words));
     }
-    // The payload to be hashed is equal to:
+    // The payload to be hashed is, for each of the two circuits A and B, the eight 32-bit words of
+    // its preprocessed root followed by its output values unpacked into u32 words:
     // [
-    //      preprocessed_rootA.0, preprocessed_rootA.1, outputsA.0, outputsA.1
-    //      preprocessed_rootB.0, preprocessed_rootB.1, outputsB.0, outputsB.1
+    //      preprocessed_rootA (8 words), outputsA words...,
+    //      preprocessed_rootB (8 words), outputsB words...,
     // ]
-    // where A, B are the two circuits being verified.
-    let output_hash = blake2s_m31(
-        &mut context,
-        &outer_verifier_output_preimage,
-        16 * outer_verifier_output_preimage.len(),
-    );
+    // where A, B are the two circuits being verified. Each word is 4 bytes.
+    let n_bytes = 4 * outer_verifier_output_preimage.len();
+    let output_hash = blake2s_u32s(&mut context, outer_verifier_output_preimage, n_bytes);
+    let reduced_hash = reduce_hash_value(&mut context, HashValue(output_hash));
     // Copy the resulting hash into the reserved variables
-    context.set_outputs(&[output_hash.0, output_hash.1]);
+    context.set_outputs(&[reduced_hash.0, reduced_hash.1]);
 
     let context = context.finalize(false);
     #[cfg(test)]
