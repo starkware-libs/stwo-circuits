@@ -1,6 +1,6 @@
 use circuit_common::N_RESERVED;
 use circuits::{
-    blake::{HashValue, blake2s_u32s, reduce_hash_value, unpack_qm31s_to_u32_words},
+    blake::{HashValue, blake2s_u32s, unpack_qm31s_to_u32_words},
     context::{Context, FinalizedContext},
     ivalue::IValue,
     ops::Guess,
@@ -11,6 +11,7 @@ use circuits_stark_verifier::{
     statement::Statement,
     verify::verify,
 };
+use itertools::Itertools;
 use stwo::core::{fields::qm31::QM31, pcs::PcsConfig};
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
@@ -37,9 +38,10 @@ pub struct CircuitConfig {
 ///    log sizes, and preprocessed root.
 /// 2. Guesses the proof values into the circuit and runs the STARK verification.
 /// 3. Hashes the preprocessed root together with all output values except the last (`u`) via Blake,
-///    and copies the resulting hash into the reserved output wires (3 and 4). To ensure soundness
-///    in a recursive setup, the outer-most verifier (assumed honest) must reconstruct the whole
-///    chain of output hashes computed during the recursive steps.
+///    and copies the resulting unreduced digest into the reserved output wires (`3..3 +
+///    N_RESERVED`). To ensure soundness in a recursive setup, the outer-most verifier (assumed
+///    honest) must reconstruct the whole chain of output hashes computed during the recursive
+///    steps.
 /// 4. Finalizes constants and guessed variables.
 pub fn build_verification_circuit<Value: IValue>(
     circuit_config: CircuitConfig,
@@ -72,9 +74,7 @@ pub fn build_verification_circuit<Value: IValue>(
         .collect();
     let n_bytes = 4 * output_preimage.len();
     let output_hash = blake2s_u32s(&mut context, output_preimage, n_bytes);
-    let reduced_hash = reduce_hash_value(&mut context, HashValue(output_hash));
-    // Copy the resulting hash into the wires 3 and 4, and mark them as outputs.
-    context.set_outputs(&[reduced_hash.0, reduced_hash.1]);
+    context.set_outputs(&output_hash.iter().map(|word| *word.get()).collect_vec());
 
     let context = context.finalize(false);
     #[cfg(test)]
