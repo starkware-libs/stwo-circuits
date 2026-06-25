@@ -6,6 +6,7 @@ use circuits::eval;
 use circuits::ivalue::{IValue, qm31_from_u32s};
 use circuits::ops::{Guess, inv, mul};
 use circuits::simd::Simd;
+use circuits::wrappers::U32Wrapper;
 use circuits_stark_verifier::constraint_eval::RelationUse;
 use circuits_stark_verifier::constraint_eval::{
     CircuitEval, ComponentDataTrait, CompositionConstraintAccumulator,
@@ -144,7 +145,7 @@ fn squared_fibonacci_public_logup_sum(
 }
 
 impl<Value: IValue> Statement<Value> for SimpleStatement<Value> {
-    fn claims_to_mix(&self, _context: &mut Context<Value>) -> Vec<Vec<Var>> {
+    fn claims_to_mix(&self, _context: &mut Context<Value>) -> Vec<Vec<U32Wrapper<Var>>> {
         // The public claim is empty (mixed as an empty call).
         vec![vec![]]
     }
