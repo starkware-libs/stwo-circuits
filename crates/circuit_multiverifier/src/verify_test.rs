@@ -64,7 +64,7 @@ const PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES: [u32; 8] =
 
 /// Constants related to the multiverifier circuit.
 const MULTIVERIFIER_PREPROCESSED_ROOT: [u32; 8] =
-    [4268871180, 1648605015, 1518856044, 936813334, 8391980, 3571729286, 3315525509, 1034558230];
+    [271766956, 134252567, 3058494251, 3807979861, 3955631668, 1652720419, 1428259900, 2569018750];
 const MULTIVERIFIER_OF_TWO_CAIRO_PROOFS_PATH: &str =
     concat!(env!("CARGO_MANIFEST_DIR"), "/../../test_data/circuit_multiverifier/proof.bin");
 /// The same multiverifier proof, serialized as the felt252 `scarb execute --arguments-file` input
