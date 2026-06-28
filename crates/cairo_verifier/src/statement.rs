@@ -10,17 +10,17 @@ use cairo_air::flat_claims::FlatClaim;
 use cairo_air::relations::{
     MEMORY_ADDRESS_TO_ID_RELATION_ID, MEMORY_ID_TO_BIG_RELATION_ID, OPCODES_RELATION_ID,
 };
-use circuits::blake::{HashValue, blake2s, unpack_qm31s_to_u32_words};
+use circuits::blake::{HashValue, blake2s, m31_to_u32};
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::extract_bits::extract_bits;
-use circuits::ivalue::{IValue, qm31_from_u32s};
+use circuits::ivalue::IValue;
 use circuits::ops::{Guess, eq};
 use circuits::simd::Simd;
 use circuits::wrappers::{M31Wrapper, U32Wrapper};
 use circuits_stark_verifier::constraint_eval::CircuitEval;
 use circuits_stark_verifier::logup::logup_use_term;
-use circuits_stark_verifier::proof_from_stark_proof::{pack_enable_bits, pack_into_qm31s};
+use circuits_stark_verifier::proof_from_stark_proof::pack_into_qm31s;
 use circuits_stark_verifier::statement::Statement;
 use circuits_stark_verifier::verify::RELATION_USES_NUM_ROWS_SHIFT;
 use indexmap::IndexMap;
@@ -97,24 +97,26 @@ pub struct SegmentRange<T> {
 
 // Auxiliary data that is used for verifying an execution of a Cairo program.
 pub struct AuxData {
+    // TODO(ilya): Use `M31Wrapper<Var>` for all fields.
     pub initial_state: CasmState<Var>,
     pub final_state: CasmState<Var>,
     pub segment_ranges: [SegmentRange<Var>; N_SEGMENTS],
     pub safe_call_ids: [Var; 2],
     pub output_ids: Vec<Var>,
     pub program_ids: Vec<Var>,
-    // TODO(ilya): Store the component log sizes as `T` values (e.g. `Vec<T>`) rather than a packed
-    // `Simd`, so that `AuxData<M31>` makes sense.
-    pub component_log_sizes: Simd,
+    pub component_log_sizes: Vec<M31Wrapper<Var>>,
 }
 
 impl AuxData {
     /// Parses the auxiliary data from a slice of variables.
+    ///
+    /// `data` is laid out as: `[aux_data_fields | output_ids | program_ids |
+    /// component_log_sizes]`.
     pub fn parse_from_vars(
         data: &[Var],
         output_len: usize,
         program_len: usize,
-        component_log_sizes: Simd,
+        n_components: usize,
     ) -> Self {
         let mut iter = data.iter();
 
@@ -136,8 +138,9 @@ impl AuxData {
 
         let safe_call_ids = [*iter.next().unwrap(), *iter.next().unwrap()];
         let output_ids = iter.by_ref().take(output_len).cloned().collect_vec();
-        let program_ids = iter.cloned().collect_vec();
-        assert_eq!(program_ids.len(), program_len);
+        let program_ids = iter.by_ref().take(program_len).cloned().collect_vec();
+        let component_log_sizes = iter.map(|v| M31Wrapper::new_unsafe(*v)).collect_vec();
+        assert_eq!(component_log_sizes.len(), n_components);
 
         Self {
             initial_state,
@@ -185,8 +188,8 @@ pub struct CairoStatement<Value: IValue> {
     /// `claims_to_mix` for compatibility with the Cairo1 verifier, where the set of components in
     /// the AIR can be set dynamically.
     pub enabled_bits: Vec<bool>,
-    pub packed_aux_data: Simd,
     pub aux_data: AuxData,
+    pub packed_component_log_sizes: Simd,
     pub program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
     pub packed_outputs: Simd,
     pub preprocessed_root: HashValue<QM31>,
@@ -337,42 +340,31 @@ impl<Value: IValue> CairoStatement<Value> {
     ) -> Self {
         let components = enabled_components::<Value>(&enabled_bits);
         let n_components = components.len();
-        let aux_data_len = AUX_DATA_FIXED_LEN + outputs.len() + program.len();
-        assert_eq!(serialized_aux_data.len(), aux_data_len + n_components);
-        let (aux_data_m31s, log_sizes_m31s) = serialized_aux_data.split_at(aux_data_len);
-
-        let packed_aux_data = pack_into_qm31s(aux_data_m31s.iter().cloned())
-            .into_iter()
-            .map(|qm31| Value::from_qm31(qm31).guess(context))
-            .collect_vec();
-
-        let packed_aux_data = Simd::from_packed(packed_aux_data, aux_data_m31s.len());
-        // Note that we don't enforce anything on the padding M31 in packed_aux_data.
-        let unpacked_simd = Simd::unpack(context, &packed_aux_data);
-
-        let packed_log_sizes = pack_into_qm31s(log_sizes_m31s.iter().cloned())
-            .into_iter()
-            .map(|qm31| Value::from_qm31(qm31).guess(context))
-            .collect_vec();
-        let component_log_sizes = Simd::from_packed(packed_log_sizes, n_components);
-
-        let aux_data = AuxData::parse_from_vars(
-            &unpacked_simd[..],
-            outputs.len(),
-            program.len(),
-            component_log_sizes,
-        );
-
         let n_outputs = outputs.len();
-        let packed_outputs = pack_into_qm31s(outputs.into_iter().flatten())
-            .into_iter()
-            .map(|qm31| Value::from_qm31(qm31).guess(context))
+
+        let aux_data_len = AUX_DATA_FIXED_LEN + n_outputs + program.len() + n_components;
+        assert_eq!(serialized_aux_data.len(), aux_data_len);
+
+        let aux_data_vars: Vec<Var> = serialized_aux_data
+            .iter()
+            .map(|&m31| *M31Wrapper::new_unsafe(Value::from_qm31(m31.into())).guess(context).get())
             .collect_vec();
-        let packed_outputs = Simd::from_packed(packed_outputs, n_outputs * MEMORY_VALUES_LIMBS);
+
+        let aux_data =
+            AuxData::parse_from_vars(&aux_data_vars, n_outputs, program.len(), n_components);
+
+        let guessed_outputs: Vec<M31Wrapper<Var>> = outputs
+            .into_iter()
+            .flatten()
+            .map(|m31| M31Wrapper::new_unsafe(Value::from_qm31(m31.into())).guess(context))
+            .collect_vec();
+        let packed_outputs = Simd::pack(context, &guessed_outputs);
+
+        let packed_component_log_sizes = Simd::pack(context, &aux_data.component_log_sizes[..]);
 
         Self {
-            packed_aux_data,
             aux_data,
+            packed_component_log_sizes,
             program,
             packed_outputs,
             components,
@@ -389,30 +381,70 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
     }
 
     fn get_component_log_sizes(&self) -> &Simd {
-        &self.aux_data.component_log_sizes
+        &self.packed_component_log_sizes
     }
 
     fn claims_to_mix(&self, context: &mut Context<Value>) -> Vec<Vec<U32Wrapper<Var>>> {
         let Self {
             components: _components,
             enabled_bits,
-            packed_aux_data,
             aux_data,
             program,
             packed_outputs,
             preprocessed_root: _preprocessed_root,
+            packed_component_log_sizes: _packed_component_log_sizes,
             preprocessed_trace_variant: _preprocessed_trace_variant,
         } = self;
 
-        // Mix the (hardcoded) enable bits into the channel for compatibility with the Cairo1
-        // verifier: first the number of enable bits, then the packed enable bits.
-        let n_enable_bits = context.constant(qm31_from_u32s(enabled_bits.len() as u32, 0, 0, 0));
-        let packed_enable_bits = pack_enable_bits(enabled_bits)
-            .into_iter()
-            .map(|qm31| context.constant(qm31))
-            .collect_vec();
+        // Converts a list of M31 vars into u32 words (one word per var), zero-padded to a multiple
+        // of four words. The padding mirrors the QM31-packed layout the channel expects (each QM31
+        // holds four words; partial chunks pad with zeros), so the mixed words match what the proof
+        // was generated with. Each returned list is mixed into the channel as one `mix_u32s` call.
+        let to_padded_u32_words = |ctx: &mut Context<Value>, vars: Vec<Var>| {
+            let mut words: Vec<U32Wrapper<Var>> =
+                vars.into_iter().map(|v| U32Wrapper::new_unsafe(m31_to_u32(ctx, v))).collect();
+            let pad = (4 - words.len() % 4) % 4;
+            for _ in 0..pad {
+                words.push(U32Wrapper::new_unsafe(ctx.zero()));
+            }
+            words
+        };
 
-        let program_len = context.constant(qm31_from_u32s(program.len() as u32, 0, 0, 0));
+        // Mix the (hardcoded) enable bits into the channel for compatibility with the Cairo1
+        // verifier: the count (in its own group), then one word per bit.
+        let enable_count = context.constant((enabled_bits.len() as u32).into());
+        let enable_count_words = to_padded_u32_words(context, vec![enable_count]);
+        let enable_bit_vars =
+            enabled_bits.iter().map(|&b| context.constant(u32::from(b).into())).collect_vec();
+        let enable_bits_words = to_padded_u32_words(context, enable_bit_vars);
+
+        // Component log sizes, one word per size.
+        let log_size_vars = aux_data.component_log_sizes.iter().map(|v| *v.get()).collect_vec();
+        let log_sizes_words = to_padded_u32_words(context, log_size_vars);
+
+        // Program length (in its own group), then the aux data fields in
+        // `AuxData::parse_from_vars` order.
+        let program_len = context.constant((program.len() as u32).into());
+        let program_len_words = to_padded_u32_words(context, vec![program_len]);
+        let aux_data_vars = chain!(
+            [
+                aux_data.initial_state.pc,
+                aux_data.initial_state.ap,
+                aux_data.initial_state.fp,
+                aux_data.final_state.pc,
+                aux_data.final_state.ap,
+                aux_data.final_state.fp
+            ],
+            aux_data
+                .segment_ranges
+                .iter()
+                .flat_map(|r| { [r.start.id, r.start.value, r.end.id, r.end.value] }),
+            aux_data.safe_call_ids.iter().copied(),
+            aux_data.output_ids.iter().copied(),
+            aux_data.program_ids.iter().copied(),
+        )
+        .collect_vec();
+        let aux_data_words = to_padded_u32_words(context, aux_data_vars);
 
         // Hash the output.
         let output_hash = blake2s(context, packed_outputs.get_packed(), 4 * packed_outputs.len());
@@ -427,18 +459,15 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
             .map(|word| U32Wrapper::new_unsafe(context.constant(*word.get())))
             .collect_vec();
 
-        chain!(
-            [
-                [n_enable_bits].as_slice(),
-                packed_enable_bits.as_slice(),
-                aux_data.component_log_sizes.get_packed(),
-                [program_len].as_slice(),
-                packed_aux_data.get_packed(),
-            ]
-            .map(|felts| unpack_qm31s_to_u32_words(context, felts.iter().copied())),
-            [output_hash.to_vec(), program_hash_words],
-        )
-        .collect()
+        vec![
+            enable_count_words,
+            enable_bits_words,
+            log_sizes_words,
+            program_len_words,
+            aux_data_words,
+            output_hash.to_vec(),
+            program_hash_words,
+        ]
     }
 
     fn public_logup_sum(
