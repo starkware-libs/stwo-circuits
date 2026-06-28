@@ -97,20 +97,22 @@ pub struct SegmentRange<T> {
 
 // Auxiliary data that is used for verifying an execution of a Cairo program.
 pub struct AuxData {
+    // TODO(ilya): Use `M31Wrapper<Var>` for all fields.
     pub initial_state: CasmState<Var>,
     pub final_state: CasmState<Var>,
     pub segment_ranges: [SegmentRange<Var>; N_SEGMENTS],
     pub safe_call_ids: [Var; 2],
     pub output_ids: Vec<Var>,
     pub program_ids: Vec<Var>,
-    pub component_log_sizes: Vec<Var>,
+    pub component_log_sizes: Vec<M31Wrapper<Var>>,
 }
 
 impl AuxData {
     /// Parses the auxiliary data from a slice of variables.
     ///
-    /// `data` is laid out as: `[aux_data_fields | output_ids | program_ids |
-    /// component_log_sizes]`.
+    /// `data` is laid out as the concatenation of, in order: the fixed-size fields
+    /// (initial state, final state, segment ranges and safe-call ids), then
+    /// `output_ids`, `program_ids` and `component_log_sizes`.
     pub fn parse_from_vars(
         data: &[Var],
         output_len: usize,
@@ -138,7 +140,7 @@ impl AuxData {
         let safe_call_ids = [*iter.next().unwrap(), *iter.next().unwrap()];
         let output_ids = iter.by_ref().take(output_len).cloned().collect_vec();
         let program_ids = iter.by_ref().take(program_len).cloned().collect_vec();
-        let component_log_sizes = iter.cloned().collect_vec();
+        let component_log_sizes = iter.map(|v| M31Wrapper::new_unsafe(*v)).collect_vec();
         assert_eq!(component_log_sizes.len(), n_components);
 
         Self {
@@ -359,10 +361,7 @@ impl<Value: IValue> CairoStatement<Value> {
             .collect_vec();
         let packed_outputs = Simd::pack(context, &guessed_outputs);
 
-        let packed_component_log_sizes = Simd::pack(
-            context,
-            &aux_data.component_log_sizes.iter().map(|v| M31Wrapper::new_unsafe(*v)).collect_vec(),
-        );
+        let packed_component_log_sizes = Simd::pack(context, &aux_data.component_log_sizes[..]);
 
         Self {
             aux_data,
@@ -400,7 +399,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
 
         let to_u32 = |ctx: &mut Context<Value>, v: Var| U32Wrapper::new_unsafe(m31_to_u32(ctx, v));
 
-        // Enable bits: the count, then each bit as an individual u32 word.
+        // Enable bits: the count, then each bit as a u32 word.
         let enable_bit_vars: Vec<_> = chain!(
             [context.constant((enabled_bits.len() as u32).into())],
             enabled_bits.iter().map(|&b| context.constant(u32::from(b).into()))
@@ -411,7 +410,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
 
         // Component log sizes as individual u32 words.
         let log_sizes_u32s: Vec<_> =
-            aux_data.component_log_sizes.iter().map(|&v| to_u32(context, v)).collect();
+            aux_data.component_log_sizes.iter().map(|v| to_u32(context, *v.get())).collect();
 
         // Program length followed by aux data fields, each as a u32 word.
         let aux_data_u32s: Vec<_> = chain!(

@@ -1,7 +1,6 @@
 use crate::statement::{AuxData, CasmState, PubMemoryM31Value, SegmentRange, public_logup_sum};
 use circuits::context::{TraceContext, Var};
 use circuits::ivalue::qm31_from_u32s;
-use circuits::simd::Simd;
 use circuits::wrappers::M31Wrapper;
 
 #[test]
@@ -246,7 +245,7 @@ fn test_public_logup_sum() {
         output_ids,
         program_ids,
         // Not used by `public_logup_sum`.
-        component_log_sizes: Simd::from_packed(vec![], 0),
+        component_log_sizes: vec![],
     };
 
     // Call public_logup_sum
