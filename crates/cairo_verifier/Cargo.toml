@@ -24,4 +24,4 @@ stwo_cairo_dev_utils.workspace = true
 stwo_cairo_utils.workspace = true
 circuit-prover.workspace = true
 circuit-verifier.workspace = true
-circuit-serialize = { path = "../circuit_serialize" }
+circuit-serialize.workspace = true
