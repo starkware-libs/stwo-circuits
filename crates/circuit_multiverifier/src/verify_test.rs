@@ -17,7 +17,9 @@ use circuit_prover::prover::{
 };
 use circuit_serialize::deserialize::deserialize_proof_with_config;
 use circuit_serialize::serialize::CircuitSerialize;
-use circuit_verifier::statement::{INTERACTION_POW_BITS, all_circuit_components};
+use circuit_verifier::statement::{
+    INTERACTION_POW_BITS, all_circuit_components, circuit_component_log_sizes,
+};
 use circuit_verifier::verify::CircuitPublicData;
 use circuits::blake::HashValue;
 use circuits::context::FinalizedContext;
@@ -59,7 +61,7 @@ const PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES: [u32; 8] =
 
 /// Constants related to the multiverifier circuit.
 const MULTIVERIFIER_PREPROCESSED_ROOT: [u32; 8] =
-    [4268871180, 1648605015, 1518856044, 936813334, 8391980, 3571729286, 3315525509, 1034558230];
+    [1926895911, 2134983784, 2944138794, 1837005831, 445519735, 2216837626, 2301483313, 3812358591];
 const MULTIVERIFIER_OF_TWO_CAIRO_PROOFS_PATH: &str =
     concat!(env!("CARGO_MANIFEST_DIR"), "/../../test_data/circuit_multiverifier/proof.bin");
 
@@ -132,6 +134,18 @@ fn multiverifier_preprocessed_column_log_sizes() -> OrderedHashMap<PreProcessedC
     .collect()
 }
 
+/// Builds the `ProofConfig` for a Cairo verifier sub-proof. The components are ordered by ascending
+/// trace log size to match the committed column layout that `CircuitStatement::new` iterates (and
+/// that `compute_composition_polynomial` zips `component_shapes` against); otherwise the per-column
+/// slices handed to each component evaluator would be misaligned.
+fn cairo_verifier_proof_config() -> ProofConfig {
+    let preprocessed_column_log_sizes = multiverifier_preprocessed_column_log_sizes();
+    let mut components = all_circuit_components::<QM31>();
+    let log_sizes = circuit_component_log_sizes(&components, &preprocessed_column_log_sizes);
+    components.sort_by(|a, _, b, _| log_sizes[*a].cmp(&log_sizes[*b]));
+    ProofConfig::new(&components, CIRCUIT_N_PREPROCESSED_COLUMNS, &PCS_CONFIG, INTERACTION_POW_BITS)
+}
+
 /// Builds a `NoValue` Cairo verifier circuit (with configs of privacy) and preprocesses it.
 ///
 /// If `target_padding` is `None`, we don't pad the circuits (note that even in this case, the
@@ -177,7 +191,7 @@ fn test_regression_cairo_and_multiverifier_component_log_sizes() {
         get_preprocessed_multiverifier_from_circuit(&preprocessed_cairo_verifier, pcs_config, None);
     let multiverifier_component_sizes = compute_padded_sizes(&novalue_multiverifier_context);
     let expected_sizes = ComponentSizes {
-        eq: 1 << 15,
+        eq: 1 << 13,
         qm31_ops: 1 << 20,
         m31_to_u32: 1 << 18,
         triple_xor: 1 << 17,
@@ -278,12 +292,7 @@ fn test_cairo_proof_regression() {
     let (proof, public_data) = prove_privacy_with_recursion_and_prepare();
     assert_eq!(public_data.output_values, PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES.map(QM31::pack_u32));
     if std::env::var("FIX_PROOF").is_err() {
-        let proof_config = ProofConfig::new(
-            &all_circuit_components::<QM31>(),
-            CIRCUIT_N_PREPROCESSED_COLUMNS,
-            &PCS_CONFIG,
-            INTERACTION_POW_BITS,
-        );
+        let proof_config = cairo_verifier_proof_config();
         let bytes = std::fs::read(PRIVACY_CAIRO_VERIFIER_PROOF_PATH).unwrap();
         let stored_proof =
             deserialize_proof_with_config(&mut bytes.as_slice(), &proof_config).unwrap();
@@ -311,12 +320,7 @@ fn test_cairo_proof_regression() {
 fn test_prove_multiverifier_of_two_cairo_subcircuits() {
     let shared_config = SharedConfig {
         pcs_config: PCS_CONFIG,
-        proof_config: ProofConfig::new(
-            &all_circuit_components::<QM31>(),
-            CIRCUIT_N_PREPROCESSED_COLUMNS,
-            &PCS_CONFIG,
-            INTERACTION_POW_BITS,
-        ),
+        proof_config: cairo_verifier_proof_config(),
         preprocessed_column_log_sizes: multiverifier_preprocessed_column_log_sizes(),
     };
     let bytes = std::fs::read(PRIVACY_CAIRO_VERIFIER_PROOF_PATH).unwrap();
@@ -355,12 +359,7 @@ fn test_verify_cairo_proof_and_multiverifier_proof() {
     // Build common config.
     let shared_config = SharedConfig {
         pcs_config: PCS_CONFIG,
-        proof_config: ProofConfig::new(
-            &all_circuit_components::<QM31>(),
-            CIRCUIT_N_PREPROCESSED_COLUMNS,
-            &PCS_CONFIG,
-            INTERACTION_POW_BITS,
-        ),
+        proof_config: cairo_verifier_proof_config(),
         preprocessed_column_log_sizes: multiverifier_preprocessed_column_log_sizes(),
     };
 
