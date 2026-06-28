@@ -50,12 +50,12 @@ pub fn permute_hash_values<Value: IValue>(
         };
 
     // Tag each input word with its hash index `j`: `(low, high, 0, 0) + (0, 0, j, 0)`, and map each
-    // distinct input-hash value (its eight u32 words) to the input indices that hold it, so each
-    // output's source index can be looked up in O(1) instead of by a linear scan. Duplicate input
-    // hashes map to several indices and are consumed one per matching output.
+    // distinct input-hash value (its eight u32 words) to the input indices that hold it. Duplicate
+    // input hashes map to several indices and are consumed one per matching output.
     let mut tagged_in: Vec<Vec<Var>> =
         (0..BLAKE2S_DIGEST_N_WORDS).map(|_| Vec::with_capacity(n)).collect();
-    let mut indices_by_value: HashMap<[u32; BLAKE2S_DIGEST_N_WORDS], Vec<usize>> = HashMap::new();
+    let mut indices_by_value: HashMap<[u32; BLAKE2S_DIGEST_N_WORDS], Vec<usize>> =
+        HashMap::with_capacity(n);
     for (j, hash) in inputs.iter().enumerate() {
         let tag = ctx.constant(qm31_from_u32s(0, 0, j as u32, 0));
         for (col, word) in zip_eq(tagged_in.iter_mut(), hash.iter()) {
@@ -76,17 +76,22 @@ pub fn permute_hash_values<Value: IValue>(
         // Find and guess the source index: an as-yet-unused input whose hash equals this output,
         // constrained to the base field and lifted into the `u` coordinate. One guess per output
         // hash, shared across all of its words.
-        let src = indices_by_value
+        let index_in_inputs = indices_by_value
             .get_mut(&key_from_hash(ctx, out_hash))
             .and_then(|idxs| idxs.pop())
             .expect("output hash is not a permutation of the inputs");
-        let src_var = M31Wrapper::new_unsafe(Value::from_qm31(qm31_from_u32s(src as u32, 0, 0, 0)))
-            .guess(ctx);
-        let tag_u = eval!(ctx, (*src_var.get()) * (u));
+        let index_var = M31Wrapper::new_unsafe(Value::from_qm31(qm31_from_u32s(
+            index_in_inputs as u32,
+            0,
+            0,
+            0,
+        )))
+        .guess(ctx);
+        let tag_u = eval!(ctx, (*index_var.get()) * (u));
 
         // Tag each word of this hash and add it to its word-column as one permutation output.
         for (col, out_word) in zip_eq(tagged_out.iter_mut(), out_hash.iter()) {
-            // Tagged output word: `(low, high, 0, 0) + (0, 0, src, 0)`.
+            // Tagged output word: `(low, high, 0, 0) + (0, 0, index, 0)`.
             let tagged_word = eval!(ctx, (*out_word.get()) + (tag_u));
             // The per-column Permutation gate yields its own fresh variable, so allocate one and
             // pin it to `tagged_word` with the `eq`. The gate (added per column below) then proves
