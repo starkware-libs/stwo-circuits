@@ -1453,7 +1453,10 @@ name = "circuits-unpacker"
 version = "0.1.0"
 dependencies = [
  "circuits",
+ "circuits-stark-verifier",
  "itertools 0.12.1",
+ "num-traits",
+ "rstest",
  "stwo",
 ]
 
