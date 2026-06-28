@@ -1,7 +1,14 @@
 [package]
-name = "circuit-verifier"
+name = "stwo-circuit-verifier"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Circuit constraint definitions and component evaluators for verifying circuit STARK proofs."
+
+[lib]
+name = "circuit_verifier"
 
 [dependencies]
 indexmap.workspace = true

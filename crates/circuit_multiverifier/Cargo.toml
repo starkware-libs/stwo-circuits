@@ -1,7 +1,14 @@
 [package]
-name = "circuit-multiverifier"
+name = "stwo-circuit-multiverifier"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Aggregated verification of multiple circuit STARK proofs."
+
+[lib]
+name = "circuit_multiverifier"
 
 [dependencies]
 itertools.workspace = true

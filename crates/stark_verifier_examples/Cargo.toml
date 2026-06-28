@@ -1,7 +1,15 @@
 [package]
-name = "circuits-stark-verifier-examples"
+name = "stwo-circuits-stark-verifier-examples"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Example verifiers and test utilities for the stwo-circuits STARK verifier (not published)."
+publish = false
+
+[lib]
+name = "circuits_stark_verifier_examples"
 
 [dependencies]
 circuits.workspace = true
@@ -13,5 +21,5 @@ stwo = { workspace = true, features = ["prover"] }
 stwo-constraint-framework = { workspace = true, features = ["prover"] }
 
 [dev-dependencies]
-circuit-serialize = { path = "../circuit_serialize" }
+circuit-serialize = { path = "../circuit_serialize", package = "stwo-circuit-serialize" }
 rstest.workspace = true

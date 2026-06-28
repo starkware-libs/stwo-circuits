@@ -1,7 +1,14 @@
 [package]
-name = "circuit-serialize"
+name = "stwo-circuit-serialize"
 version.workspace = true
 edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+description = "Serialization and deserialization of circuit STARK proofs for the stwo-circuits stack."
+
+[lib]
+name = "circuit_serialize"
 
 [dependencies]
 stwo.workspace = true
