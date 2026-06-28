@@ -1300,6 +1300,7 @@ dependencies = [
  "cairo-vm",
  "circuit-common",
  "circuit-prover",
+ "circuit-serialize",
  "circuit-verifier",
  "circuits",
  "circuits-stark-verifier",

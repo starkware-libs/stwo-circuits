@@ -9,6 +9,7 @@ use circuit_prover::prover::{
     BaseColumnPool, CircuitProof, SimdBackend, prepare_circuit_proof_for_circuit_verifier,
     prove_circuit_assignment,
 };
+use circuit_serialize::serialize::CircuitSerialize;
 use circuit_verifier::statement::CircuitStatement;
 use circuit_verifier::verify::{CircuitConfig, CircuitPublicData, verify_circuit};
 use circuits::blake::HashValue;
@@ -24,7 +25,7 @@ use stwo::core::pcs::PcsConfig;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sMerkleHasher;
 
 use crate::privacy::{privacy_cairo_verifier_config, privacy_components};
-use crate::utils::get_proof_file_path;
+use crate::utils::{get_proof_file_path, get_test_data_dir};
 use crate::verify::{build_cairo_verifier_circuit, verify_cairo_with_component_set};
 
 /// Verifies with a circuit a proof of execution of another circuit.
@@ -115,7 +116,33 @@ fn test_verify_privacy_with_recursion() {
     let preprocessed_root: HashValue<QM31> =
         circuit_proof.stark_proof.proof.commitments.0[0].into();
 
-    verify_circuit_proof(&preprocessed, circuit_proof, preprocessed_root);
+    // Serialize the recursion proof with the same raw `CircuitSerialize` format that
+    // proving-utils' `privacy_recursive_prove` emits, before its version prefix and zstd
+    // compression are applied. Assert it matches the committed fixture.
+    let circuit_config = CircuitConfig {
+        config: circuit_proof.pcs_config,
+        n_outputs: preprocessed.n_outputs,
+        preprocessed_column_log_sizes: preprocessed.preprocessed_trace.log_sizes(),
+        preprocessed_root,
+    };
+    let (proof, public_data) = prepare_circuit_proof_for_circuit_verifier(circuit_proof);
+    let mut proof_bytes = Vec::new();
+    proof.serialize(&mut proof_bytes);
+
+    // Regenerate with `FIX_PROOF=1 cargo test -p circuit-cairo-verifier
+    // test_verify_privacy_with_recursion`.
+    let fixture_path = get_test_data_dir().join("privacy").join("recursion_proof.bin");
+    if std::env::var("FIX_PROOF").is_ok() {
+        std::fs::write(&fixture_path, &proof_bytes).unwrap();
+    }
+    assert_eq!(
+        proof_bytes,
+        std::fs::read(&fixture_path).unwrap(),
+        "recursion proof fixture mismatch; regenerate with FIX_PROOF=1"
+    );
+
+    // Verify the recursion proof with the circuit verifier.
+    verify_circuit(circuit_config, proof, public_data).unwrap();
 }
 
 #[test]
