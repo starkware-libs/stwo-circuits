@@ -13,6 +13,26 @@ fn test_no_constants_beyond_defaults() {
 }
 
 #[test]
+fn test_finalize_constants_passes_check_vars_used() {
+    let finalized = TraceContext::default().finalize(true);
+    finalized.circuit().check_yields();
+    finalized.validate_circuit();
+}
+
+#[test]
+fn test_requested_ones_constant_not_double_marked() {
+    // ones_var might be marked as unused `mark_as_maybe_unused` by the caller.
+    // for example in check_relation_uses.
+    // Make sure the circuit does not fail due to double-marking.
+    let mut context = TraceContext::default();
+    let ones_var = context.constant(qm31_from_u32s(1, 1, 1, 1));
+    context.mark_as_maybe_unused(&ones_var);
+    let finalized = context.finalize(true);
+    finalized.circuit().check_yields();
+    finalized.validate_circuit();
+}
+
+#[test]
 fn test_plus_one_chain_topology() {
     let mut context = TraceContext::default();
     context.constant(M31::from(2u32).into());

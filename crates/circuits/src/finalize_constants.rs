@@ -115,6 +115,11 @@ pub(crate) fn finalize_constants_with_min_base(
     qm31_cache.insert(u_plus_iu, u_plus_iu_var);
 
     let ones = qm31_from_u32s(1, 1, 1, 1);
+
+    if let Some(ones_var) = qm31_constants.get(&ones) {
+        // If `ones` was not requested as a constant, mark it maybe-unused.
+        context.mark_as_maybe_unused(ones_var);
+    }
     let ones_var = from_constants_or_new(context, &mut qm31_constants, ones);
     add_into(context, i_plus_one_var, u_plus_iu_var, ones_var);
     qm31_cache.insert(ones, ones_var);
@@ -170,6 +175,8 @@ fn build_plus_one_chain(
 
     for val in 2..=m31_base {
         let var = from_constants_or_new(context, m31_constants, M31::from(val));
+        // Note that we assume that the vars are not going to be marked as maybe_unused by the user.
+        context.mark_as_maybe_unused(&var);
         add_into(context, prev_var, one_var, var);
         m31_cache.insert(val.into(), var);
         prev_var = var;
