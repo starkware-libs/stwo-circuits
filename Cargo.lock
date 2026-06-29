@@ -1337,6 +1337,7 @@ version = "0.1.0"
 dependencies = [
  "blake2",
  "cairo-air",
+ "circuit-cairo-serialize",
  "circuit-cairo-verifier",
  "circuit-common",
  "circuit-prover",
@@ -1345,6 +1346,7 @@ dependencies = [
  "circuits",
  "circuits-stark-verifier",
  "itertools 0.12.1",
+ "serde_json",
  "stwo",
  "stwo-constraint-framework",
 ]

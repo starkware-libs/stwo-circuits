@@ -3,6 +3,7 @@ use std::io::Write;
 
 use blake2::{Blake2s256, Digest};
 use cairo_air::utils::binary_deserialize_from_file;
+use circuit_cairo_serialize::prepare_circuit_proof_for_cairo_verifier;
 use circuit_cairo_verifier::privacy::{
     get_pcs_config, privacy_cairo_verifier_config, privacy_components,
 };
@@ -14,10 +15,13 @@ use circuit_common::finalize::{ComponentSizes, compute_padded_sizes, pad_to_targ
 use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_prover::prover::{
     prepare_circuit_proof_for_circuit_verifier, prove_circuit_assignment,
+    prove_circuit_assignment_with_channel,
 };
 use circuit_serialize::deserialize::deserialize_proof_with_config;
 use circuit_serialize::serialize::CircuitSerialize;
-use circuit_verifier::statement::{INTERACTION_POW_BITS, all_circuit_components};
+use circuit_verifier::statement::{
+    INTERACTION_POW_BITS, all_circuit_components, circuit_component_log_sizes,
+};
 use circuit_verifier::verify::CircuitPublicData;
 use circuits::blake::HashValue;
 use circuits::context::FinalizedContext;
@@ -27,6 +31,7 @@ use circuits_stark_verifier::proof::{Proof, ProofConfig};
 use itertools::chain;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::PcsConfig;
+use stwo::core::vcs_lifted::blake2_merkle::Blake2sMerkleChannel;
 use stwo::prover::backend::simd::SimdBackend;
 use stwo::prover::mempool::BaseColumnPool;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
@@ -62,6 +67,11 @@ const MULTIVERIFIER_PREPROCESSED_ROOT: [u32; 8] =
     [4268871180, 1648605015, 1518856044, 936813334, 8391980, 3571729286, 3315525509, 1034558230];
 const MULTIVERIFIER_OF_TWO_CAIRO_PROOFS_PATH: &str =
     concat!(env!("CARGO_MANIFEST_DIR"), "/../../test_data/circuit_multiverifier/proof.bin");
+/// The same multiverifier proof, serialized as the felt252 `scarb execute --arguments-file` input
+/// consumed by the Cairo1 verifier program: a JSON array of hex-string felts produced via
+/// [`circuit_cairo_serialize`]. Regenerate with `FIX_PROOF=1`.
+const CAIRO1_PROOF_PATH: &str =
+    concat!(env!("CARGO_MANIFEST_DIR"), "/../../test_data/circuit_multiverifier/cairo1_proof.json");
 
 /// Extracts the eight raw 32-bit words from a `HashValue<QM31>` (each word held as
 /// `(low_u16, high_u16, 0, 0)`).
@@ -347,6 +357,78 @@ fn test_prove_multiverifier_of_two_cairo_subcircuits() {
         multi_proof.serialize(&mut serialized);
         let mut file = File::create(MULTIVERIFIER_OF_TWO_CAIRO_PROOFS_PATH).unwrap();
         file.write_all(&serialized).unwrap();
+    }
+}
+
+/// Regression test producing a proof for the Cairo1 verifier program.
+///
+/// Proves the multiverifier circuit over two Cairo verifier proofs (as in
+/// [`test_prove_multiverifier_of_two_cairo_subcircuits`]) and serializes the resulting proof into
+/// the felt252 stream consumed by the Cairo1 verifier program
+/// (`main(proof: CircuitProof) -> VerificationOutput`) via
+/// [`prepare_circuit_proof_for_cairo_verifier`]. This is a different channel and serialization than
+/// the in-repo (u32-stream) circuit verifier: the felts are sorted/transposed and the
+/// verifier-config constants are hardcoded in the Cairo binary, so only the proof is serialized.
+///
+/// The felts are stored as a JSON array of hex strings (the `scarb execute --arguments-file`
+/// format). If `FIX_PROOF` is not set, the freshly produced stream is compared against
+/// [`CAIRO1_PROOF_PATH`]; when run with `FIX_PROOF` set, it regenerates and overwrites the fixture.
+#[test]
+fn test_serialize_multiverifier_proof_for_cairo1_verifier() {
+    let shared_config = SharedConfig {
+        pcs_config: PCS_CONFIG,
+        proof_config: ProofConfig::new(
+            &all_circuit_components::<QM31>(),
+            CIRCUIT_N_PREPROCESSED_COLUMNS,
+            &PCS_CONFIG,
+            INTERACTION_POW_BITS,
+        ),
+        preprocessed_column_log_sizes: multiverifier_preprocessed_column_log_sizes(),
+    };
+    let bytes = std::fs::read(PRIVACY_CAIRO_VERIFIER_PROOF_PATH).unwrap();
+    let proof =
+        deserialize_proof_with_config(&mut bytes.as_slice(), &shared_config.proof_config).unwrap();
+    let mut multiverifier_context = build_multiverifier_circuit::<QM31>(
+        build_cairo_input(&proof),
+        build_cairo_input(&proof),
+        &shared_config,
+    );
+    pad_to_targets(&mut multiverifier_context, TARGET_PADDING_SIZES.clone());
+    multiverifier_context.validate_circuit();
+
+    // Prove the multiverifier and serialize the proof for the Cairo1 verifier program. The Cairo1
+    // verifier uses the standard (lossless) `Blake2sMerkleChannel`, not the
+    // `Blake2sM31MerkleChannel` used by the in-repo circuit verifier, so we prove with that
+    // channel explicitly.
+    let preprocessed_multiverifier =
+        PreprocessedCircuit::preprocess_circuit(&mut multiverifier_context);
+    let multi_circuit_proof = prove_circuit_assignment_with_channel::<Blake2sMerkleChannel>(
+        multiverifier_context.values(),
+        &preprocessed_multiverifier,
+        &BaseColumnPool::<SimdBackend>::new(),
+        PCS_CONFIG,
+    )
+    .unwrap();
+    let component_log_sizes = circuit_component_log_sizes(
+        &all_circuit_components::<NoValue>(),
+        &preprocessed_multiverifier.preprocessed_trace.log_sizes(),
+    );
+    let felts = prepare_circuit_proof_for_cairo_verifier(multi_circuit_proof, &component_log_sizes);
+    let proof_hex: Vec<String> = felts.iter().map(|felt| format!("0x{felt:x}")).collect();
+    let proof_json = serde_json::to_string_pretty(&proof_hex).unwrap();
+
+    if std::env::var("FIX_PROOF").is_err() {
+        let stored = std::fs::read_to_string(CAIRO1_PROOF_PATH).unwrap();
+        // Don't assert_eq to avoid printing the full felt stream to stdout.
+        if proof_json != stored {
+            panic!(
+                "The multiverifier proof serialized for the Cairo1 verifier changed. Run again \
+                 with `FIX_PROOF=1`."
+            );
+        }
+    } else {
+        let mut file = File::create(CAIRO1_PROOF_PATH).unwrap();
+        file.write_all(proof_json.as_bytes()).unwrap();
     }
 }
 
