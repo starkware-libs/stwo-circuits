@@ -1450,6 +1450,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "circuits-unpacker"
+version = "0.1.0"
+dependencies = [
+ "circuits",
+ "itertools 0.12.1",
+ "stwo",
+]
+
+[[package]]
 name = "clap"
 version = "4.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
