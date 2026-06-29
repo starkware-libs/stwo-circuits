@@ -13,6 +13,13 @@ fn test_no_constants_beyond_defaults() {
 }
 
 #[test]
+fn test_finalize_constants_passes_check_vars_used() {
+    let finalized = TraceContext::default().finalize(true);
+    finalized.circuit().check_yields();
+    finalized.validate_circuit();
+}
+
+#[test]
 fn test_plus_one_chain_topology() {
     let mut context = TraceContext::default();
     context.constant(M31::from(2u32).into());
