@@ -13,6 +13,33 @@ fn test_no_constants_beyond_defaults() {
 }
 
 #[test]
+fn test_unconsumed_scaffolding_passes_check_vars_used() {
+    // `finalize_constants` emits scaffolding wires that no gate consumes: the terminal `+1`
+    // chain entry and the `ones = (1, 1, 1, 1)` basis element (unused here, since no broadcast
+    // constant is requested). They are marked maybe-unused, so the `check_vars_used` pass inside
+    // `finalize(true)` must not flag them. Without that marking, `finalize(true)` panics with
+    // "Variable N is unused but not marked as unused".
+    let finalized = TraceContext::default().finalize(true);
+    finalized.circuit().check_yields();
+    finalized.validate_circuit();
+}
+
+#[test]
+fn test_requested_ones_constant_not_double_marked() {
+    // When `(1, 1, 1, 1)` is itself a requested constant, `finalize_constants` treats it as a
+    // real constant rather than scaffolding and must NOT mark it maybe-unused — otherwise it
+    // would double-mark a constant a caller already marked. Here we pre-mark the requested `ones`
+    // wire; `finalize(true)` must not panic on a re-insert in `mark_as_maybe_unused`, and
+    // `check_vars_used` must accept the genuinely-unused, already-marked wire.
+    let mut context = TraceContext::default();
+    let ones_var = context.constant(qm31_from_u32s(1, 1, 1, 1));
+    context.mark_as_maybe_unused(&ones_var);
+    let finalized = context.finalize(true);
+    finalized.circuit().check_yields();
+    finalized.validate_circuit();
+}
+
+#[test]
 fn test_plus_one_chain_topology() {
     let mut context = TraceContext::default();
     context.constant(M31::from(2u32).into());
