@@ -54,7 +54,7 @@ pub fn privacy_cairo_verifier_config(log_blowup_factor: u32) -> CairoVerifierCon
         proof_config,
         enabled_bits,
         program,
-        n_outputs: 1,
+        n_outputs: 2,
         preprocessed_trace_variant,
     }
 }
