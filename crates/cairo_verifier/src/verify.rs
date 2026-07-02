@@ -3,9 +3,11 @@ use std::sync::Arc;
 
 use crate::all_components::all_components;
 use crate::statement::{
-    AUX_DATA_FIXED_LEN, CairoStatement, MEMORY_VALUES_LIMBS, serialize_aux_data,
+    AUX_DATA_FIXED_LEN, CairoStatement, MEMORY_VALUES_LIMBS, N_OUTPUTS, N_WORDS_PER_OUTPUT_CELL,
+    serialize_aux_data,
 };
 use cairo_air::CairoProof;
+use cairo_air::air::PubMemoryValue;
 use cairo_air::flat_claims::FlatClaim;
 use circuit_common::N_RESERVED;
 use circuits::blake::HashValue;
@@ -21,9 +23,14 @@ use itertools::{Itertools, zip_eq};
 use num_traits::Zero;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
+use stwo::core::vcs::blake2_hash::Blake2sHash;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sMerkleHasher;
 use stwo_cairo_common::preprocessed_columns::preprocessed_trace::PreProcessedTraceVariant;
 use stwo_cairo_common::prover_types::felt::split_f252;
+
+#[cfg(test)]
+#[path = "verify_test.rs"]
+mod test;
 
 /// Logup security is defined by the `QM31` space (~124 bits) + `INTERACTION_POW_BITS` -
 /// log2(number of relation terms).
@@ -71,8 +78,6 @@ pub struct CairoVerifierConfig {
     /// The Cairo program being verified. Each memory cell is encoded as `MEMORY_VALUES_LIMBS`
     /// nine-bit M31 limbs.
     pub program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
-    /// Number of public outputs produced by the program.
-    pub n_outputs: usize,
     /// Merkle root of the preprocessed (constant) trace columns.
     pub preprocessed_root: HashValue<QM31>,
     /// Which preprocessed trace variant to use (e.g. small canonical vs lifted).
@@ -84,12 +89,10 @@ pub fn verify_fixed_cairo_circuit(
     verifier_config: &CairoVerifierConfig,
     proof: Proof<QM31>,
     serialized_aux_data: Vec<M31>,
-    outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
+    output_hash: Blake2sHash,
 ) -> Result<FinalizedContext<QM31>, String> {
-    if outputs.len() != verifier_config.n_outputs {
-        return Err("The proof claim does not match the expected number of outputs.".to_string());
-    }
-    let context = build_fixed_cairo_circuit(verifier_config, proof, serialized_aux_data, outputs);
+    let context =
+        build_fixed_cairo_circuit(verifier_config, proof, serialized_aux_data, output_hash);
 
     // Check the verifier circuit gates topology only in test mode.
     #[cfg(test)]
@@ -120,7 +123,7 @@ pub fn build_fixed_cairo_circuit(
     verifier_config: &CairoVerifierConfig,
     proof: Proof<QM31>,
     serialized_aux_data: Vec<M31>,
-    outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
+    output_hash: Blake2sHash,
 ) -> FinalizedContext<QM31> {
     let config = &verifier_config.proof_config;
 
@@ -128,7 +131,7 @@ pub fn build_fixed_cairo_circuit(
     let statement = CairoStatement::<QM31>::new(
         &mut context,
         serialized_aux_data,
-        outputs,
+        HashValue::<QM31>::from(output_hash),
         verifier_config.program.clone(),
         verifier_config.enabled_bits.clone(),
         verifier_config.preprocessed_root.clone(),
@@ -150,18 +153,15 @@ pub fn build_cairo_verifier_circuit(
 ) -> FinalizedContext<NoValue> {
     let config = &verifier_config.proof_config;
 
-    let n_outputs = verifier_config.n_outputs;
     let program_len = verifier_config.program.len();
     let n_components = verifier_config.enabled_bits.iter().filter(|b| **b).count();
-    let serialized_aux_data =
-        vec![M31::zero(); AUX_DATA_FIXED_LEN + n_outputs + program_len + n_components];
-    let outputs = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; n_outputs];
+    let serialized_aux_data = vec![M31::zero(); AUX_DATA_FIXED_LEN + program_len + n_components];
 
     let mut context: Context<NoValue> = Context::new(N_RESERVED);
     let statement = CairoStatement::new(
         &mut context,
         serialized_aux_data,
-        outputs,
+        HashValue::no_value(),
         verifier_config.program.clone(),
         verifier_config.enabled_bits.clone(),
         verifier_config.preprocessed_root.clone(),
@@ -221,6 +221,42 @@ pub fn prepare_cairo_proof_for_circuit_verifier(
     (proof, serialized_aux_data)
 }
 
+/// Packs the program's output memory cells into the Blake2s digest they represent.
+///
+/// The program emits its output as a single Blake2s digest stored across `N_OUTPUTS` memory cells,
+/// each holding one 128-bit half. Each cell contributes its low `N_WORDS_PER_OUTPUT_CELL` words
+/// (little-endian) to the digest; this is the exact inverse of the reconstruction performed by
+/// `output_limbs_from_output_hash`, so `CairoStatement::new` recovers the same cells from the
+/// returned hash.
+///
+/// Returns an error if the output isn't exactly `N_OUTPUTS` cells or if any cell doesn't fit in
+/// 128 bits.
+fn output_hash_from_output_cells(output: &[PubMemoryValue]) -> Result<Blake2sHash, String> {
+    if output.len() != N_OUTPUTS {
+        return Err(format!(
+            "The circuit verifier requires exactly {N_OUTPUTS} output cells, got {}.",
+            output.len()
+        ));
+    }
+    let mut output_hash_bytes = [0u8; 32];
+    const BYTES_PER_WORD: usize = size_of::<u32>();
+    const BYTES_PER_CELL: usize = N_WORDS_PER_OUTPUT_CELL * BYTES_PER_WORD;
+    for (memory_cell_bytes, (_id, value)) in
+        zip_eq(output_hash_bytes.chunks_exact_mut(BYTES_PER_CELL), output.iter())
+    {
+        if value[N_WORDS_PER_OUTPUT_CELL..].iter().any(|word| *word != 0) {
+            return Err("Each output cell must fit in 128 bits.".to_string());
+        }
+        for (dst, word) in zip_eq(
+            memory_cell_bytes.chunks_exact_mut(BYTES_PER_WORD),
+            &value[..N_WORDS_PER_OUTPUT_CELL],
+        ) {
+            dst.copy_from_slice(&word.to_le_bytes());
+        }
+    }
+    Ok(Blake2sHash(output_hash_bytes))
+}
+
 /// Verifies a [CairoProof] with a given set of components.
 pub fn verify_cairo_with_component_set(
     cairo_proof: &CairoProof<Blake2sMerkleHasher>,
@@ -246,12 +282,9 @@ pub fn verify_cairo_with_component_set(
 
     let (proof, serialized_aux_data) =
         prepare_cairo_proof_for_circuit_verifier(cairo_proof, &component_enable_bits);
-    let outputs = public_data
-        .public_memory
-        .output
-        .iter()
-        .map(|(_id, value)| split_f252(*value))
-        .collect_vec();
+
+    let output_hash = output_hash_from_output_cells(&public_data.public_memory.output)?;
+
     let program =
         public_data.public_memory.program.iter().map(|(_id, value)| split_f252(*value)).collect();
 
@@ -267,9 +300,8 @@ pub fn verify_cairo_with_component_set(
         proof_config,
         enabled_bits: component_enable_bits,
         program,
-        n_outputs: cairo_proof.claim.public_data.public_memory.output.len(),
         preprocessed_trace_variant: cairo_proof.preprocessed_trace_variant,
     };
 
-    verify_fixed_cairo_circuit(&verifier_config, proof, serialized_aux_data, outputs)
+    verify_fixed_cairo_circuit(&verifier_config, proof, serialized_aux_data, output_hash)
 }

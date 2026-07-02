@@ -9,7 +9,7 @@ use cairo_air::flat_claims::FlatClaim;
 use cairo_air::relations::{
     MEMORY_ADDRESS_TO_ID_RELATION_ID, MEMORY_ID_TO_BIG_RELATION_ID, OPCODES_RELATION_ID,
 };
-use circuits::blake::{HashValue, blake2s_u32s, m31_to_u32};
+use circuits::blake::{BLAKE2S_DIGEST_N_WORDS, HashValue, blake2s_u32s, m31_to_u32};
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::extract_bits::extract_bits;
@@ -27,6 +27,7 @@ use itertools::{Itertools, chain, zip_eq};
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::m31::P as M31_P;
 use stwo::core::fields::qm31::QM31;
+use stwo::core::utils::SliceExt;
 use stwo_cairo_common::builtins::{
     ADD_MOD_BUILTIN_MEMORY_CELLS, BITWISE_BUILTIN_MEMORY_CELLS, EC_OP_BUILTIN_MEMORY_CELLS,
     ECDSA_MEMORY_CELLS, KECCAK_MEMORY_CELLS, MUL_MOD_BUILTIN_MEMORY_CELLS,
@@ -34,6 +35,7 @@ use stwo_cairo_common::builtins::{
     RANGE_CHECK_96_BUILTIN_MEMORY_CELLS, RANGE_CHECK_BUILTIN_MEMORY_CELLS,
 };
 use stwo_cairo_common::preprocessed_columns::preprocessed_trace::PreProcessedTraceVariant;
+use stwo_cairo_common::prover_types::felt::split;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 #[cfg(test)]
@@ -45,13 +47,34 @@ const N_SAFE_CALL_IDS: usize = 2;
 
 // A memory value is stored as 28 9bit limbs.
 pub const MEMORY_VALUES_LIMBS: usize = 28;
+const LIMB_BITS: usize = 9;
+
+/// Number of public output cells. The program emits its output as a single Blake2s digest split
+/// into two memory cells, each holding one 128-bit half of the digest.
+pub const N_OUTPUTS: usize = 2;
 pub const PUB_MEMORY_VALUE_LEN: usize = 1 + MEMORY_VALUES_LIMBS;
 const PUB_MEMORY_VALUE_M31_LEN: usize = 2;
 const STATE_LEN: usize = 3;
+/// Length of the fixed-size portion of the serialized auxiliary data: the initial/final states,
+/// segment ranges, safe-call ids and the [`N_OUTPUTS`] output cells. The variable-size portion
+/// (program and component log sizes) is added on top by the caller.
 pub const AUX_DATA_FIXED_LEN: usize =
-    2 * STATE_LEN + 2 * PUB_MEMORY_VALUE_M31_LEN * N_SEGMENTS + N_SAFE_CALL_IDS;
+    2 * STATE_LEN + 2 * PUB_MEMORY_VALUE_M31_LEN * N_SEGMENTS + N_SAFE_CALL_IDS + N_OUTPUTS;
 
-const LIMB_BITS: usize = 9;
+/// Number of `LIMB_BITS`-wide limbs needed to hold a single 128-bit output value. The remaining
+/// limbs of an output memory cell are always zero (see [`output_limbs_from_output_hash`]).
+///
+/// Note that these limbs span `N_OUTPUT_VALUE_LIMBS * LIMB_BITS` = 135 bits, 7 more than a 128-bit
+/// value needs, and nothing here range-checks the extra bits away. This is not a soundness concern:
+/// the statement is only meaningful for the whitelisted bootloader programs, which are known to
+/// output exactly two u128s.
+const N_OUTPUT_VALUE_LIMBS: usize = 128_usize.div_ceil(LIMB_BITS);
+/// Number of 32-bit words in a 128-bit output cell value, i.e. how many `u32`s fit in a `u128`.
+/// The program's output is a Blake2s digest ([`BLAKE2S_DIGEST_N_WORDS`] words) split across
+/// [`N_OUTPUTS`] cells, one 128-bit half each.
+pub const N_WORDS_PER_OUTPUT_CELL: usize = u128::BITS as usize / u32::BITS as usize;
+// The whole digest must map exactly onto the output cells.
+const _: () = assert!(N_OUTPUTS * N_WORDS_PER_OUTPUT_CELL == BLAKE2S_DIGEST_N_WORDS);
 const SMALL_VALUE_BITS: u32 = 29;
 const BUILTIN_USAGE_BITS: u32 = 27;
 
@@ -112,12 +135,7 @@ impl AuxData {
     /// `data` is laid out as the concatenation of, in order: the fixed-size fields
     /// (initial state, final state, segment ranges and safe-call ids), then
     /// `output_ids`, `program_ids` and `component_log_sizes`.
-    pub fn parse_from_vars(
-        data: &[Var],
-        output_len: usize,
-        program_len: usize,
-        n_components: usize,
-    ) -> Self {
+    pub fn parse_from_vars(data: &[Var], program_len: usize, n_components: usize) -> Self {
         let mut iter = data.iter();
 
         let initial_state = CasmState {
@@ -137,7 +155,7 @@ impl AuxData {
         });
 
         let safe_call_ids = [*iter.next().unwrap(), *iter.next().unwrap()];
-        let output_ids = iter.by_ref().take(output_len).cloned().collect_vec();
+        let output_ids = iter.by_ref().take(N_OUTPUTS).cloned().collect_vec();
         let program_ids = iter.by_ref().take(program_len).cloned().collect_vec();
         let component_log_sizes = iter.map(|v| M31Wrapper::new_unsafe(*v)).collect_vec();
         assert_eq!(component_log_sizes.len(), n_components);
@@ -321,15 +339,63 @@ impl<Value: IValue> CairoStatement<Value> {
     }
 }
 
+/// Reconstructs the program's output memory cells from `output_hash` as guessed limb variables.
+///
+/// The program emits its output as a single Blake2s digest stored across [`N_OUTPUTS`] memory
+/// cells, each holding one 128-bit half of the digest (little-endian). This is the exact inverse
+/// of the packing the caller performs when building `output_hash` from the public memory output
+/// section, so the reconstructed cells equal the proven ones.
+///
+/// Each cell is a 128-bit value, so only its low [`N_OUTPUT_VALUE_LIMBS`] limbs can be nonzero; the
+/// high limbs are bound to the constant zero rather than prover-guessed.
+///
+/// The nonzero limbs are prover-guessed and not range-checked here; the id-to-value logup binds
+/// them to the proven memory value, whose limbs the AIR range-checks to `LIMB_BITS` bits.
+fn output_limbs_from_output_hash<Value: IValue>(
+    context: &mut Context<Value>,
+    output_hash: HashValue<Value>,
+) -> Vec<[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]> {
+    let words = output_hash.map(|word| word.get().unpack_u32());
+    let zero = M31Wrapper::new_unsafe(context.zero());
+    let outputs = words
+        .checked_as_chunks::<N_WORDS_PER_OUTPUT_CELL>()
+        .iter()
+        .map(|half| {
+            // Split the cell's 128-bit value into `LIMB_BITS`-wide limbs; only the low
+            // `N_OUTPUT_VALUE_LIMBS` can be nonzero, the rest of the memory cell stays zero.
+            let limbs: [u32; N_OUTPUT_VALUE_LIMBS] = split(*half, (1 << LIMB_BITS) - 1);
+            array::from_fn(|i| {
+                if i < N_OUTPUT_VALUE_LIMBS {
+                    M31Wrapper::new_unsafe(Value::from_qm31(
+                        M31::from_u32_unchecked(limbs[i]).into(),
+                    ))
+                    .guess(context)
+                } else {
+                    zero.clone()
+                }
+            })
+        })
+        .collect_vec();
+    debug_assert_eq!(outputs.len(), N_OUTPUTS);
+    outputs
+}
+
 impl<Value: IValue> CairoStatement<Value> {
     /// Constructs a new Cairo statement from the serialized auxiliary data, outputs, program,
     /// enabled bits, preprocessed root and trace variant.
     ///
     /// See AuxData::parse_from_vars for the layout of `serialized_aux_data`.
+    ///
+    /// The output memory cells are reconstructed from `output_hash` (see
+    /// `output_limbs_from_output_hash`); they are the same cells the caller packed the digest from,
+    /// so the circuit binds them to the public memory exactly as it would the raw output values.
+    ///
+    /// The active components are derived from `enabled_bits` (which has one flag per component in
+    /// the full list returned by `all_components()`).
     pub fn new(
         context: &mut Context<Value>,
         serialized_aux_data: Vec<M31>,
-        outputs: Vec<[M31; MEMORY_VALUES_LIMBS]>,
+        output_hash: HashValue<Value>,
         program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
         enabled_bits: Vec<bool>,
         preprocessed_root: HashValue<QM31>,
@@ -337,9 +403,7 @@ impl<Value: IValue> CairoStatement<Value> {
     ) -> Self {
         let components = enabled_components::<Value>(&enabled_bits);
         let n_components = components.len();
-        let n_outputs = outputs.len();
-
-        let aux_data_len = AUX_DATA_FIXED_LEN + n_outputs + program.len() + n_components;
+        let aux_data_len = AUX_DATA_FIXED_LEN + program.len() + n_components;
         assert_eq!(serialized_aux_data.len(), aux_data_len);
 
         let aux_data_vars: Vec<Var> = serialized_aux_data
@@ -347,18 +411,9 @@ impl<Value: IValue> CairoStatement<Value> {
             .map(|&m31| *M31Wrapper::new_unsafe(Value::from_qm31(m31.into())).guess(context).get())
             .collect_vec();
 
-        let aux_data =
-            AuxData::parse_from_vars(&aux_data_vars, n_outputs, program.len(), n_components);
-
-        let outputs: Vec<[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]> = outputs
-            .into_iter()
-            .map(|value_limbs| {
-                value_limbs
-                    .map(|m31| M31Wrapper::new_unsafe(Value::from_qm31(m31.into())).guess(context))
-            })
-            .collect_vec();
-
+        let aux_data = AuxData::parse_from_vars(&aux_data_vars, program.len(), n_components);
         let packed_component_log_sizes = Simd::pack(context, &aux_data.component_log_sizes[..]);
+        let outputs = output_limbs_from_output_hash(context, output_hash);
 
         Self {
             aux_data,
