@@ -100,9 +100,18 @@ fn test_verify_privacy_with_recursion() {
         "The preprocessed root in the config is not the same as the one in the proof"
     );
     let mut novalue_context = build_cairo_verifier_circuit(&const_config);
-    let preprocessed = PreprocessedCircuit::preprocess_circuit(&mut novalue_context);
 
     let mut context = verify_cairo_with_component_set(&cairo_proof, privacy_components()).unwrap();
+
+    // The prover proves `context`'s witness against the AIR structure baked into
+    // `preprocessed`, which is derived from the fixed `novalue_context` topology. This only
+    // works if the two circuits are identical. If the proof's shape (e.g. component trace log
+    // sizes) doesn't match `const_config`, the topologies diverge and the prover reads the
+    // witness through mismatched addresses, failing deep in witness generation with an opaque
+    // XOR-lookup panic. Guard against that here with a clear, fast topology check.
+    compare_contexts_topology(&context, &novalue_context);
+
+    let preprocessed = PreprocessedCircuit::preprocess_circuit(&mut novalue_context);
     pad_context(&mut context);
     context.validate_circuit();
     let circuit_proof = prove_circuit_assignment(
