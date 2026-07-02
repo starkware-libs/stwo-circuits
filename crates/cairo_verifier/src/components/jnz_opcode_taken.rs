@@ -20,62 +20,67 @@ pub fn accumulate_constraints<Value: IValue>(
     acc: &mut CompositionConstraintAccumulator,
 ) {
     let [
-        input_pc_col0,
-        input_ap_col1,
-        input_fp_col2,
-        offset0_col3,
-        dst_base_fp_col4,
-        ap_update_add_1_col5,
-        mem_dst_base_col6,
-        dst_id_col7,
-        dst_limb_0_col8,
-        dst_limb_1_col9,
-        dst_limb_2_col10,
-        dst_limb_3_col11,
-        dst_limb_4_col12,
-        dst_limb_5_col13,
-        dst_limb_6_col14,
-        dst_limb_7_col15,
-        dst_limb_8_col16,
-        dst_limb_9_col17,
-        dst_limb_10_col18,
-        dst_limb_11_col19,
-        dst_limb_12_col20,
-        dst_limb_13_col21,
-        dst_limb_14_col22,
-        dst_limb_15_col23,
-        dst_limb_16_col24,
-        dst_limb_17_col25,
-        dst_limb_18_col26,
-        dst_limb_19_col27,
-        dst_limb_20_col28,
-        dst_limb_21_col29,
-        dst_limb_22_col30,
-        dst_limb_23_col31,
-        dst_limb_24_col32,
-        dst_limb_25_col33,
-        dst_limb_26_col34,
-        dst_limb_27_col35,
-        dst_sum_inv_col36,
-        dst_sum_squares_inv_col37,
-        next_pc_id_col38,
-        msb_col39,
-        mid_limbs_set_col40,
-        next_pc_limb_0_col41,
-        next_pc_limb_1_col42,
-        next_pc_limb_2_col43,
-        remainder_bits_col44,
-        partial_limb_msb_col45,
-        enabler_col46,
+        enabler_col0,
+        input_pc_col1,
+        input_ap_col2,
+        input_fp_col3,
+        offset0_col4,
+        dst_base_fp_col5,
+        ap_update_add_1_col6,
+        mem_dst_base_col7,
+        dst_id_col8,
+        dst_limb_0_col9,
+        dst_limb_1_col10,
+        dst_limb_2_col11,
+        dst_limb_3_col12,
+        dst_limb_4_col13,
+        dst_limb_5_col14,
+        dst_limb_6_col15,
+        dst_limb_7_col16,
+        dst_limb_8_col17,
+        dst_limb_9_col18,
+        dst_limb_10_col19,
+        dst_limb_11_col20,
+        dst_limb_12_col21,
+        dst_limb_13_col22,
+        dst_limb_14_col23,
+        dst_limb_15_col24,
+        dst_limb_16_col25,
+        dst_limb_17_col26,
+        dst_limb_18_col27,
+        dst_limb_19_col28,
+        dst_limb_20_col29,
+        dst_limb_21_col30,
+        dst_limb_22_col31,
+        dst_limb_23_col32,
+        dst_limb_24_col33,
+        dst_limb_25_col34,
+        dst_limb_26_col35,
+        dst_limb_27_col36,
+        dst_sum_inv_col37,
+        dst_sum_squares_inv_col38,
+        next_pc_id_col39,
+        msb_col40,
+        mid_limbs_set_col41,
+        next_pc_limb_0_col42,
+        next_pc_limb_1_col43,
+        next_pc_limb_2_col44,
+        remainder_bits_col45,
+        partial_limb_msb_col46,
     ] = input.try_into().unwrap();
+
+    //Enabler is a bit.
+    let constraint_0_value = eval!(context, ((enabler_col0) * (enabler_col0)) - (enabler_col0));
+    acc.add_constraint(context, constraint_0_value);
 
     let [decode_instruction_ad440_output_tmp_7f087_5_offset0] =
         decode_instruction_ad440::accumulate_constraints(
             &[
-                eval!(context, input_pc_col0),
-                eval!(context, offset0_col3),
-                eval!(context, dst_base_fp_col4),
-                eval!(context, ap_update_add_1_col5),
+                eval!(context, input_pc_col1),
+                eval!(context, enabler_col0),
+                eval!(context, offset0_col4),
+                eval!(context, dst_base_fp_col5),
+                eval!(context, ap_update_add_1_col6),
             ],
             context,
             component_data,
@@ -85,49 +90,50 @@ pub fn accumulate_constraints<Value: IValue>(
         .unwrap();
 
     //mem_dst_base.
-    let constraint_1_value = eval!(
+    let constraint_2_value = eval!(
         context,
-        (mem_dst_base_col6)
-            - (((dst_base_fp_col4) * (input_fp_col2))
-                + (((1) - (dst_base_fp_col4)) * (input_ap_col1)))
+        (mem_dst_base_col7)
+            - (((dst_base_fp_col5) * (input_fp_col3))
+                + (((1) - (dst_base_fp_col5)) * (input_ap_col2)))
     );
-    acc.add_constraint(context, constraint_1_value);
+    acc.add_constraint(context, constraint_2_value);
 
     read_positive_num_bits_252::accumulate_constraints(
         &[
             eval!(
                 context,
-                (mem_dst_base_col6) + (decode_instruction_ad440_output_tmp_7f087_5_offset0)
+                (mem_dst_base_col7) + (decode_instruction_ad440_output_tmp_7f087_5_offset0)
             ),
-            eval!(context, dst_id_col7),
-            eval!(context, dst_limb_0_col8),
-            eval!(context, dst_limb_1_col9),
-            eval!(context, dst_limb_2_col10),
-            eval!(context, dst_limb_3_col11),
-            eval!(context, dst_limb_4_col12),
-            eval!(context, dst_limb_5_col13),
-            eval!(context, dst_limb_6_col14),
-            eval!(context, dst_limb_7_col15),
-            eval!(context, dst_limb_8_col16),
-            eval!(context, dst_limb_9_col17),
-            eval!(context, dst_limb_10_col18),
-            eval!(context, dst_limb_11_col19),
-            eval!(context, dst_limb_12_col20),
-            eval!(context, dst_limb_13_col21),
-            eval!(context, dst_limb_14_col22),
-            eval!(context, dst_limb_15_col23),
-            eval!(context, dst_limb_16_col24),
-            eval!(context, dst_limb_17_col25),
-            eval!(context, dst_limb_18_col26),
-            eval!(context, dst_limb_19_col27),
-            eval!(context, dst_limb_20_col28),
-            eval!(context, dst_limb_21_col29),
-            eval!(context, dst_limb_22_col30),
-            eval!(context, dst_limb_23_col31),
-            eval!(context, dst_limb_24_col32),
-            eval!(context, dst_limb_25_col33),
-            eval!(context, dst_limb_26_col34),
-            eval!(context, dst_limb_27_col35),
+            eval!(context, enabler_col0),
+            eval!(context, dst_id_col8),
+            eval!(context, dst_limb_0_col9),
+            eval!(context, dst_limb_1_col10),
+            eval!(context, dst_limb_2_col11),
+            eval!(context, dst_limb_3_col12),
+            eval!(context, dst_limb_4_col13),
+            eval!(context, dst_limb_5_col14),
+            eval!(context, dst_limb_6_col15),
+            eval!(context, dst_limb_7_col16),
+            eval!(context, dst_limb_8_col17),
+            eval!(context, dst_limb_9_col18),
+            eval!(context, dst_limb_10_col19),
+            eval!(context, dst_limb_11_col20),
+            eval!(context, dst_limb_12_col21),
+            eval!(context, dst_limb_13_col22),
+            eval!(context, dst_limb_14_col23),
+            eval!(context, dst_limb_15_col24),
+            eval!(context, dst_limb_16_col25),
+            eval!(context, dst_limb_17_col26),
+            eval!(context, dst_limb_18_col27),
+            eval!(context, dst_limb_19_col28),
+            eval!(context, dst_limb_20_col29),
+            eval!(context, dst_limb_21_col30),
+            eval!(context, dst_limb_22_col31),
+            eval!(context, dst_limb_23_col32),
+            eval!(context, dst_limb_24_col33),
+            eval!(context, dst_limb_25_col34),
+            eval!(context, dst_limb_26_col35),
+            eval!(context, dst_limb_27_col36),
         ],
         context,
         component_data,
@@ -136,71 +142,72 @@ pub fn accumulate_constraints<Value: IValue>(
 
     let dst_sum_p_zero_tmp_7f087_11 = eval!(
         context,
-        ((((((((((((((((((((((((dst_limb_1_col9) + (dst_limb_2_col10))
-            + (dst_limb_3_col11))
-            + (dst_limb_4_col12))
-            + (dst_limb_5_col13))
-            + (dst_limb_6_col14))
-            + (dst_limb_7_col15))
-            + (dst_limb_8_col16))
-            + (dst_limb_9_col17))
-            + (dst_limb_10_col18))
-            + (dst_limb_11_col19))
-            + (dst_limb_12_col20))
-            + (dst_limb_13_col21))
-            + (dst_limb_14_col22))
-            + (dst_limb_15_col23))
-            + (dst_limb_16_col24))
-            + (dst_limb_17_col25))
-            + (dst_limb_18_col26))
-            + (dst_limb_19_col27))
-            + (dst_limb_20_col28))
-            + (dst_limb_22_col30))
-            + (dst_limb_23_col31))
-            + (dst_limb_24_col32))
-            + (dst_limb_25_col33))
-            + (dst_limb_26_col34)
+        ((((((((((((((((((((((((dst_limb_1_col10) + (dst_limb_2_col11))
+            + (dst_limb_3_col12))
+            + (dst_limb_4_col13))
+            + (dst_limb_5_col14))
+            + (dst_limb_6_col15))
+            + (dst_limb_7_col16))
+            + (dst_limb_8_col17))
+            + (dst_limb_9_col18))
+            + (dst_limb_10_col19))
+            + (dst_limb_11_col20))
+            + (dst_limb_12_col21))
+            + (dst_limb_13_col22))
+            + (dst_limb_14_col23))
+            + (dst_limb_15_col24))
+            + (dst_limb_16_col25))
+            + (dst_limb_17_col26))
+            + (dst_limb_18_col27))
+            + (dst_limb_19_col28))
+            + (dst_limb_20_col29))
+            + (dst_limb_22_col31))
+            + (dst_limb_23_col32))
+            + (dst_limb_24_col33))
+            + (dst_limb_25_col34))
+            + (dst_limb_26_col35)
     );
 
     //dst doesn't equal 0.
-    let constraint_4_value = eval!(
+    let constraint_5_value = eval!(
         context,
         (((dst_sum_p_zero_tmp_7f087_11)
-            + (((dst_limb_0_col8) + (dst_limb_21_col29)) + (dst_limb_27_col35)))
-            * (dst_sum_inv_col36))
+            + (((dst_limb_0_col9) + (dst_limb_21_col30)) + (dst_limb_27_col36)))
+            * (dst_sum_inv_col37))
             - (1)
     );
-    acc.add_constraint(context, constraint_4_value);
+    acc.add_constraint(context, constraint_5_value);
 
-    let diff_from_p_tmp_7f087_12 = eval!(context, (dst_limb_0_col8) - (1));
+    let diff_from_p_tmp_7f087_12 = eval!(context, (dst_limb_0_col9) - (1));
 
-    let diff_from_p_tmp_7f087_13 = eval!(context, (dst_limb_21_col29) - (136));
+    let diff_from_p_tmp_7f087_13 = eval!(context, (dst_limb_21_col30) - (136));
 
-    let diff_from_p_tmp_7f087_14 = eval!(context, (dst_limb_27_col35) - (256));
+    let diff_from_p_tmp_7f087_14 = eval!(context, (dst_limb_27_col36) - (256));
 
     //dst doesn't equal P.
-    let constraint_8_value = eval!(
+    let constraint_9_value = eval!(
         context,
         (((dst_sum_p_zero_tmp_7f087_11)
             + ((((diff_from_p_tmp_7f087_12) * (diff_from_p_tmp_7f087_12))
                 + ((diff_from_p_tmp_7f087_13) * (diff_from_p_tmp_7f087_13)))
                 + ((diff_from_p_tmp_7f087_14) * (diff_from_p_tmp_7f087_14))))
-            * (dst_sum_squares_inv_col37))
+            * (dst_sum_squares_inv_col38))
             - (1)
     );
-    acc.add_constraint(context, constraint_8_value);
+    acc.add_constraint(context, constraint_9_value);
 
     let [read_small_output_tmp_7f087_24_limb_0] = read_small::accumulate_constraints(
         &[
-            eval!(context, (input_pc_col0) + (1)),
-            eval!(context, next_pc_id_col38),
-            eval!(context, msb_col39),
-            eval!(context, mid_limbs_set_col40),
-            eval!(context, next_pc_limb_0_col41),
-            eval!(context, next_pc_limb_1_col42),
-            eval!(context, next_pc_limb_2_col43),
-            eval!(context, remainder_bits_col44),
-            eval!(context, partial_limb_msb_col45),
+            eval!(context, (input_pc_col1) + (1)),
+            eval!(context, enabler_col0),
+            eval!(context, next_pc_id_col39),
+            eval!(context, msb_col40),
+            eval!(context, mid_limbs_set_col41),
+            eval!(context, next_pc_limb_0_col42),
+            eval!(context, next_pc_limb_1_col43),
+            eval!(context, next_pc_limb_2_col44),
+            eval!(context, remainder_bits_col45),
+            eval!(context, partial_limb_msb_col46),
         ],
         context,
         component_data,
@@ -209,28 +216,24 @@ pub fn accumulate_constraints<Value: IValue>(
     .try_into()
     .unwrap();
 
-    //Enabler is a bit.
-    let constraint_10_value = eval!(context, ((enabler_col46) * (enabler_col46)) - (enabler_col46));
-    acc.add_constraint(context, constraint_10_value);
-
     // Use Opcodes.
     let tuple_11 = &[
         eval!(context, 428564188),
-        eval!(context, input_pc_col0),
-        eval!(context, input_ap_col1),
-        eval!(context, input_fp_col2),
+        eval!(context, input_pc_col1),
+        eval!(context, input_ap_col2),
+        eval!(context, input_fp_col3),
     ];
-    let numerator_11 = eval!(context, enabler_col46);
+    let numerator_11 = eval!(context, enabler_col0);
     acc.add_to_relation(context, numerator_11, tuple_11);
 
     // Yield Opcodes.
     let tuple_12 = &[
         eval!(context, 428564188),
-        eval!(context, (input_pc_col0) + (read_small_output_tmp_7f087_24_limb_0)),
-        eval!(context, (input_ap_col1) + (ap_update_add_1_col5)),
-        eval!(context, input_fp_col2),
+        eval!(context, (input_pc_col1) + (read_small_output_tmp_7f087_24_limb_0)),
+        eval!(context, (input_ap_col2) + (ap_update_add_1_col6)),
+        eval!(context, input_fp_col3),
     ];
-    let numerator_12 = eval!(context, -(enabler_col46));
+    let numerator_12 = eval!(context, -(enabler_col0));
     acc.add_to_relation(context, numerator_12, tuple_12);
 }
 

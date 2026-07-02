@@ -12,12 +12,12 @@ pub fn accumulate_constraints<Value: IValue>(
     component_data: &dyn ComponentDataTrait<Value>,
     acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
-    let [read_id_input, id_col0] = input.try_into().unwrap();
+    let [read_id_input, enabler, id_col0] = input.try_into().unwrap();
 
     // Use MemoryAddressToId.
     let tuple_0 =
         &[eval!(context, 1444891767), eval!(context, read_id_input), eval!(context, id_col0)];
-    let numerator_0 = eval!(context, 1);
+    let numerator_0 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_0, tuple_0);
     vec![]
 }

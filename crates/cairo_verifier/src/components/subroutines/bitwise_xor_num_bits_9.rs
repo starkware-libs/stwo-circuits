@@ -12,8 +12,12 @@ pub fn accumulate_constraints<Value: IValue>(
     component_data: &dyn ComponentDataTrait<Value>,
     acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
-    let [bitwise_xor_num_bits_9_input_limb_0, bitwise_xor_num_bits_9_input_limb_1, xor_col0] =
-        input.try_into().unwrap();
+    let [
+        bitwise_xor_num_bits_9_input_limb_0,
+        bitwise_xor_num_bits_9_input_limb_1,
+        enabler,
+        xor_col0,
+    ] = input.try_into().unwrap();
 
     // Use VerifyBitwiseXor_9.
     let tuple_0 = &[
@@ -22,7 +26,7 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, bitwise_xor_num_bits_9_input_limb_1),
         eval!(context, xor_col0),
     ];
-    let numerator_0 = eval!(context, 1);
+    let numerator_0 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_0, tuple_0);
     vec![]
 }

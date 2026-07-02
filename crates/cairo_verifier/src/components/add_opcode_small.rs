@@ -20,46 +20,50 @@ pub fn accumulate_constraints<Value: IValue>(
     acc: &mut CompositionConstraintAccumulator,
 ) {
     let [
-        input_pc_col0,
-        input_ap_col1,
-        input_fp_col2,
-        offset0_col3,
-        offset1_col4,
-        offset2_col5,
-        dst_base_fp_col6,
-        op0_base_fp_col7,
-        op1_imm_col8,
-        op1_base_fp_col9,
-        ap_update_add_1_col10,
-        mem_dst_base_col11,
-        mem0_base_col12,
-        mem1_base_col13,
-        dst_id_col14,
-        msb_col15,
-        mid_limbs_set_col16,
-        dst_limb_0_col17,
-        dst_limb_1_col18,
-        dst_limb_2_col19,
-        remainder_bits_col20,
-        partial_limb_msb_col21,
-        op0_id_col22,
-        msb_col23,
-        mid_limbs_set_col24,
-        op0_limb_0_col25,
-        op0_limb_1_col26,
-        op0_limb_2_col27,
-        remainder_bits_col28,
-        partial_limb_msb_col29,
-        op1_id_col30,
-        msb_col31,
-        mid_limbs_set_col32,
-        op1_limb_0_col33,
-        op1_limb_1_col34,
-        op1_limb_2_col35,
-        remainder_bits_col36,
-        partial_limb_msb_col37,
-        enabler_col38,
+        enabler_col0,
+        input_pc_col1,
+        input_ap_col2,
+        input_fp_col3,
+        offset0_col4,
+        offset1_col5,
+        offset2_col6,
+        dst_base_fp_col7,
+        op0_base_fp_col8,
+        op1_imm_col9,
+        op1_base_fp_col10,
+        ap_update_add_1_col11,
+        mem_dst_base_col12,
+        mem0_base_col13,
+        mem1_base_col14,
+        dst_id_col15,
+        msb_col16,
+        mid_limbs_set_col17,
+        dst_limb_0_col18,
+        dst_limb_1_col19,
+        dst_limb_2_col20,
+        remainder_bits_col21,
+        partial_limb_msb_col22,
+        op0_id_col23,
+        msb_col24,
+        mid_limbs_set_col25,
+        op0_limb_0_col26,
+        op0_limb_1_col27,
+        op0_limb_2_col28,
+        remainder_bits_col29,
+        partial_limb_msb_col30,
+        op1_id_col31,
+        msb_col32,
+        mid_limbs_set_col33,
+        op1_limb_0_col34,
+        op1_limb_1_col35,
+        op1_limb_2_col36,
+        remainder_bits_col37,
+        partial_limb_msb_col38,
     ] = input.try_into().unwrap();
+
+    //Enabler is a bit.
+    let constraint_0_value = eval!(context, ((enabler_col0) * (enabler_col0)) - (enabler_col0));
+    acc.add_constraint(context, constraint_0_value);
 
     let [
         decode_instruction_7785f_output_tmp_e5099_11_offset0,
@@ -68,15 +72,16 @@ pub fn accumulate_constraints<Value: IValue>(
         decode_instruction_7785f_output_tmp_e5099_11_op1_base_ap,
     ] = decode_instruction_7785f::accumulate_constraints(
         &[
-            eval!(context, input_pc_col0),
-            eval!(context, offset0_col3),
-            eval!(context, offset1_col4),
-            eval!(context, offset2_col5),
-            eval!(context, dst_base_fp_col6),
-            eval!(context, op0_base_fp_col7),
-            eval!(context, op1_imm_col8),
-            eval!(context, op1_base_fp_col9),
-            eval!(context, ap_update_add_1_col10),
+            eval!(context, input_pc_col1),
+            eval!(context, enabler_col0),
+            eval!(context, offset0_col4),
+            eval!(context, offset1_col5),
+            eval!(context, offset2_col6),
+            eval!(context, dst_base_fp_col7),
+            eval!(context, op0_base_fp_col8),
+            eval!(context, op1_imm_col9),
+            eval!(context, op1_base_fp_col10),
+            eval!(context, ap_update_add_1_col11),
         ],
         context,
         component_data,
@@ -86,53 +91,54 @@ pub fn accumulate_constraints<Value: IValue>(
     .unwrap();
 
     //if imm then offset2 is 1.
-    let constraint_1_value = eval!(
-        context,
-        (op1_imm_col8) * ((1) - (decode_instruction_7785f_output_tmp_e5099_11_offset2))
-    );
-    acc.add_constraint(context, constraint_1_value);
-
-    //mem_dst_base.
     let constraint_2_value = eval!(
         context,
-        (mem_dst_base_col11)
-            - (((dst_base_fp_col6) * (input_fp_col2))
-                + (((1) - (dst_base_fp_col6)) * (input_ap_col1)))
+        (op1_imm_col9) * ((1) - (decode_instruction_7785f_output_tmp_e5099_11_offset2))
     );
     acc.add_constraint(context, constraint_2_value);
 
-    //mem0_base.
+    //mem_dst_base.
     let constraint_3_value = eval!(
         context,
-        (mem0_base_col12)
-            - (((op0_base_fp_col7) * (input_fp_col2))
-                + (((1) - (op0_base_fp_col7)) * (input_ap_col1)))
+        (mem_dst_base_col12)
+            - (((dst_base_fp_col7) * (input_fp_col3))
+                + (((1) - (dst_base_fp_col7)) * (input_ap_col2)))
     );
     acc.add_constraint(context, constraint_3_value);
 
-    //mem1_base.
+    //mem0_base.
     let constraint_4_value = eval!(
         context,
-        (mem1_base_col13)
-            - ((((op1_imm_col8) * (input_pc_col0)) + ((op1_base_fp_col9) * (input_fp_col2)))
-                + ((decode_instruction_7785f_output_tmp_e5099_11_op1_base_ap) * (input_ap_col1)))
+        (mem0_base_col13)
+            - (((op0_base_fp_col8) * (input_fp_col3))
+                + (((1) - (op0_base_fp_col8)) * (input_ap_col2)))
     );
     acc.add_constraint(context, constraint_4_value);
+
+    //mem1_base.
+    let constraint_5_value = eval!(
+        context,
+        (mem1_base_col14)
+            - ((((op1_imm_col9) * (input_pc_col1)) + ((op1_base_fp_col10) * (input_fp_col3)))
+                + ((decode_instruction_7785f_output_tmp_e5099_11_op1_base_ap) * (input_ap_col2)))
+    );
+    acc.add_constraint(context, constraint_5_value);
 
     let [read_small_output_tmp_e5099_21_limb_0] = read_small::accumulate_constraints(
         &[
             eval!(
                 context,
-                (mem_dst_base_col11) + (decode_instruction_7785f_output_tmp_e5099_11_offset0)
+                (mem_dst_base_col12) + (decode_instruction_7785f_output_tmp_e5099_11_offset0)
             ),
-            eval!(context, dst_id_col14),
-            eval!(context, msb_col15),
-            eval!(context, mid_limbs_set_col16),
-            eval!(context, dst_limb_0_col17),
-            eval!(context, dst_limb_1_col18),
-            eval!(context, dst_limb_2_col19),
-            eval!(context, remainder_bits_col20),
-            eval!(context, partial_limb_msb_col21),
+            eval!(context, enabler_col0),
+            eval!(context, dst_id_col15),
+            eval!(context, msb_col16),
+            eval!(context, mid_limbs_set_col17),
+            eval!(context, dst_limb_0_col18),
+            eval!(context, dst_limb_1_col19),
+            eval!(context, dst_limb_2_col20),
+            eval!(context, remainder_bits_col21),
+            eval!(context, partial_limb_msb_col22),
         ],
         context,
         component_data,
@@ -145,16 +151,17 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(
                 context,
-                (mem0_base_col12) + (decode_instruction_7785f_output_tmp_e5099_11_offset1)
+                (mem0_base_col13) + (decode_instruction_7785f_output_tmp_e5099_11_offset1)
             ),
-            eval!(context, op0_id_col22),
-            eval!(context, msb_col23),
-            eval!(context, mid_limbs_set_col24),
-            eval!(context, op0_limb_0_col25),
-            eval!(context, op0_limb_1_col26),
-            eval!(context, op0_limb_2_col27),
-            eval!(context, remainder_bits_col28),
-            eval!(context, partial_limb_msb_col29),
+            eval!(context, enabler_col0),
+            eval!(context, op0_id_col23),
+            eval!(context, msb_col24),
+            eval!(context, mid_limbs_set_col25),
+            eval!(context, op0_limb_0_col26),
+            eval!(context, op0_limb_1_col27),
+            eval!(context, op0_limb_2_col28),
+            eval!(context, remainder_bits_col29),
+            eval!(context, partial_limb_msb_col30),
         ],
         context,
         component_data,
@@ -167,16 +174,17 @@ pub fn accumulate_constraints<Value: IValue>(
         &[
             eval!(
                 context,
-                (mem1_base_col13) + (decode_instruction_7785f_output_tmp_e5099_11_offset2)
+                (mem1_base_col14) + (decode_instruction_7785f_output_tmp_e5099_11_offset2)
             ),
-            eval!(context, op1_id_col30),
-            eval!(context, msb_col31),
-            eval!(context, mid_limbs_set_col32),
-            eval!(context, op1_limb_0_col33),
-            eval!(context, op1_limb_1_col34),
-            eval!(context, op1_limb_2_col35),
-            eval!(context, remainder_bits_col36),
-            eval!(context, partial_limb_msb_col37),
+            eval!(context, enabler_col0),
+            eval!(context, op1_id_col31),
+            eval!(context, msb_col32),
+            eval!(context, mid_limbs_set_col33),
+            eval!(context, op1_limb_0_col34),
+            eval!(context, op1_limb_1_col35),
+            eval!(context, op1_limb_2_col36),
+            eval!(context, remainder_bits_col37),
+            eval!(context, partial_limb_msb_col38),
         ],
         context,
         component_data,
@@ -186,35 +194,31 @@ pub fn accumulate_constraints<Value: IValue>(
     .unwrap();
 
     //dst equals op0 + op1.
-    let constraint_8_value = eval!(
+    let constraint_9_value = eval!(
         context,
         (read_small_output_tmp_e5099_21_limb_0)
             - ((read_small_output_tmp_e5099_31_limb_0) + (read_small_output_tmp_e5099_41_limb_0))
     );
-    acc.add_constraint(context, constraint_8_value);
-
-    //Enabler is a bit.
-    let constraint_9_value = eval!(context, ((enabler_col38) * (enabler_col38)) - (enabler_col38));
     acc.add_constraint(context, constraint_9_value);
 
     // Use Opcodes.
     let tuple_10 = &[
         eval!(context, 428564188),
-        eval!(context, input_pc_col0),
-        eval!(context, input_ap_col1),
-        eval!(context, input_fp_col2),
+        eval!(context, input_pc_col1),
+        eval!(context, input_ap_col2),
+        eval!(context, input_fp_col3),
     ];
-    let numerator_10 = eval!(context, enabler_col38);
+    let numerator_10 = eval!(context, enabler_col0);
     acc.add_to_relation(context, numerator_10, tuple_10);
 
     // Yield Opcodes.
     let tuple_11 = &[
         eval!(context, 428564188),
-        eval!(context, ((input_pc_col0) + (1)) + (op1_imm_col8)),
-        eval!(context, (input_ap_col1) + (ap_update_add_1_col10)),
-        eval!(context, input_fp_col2),
+        eval!(context, ((input_pc_col1) + (1)) + (op1_imm_col9)),
+        eval!(context, (input_ap_col2) + (ap_update_add_1_col11)),
+        eval!(context, input_fp_col3),
     ];
-    let numerator_11 = eval!(context, -(enabler_col38));
+    let numerator_11 = eval!(context, -(enabler_col0));
     acc.add_to_relation(context, numerator_11, tuple_11);
 }
 

@@ -7,6 +7,18 @@ const ID_TO_BIG_MAX_ROWS: u32 = 1 << MAX_SEQUENCE_LOG_SIZE;
 pub const N_TRACE_COLUMNS: usize = 29;
 pub const N_INTERACTION_COLUMNS: usize = 32;
 
+pub const RELATION_USES_PER_ROW: [RelationUse; 8] = [
+    RelationUse { relation_id: "RangeCheck_9_9", uses: 2 },
+    RelationUse { relation_id: "RangeCheck_9_9_B", uses: 2 },
+    RelationUse { relation_id: "RangeCheck_9_9_C", uses: 2 },
+    RelationUse { relation_id: "RangeCheck_9_9_D", uses: 2 },
+    RelationUse { relation_id: "RangeCheck_9_9_E", uses: 2 },
+    RelationUse { relation_id: "RangeCheck_9_9_F", uses: 2 },
+    RelationUse { relation_id: "RangeCheck_9_9_G", uses: 1 },
+    RelationUse { relation_id: "RangeCheck_9_9_H", uses: 1 },
+];
+
+#[allow(unused_variables)]
 pub fn accumulate_constraints<Value: IValue>(
     input: &[Var],
     context: &mut Context<Value>,
@@ -14,9 +26,8 @@ pub fn accumulate_constraints<Value: IValue>(
     acc: &mut CompositionConstraintAccumulator,
     index: u32,
 ) {
-    let _ = component_data;
     let [
-        memory_id_to_big_output_col0,
+        multiplicity_0_col0,
         memory_id_to_big_output_col1,
         memory_id_to_big_output_col2,
         memory_id_to_big_output_col3,
@@ -44,13 +55,12 @@ pub fn accumulate_constraints<Value: IValue>(
         memory_id_to_big_output_col25,
         memory_id_to_big_output_col26,
         memory_id_to_big_output_col27,
-        multiplicity_0,
+        memory_id_to_big_output_col28,
     ] = input.try_into().unwrap();
     let seq = seq_of_component_size(context, component_data, &acc.preprocessed_columns);
 
     range_check_mem_value_n_28::accumulate_constraints(
         &[
-            eval!(context, memory_id_to_big_output_col0),
             eval!(context, memory_id_to_big_output_col1),
             eval!(context, memory_id_to_big_output_col2),
             eval!(context, memory_id_to_big_output_col3),
@@ -78,6 +88,8 @@ pub fn accumulate_constraints<Value: IValue>(
             eval!(context, memory_id_to_big_output_col25),
             eval!(context, memory_id_to_big_output_col26),
             eval!(context, memory_id_to_big_output_col27),
+            eval!(context, memory_id_to_big_output_col28),
+            eval!(context, 1),
         ],
         context,
         component_data,
@@ -89,7 +101,6 @@ pub fn accumulate_constraints<Value: IValue>(
     let tuple_1 = &[
         eval!(context, 1662111297),
         eval!(context, (seq) + (context.constant(offset.into()))),
-        eval!(context, memory_id_to_big_output_col0),
         eval!(context, memory_id_to_big_output_col1),
         eval!(context, memory_id_to_big_output_col2),
         eval!(context, memory_id_to_big_output_col3),
@@ -117,8 +128,9 @@ pub fn accumulate_constraints<Value: IValue>(
         eval!(context, memory_id_to_big_output_col25),
         eval!(context, memory_id_to_big_output_col26),
         eval!(context, memory_id_to_big_output_col27),
+        eval!(context, memory_id_to_big_output_col28),
     ];
-    let numerator_1 = eval!(context, -(multiplicity_0));
+    let numerator_1 = eval!(context, -(multiplicity_0_col0));
     acc.add_to_relation(context, numerator_1, tuple_1);
 }
 
@@ -174,7 +186,7 @@ impl<Value: IValue> CircuitEval<Value> for Component {
     }
 
     fn relation_uses_per_row(&self) -> &[RelationUse] {
-        &range_check_mem_value_n_28::RELATION_USES_PER_ROW
+        &RELATION_USES_PER_ROW
     }
 
     fn log_size(

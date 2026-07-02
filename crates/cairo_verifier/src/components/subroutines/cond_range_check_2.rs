@@ -11,8 +11,12 @@ pub fn accumulate_constraints<Value: IValue>(
     component_data: &dyn ComponentDataTrait<Value>,
     acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
-    let [cond_range_check_2_input_limb_0, cond_range_check_2_input_limb_1, partial_limb_msb_col0] =
-        input.try_into().unwrap();
+    let [
+        cond_range_check_2_input_limb_0,
+        cond_range_check_2_input_limb_1,
+        enabler,
+        partial_limb_msb_col0,
+    ] = input.try_into().unwrap();
 
     //msb is a bit or condition is 0.
     let constraint_0_value = eval!(

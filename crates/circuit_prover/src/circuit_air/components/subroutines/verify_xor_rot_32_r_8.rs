@@ -22,6 +22,7 @@ impl VerifyXorRot32R8 {
             verify_xor_rot_32_r_8_input_limb_4,
             verify_xor_rot_32_r_8_input_limb_5,
         ]: [E::F; 6],
+        enabler: E::F,
         ms_8_bits_col0: E::F,
         ms_8_bits_col1: E::F,
         ms_8_bits_col2: E::F,
@@ -31,48 +32,53 @@ impl VerifyXorRot32R8 {
         common_lookup_elements: &relations::CommonLookupElements,
         eval: &mut E,
     ) -> [E::F; 0] {
-        let M31_1 = E::F::from(M31::from(1));
         let M31_112558620 = E::F::from(M31::from(112558620));
 
         let [split_16_low_part_size_8_output_tmp_e2dc4_1_limb_0] = Split16LowPartSize8::evaluate(
             [verify_xor_rot_32_r_8_input_limb_0.clone()],
+            enabler.clone(),
             ms_8_bits_col0.clone(),
             common_lookup_elements,
             eval,
         );
         let [split_16_low_part_size_8_output_tmp_e2dc4_3_limb_0] = Split16LowPartSize8::evaluate(
             [verify_xor_rot_32_r_8_input_limb_1.clone()],
+            enabler.clone(),
             ms_8_bits_col1.clone(),
             common_lookup_elements,
             eval,
         );
         let [split_16_low_part_size_8_output_tmp_e2dc4_5_limb_0] = Split16LowPartSize8::evaluate(
             [verify_xor_rot_32_r_8_input_limb_2.clone()],
+            enabler.clone(),
             ms_8_bits_col2.clone(),
             common_lookup_elements,
             eval,
         );
         let [split_16_low_part_size_8_output_tmp_e2dc4_7_limb_0] = Split16LowPartSize8::evaluate(
             [verify_xor_rot_32_r_8_input_limb_3.clone()],
+            enabler.clone(),
             ms_8_bits_col3.clone(),
             common_lookup_elements,
             eval,
         );
         let [split_16_low_part_size_8_output_tmp_e2dc4_9_limb_0] = Split16LowPartSize8::evaluate(
             [verify_xor_rot_32_r_8_input_limb_4.clone()],
+            enabler.clone(),
             ms_8_bits_col4.clone(),
             common_lookup_elements,
             eval,
         );
         let [split_16_low_part_size_8_output_tmp_e2dc4_11_limb_0] = Split16LowPartSize8::evaluate(
             [verify_xor_rot_32_r_8_input_limb_5.clone()],
+            enabler.clone(),
             ms_8_bits_col5.clone(),
             common_lookup_elements,
             eval,
         );
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(enabler.clone()),
             &[
                 M31_112558620.clone(),
                 ms_8_bits_col0.clone(),
@@ -83,7 +89,7 @@ impl VerifyXorRot32R8 {
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(enabler.clone()),
             &[
                 M31_112558620.clone(),
                 split_16_low_part_size_8_output_tmp_e2dc4_3_limb_0.clone(),
@@ -94,7 +100,7 @@ impl VerifyXorRot32R8 {
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(enabler.clone()),
             &[
                 M31_112558620.clone(),
                 ms_8_bits_col1.clone(),
@@ -105,7 +111,7 @@ impl VerifyXorRot32R8 {
 
         eval.add_to_relation(RelationEntry::new(
             common_lookup_elements,
-            E::EF::from(M31_1.clone()),
+            E::EF::from(enabler.clone()),
             &[
                 M31_112558620.clone(),
                 split_16_low_part_size_8_output_tmp_e2dc4_1_limb_0.clone(),

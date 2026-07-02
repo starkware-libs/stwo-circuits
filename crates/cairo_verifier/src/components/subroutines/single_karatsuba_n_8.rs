@@ -44,6 +44,7 @@ pub fn accumulate_constraints<Value: IValue>(
         single_karatsuba_n_8_input_limb_29,
         single_karatsuba_n_8_input_limb_30,
         single_karatsuba_n_8_input_limb_31,
+        enabler,
     ] = input.try_into().unwrap();
 
     let z0_tmp_24ca0_0_limb_0 =

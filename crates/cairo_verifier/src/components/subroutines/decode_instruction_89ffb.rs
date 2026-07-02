@@ -12,7 +12,7 @@ pub fn accumulate_constraints<Value: IValue>(
     component_data: &dyn ComponentDataTrait<Value>,
     acc: &mut CompositionConstraintAccumulator,
 ) -> Vec<Var> {
-    let [decode_instruction_89ffb_input_pc, offset2_col0, op1_imm_col1, op1_base_fp_col2] =
+    let [decode_instruction_89ffb_input_pc, enabler, offset2_col0, op1_imm_col1, op1_base_fp_col2] =
         input.try_into().unwrap();
 
     //Flag op1_imm is a bit.
@@ -44,7 +44,7 @@ pub fn accumulate_constraints<Value: IValue>(
         ),
         eval!(context, 16),
     ];
-    let numerator_4 = eval!(context, 1);
+    let numerator_4 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_4, tuple_4);
     vec![eval!(context, (offset2_col0) - (32768)), eval!(context, op1_base_ap_tmp_89ffb_5)]
 }

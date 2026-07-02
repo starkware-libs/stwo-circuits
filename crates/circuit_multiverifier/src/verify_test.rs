@@ -55,7 +55,7 @@ const CIRCUIT_N_PREPROCESSED_COLUMNS: usize = 45;
 
 /// Constants related to the cairo verifier circuit.
 const PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT: [u32; 8] =
-    [1000331179, 2681434797, 3806553994, 1868679953, 3615184069, 3937104268, 679470514, 520074062];
+    [1833149655, 308185927, 3607018632, 3231715728, 3268458793, 1820225426, 4139270833, 1842976360];
 const PRIVACY_CAIRO_VERIFIER_PROOF_PATH: &str =
     concat!(env!("CARGO_MANIFEST_DIR"), "/../../test_data/circuit_multiverifier/proof_cairo.bin");
 /// The Blake2s digest of the output in the proof above.
