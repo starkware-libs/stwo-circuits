@@ -8,6 +8,7 @@ use cairo_air::utils::{binary_deserialize_from_file, binary_serialize_to_file};
 use cairo_air::verifier::INTERACTION_POW_BITS;
 use cairo_vm::types::layout_name::LayoutName;
 use circuit_common::N_RESERVED;
+use circuits::blake::HashValue;
 use circuits::context::{Context, FinalizedContext};
 use circuits::ivalue::NoValue;
 use circuits::ops::Guess;
@@ -53,9 +54,7 @@ fn test_verify() {
         MAX_SEQUENCE_LOG_SIZE as u32 + pcs_config.fri_config.log_blowup_factor;
 
     let mut novalue_context: Context<NoValue> = Context::new(N_RESERVED);
-    let output_len = 1;
     let program_len = 128;
-    let outputs = vec![[M31::zero(); MEMORY_VALUES_LIMBS]; output_len];
     let program: Arc<[[M31; MEMORY_VALUES_LIMBS]]> =
         std::iter::repeat_n([M31::zero(); MEMORY_VALUES_LIMBS], program_len).collect();
     // Remove the pedersen points table component since it requires long preprocessed columns, which
@@ -67,12 +66,11 @@ fn test_verify() {
     enabled_bits[pedersen_points_index] = false;
     let n_components = enabled_bits.iter().filter(|b| **b).count();
 
-    let serialized_aux_data =
-        vec![M31::zero(); AUX_DATA_FIXED_LEN + output_len + program_len + n_components];
+    let serialized_aux_data = vec![M31::zero(); AUX_DATA_FIXED_LEN + program_len + n_components];
     let statement = CairoStatement::new(
         &mut novalue_context,
         serialized_aux_data,
-        outputs,
+        HashValue::no_value(),
         program,
         enabled_bits,
         get_preprocessed_root(20 + pcs_config.fri_config.log_blowup_factor),
