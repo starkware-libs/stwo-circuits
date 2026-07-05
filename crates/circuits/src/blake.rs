@@ -176,7 +176,7 @@ pub fn blake2s<Value: IValue>(
 
     let message_u32s = unpack_qm31s_to_u32_words(ctx, input.iter().copied());
 
-    HashValue(blake2s_u32s(ctx, message_u32s, n_bytes))
+    blake2s_u32s(ctx, message_u32s, n_bytes)
 }
 
 /// Unpacks each QM31 in `input` into its four message words, re-encoding each word as a `u32` in
@@ -232,7 +232,7 @@ pub fn blake2s_u32s<Value: IValue>(
     ctx: &mut Context<Value>,
     mut message_u32s: Vec<U32Wrapper<Var>>,
     n_bytes: usize,
-) -> [U32Wrapper<Var>; BLAKE2S_DIGEST_N_WORDS] {
+) -> HashValue<Var> {
     const BLOCK_BYTES: usize = 64;
     const WORDS_PER_BLOCK: usize = 16;
 
@@ -300,7 +300,7 @@ pub fn blake2s_u32s<Value: IValue>(
     }
 
     ctx.stats.blake_updates += n_blocks;
-    h.map(U32Wrapper::new_unsafe)
+    HashValue(h.map(U32Wrapper::new_unsafe))
 }
 
 /// Adds a TripleXor gate to the circuit: XOR three u32 values encoded as QM31 `(u16, u16, 0, 0)`

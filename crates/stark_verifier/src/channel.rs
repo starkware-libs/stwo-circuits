@@ -70,7 +70,7 @@ impl Channel {
         let mut message = unpack_qm31s_to_u32_words(context, [self.digest.0, self.digest.1]);
         message.extend(root.0);
 
-        let hash = HashValue(blake2s_u32s(context, message, 16 * 4));
+        let hash = blake2s_u32s(context, message, 16 * 4);
         self.update_digest(reduce_hash_value(context, hash));
     }
 
@@ -102,7 +102,7 @@ impl Channel {
         // Each word is four bytes: the eight digest words followed by the mixed values.
         let n_bytes = 4 * message.len();
         let hash = blake2s_u32s(context, message, n_bytes);
-        self.update_digest(reduce_hash_value(context, HashValue(hash)));
+        self.update_digest(reduce_hash_value(context, hash));
     }
 
     /// Draws one `QM31` random value from the channel.

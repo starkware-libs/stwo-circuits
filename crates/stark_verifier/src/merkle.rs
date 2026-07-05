@@ -76,7 +76,7 @@ fn hash_leaf_m31s(
         .iter()
         .map(|value| U32Wrapper::new_unsafe(m31_to_u32(context, *value.get())))
         .collect();
-    HashValue(blake2s_u32s(context, message_u32s, values.len() * 4))
+    blake2s_u32s(context, message_u32s, values.len() * 4)
 }
 
 /// Computes the hash of a Merkle leaf with a single `QM31` value.
@@ -107,7 +107,7 @@ pub fn hash_node(
 
     // The words are already in `blake2s_u32s` message-word form (the result of a previous
     // `blake2s_u32s`), so they are fed directly as the 16 message words.
-    HashValue(blake2s_u32s(context, words, 64))
+    blake2s_u32s(context, words, 64)
 }
 
 /// Validates that the leaf at the index given by `bits` has the value `leaf` in a Merkle tree
