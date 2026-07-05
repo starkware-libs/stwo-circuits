@@ -55,7 +55,7 @@ const CIRCUIT_N_PREPROCESSED_COLUMNS: usize = 45;
 
 /// Constants related to the cairo verifier circuit.
 const PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT: [u32; 8] =
-    [4124328080, 2746910001, 1609873110, 504894878, 729742955, 1821617411, 3413982230, 3387905857];
+    [3971405464, 2949296239, 1456121260, 1226995461, 3903118844, 3248503613, 794303496, 1249139580];
 const PRIVACY_CAIRO_VERIFIER_PROOF_PATH: &str =
     concat!(env!("CARGO_MANIFEST_DIR"), "/../../test_data/circuit_multiverifier/proof_cairo.bin");
 /// The Blake2s digest of the output in the proof above.
@@ -64,7 +64,7 @@ const PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES: [u32; 8] =
 
 /// Constants related to the multiverifier circuit.
 const MULTIVERIFIER_PREPROCESSED_ROOT: [u32; 8] =
-    [4268871180, 1648605015, 1518856044, 936813334, 8391980, 3571729286, 3315525509, 1034558230];
+    [299245338, 3245106799, 2582894857, 1660971541, 1264978744, 3663378231, 505079882, 3077728512];
 const MULTIVERIFIER_OF_TWO_CAIRO_PROOFS_PATH: &str =
     concat!(env!("CARGO_MANIFEST_DIR"), "/../../test_data/circuit_multiverifier/proof.bin");
 /// The same multiverifier proof, serialized as the felt252 `scarb execute --arguments-file` input
