@@ -231,11 +231,6 @@ pub fn construct_fri_witness(
     FriWitness(witness_per_query_per_tree)
 }
 
-/// Packs the enable bits into QM31s.
-pub fn pack_enable_bits(enable_bits: &[bool]) -> Vec<QM31> {
-    pack_into_qm31s(enable_bits.iter().map(|b| if *b { 1 } else { 0 }))
-}
-
 /// Packs the component log sizes into QM31s.
 /// Each QM31 holds up to 4 log sizes and the last one is padded with zeros.
 pub fn pack_component_log_sizes(component_log_sizes: &[u32]) -> Vec<QM31> {
