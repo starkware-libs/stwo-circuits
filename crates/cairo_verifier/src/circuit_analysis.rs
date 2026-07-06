@@ -176,15 +176,9 @@ fn register_constant(
 #[derive(Clone, Copy)]
 enum Idiom {
     // X = 1/Y, from the `div(1, Y)` idiom.
-    Inverse {
-        #[expect(unused)]
-        y: usize,
-    },
+    Inverse { y: usize },
     // One of the bits in `value`'s binary decomposition.
-    Bit {
-        #[expect(unused)]
-        value: usize,
-    },
+    Bit { value: usize },
 }
 
 /// Returns every bit-constrained variable: variable with a constraint forcing `v == v²`
@@ -305,6 +299,105 @@ fn detect_inverses(
     }
 }
 
+// Groundedness.
+
+/// Computes groundedness against a challenge. A value is considered grounded to a challenge if it
+/// is in the challenge's dependency closure or it is a deterministic function of such values.
+/// The challenge is not considered grounded to itself.
+struct Ground<'a> {
+    c: &'a CircuitEx<'a>,
+    const_values: &'a HashMap<usize, QM31>,
+    idiom: &'a HashMap<usize, Idiom>,
+}
+
+/// Cache for [`Ground::grounded`] for a single challenge.
+struct GroundingCache {
+    data: HashMap<usize, bool>,
+}
+
+impl Ground<'_> {
+    /// Returns variables that `root` depends on, including `root`.
+    /// Note that it's possible that only a subset of the variables will be returned.
+    fn closure(&self, root: usize) -> HashSet<usize> {
+        let mut seen = HashSet::new();
+        let mut stack = vec![root];
+        while let Some(v) = stack.pop() {
+            let is_first_visit = seen.insert(v);
+            if is_first_visit {
+                stack.extend(self.gate_inputs(v).unwrap_or_default());
+            }
+        }
+        seen
+    }
+
+    /// Returns the input variables of the gate that produces `v`, or `None` if not known.
+    /// These inputs are considered grounded to `v`.
+    fn gate_inputs(&self, v: usize) -> Option<Vec<usize>> {
+        // TODO(lior): Add gates: blake_g, xor, m31_to_u32.
+        if let Some(&(_, a, b)) = self.c.producers.get(&v) { Some(vec![a, b]) } else { None }
+    }
+
+    /// Returns a list of variables that `v` deterministically depends on, or `None` on failure.
+    /// If every one of them is grounded, so is `v`.
+    ///
+    /// This differs from [`Self::gate_inputs`] for idioms. For example, a bit is grounded once its
+    /// base value is, yet if the bit is grounded it doesn't follow that the value is.
+    /// A guess is considered a leaf.
+    fn grounding_inputs(&self, v: usize) -> Option<Vec<usize>> {
+        match self.idiom.get(&v) {
+            Some(Idiom::Bit { value }) => Some(vec![*value]),
+            Some(Idiom::Inverse { y }) => Some(vec![*y]),
+            None => {
+                if self.c.guessed.contains(&v) {
+                    None
+                } else {
+                    self.gate_inputs(v)
+                }
+            }
+        }
+    }
+
+    /// A cache for [`Self::grounded`] for a single challenge: its dependency closure and
+    /// the constants are grounded (`true`); the challenge itself is not (`false`).
+    fn init_grounding_cache(&self, challenge: usize) -> GroundingCache {
+        let closure = self.closure(challenge);
+        let mut cache: HashMap<usize, bool> = closure.iter().map(|&v| (v, true)).collect();
+        cache.extend(self.const_values.keys().map(|&v| (v, true)));
+        cache.insert(challenge, false);
+        GroundingCache { data: cache }
+    }
+
+    /// Whether `root` is a deterministic function of the challenge's dependencies. `cache` must be
+    /// seeded by [`Self::init_grounding_cache`]; it caches results for that challenge across calls.
+    #[allow(unused)]
+    fn grounded(&self, root: usize, cache: &mut GroundingCache) -> bool {
+        let mut stack = vec![root];
+        let cache = &mut cache.data;
+        while let Some(v) = stack.pop() {
+            if cache.contains_key(&v) {
+                continue;
+            }
+            let Some(inputs) = self.grounding_inputs(v) else {
+                cache.insert(v, false);
+                continue;
+            };
+            // Check if there are children that were not resolved yet.
+            let pending: Vec<usize> =
+                inputs.iter().copied().filter(|i| !cache.contains_key(i)).collect();
+            if pending.is_empty() {
+                // All children were resolved. Update the status of `v`.
+                let grounded = inputs.iter().all(|i| cache[i]);
+                cache.insert(v, grounded);
+            } else {
+                // Re-add v to the stack. We will return to it once all its children were resolved.
+                stack.push(v);
+                stack.extend(pending);
+            }
+        }
+        cache[&root]
+    }
+}
+
 // Sum tree and classification.
 
 /// Expands the add/sub tree at `root` into its leaf summands (left to right). A leaf is any
@@ -341,6 +434,15 @@ pub fn analyze(circuit: &Circuit, debug_info: &HashMap<String, Var>) {
     let mut idiom: HashMap<usize, Idiom> = HashMap::new();
     detect_bits(&c, &const_values, &mut idiom);
     detect_inverses(&c, &const_values, &mut idiom);
+
+    let ground = Ground { c: &c, const_values: &const_values, idiom: &idiom };
+
+    // Seed each challenge's `grounded` cache with its dependency closure.
+    let int_z = debug_info["interaction_z"].idx;
+    let mut _int_z_cache = ground.init_grounding_cache(int_z);
+
+    let composition_coef = debug_info["composition_polynomial_coeff"].idx;
+    let mut _composition_coef_cache = ground.init_grounding_cache(composition_coef);
 
     let logup_sum = debug_info["logup_sum"].idx;
     let summands = find_summands(&c, &const_values, logup_sum);
