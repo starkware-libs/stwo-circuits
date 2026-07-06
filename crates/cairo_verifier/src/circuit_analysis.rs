@@ -1,10 +1,10 @@
 //! Analyzes the Cairo-verifier [`circuits::circuit::Circuit`].
 
-use circuits::context::Var;
 use hashbrown::{HashMap, HashSet};
 use std::ops::Deref;
 
-use circuits::circuit::Circuit;
+use circuits::circuit::{Add, BlakeGGate, Circuit, M31ToU32, Mul, PointwiseMul, Sub, TripleXor};
+use circuits::context::Var;
 use circuits::ivalue::{IValue, qm31_from_u32s};
 use num_traits::{One, Zero};
 use stwo::core::fields::qm31::QM31;
@@ -46,6 +46,12 @@ struct CircuitEx<'a> {
     producers: HashMap<usize, (Op, usize, usize)>,
     /// Guessed (unconstrained) variables, yielded by the trivial gate `[v] = [v] + [0]`.
     guessed: HashSet<usize>,
+    /// Map output -> in for `m31_to_u32` gates.
+    m31_to_u32_map: HashMap<usize, usize>,
+    /// Map output -> inputs for `blake_g_gate` gates.
+    blake_g_map: HashMap<usize, [usize; 6]>,
+    /// Map output -> inputs for `triple_xor` gates.
+    triple_xor_map: HashMap<usize, [usize; 3]>,
 }
 
 impl Deref for CircuitEx<'_> {
@@ -73,19 +79,49 @@ fn build_analysis(circuit: &Circuit) -> CircuitEx<'_> {
         arith: Vec::new(),
         producers: HashMap::new(),
         guessed: HashSet::new(),
+        m31_to_u32_map: HashMap::new(),
+        blake_g_map: HashMap::new(),
+        triple_xor_map: HashMap::new(),
     };
 
-    for g in &circuit.add {
-        add_arith(&mut c, Op::Add, g.in0, g.in1, g.out);
+    for Add { in0, in1, out } in &circuit.add {
+        add_arith(&mut c, Op::Add, *in0, *in1, *out);
     }
-    for g in &circuit.sub {
-        add_arith(&mut c, Op::Sub, g.in0, g.in1, g.out);
+    for Sub { in0, in1, out } in &circuit.sub {
+        add_arith(&mut c, Op::Sub, *in0, *in1, *out);
     }
-    for g in &circuit.mul {
-        add_arith(&mut c, Op::Mul, g.in0, g.in1, g.out);
+    for Mul { in0, in1, out } in &circuit.mul {
+        add_arith(&mut c, Op::Mul, *in0, *in1, *out);
     }
-    for g in &circuit.pointwise_mul {
-        add_arith(&mut c, Op::Pointwise, g.in0, g.in1, g.out);
+    for PointwiseMul { in0, in1, out } in &circuit.pointwise_mul {
+        add_arith(&mut c, Op::Pointwise, *in0, *in1, *out);
+    }
+
+    for M31ToU32 { input, out } in &circuit.m31_to_u32 {
+        c.m31_to_u32_map.insert(*out, *input);
+    }
+
+    for BlakeGGate {
+        input_a,
+        input_b,
+        input_c,
+        input_d,
+        input_f0,
+        input_f1,
+        out_a,
+        out_b,
+        out_c,
+        out_d,
+    } in &circuit.blake_g_gate
+    {
+        let inputs = [*input_a, *input_b, *input_c, *input_d, *input_f0, *input_f1];
+        for o in [*out_a, *out_b, *out_c, *out_d] {
+            c.blake_g_map.insert(o, inputs);
+        }
+    }
+
+    for TripleXor { input_a, input_b, input_c, out } in &circuit.triple_xor {
+        c.triple_xor_map.insert(*out, [*input_a, *input_b, *input_c]);
     }
 
     c
@@ -333,8 +369,17 @@ impl Ground<'_> {
     /// Returns the input variables of the gate that produces `v`, or `None` if not known.
     /// These inputs are considered grounded to `v`.
     fn gate_inputs(&self, v: usize) -> Option<Vec<usize>> {
-        // TODO(lior): Add gates: blake_g, xor, m31_to_u32.
-        if let Some(&(_, a, b)) = self.c.producers.get(&v) { Some(vec![a, b]) } else { None }
+        if let Some(&(_, a, b)) = self.c.producers.get(&v) {
+            Some(vec![a, b])
+        } else if let Some(&inp) = self.c.m31_to_u32_map.get(&v) {
+            Some(vec![inp])
+        } else if let Some(&inputs) = self.c.blake_g_map.get(&v) {
+            Some(inputs.to_vec())
+        } else if let Some(&inputs) = self.c.triple_xor_map.get(&v) {
+            Some(inputs.to_vec())
+        } else {
+            None
+        }
     }
 
     /// Returns a list of variables that `v` deterministically depends on, or `None` on failure.
