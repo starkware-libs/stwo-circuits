@@ -1,12 +1,9 @@
 use std::fs::File;
 use std::io::Write;
 
-use blake2::{Blake2s256, Digest};
 use cairo_air::utils::binary_deserialize_from_file;
 use circuit_cairo_serialize::prepare_circuit_proof_for_cairo_verifier;
-use circuit_cairo_verifier::privacy::{
-    get_pcs_config, privacy_cairo_verifier_config, privacy_components,
-};
+use circuit_cairo_verifier::privacy::{privacy_cairo_verifier_config, privacy_components};
 use circuit_cairo_verifier::utils::get_proof_file_path;
 use circuit_cairo_verifier::verify::build_cairo_verifier_circuit;
 use circuit_cairo_verifier::verify::verify_cairo_with_component_set;
@@ -26,7 +23,6 @@ use circuit_verifier::verify::CircuitPublicData;
 use circuits::blake::HashValue;
 use circuits::context::FinalizedContext;
 use circuits::ivalue::{IValue, NoValue};
-use circuits_stark_verifier::order_hash_map::OrderedHashMap;
 use circuits_stark_verifier::proof::{Proof, ProofConfig};
 use itertools::chain;
 use stwo::core::fields::qm31::QM31;
@@ -34,39 +30,20 @@ use stwo::core::pcs::PcsConfig;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sMerkleChannel;
 use stwo::prover::backend::simd::SimdBackend;
 use stwo::prover::mempool::BaseColumnPool;
-use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
-use crate::test_utils::{get_preprocessed_multiverifier_from_circuit, get_preprocessed_root};
+use crate::test_utils::{
+    CIRCUIT_N_PREPROCESSED_COLUMNS, LOG_BLOWUP_FACTOR, MULTIVERIFIER_OF_TWO_CAIRO_PROOFS_PATH,
+    MULTIVERIFIER_PREPROCESSED_ROOT, PCS_CONFIG, PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES,
+    PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT, TARGET_PADDING_SIZES, blake2s_u32s_host,
+    get_preprocessed_multiverifier_from_circuit, get_preprocessed_root,
+    multiverifier_preprocessed_column_log_sizes,
+};
 use crate::verify::{MultiverifierInput, SharedConfig, build_multiverifier_circuit};
 
-const PRIVACY_CAIRO_VERIFIER_TRACE_LOG_SIZE: u32 = 21;
-const LOG_BLOWUP_FACTOR: u32 = 3;
-const PCS_CONFIG: PcsConfig =
-    get_pcs_config(PRIVACY_CAIRO_VERIFIER_TRACE_LOG_SIZE, LOG_BLOWUP_FACTOR);
-const TARGET_PADDING_SIZES: ComponentSizes = ComponentSizes {
-    eq: 1 << 17,
-    qm31_ops: 1 << 21,
-    m31_to_u32: 1 << 18,
-    triple_xor: 1 << 17,
-    blake_g_gate: 1 << 20,
-};
-/// The number of preprocessed columns in a trace of a circuit.
-const CIRCUIT_N_PREPROCESSED_COLUMNS: usize = 45;
-
-/// Constants related to the cairo verifier circuit.
-const PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT: [u32; 8] =
-    [3971405464, 2949296239, 1456121260, 1226995461, 3903118844, 3248503613, 794303496, 1249139580];
+/// The Cairo verifier proof fixture (produced by [`test_cairo_proof_regression`]).
 const PRIVACY_CAIRO_VERIFIER_PROOF_PATH: &str =
     concat!(env!("CARGO_MANIFEST_DIR"), "/../../test_data/circuit_multiverifier/proof_cairo.bin");
-/// The Blake2s digest of the output in the proof above.
-const PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES: [u32; 8] =
-    [2299450592, 1514947052, 87572453, 633358207, 462231094, 464091325, 2016711704, 1173534648];
 
-/// Constants related to the multiverifier circuit.
-const MULTIVERIFIER_PREPROCESSED_ROOT: [u32; 8] =
-    [299245338, 3245106799, 2582894857, 1660971541, 1264978744, 3663378231, 505079882, 3077728512];
-const MULTIVERIFIER_OF_TWO_CAIRO_PROOFS_PATH: &str =
-    concat!(env!("CARGO_MANIFEST_DIR"), "/../../test_data/circuit_multiverifier/proof.bin");
 /// The same multiverifier proof, serialized as the felt252 `scarb execute --arguments-file` input
 /// consumed by the Cairo1 verifier program: a JSON array of hex-string felts produced via
 /// [`circuit_cairo_serialize`]. Regenerate with `FIX_PROOF=1`.
@@ -77,69 +54,6 @@ const CAIRO1_PROOF_PATH: &str =
 /// `(low_u16, high_u16, 0, 0)`).
 fn hash_value_to_u32s(hash: &HashValue<QM31>) -> [u32; 8] {
     std::array::from_fn(|i| hash[i].get().unpack_u32())
-}
-
-/// Out-of-circuit implementation of [`circuits::blake::blake2s_u32s`].
-fn blake2s_u32s_host(words: &[u32]) -> [u32; 8] {
-    let mut hasher = Blake2s256::new();
-    for word in words {
-        hasher.update(word.to_le_bytes());
-    }
-    let hash: [u8; 32] = hasher.finalize().into();
-    std::array::from_fn(|i| u32::from_le_bytes(hash[i * 4..i * 4 + 4].try_into().unwrap()))
-}
-
-fn multiverifier_preprocessed_column_log_sizes() -> OrderedHashMap<PreProcessedColumnId, u32> {
-    [
-        ("bitwise_xor_4_0", 8),
-        ("bitwise_xor_4_1", 8),
-        ("bitwise_xor_4_2", 8),
-        ("bitwise_xor_7_0", 14),
-        ("bitwise_xor_7_1", 14),
-        ("bitwise_xor_7_2", 14),
-        ("seq_16", 16),
-        ("bitwise_xor_8_0", 16),
-        ("bitwise_xor_8_1", 16),
-        ("bitwise_xor_8_2", 16),
-        ("eq_in0_address", 17),
-        ("eq_in1_address", 17),
-        ("triple_xor_input_addr_0", 17),
-        ("triple_xor_input_addr_1", 17),
-        ("triple_xor_input_addr_2", 17),
-        ("triple_xor_output_addr", 17),
-        ("triple_xor_multiplicity", 17),
-        ("m31_to_u32_input_addr", 18),
-        ("m31_to_u32_output_addr", 18),
-        ("m31_to_u32_multiplicity", 18),
-        ("bitwise_xor_9_0", 18),
-        ("bitwise_xor_9_1", 18),
-        ("bitwise_xor_9_2", 18),
-        ("blake_g_gate_input_addr_a", 20),
-        ("blake_g_gate_input_addr_b", 20),
-        ("blake_g_gate_input_addr_c", 20),
-        ("blake_g_gate_input_addr_d", 20),
-        ("blake_g_gate_input_addr_f0", 20),
-        ("blake_g_gate_input_addr_f1", 20),
-        ("blake_g_gate_output_addr_a", 20),
-        ("blake_g_gate_output_addr_b", 20),
-        ("blake_g_gate_output_addr_c", 20),
-        ("blake_g_gate_output_addr_d", 20),
-        ("blake_g_gate_multiplicity", 20),
-        ("bitwise_xor_10_0", 20),
-        ("bitwise_xor_10_1", 20),
-        ("bitwise_xor_10_2", 20),
-        ("qm31_ops_add_flag", 21),
-        ("qm31_ops_sub_flag", 21),
-        ("qm31_ops_mul_flag", 21),
-        ("qm31_ops_pointwise_mul_flag", 21),
-        ("qm31_ops_in0_address", 21),
-        ("qm31_ops_in1_address", 21),
-        ("qm31_ops_out_address", 21),
-        ("qm31_ops_mults", 21),
-    ]
-    .into_iter()
-    .map(|(id, log_size)| (PreProcessedColumnId { id: id.to_string() }, log_size))
-    .collect()
 }
 
 /// Builds a `NoValue` Cairo verifier circuit (with configs of privacy) and preprocesses it.
