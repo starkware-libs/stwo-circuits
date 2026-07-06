@@ -20,6 +20,27 @@ fn test_finalize_constants_passes_check_vars_used() {
 }
 
 #[test]
+fn test_find_max_consecutive_no_gap() {
+    // Values 0..=4 are all present with no gap, so `position` never finds a mismatch and
+    // `find_max_consecutive` falls back to `m31_constants.len()` via `unwrap_or`.
+    let m31_constants = IndexMap::from([
+        (0.into(), Var { idx: 0 }),
+        (1.into(), Var { idx: 1 }),
+        (2.into(), Var { idx: 2 }),
+        (3.into(), Var { idx: 3 }),
+        (4.into(), Var { idx: 4 }),
+    ]);
+    assert_eq!(find_max_consecutive(&m31_constants), 4);
+}
+
+#[test]
+fn test_find_max_consecutive_only_zero() {
+    // Only `0` is present, hitting the same `unwrap_or` fallback with `m31_constants.len() == 1`.
+    let m31_constants = IndexMap::from([(0.into(), Var { idx: 0 })]);
+    assert_eq!(find_max_consecutive(&m31_constants), 0);
+}
+
+#[test]
 fn test_plus_one_chain_topology() {
     let mut context = TraceContext::default();
     context.constant(M31::from(2u32).into());
