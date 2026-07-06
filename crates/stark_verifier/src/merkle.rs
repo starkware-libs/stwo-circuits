@@ -6,11 +6,10 @@ use stwo::core::vcs_lifted::verifier::PACKED_LEAF_SIZE;
 use crate::oods::EvalDomainSamples;
 use crate::proof::N_TRACES;
 use crate::sort_queries::QuerySorter;
-use circuits::blake::{HashValue, blake2s, blake2s_u32s};
+use circuits::blake::{HashValue, blake2s, blake2s_u32s, m31_to_u32};
 use circuits::context::{Context, Var};
 use circuits::ivalue::IValue;
 use circuits::ops::{Guess, cond_flip, eq};
-use circuits::simd::Simd;
 use circuits::wrappers::{M31Wrapper, U32Wrapper};
 
 #[cfg(test)]
@@ -71,8 +70,13 @@ fn hash_leaf_m31s(
     context: &mut Context<impl IValue>,
     values: &[M31Wrapper<Var>],
 ) -> HashValue<Var> {
-    let leaf_packed = Simd::pack(context, values);
-    blake2s(context, leaf_packed.get_packed(), values.len() * 4)
+    // Convert each `M31` directly into a single Blake2s message word. `m31_to_u32` already emits a
+    // valid `(low_u16, high_u16, 0, 0)` u32 encoding, so `new_unsafe` (no range check) is safe.
+    let message_u32s = values
+        .iter()
+        .map(|value| U32Wrapper::new_unsafe(m31_to_u32(context, *value.get())))
+        .collect();
+    HashValue(blake2s_u32s(context, message_u32s, values.len() * 4))
 }
 
 /// Computes the hash of a Merkle leaf with a single `QM31` value.
