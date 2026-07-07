@@ -335,6 +335,39 @@ fn detect_inverses(
     }
 }
 
+/// Variables reachable from `root` through `+`/`-`/`*`, skipping constants.
+/// Every reachable variable is returned, including inner nodes.
+fn add_mul_cone(
+    c: &CircuitEx<'_>,
+    const_values: &HashMap<usize, QM31>,
+    root: usize,
+) -> HashSet<usize> {
+    let mut res = HashSet::new();
+    let mut seen = HashSet::new();
+    let mut stack = vec![root];
+    while let Some(v) = stack.pop() {
+        if const_values.contains_key(&v) {
+            continue;
+        }
+        let is_first_visit = seen.insert(v);
+        if !is_first_visit {
+            continue;
+        }
+        // `v != a` keeps a guessed leaf `[v] = [v] + [0]` from expanding into itself.
+        if let Some(&(Op::Add | Op::Sub | Op::Mul, a, b)) = c.producers.get(&v)
+            && v != a
+        {
+            stack.push(a);
+            stack.push(b);
+            res.insert(v);
+        } else {
+            // A leaf.
+            res.insert(v);
+        }
+    }
+    res
+}
+
 // Groundedness.
 
 /// Computes groundedness against a challenge. A value is considered grounded to a challenge if it
@@ -414,7 +447,6 @@ impl Ground<'_> {
 
     /// Whether `root` is a deterministic function of the challenge's dependencies. `cache` must be
     /// seeded by [`Self::init_grounding_cache`]; it caches results for that challenge across calls.
-    #[allow(unused)]
     fn grounded(&self, root: usize, cache: &mut GroundingCache) -> bool {
         let mut stack = vec![root];
         let cache = &mut cache.data;
@@ -482,6 +514,7 @@ fn validate_logup_summand(
     int_z: usize,
     int_z_cache: &mut GroundingCache,
     composition_coef_cache: &mut GroundingCache,
+    composition_vars: &HashSet<usize>,
     s: usize,
 ) {
     let c = ground.c;
@@ -501,7 +534,8 @@ fn validate_logup_summand(
 
     // Case II: s is a guess.
     if c.guessed.contains(&s) {
-        // TODO(lior): Make sure s participates in the constraints.
+        // Make sure s participates in the constraints.
+        assert!(composition_vars.contains(&s));
         // Make sure s is grounded to composition_coef.
         assert!(ground.grounded(s, composition_coef_cache));
         return;
@@ -532,7 +566,17 @@ pub fn analyze(circuit: &Circuit, debug_info: &HashMap<String, Var>) {
     let logup_sum = debug_info["logup_sum"].idx;
     let summands = find_summands(&c, &const_values, logup_sum);
 
+    let composition_eval = debug_info["composition_eval"].idx;
+    let composition_vars = add_mul_cone(&c, &const_values, composition_eval);
+
     for s in summands {
-        validate_logup_summand(&ground, int_z, &mut int_z_cache, &mut composition_coef_cache, s);
+        validate_logup_summand(
+            &ground,
+            int_z,
+            &mut int_z_cache,
+            &mut composition_coef_cache,
+            &composition_vars,
+            s,
+        );
     }
 }
