@@ -116,6 +116,8 @@ pub(crate) fn finalize_constants_with_min_base(
 
     let ones = qm31_from_u32s(1, 1, 1, 1);
     let ones_var = from_constants_or_new(context, &mut qm31_constants, ones);
+    // 'ones_var' might be unused if there are no broadcast constants.
+    context.mark_as_maybe_unused(&ones_var);
     add_into(context, i_plus_one_var, u_plus_iu_var, ones_var);
     qm31_cache.insert(ones, ones_var);
 
@@ -174,6 +176,8 @@ fn build_plus_one_chain(
         m31_cache.insert(val.into(), var);
         prev_var = var;
     }
+    // Mark the last var as maybe_unused as it might not actually be needed by the circuit.
+    context.mark_as_maybe_unused(&prev_var);
 }
 
 /// Yields and constrains every remaining M31 constant in `m31_constants` by decomposing it into

@@ -249,13 +249,14 @@ fn check_relation_uses<Value: IValue>(
         Some(high_bits) => {
             let one = Simd::one(context, components.len());
             let shifted_component_sizes = Simd::combine_bits(context, high_bits);
-            Simd::add(context, &shifted_component_sizes, &one)
+            let res = Simd::add(context, &shifted_component_sizes, &one);
+            // A variable in the Simd vector might be unused in the case where all the corresponding
+            // components don't use any relations.
+            Simd::mark_partly_used(context, &res);
+            res
         }
         None => Simd::one(context, components.len()),
     };
-    // A variable in the Simd vector might be unused in the case where all the corresponding
-    // components don't use any relations.
-    Simd::mark_partly_used(context, &shifted_component_sizes_p1);
 
     // Sum uses_per_row * (floor(num_rows / DIV) + 1) for all relations
     let mut shifted_relation_uses = HashMap::new();
