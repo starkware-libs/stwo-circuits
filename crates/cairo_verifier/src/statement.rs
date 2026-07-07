@@ -200,7 +200,7 @@ pub struct CairoStatement<Value: IValue> {
 impl<Value: IValue> CairoStatement<Value> {
     /// Verifies the builtins.
     ///
-    /// Assumes that the start and end addresses of the segment ranges are less than 2^27 (this is
+    /// Assumes that the start and end addresses of the segment ranges are less than 2^29 (this is
     /// guaranteed by `segment_ranges_logup_sum`).
     pub fn verify_builtins(&self, context: &mut Context<Value>, component_sizes: &[Var]) {
         let [
@@ -551,7 +551,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         eq(context, *initial_pc, context.one());
         // Check that initial_pc (== 1) + 2 < initial_ap.
         // i.e. 3 < initial_ap < 2**29 + 4.
-        // At this point we actually know that `initial_ap < 2**27` because we enforced it when
+        // At this point we actually know that `initial_ap < 2**29` because we enforced it when
         // computing the safe_call logup sum.
         range_checks.push(eval!(context, (*initial_ap) - (context.constant(4.into()))));
 
