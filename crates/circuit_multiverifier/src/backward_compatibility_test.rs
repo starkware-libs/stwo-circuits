@@ -8,7 +8,8 @@ use stwo::core::fields::qm31::QM31;
 use crate::test_utils::{
     MULTIVERIFIER_OF_TWO_CAIRO_PROOFS_PATH, MULTIVERIFIER_PREPROCESSED_ROOT, PCS_CONFIG,
     PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES, PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT,
-    TARGET_PADDING_SIZES, blake2s_u32s_host, multiverifier_preprocessed_column_log_sizes,
+    TARGET_PADDING_SIZES, leaf_circuit_hash, multiverifier_preprocessed_column_log_sizes,
+    native_blake_u32s,
 };
 use crate::verify::{MultiverifierInput, SharedConfig, build_multiverifier_circuit};
 
@@ -50,14 +51,16 @@ fn test_backward_compatibility() {
         preprocessed_root: BACKWARD_COMPATIBILITY_CAIRO_VERIFIER_PREPROCESSED_ROOT.into(),
     };
 
-    // Slot 1: the current multiverifier proof.
-    let cairo_input_preimage_words: Vec<u32> = PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT
-        .into_iter()
-        .chain(PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES)
-        .collect();
+    // Slot 1: the current multiverifier proof. Its inputs are hashed as
+    // `circuit_hash(preprocessed_root) || output_values`.
+    let cairo_input_preimage_words: Vec<u32> =
+        leaf_circuit_hash(PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT.into(), &shared_config)
+            .into_iter()
+            .chain(PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES)
+            .collect();
     let payload_words: Vec<u32> =
         chain!(&cairo_input_preimage_words, &cairo_input_preimage_words).copied().collect();
-    let current_output_values: [u32; N_RESERVED] = blake2s_u32s_host(&payload_words);
+    let current_output_values: [u32; N_RESERVED] = native_blake_u32s(&payload_words);
 
     let current_bytes = std::fs::read(MULTIVERIFIER_OF_TWO_CAIRO_PROOFS_PATH).unwrap();
     let current_proof =
