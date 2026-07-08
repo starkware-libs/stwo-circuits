@@ -6,6 +6,7 @@ use circuit_common::{
     preprocessed::PreprocessedCircuit,
 };
 use circuit_verifier::{
+    circuit_hash::compute_circuit_hash_host,
     statement::{INTERACTION_POW_BITS, all_circuit_components, circuit_component_log_sizes},
     verify::CircuitConfig,
 };
@@ -50,7 +51,7 @@ pub const PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT: [u32; 8] =
 
 /// The preprocessed root of the multiverifier circuit.
 pub const MULTIVERIFIER_PREPROCESSED_ROOT: [u32; 8] =
-    [933544165, 1273803072, 152539421, 3171454012, 281718454, 2434086603, 4253372773, 2721160983];
+    [2541539887, 35459119, 1319006936, 3404609071, 1500509682, 2093690248, 3400881069, 4203903858];
 /// A multiverifier proof verifying two identical Cairo verifier proofs.
 pub const MULTIVERIFIER_OF_TWO_CAIRO_PROOFS_PATH: &str =
     concat!(env!("CARGO_MANIFEST_DIR"), "/../../test_data/circuit_multiverifier/proof.bin");
@@ -63,6 +64,20 @@ pub fn blake2s_u32s_host(words: &[u32]) -> [u32; 8] {
     }
     let hash: [u8; 32] = hasher.finalize().into();
     std::array::from_fn(|i| u32::from_le_bytes(hash[i * 4..i * 4 + 4].try_into().unwrap()))
+}
+
+/// Computes the circuit hash for a given preprocessed root with the multiverifier's shared config.
+pub fn circuit_hash_host(preprocessed_root: [u32; 8]) -> [u32; 8] {
+    let component_log_sizes = circuit_component_log_sizes(
+        &all_circuit_components::<QM31>(),
+        &multiverifier_preprocessed_column_log_sizes(),
+    );
+    let hash = compute_circuit_hash_host(
+        &component_log_sizes,
+        LOG_BLOWUP_FACTOR,
+        &preprocessed_root.into(),
+    );
+    std::array::from_fn(|i| u32::from_le_bytes(hash.0[i * 4..i * 4 + 4].try_into().unwrap()))
 }
 
 pub fn multiverifier_preprocessed_column_log_sizes() -> OrderedHashMap<PreProcessedColumnId, u32> {

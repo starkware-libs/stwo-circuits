@@ -35,7 +35,7 @@ use crate::test_utils::{
     CIRCUIT_N_PREPROCESSED_COLUMNS, LOG_BLOWUP_FACTOR, MULTIVERIFIER_OF_TWO_CAIRO_PROOFS_PATH,
     MULTIVERIFIER_PREPROCESSED_ROOT, PCS_CONFIG, PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES,
     PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT, TARGET_PADDING_SIZES, blake2s_u32s_host,
-    get_preprocessed_multiverifier_from_circuit, get_preprocessed_root,
+    circuit_hash_host, get_preprocessed_multiverifier_from_circuit, get_preprocessed_root,
     multiverifier_preprocessed_column_log_sizes,
 };
 use crate::verify::{MultiverifierInput, SharedConfig, build_multiverifier_circuit};
@@ -359,11 +359,13 @@ fn test_verify_cairo_proof_and_multiverifier_proof() {
     let multiverifier_proof =
         deserialize_proof_with_config(&mut bytes.as_slice(), &shared_config.proof_config).unwrap();
     // Mirror the in-circuit preimage `build_multiverifier_circuit` hashes for each verified input:
-    // the eight full 32-bit words of the preprocessed root, followed by the eight raw output words.
-    let cairo_input_preimage_words: Vec<u32> = PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT
-        .into_iter()
-        .chain(PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES)
-        .collect();
+    // the eight full 32-bit words of the circuit hash `blake2s(config_words || preprocessed_root)`,
+    // followed by the eight raw output words.
+    let cairo_input_preimage_words: Vec<u32> =
+        circuit_hash_host(PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT)
+            .into_iter()
+            .chain(PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES)
+            .collect();
     // The proven multiverifier verified two identical Cairo verifier inputs.
     let payload_words: Vec<u32> =
         chain!(&cairo_input_preimage_words, &cairo_input_preimage_words).copied().collect();
