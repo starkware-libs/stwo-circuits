@@ -52,9 +52,10 @@ pub struct SharedConfig {
 /// [`CircuitStatement`] from `shared_config` and the per-proof
 /// `preprocessed_root` and `outputs`, and runs the STARK verifier.
 ///
-/// After both proofs are verified, the preprocessed roots and the inner
-/// circuits' output values are concatenated and hashed. The resulting unreduced Blake2s digest
-/// is written into the `N_RESERVED` reserved output variables of the outer circuit.
+/// After both proofs are verified, each circuit's [`CircuitStatement::circuit_hash`] (the hash of
+/// its shared config and preprocessed root) is concatenated with the inner circuit's output values,
+/// and both circuits' words are hashed together. The resulting unreduced Blake2s digest is written
+/// into the outer circuit's `N_RESERVED` reserved output variables.
 /// The circuit is then finalized.
 ///
 /// Both proofs must have been produced with the same [`SharedConfig`].
@@ -85,14 +86,16 @@ pub fn build_multiverifier_circuit<Value: IValue>(
         let proof_vars = proof.guess(&mut context);
 
         verify(&mut context, &proof_vars, &shared_config.proof_config, &statement);
-        let preprocessed_root = statement.preprocessed_root.clone();
-        outer_verifier_output_preimage.extend(chain!(preprocessed_root.into_iter(), output_values));
+        // Reuse the statement's `circuit_hash` (the same hash mixed into the sub-proof's channel)
+        // so the outer hash commits to it.
+        outer_verifier_output_preimage
+            .extend(chain!(statement.circuit_hash.iter().copied(), output_values));
     }
     // The payload to be hashed is, for each of the two circuits A and B, the eight 32-bit words of
-    // its preprocessed root followed by its `N_RESERVED` raw output words:
+    // its circuit hash followed by its `N_RESERVED` raw output words:
     // [
-    //      preprocessed_rootA (8 words), outputsA (N_RESERVED words),
-    //      preprocessed_rootB (8 words), outputsB (N_RESERVED words),
+    //      circuit_hashA (8 words), outputsA (N_RESERVED words),
+    //      circuit_hashB (8 words), outputsB (N_RESERVED words),
     // ]
     // where A, B are the two circuits being verified.
     let n_bytes = 4 * outer_verifier_output_preimage.len();
