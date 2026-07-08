@@ -16,6 +16,7 @@ use circuit_prover::prover::{
 };
 use circuit_serialize::deserialize::deserialize_proof_with_config;
 use circuit_serialize::serialize::CircuitSerialize;
+use circuit_verifier::circuit_components::COMPONENT_NAMES;
 use circuit_verifier::statement::{
     INTERACTION_POW_BITS, all_circuit_components, circuit_component_log_sizes,
 };
@@ -54,6 +55,37 @@ const CAIRO1_PROOF_PATH: &str =
 /// `(low_u16, high_u16, 0, 0)`).
 fn hash_value_to_u32s(hash: &HashValue<QM31>) -> [u32; 8] {
     std::array::from_fn(|i| hash[i].get().unpack_u32())
+}
+
+/// Host mirror of the `config_words` a circuit's `CircuitStatement` hashes into its `circuit_hash`:
+/// the FRI log-blowup factor followed by each component's preprocessed log size (in
+/// `COMPONENT_NAMES` order), one byte each, zero-padded to a whole number of u32s and packed 4 per
+/// little-endian u32.
+fn multiverifier_config_words() -> Vec<u32> {
+    let component_log_sizes = circuit_component_log_sizes(
+        &all_circuit_components::<QM31>(),
+        &multiverifier_preprocessed_column_log_sizes(),
+    );
+    let mut config_bytes: Vec<u8> = std::iter::once(u8::try_from(LOG_BLOWUP_FACTOR).unwrap())
+        .chain(
+            COMPONENT_NAMES
+                .iter()
+                .map(|name| u8::try_from(*component_log_sizes.get(*name).unwrap()).unwrap()),
+        )
+        .collect();
+    config_bytes.resize(config_bytes.len().next_multiple_of(4), 0);
+    config_bytes
+        .chunks_exact(4)
+        .map(|bytes| u32::from_le_bytes(bytes.try_into().unwrap()))
+        .collect()
+}
+
+/// Host mirror of a circuit's per-circuit `circuit_hash` (bound by its `CircuitStatement`):
+/// `blake2s_u32s(config_words || preprocessed_root)`.
+fn circuit_hash_host(preprocessed_root: [u32; 8]) -> [u32; 8] {
+    let preimage: Vec<u32> =
+        chain!(multiverifier_config_words(), preprocessed_root.into_iter()).collect();
+    blake2s_u32s_host(&preimage)
 }
 
 /// Builds a `NoValue` Cairo verifier circuit (with configs of privacy) and preprocesses it.
@@ -367,11 +399,13 @@ fn test_verify_cairo_proof_and_multiverifier_proof() {
     let multiverifier_proof =
         deserialize_proof_with_config(&mut bytes.as_slice(), &shared_config.proof_config).unwrap();
     // Mirror the in-circuit preimage `build_multiverifier_circuit` hashes for each verified input:
-    // the eight full 32-bit words of the preprocessed root, followed by the eight raw output words.
-    let cairo_input_preimage_words: Vec<u32> = PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT
-        .into_iter()
-        .chain(PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES)
-        .collect();
+    // the eight full 32-bit words of the circuit hash `blake2s(config_words || preprocessed_root)`,
+    // followed by the eight raw output words.
+    let cairo_input_preimage_words: Vec<u32> =
+        circuit_hash_host(PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT)
+            .into_iter()
+            .chain(PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES)
+            .collect();
     // The proven multiverifier verified two identical Cairo verifier inputs.
     let payload_words: Vec<u32> =
         chain!(&cairo_input_preimage_words, &cairo_input_preimage_words).copied().collect();
