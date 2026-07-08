@@ -189,6 +189,15 @@ Before modifying ANY [SOUNDNESS-CRITICAL] or [SECURITY-CRITICAL] file:
 - Add benchmarks
 - Refactor within a module without changing external interface or math behavior
 
+### Merge/Rebase Conflicts in Proof Fixtures
+
+Dispatch a subagent to resolve all merge/rebase conflicts. Proof/fixture files
+(`test_data/**/*.bin`, serialized proof JSON like `cairo1_proof.json`) are generated
+artifacts, so a merged version is meaningless — the subagent must resolve those by taking
+the old (base) version rather than hand-merging. After it returns, ask the user whether to
+regenerate; only if yes, regenerate (e.g. with `FIX_PROOF=1`) and let the regression tests
+confirm.
+
 ## Key Architectural Decisions
 
 1. **Gate-based circuit DSL**: The `circuits` crate provides a builder pattern centered on
