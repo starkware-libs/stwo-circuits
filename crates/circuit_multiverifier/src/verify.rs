@@ -2,8 +2,9 @@ use circuit_common::N_RESERVED;
 use circuit_verifier::statement::CircuitStatement;
 use circuit_verifier::verify::CircuitConfig;
 use circuits::context::{Context, FinalizedContext};
+use circuits::wrappers::U32Wrapper;
 use circuits::{
-    blake::{HashValue, blake2s_u32s, unpack_qm31s_to_u32_words},
+    blake::{HashValue, blake2s_u32s},
     ivalue::IValue,
     ops::Guess,
 };
@@ -34,8 +35,7 @@ pub struct MultiverifierInput<Value: IValue> {
     /// The output values of the circuit (excluding the value of the `u` wire at address
     /// [`circuits::context::U_VAR_IDX`]). The multiverifier only supports verification of circuits
     /// whose output is the unreduced Blake2s digest (`N_RESERVED` words).
-    // TODO(ilya): consider changing this to `[u32; N_RESERVED]`.
-    pub output_values: [QM31; N_RESERVED],
+    pub output_values: [u32; N_RESERVED],
 }
 
 /// Configurations shared by the circuits being verified by the multiverifier and their proofs.
@@ -78,22 +78,21 @@ pub fn build_multiverifier_circuit<Value: IValue>(
         };
         let output_values = output_values
             .iter()
-            .map(|value| Value::from_qm31(*value).guess(&mut context))
+            .map(|value| U32Wrapper::new_unsafe(Value::pack_u32(*value)).guess(&mut context))
             .collect_vec();
-        let statement = CircuitStatement::new(&mut context, &circuit_config, &output_values);
+        let output_value_vars = output_values.iter().map(|w| *w.get()).collect_vec();
+        let statement = CircuitStatement::new(&mut context, &circuit_config, &output_value_vars);
         let proof_vars = proof.guess(&mut context);
 
         verify(&mut context, &proof_vars, &shared_config.proof_config, &statement);
         let preprocessed_root = statement.preprocessed_root.clone();
-        // TODO(ilya): Fix output format.
-        let output_words = unpack_qm31s_to_u32_words(&mut context, output_values);
-        outer_verifier_output_preimage.extend(chain!(preprocessed_root.into_iter(), output_words));
+        outer_verifier_output_preimage.extend(chain!(preprocessed_root.into_iter(), output_values));
     }
     // The payload to be hashed is, for each of the two circuits A and B, the eight 32-bit words of
-    // its preprocessed root followed by its output values unpacked into u32 words:
+    // its preprocessed root followed by its `N_RESERVED` raw output words:
     // [
-    //      preprocessed_rootA (8 words), outputsA words...,
-    //      preprocessed_rootB (8 words), outputsB words...,
+    //      preprocessed_rootA (8 words), outputsA (N_RESERVED words),
+    //      preprocessed_rootB (8 words), outputsB (N_RESERVED words),
     // ]
     // where A, B are the two circuits being verified.
     let n_bytes = 4 * outer_verifier_output_preimage.len();
