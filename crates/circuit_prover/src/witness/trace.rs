@@ -19,10 +19,10 @@ use circuit_verifier::circuit_claim::CircuitInteractionClaim;
 use circuit_verifier::circuit_claim::CircuitInteractionElements;
 use circuit_verifier::circuit_components::COMPONENT_NAMES;
 use circuit_verifier::circuit_components::ComponentList;
+use circuit_verifier::circuit_components::PerComponent;
 use circuits::context::U_VAR_IDX;
 use circuits_stark_verifier::order_hash_map::OrderedHashMap;
 use itertools::Itertools;
-use num_traits::Zero;
 use rayon::scope;
 use stwo::core::channel::MerkleChannel;
 use stwo::core::fields::qm31::QM31;
@@ -333,125 +333,101 @@ where
     let eq_log_size = component_log_sizes[ComponentList::Eq.name()];
     let qm31_ops_log_size = component_log_sizes[ComponentList::Qm31Ops.name()];
 
-    // Write all interaction traces in parallel, including interpolation.
-    // Preallocate poly slots; each spawned task writes into its own mutable slice.
-    let mut all_polys: [Vec<_>; 11] = std::array::from_fn(|_| Vec::new());
-    let [
-        eq_polys,
-        qm31_ops_polys,
-        triple_xor_polys,
-        m_31_to_u_32_polys,
-        blake_g_gate_polys,
-        verify_bitwise_xor_8_polys,
-        verify_bitwise_xor_12_polys,
-        verify_bitwise_xor_4_polys,
-        verify_bitwise_xor_7_polys,
-        verify_bitwise_xor_9_polys,
-        range_check_16_polys,
-    ] = &mut all_polys;
-    let mut claimed_sums = [QM31::zero(); 11];
-    let [
-        eq_claimed_sum,
-        qm31_ops_claimed_sum,
-        triple_xor_claimed_sum,
-        m_31_to_u_32_claimed_sum,
-        blake_g_gate_claimed_sum,
-        verify_bitwise_xor_8_claimed_sum,
-        verify_bitwise_xor_12_claimed_sum,
-        verify_bitwise_xor_4_claimed_sum,
-        verify_bitwise_xor_7_claimed_sum,
-        verify_bitwise_xor_9_claimed_sum,
-        range_check_16_claimed_sum,
-    ] = &mut claimed_sums;
-    {
-        let eq_lookup_data = circuit_interaction_claim_generator.eq_lookup_data;
-        let qm31_ops_lookup_data = circuit_interaction_claim_generator.qm31_ops_lookup_data;
-        let triple_xor = circuit_interaction_claim_generator.triple_xor;
-        let m_31_to_u_32 = circuit_interaction_claim_generator.m_31_to_u_32;
-        let blake_g_gate = circuit_interaction_claim_generator.blake_g_gate;
-        let verify_bitwise_xor_8 = circuit_interaction_claim_generator.verify_bitwise_xor_8;
-        let verify_bitwise_xor_12 = circuit_interaction_claim_generator.verify_bitwise_xor_12;
-        let verify_bitwise_xor_4 = circuit_interaction_claim_generator.verify_bitwise_xor_4;
-        let verify_bitwise_xor_7 = circuit_interaction_claim_generator.verify_bitwise_xor_7;
-        let verify_bitwise_xor_9 = circuit_interaction_claim_generator.verify_bitwise_xor_9;
-        let range_check_16 = circuit_interaction_claim_generator.range_check_16;
-        scope(|s| {
-            s.spawn(|_| {
-                let (trace, claimed_sum) = eq::write_interaction_trace(
-                    eq_log_size,
-                    eq_lookup_data,
-                    &interaction_elements.common_lookup_elements,
-                );
-                *eq_polys = SimdBackend::interpolate_columns(trace, twiddles);
-                *eq_claimed_sum = claimed_sum;
-            });
-            s.spawn(|_| {
-                let (trace, claimed_sum) = qm31_ops::write_interaction_trace(
-                    qm31_ops_log_size,
-                    qm31_ops_lookup_data,
-                    &interaction_elements.common_lookup_elements,
-                );
-                *qm31_ops_polys = SimdBackend::interpolate_columns(trace, twiddles);
-                *qm31_ops_claimed_sum = claimed_sum;
-            });
-            s.spawn(|_| {
-                let (trace, claim) = triple_xor
-                    .write_interaction_trace(&interaction_elements.common_lookup_elements);
-                *triple_xor_polys = SimdBackend::interpolate_columns(trace, twiddles);
-                *triple_xor_claimed_sum = claim.claimed_sum;
-            });
-            s.spawn(|_| {
-                let (trace, claim) = m_31_to_u_32
-                    .write_interaction_trace(&interaction_elements.common_lookup_elements);
-                *m_31_to_u_32_polys = SimdBackend::interpolate_columns(trace, twiddles);
-                *m_31_to_u_32_claimed_sum = claim.claimed_sum;
-            });
-            s.spawn(|_| {
-                let (trace, claim) = blake_g_gate
-                    .write_interaction_trace(&interaction_elements.common_lookup_elements);
-                *blake_g_gate_polys = SimdBackend::interpolate_columns(trace, twiddles);
-                *blake_g_gate_claimed_sum = claim.claimed_sum;
-            });
-            s.spawn(|_| {
-                let (trace, claim) = verify_bitwise_xor_8
-                    .write_interaction_trace(&interaction_elements.common_lookup_elements);
-                *verify_bitwise_xor_8_polys = SimdBackend::interpolate_columns(trace, twiddles);
-                *verify_bitwise_xor_8_claimed_sum = claim.claimed_sum;
-            });
-            s.spawn(|_| {
-                let (trace, claim) = verify_bitwise_xor_12
-                    .write_interaction_trace(&interaction_elements.common_lookup_elements);
-                *verify_bitwise_xor_12_polys = SimdBackend::interpolate_columns(trace, twiddles);
-                *verify_bitwise_xor_12_claimed_sum = claim.claimed_sum;
-            });
-            s.spawn(|_| {
-                let (trace, claim) = verify_bitwise_xor_4
-                    .write_interaction_trace(&interaction_elements.common_lookup_elements);
-                *verify_bitwise_xor_4_polys = SimdBackend::interpolate_columns(trace, twiddles);
-                *verify_bitwise_xor_4_claimed_sum = claim.claimed_sum;
-            });
-            s.spawn(|_| {
-                let (trace, claim) = verify_bitwise_xor_7
-                    .write_interaction_trace(&interaction_elements.common_lookup_elements);
-                *verify_bitwise_xor_7_polys = SimdBackend::interpolate_columns(trace, twiddles);
-                *verify_bitwise_xor_7_claimed_sum = claim.claimed_sum;
-            });
-            s.spawn(|_| {
-                let (trace, claim) = verify_bitwise_xor_9
-                    .write_interaction_trace(&interaction_elements.common_lookup_elements);
-                *verify_bitwise_xor_9_polys = SimdBackend::interpolate_columns(trace, twiddles);
-                *verify_bitwise_xor_9_claimed_sum = claim.claimed_sum;
-            });
-            s.spawn(|_| {
-                let (trace, claim) = range_check_16
-                    .write_interaction_trace(&interaction_elements.common_lookup_elements);
-                *range_check_16_polys = SimdBackend::interpolate_columns(trace, twiddles);
-                *range_check_16_claimed_sum = claim.claimed_sum;
-            });
+    // Write all interaction traces in parallel, including interpolation. The slots below start
+    // default-initialized; each spawned task writes into its own disjoint field. Destructuring
+    // `circuit_interaction_claim_generator` below forces every task to run, so no field is left
+    // at its default.
+    let mut all_polys = PerComponent::default();
+    let mut claimed_sums = PerComponent::default();
+    scope(|s| {
+        let CircuitInteractionClaimGenerator {
+            eq_lookup_data,
+            qm31_ops_lookup_data,
+            triple_xor,
+            m_31_to_u_32,
+            blake_g_gate,
+            verify_bitwise_xor_8,
+            verify_bitwise_xor_12,
+            verify_bitwise_xor_4,
+            verify_bitwise_xor_7,
+            verify_bitwise_xor_9,
+            range_check_16,
+        } = circuit_interaction_claim_generator;
+
+        s.spawn(|_| {
+            let (trace, claimed_sum) = eq::write_interaction_trace(
+                eq_log_size,
+                eq_lookup_data,
+                &interaction_elements.common_lookup_elements,
+            );
+            all_polys.eq = SimdBackend::interpolate_columns(trace, twiddles);
+            claimed_sums.eq = claimed_sum;
         });
-    }
+        s.spawn(|_| {
+            let (trace, claimed_sum) = qm31_ops::write_interaction_trace(
+                qm31_ops_log_size,
+                qm31_ops_lookup_data,
+                &interaction_elements.common_lookup_elements,
+            );
+            all_polys.qm31_ops = SimdBackend::interpolate_columns(trace, twiddles);
+            claimed_sums.qm31_ops = claimed_sum;
+        });
+        s.spawn(|_| {
+            let (trace, claim) =
+                triple_xor.write_interaction_trace(&interaction_elements.common_lookup_elements);
+            all_polys.triple_xor = SimdBackend::interpolate_columns(trace, twiddles);
+            claimed_sums.triple_xor = claim.claimed_sum;
+        });
+        s.spawn(|_| {
+            let (trace, claim) =
+                m_31_to_u_32.write_interaction_trace(&interaction_elements.common_lookup_elements);
+            all_polys.m_31_to_u_32 = SimdBackend::interpolate_columns(trace, twiddles);
+            claimed_sums.m_31_to_u_32 = claim.claimed_sum;
+        });
+        s.spawn(|_| {
+            let (trace, claim) =
+                blake_g_gate.write_interaction_trace(&interaction_elements.common_lookup_elements);
+            all_polys.blake_g_gate = SimdBackend::interpolate_columns(trace, twiddles);
+            claimed_sums.blake_g_gate = claim.claimed_sum;
+        });
+        s.spawn(|_| {
+            let (trace, claim) = verify_bitwise_xor_8
+                .write_interaction_trace(&interaction_elements.common_lookup_elements);
+            all_polys.verify_bitwise_xor_8 = SimdBackend::interpolate_columns(trace, twiddles);
+            claimed_sums.verify_bitwise_xor_8 = claim.claimed_sum;
+        });
+        s.spawn(|_| {
+            let (trace, claim) = verify_bitwise_xor_12
+                .write_interaction_trace(&interaction_elements.common_lookup_elements);
+            all_polys.verify_bitwise_xor_12 = SimdBackend::interpolate_columns(trace, twiddles);
+            claimed_sums.verify_bitwise_xor_12 = claim.claimed_sum;
+        });
+        s.spawn(|_| {
+            let (trace, claim) = verify_bitwise_xor_4
+                .write_interaction_trace(&interaction_elements.common_lookup_elements);
+            all_polys.verify_bitwise_xor_4 = SimdBackend::interpolate_columns(trace, twiddles);
+            claimed_sums.verify_bitwise_xor_4 = claim.claimed_sum;
+        });
+        s.spawn(|_| {
+            let (trace, claim) = verify_bitwise_xor_7
+                .write_interaction_trace(&interaction_elements.common_lookup_elements);
+            all_polys.verify_bitwise_xor_7 = SimdBackend::interpolate_columns(trace, twiddles);
+            claimed_sums.verify_bitwise_xor_7 = claim.claimed_sum;
+        });
+        s.spawn(|_| {
+            let (trace, claim) = verify_bitwise_xor_9
+                .write_interaction_trace(&interaction_elements.common_lookup_elements);
+            all_polys.verify_bitwise_xor_9 = SimdBackend::interpolate_columns(trace, twiddles);
+            claimed_sums.verify_bitwise_xor_9 = claim.claimed_sum;
+        });
+        s.spawn(|_| {
+            let (trace, claim) = range_check_16
+                .write_interaction_trace(&interaction_elements.common_lookup_elements);
+            all_polys.range_check_16 = SimdBackend::interpolate_columns(trace, twiddles);
+            claimed_sums.range_check_16 = claim.claimed_sum;
+        });
+    });
 
-    tree_builder.extend_polys(all_polys.into_iter().flatten());
-
-    CircuitInteractionClaim { claimed_sums }
+    tree_builder.extend_polys(all_polys.into_array().into_iter().flatten());
+    CircuitInteractionClaim { claimed_sums: claimed_sums.into_array() }
 }
