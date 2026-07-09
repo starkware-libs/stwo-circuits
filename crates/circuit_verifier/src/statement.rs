@@ -19,7 +19,6 @@ use circuits_stark_verifier::proof_from_stark_proof::pack_into_qm31s;
 use circuits_stark_verifier::statement::Statement;
 use indexmap::IndexMap;
 use itertools::{Itertools, chain, zip_eq};
-use stwo::core::fields::qm31::QM31;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 // TODO(ilya): Update this to the correct values.
@@ -44,7 +43,7 @@ impl<Value: IValue> CircuitStatement<Value> {
     pub fn new(
         context: &mut Context<Value>,
         circuit_config: &CircuitConfig,
-        output_values: &[QM31],
+        output_values: &[Var],
     ) -> Self {
         let CircuitConfig {
             config: _,
@@ -53,8 +52,7 @@ impl<Value: IValue> CircuitStatement<Value> {
             preprocessed_root,
         } = circuit_config;
         assert_eq!(output_values.len(), *n_outputs);
-        let output_values =
-            output_values.iter().map(|value| Value::from_qm31(*value).guess(context)).collect_vec();
+        let output_values = output_values.to_vec();
         // Guess the preprocessed root. The guessed wires enter the hash that will be output by
         // this verifier. To ensure soundness in a recursive setup, it is *critical* that this hash
         // is reconstructed by the last verifier, which we can assume honest.
@@ -85,10 +83,6 @@ impl<Value: IValue> CircuitStatement<Value> {
             preprocessed_column_log_sizes: preprocessed_column_log_sizes.clone(),
             preprocessed_root,
         }
-    }
-
-    pub fn get_output_values(&self) -> &[Var] {
-        &self.output_values
     }
 }
 

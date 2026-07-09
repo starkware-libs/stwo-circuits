@@ -76,13 +76,17 @@ pub fn build_multiverifier_circuit<Value: IValue>(
             preprocessed_column_log_sizes: shared_config.preprocessed_column_log_sizes.clone(),
             preprocessed_root,
         };
+        let output_values = output_values
+            .iter()
+            .map(|value| Value::from_qm31(*value).guess(&mut context))
+            .collect_vec();
         let statement = CircuitStatement::new(&mut context, &circuit_config, &output_values);
         let proof_vars = proof.guess(&mut context);
 
         verify(&mut context, &proof_vars, &shared_config.proof_config, &statement);
         let preprocessed_root = statement.preprocessed_root.clone();
-        let output_words =
-            unpack_qm31s_to_u32_words(&mut context, statement.get_output_values().iter().copied());
+        // TODO(ilya): Fix output format.
+        let output_words = unpack_qm31s_to_u32_words(&mut context, output_values);
         outer_verifier_output_preimage.extend(chain!(preprocessed_root.into_iter(), output_words));
     }
     // The payload to be hashed is, for each of the two circuits A and B, the eight 32-bit words of
