@@ -1387,6 +1387,7 @@ dependencies = [
 name = "circuit-verifier"
 version = "0.1.0"
 dependencies = [
+ "blake2",
  "circuit-common",
  "circuits",
  "circuits-stark-verifier",
