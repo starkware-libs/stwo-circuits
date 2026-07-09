@@ -1,3 +1,4 @@
+#[cfg(feature = "prover")]
 use crate::N_LANES;
 use crate::Qm31OpsTraceGenerator;
 use crate::finalize::pad_context;
