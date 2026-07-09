@@ -50,7 +50,7 @@ pub const PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT: [u32; 8] =
 
 /// The preprocessed root of the multiverifier circuit.
 pub const MULTIVERIFIER_PREPROCESSED_ROOT: [u32; 8] =
-    [299245338, 3245106799, 2582894857, 1660971541, 1264978744, 3663378231, 505079882, 3077728512];
+    [2705067146, 3398031271, 968688702, 3932306963, 838989128, 2801344936, 3619403285, 628825504];
 /// A multiverifier proof verifying two identical Cairo verifier proofs.
 pub const MULTIVERIFIER_OF_TWO_CAIRO_PROOFS_PATH: &str =
     concat!(env!("CARGO_MANIFEST_DIR"), "/../../test_data/circuit_multiverifier/proof.bin");
@@ -150,7 +150,7 @@ pub fn get_preprocessed_multiverifier_from_circuit(
     let empty_input = || MultiverifierInput {
         proof: empty_proof(&proof_config),
         preprocessed_root: subcircuit_config.preprocessed_root.clone(),
-        output_values: [QM31::from(0); N_RESERVED],
+        output_values: [0u32; N_RESERVED],
     };
     let mut multiverifier_context =
         build_multiverifier_circuit::<NoValue>(empty_input(), empty_input(), &shared_config);
