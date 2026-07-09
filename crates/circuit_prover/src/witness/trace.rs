@@ -19,10 +19,10 @@ use circuit_verifier::circuit_claim::CircuitInteractionClaim;
 use circuit_verifier::circuit_claim::CircuitInteractionElements;
 use circuit_verifier::circuit_components::COMPONENT_NAMES;
 use circuit_verifier::circuit_components::ComponentList;
+use circuit_verifier::circuit_components::PerComponent;
 use circuits::context::U_VAR_IDX;
 use circuits_stark_verifier::order_hash_map::OrderedHashMap;
 use itertools::Itertools;
-use num_traits::Zero;
 use rayon::scope;
 use stwo::core::channel::MerkleChannel;
 use stwo::core::fields::qm31::QM31;
@@ -335,46 +335,48 @@ where
 
     // Write all interaction traces in parallel, including interpolation.
     // Preallocate poly slots; each spawned task writes into its own mutable slice.
-    let mut all_polys: [Vec<_>; 11] = std::array::from_fn(|_| Vec::new());
-    let [
-        eq_polys,
-        qm31_ops_polys,
-        triple_xor_polys,
-        m_31_to_u_32_polys,
-        blake_g_gate_polys,
-        verify_bitwise_xor_8_polys,
-        verify_bitwise_xor_12_polys,
-        verify_bitwise_xor_4_polys,
-        verify_bitwise_xor_7_polys,
-        verify_bitwise_xor_9_polys,
-        range_check_16_polys,
-    ] = &mut all_polys;
-    let mut claimed_sums = [QM31::zero(); 11];
-    let [
-        eq_claimed_sum,
-        qm31_ops_claimed_sum,
-        triple_xor_claimed_sum,
-        m_31_to_u_32_claimed_sum,
-        blake_g_gate_claimed_sum,
-        verify_bitwise_xor_8_claimed_sum,
-        verify_bitwise_xor_12_claimed_sum,
-        verify_bitwise_xor_4_claimed_sum,
-        verify_bitwise_xor_7_claimed_sum,
-        verify_bitwise_xor_9_claimed_sum,
-        range_check_16_claimed_sum,
-    ] = &mut claimed_sums;
+    let mut all_polys = PerComponent::default();
+    let PerComponent {
+        eq: eq_polys,
+        qm31_ops: qm31_ops_polys,
+        triple_xor: triple_xor_polys,
+        m_31_to_u_32: m_31_to_u_32_polys,
+        blake_g_gate: blake_g_gate_polys,
+        verify_bitwise_xor_8: verify_bitwise_xor_8_polys,
+        verify_bitwise_xor_12: verify_bitwise_xor_12_polys,
+        verify_bitwise_xor_4: verify_bitwise_xor_4_polys,
+        verify_bitwise_xor_7: verify_bitwise_xor_7_polys,
+        verify_bitwise_xor_9: verify_bitwise_xor_9_polys,
+        range_check_16: range_check_16_polys,
+    } = &mut all_polys;
+    let mut claimed_sums = PerComponent::default();
+    let PerComponent {
+        eq: eq_claimed_sum,
+        qm31_ops: qm31_ops_claimed_sum,
+        triple_xor: triple_xor_claimed_sum,
+        m_31_to_u_32: m_31_to_u_32_claimed_sum,
+        blake_g_gate: blake_g_gate_claimed_sum,
+        verify_bitwise_xor_8: verify_bitwise_xor_8_claimed_sum,
+        verify_bitwise_xor_12: verify_bitwise_xor_12_claimed_sum,
+        verify_bitwise_xor_4: verify_bitwise_xor_4_claimed_sum,
+        verify_bitwise_xor_7: verify_bitwise_xor_7_claimed_sum,
+        verify_bitwise_xor_9: verify_bitwise_xor_9_claimed_sum,
+        range_check_16: range_check_16_claimed_sum,
+    } = &mut claimed_sums;
     {
-        let eq_lookup_data = circuit_interaction_claim_generator.eq_lookup_data;
-        let qm31_ops_lookup_data = circuit_interaction_claim_generator.qm31_ops_lookup_data;
-        let triple_xor = circuit_interaction_claim_generator.triple_xor;
-        let m_31_to_u_32 = circuit_interaction_claim_generator.m_31_to_u_32;
-        let blake_g_gate = circuit_interaction_claim_generator.blake_g_gate;
-        let verify_bitwise_xor_8 = circuit_interaction_claim_generator.verify_bitwise_xor_8;
-        let verify_bitwise_xor_12 = circuit_interaction_claim_generator.verify_bitwise_xor_12;
-        let verify_bitwise_xor_4 = circuit_interaction_claim_generator.verify_bitwise_xor_4;
-        let verify_bitwise_xor_7 = circuit_interaction_claim_generator.verify_bitwise_xor_7;
-        let verify_bitwise_xor_9 = circuit_interaction_claim_generator.verify_bitwise_xor_9;
-        let range_check_16 = circuit_interaction_claim_generator.range_check_16;
+        let CircuitInteractionClaimGenerator {
+            eq_lookup_data,
+            qm31_ops_lookup_data,
+            triple_xor,
+            m_31_to_u_32,
+            blake_g_gate,
+            verify_bitwise_xor_8,
+            verify_bitwise_xor_12,
+            verify_bitwise_xor_4,
+            verify_bitwise_xor_7,
+            verify_bitwise_xor_9,
+            range_check_16,
+        } = circuit_interaction_claim_generator;
         scope(|s| {
             s.spawn(|_| {
                 let (trace, claimed_sum) = eq::write_interaction_trace(
@@ -451,7 +453,7 @@ where
         });
     }
 
-    tree_builder.extend_polys(all_polys.into_iter().flatten());
+    tree_builder.extend_polys(all_polys.into_array().into_iter().flatten());
 
-    CircuitInteractionClaim { claimed_sums }
+    CircuitInteractionClaim { claimed_sums: claimed_sums.into_array() }
 }
