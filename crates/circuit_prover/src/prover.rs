@@ -1,9 +1,10 @@
 use circuit_common::Qm31OpsTraceGenerator;
 use circuit_common::preprocessed::PreprocessedCircuit;
-use circuit_verifier::circuit_claim::{CircuitInteractionElements, lookup_sum};
+use circuit_verifier::circuit_claim::{CircuitInteractionElements, lookup_sum, mix_circuit_hash};
 pub use circuit_verifier::circuit_proof::CircuitProof;
 use circuit_verifier::statement::{INTERACTION_POW_BITS, all_circuit_components};
 use circuit_verifier::verify::CircuitPublicData;
+use circuits::blake::HashValue;
 use circuits_stark_verifier::proof::{Proof, ProofConfig};
 use circuits_stark_verifier::proof_from_stark_proof::proof_from_stark_proof;
 use num_traits::Zero;
@@ -13,6 +14,7 @@ use stwo::core::pcs::PcsConfig;
 use stwo::core::poly::circle::CanonicCoset;
 use stwo::core::proof_of_work::GrindOps;
 use stwo::core::utils::MaybeOwned;
+use stwo::core::vcs_lifted::MerkleHasherLifted;
 use stwo::core::vcs_lifted::blake2_merkle::{Blake2sM31MerkleChannel, Blake2sMerkleHasher};
 pub use stwo::prover::backend::simd::SimdBackend;
 pub use stwo::prover::mempool::BaseColumnPool;
@@ -22,6 +24,7 @@ use stwo::prover::{CommitmentSchemeProver, CommitmentTreeProver, ProvingError, p
 use stwo_constraint_framework::PREPROCESSED_TRACE_IDX;
 
 use crate::circuit_air::circuit_components::CircuitComponents;
+use crate::circuit_hash::compute_circuit_hash;
 use crate::witness::trace::{TraceGenerator, write_interaction_trace, write_trace};
 
 const COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND: u32 = 1;
@@ -53,6 +56,7 @@ pub fn prove_circuit_assignment_with_channel<MC>(
 where
     MC: MerkleChannel,
     SimdBackend: stwo::prover::backend::BackendForChannel<MC>,
+    <MC::H as MerkleHasherLifted>::Hash: Into<HashValue<QM31>>,
 {
     // Precompute twiddles.
     // Account for blowup factor and for composition polynomial calculation (taking the max since
@@ -103,6 +107,7 @@ pub fn prove_circuit_with_precompute<'a, MC>(
 where
     MC: MerkleChannel,
     SimdBackend: stwo::prover::backend::BackendForChannel<MC>,
+    <MC::H as MerkleHasherLifted>::Hash: Into<HashValue<QM31>>,
 {
     let PreprocessedCircuit {
         preprocessed_trace,
@@ -131,6 +136,9 @@ where
 
     commitment_scheme.set_store_polynomials_coefficients();
 
+    // Grab the preprocessed root for the circuit hash before it is consumed by `commit_tree` below.
+    let preprocessed_root: HashValue<QM31> = preprocessed_tree.commitment.root().into();
+
     // Preprocessed trace.
     commitment_scheme.commit_tree(preprocessed_tree, channel);
 
@@ -145,6 +153,12 @@ where
         twiddles,
     );
 
+    let circuit_hash = compute_circuit_hash(
+        &component_log_sizes,
+        pcs_config.fri_config.log_blowup_factor,
+        &preprocessed_root,
+    );
+    mix_circuit_hash(channel, &circuit_hash);
     claim.mix_into(channel);
     tree_builder.commit(channel);
 
