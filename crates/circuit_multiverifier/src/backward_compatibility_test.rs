@@ -16,25 +16,22 @@ use crate::test_utils::{
 };
 use crate::verify::{MultiverifierInput, SharedConfig, build_multiverifier_circuit};
 
-/// The preprocessed root of the Cairo verifier circuit as it was at commit f5cd0f7a.
+/// The preprocessed root of the Cairo verifier circuit.
 const BACKWARD_COMPATIBILITY_CAIRO_VERIFIER_PREPROCESSED_ROOT: [u32; 8] =
     [695775592, 831947430, 3864682957, 1778749033, 1073148880, 3248306553, 1968525874, 3767461582];
-/// The output values of the Cairo verifier circuit as it was at commit f5cd0f7a.
-/// TODO(ilya): consider removing this and using the output values from the current Cairo verifier
-/// proof when breaking backwards compatibility.
+/// The output values of the Cairo verifier circuit.
 const BACKWARD_COMPATIBILITY_CAIRO_VERIFIER_OUTPUT_VALUES: [u32; 8] =
     [3035180123, 3555538090, 587798257, 1881776298, 3385462846, 2102605012, 3369268656, 403460632];
-/// An older Cairo verifier proof, produced at commit f5cd0f7a (that version's `proof_cairo.bin`).
+/// A Cairo verifier proof (a snapshot copy of the current `proof_cairo.bin`).
 const BACKWARD_COMPATIBILITY_CAIRO_PROOF_PATH: &str = concat!(
     env!("CARGO_MANIFEST_DIR"),
     "/../../test_data/circuit_multiverifier/backward_compatibility_cairo_proof.bin"
 );
 
-/// Backward-compatibility regression test.
+/// Multi-input regression test.
 ///
-/// Checks that the *current* multiverifier can verify, in the same circuit, both a Cairo verifier
-/// proof produced by an older version of the prover/circuit (commit f5cd0f7a)
-/// in slot 0, and a multiverifier proof produced by the current version in slot 1.
+/// Checks that the multiverifier can verify, in the same circuit, both a Cairo verifier proof in
+/// slot 0 and a multiverifier proof in slot 1.
 #[test]
 fn test_backward_compatibility() {
     // Order the components by ascending trace log size to match the committed column layout the
