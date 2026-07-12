@@ -83,7 +83,7 @@ where
         pcs_config.fri_config.log_blowup_factor,
         &twiddles,
         store_polynomials_coefficients,
-        pcs_config.lifting_log_size,
+        pcs_config.min_lifting_log_size,
         base_column_pool,
     );
 
