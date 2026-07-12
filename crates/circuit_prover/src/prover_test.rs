@@ -7,11 +7,13 @@ use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_verifier::circuit_claim::CircuitInteractionElements;
 use circuit_verifier::circuit_claim::column_log_sizes_per_tree;
 use circuit_verifier::circuit_claim::lookup_sum;
+use circuit_verifier::circuit_claim::mix_public_inputs;
+use circuit_verifier::circuit_hash::compute_circuit_hash_host;
 use circuit_verifier::statement::{
     INTERACTION_POW_BITS, all_circuit_components, circuit_component_log_sizes,
 };
 use circuit_verifier::verify::{CircuitConfig, verify_circuit};
-use circuits::blake::{blake_g_gate, blake2s_m31, m31_to_u32, triple_xor};
+use circuits::blake::{HashValue, blake_g_gate, blake2s_m31, m31_to_u32, triple_xor};
 use circuits::context::Var;
 use circuits::eval;
 use circuits::ivalue::NoValue;
@@ -199,6 +201,7 @@ fn stwo_verify(
         &preprocessed_column_log_sizes,
     );
 
+    let log_blowup_factor = pcs_config.fri_config.log_blowup_factor;
     let verifier_channel = &mut Blake2sM31Channel::default();
     verifier_channel.mix_felts(&[channel_salt.into()]);
     pcs_config.mix_into(verifier_channel);
@@ -212,7 +215,9 @@ fn stwo_verify(
         &preprocessed_circuit.preprocessed_trace.log_sizes().values().copied().collect::<Vec<_>>(),
         verifier_channel,
     );
-    claim.mix_into(verifier_channel);
+    let preprocessed_root: HashValue<QM31> = proof.proof.commitments[0].into();
+    let circuit_hash = compute_circuit_hash_host(&log_sizes, log_blowup_factor, &preprocessed_root);
+    mix_public_inputs(verifier_channel, &claim, &circuit_hash);
     commitment_scheme.commit(proof.proof.commitments[1], &trace_log_sizes, verifier_channel);
 
     verifier_channel.verify_pow_nonce(INTERACTION_POW_BITS, interaction_pow_nonce);

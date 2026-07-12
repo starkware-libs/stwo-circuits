@@ -1,3 +1,4 @@
+use crate::circuit_hash::compute_circuit_hash;
 use crate::components::{
     blake_g_gate, eq::CircuitEqComponent, m_31_to_u_32, qm31_ops::CircuitQm31OpsComponent,
     range_check_16, triple_xor, verify_bitwise_xor_4, verify_bitwise_xor_7, verify_bitwise_xor_8,
@@ -38,6 +39,10 @@ pub struct CircuitStatement<Value: IValue> {
     pub preprocessed_column_log_sizes: OrderedHashMap<PreProcessedColumnId, u32>,
     /// The preprocessed trace root.
     pub preprocessed_root: HashValue<Var>,
+    /// The circuit hash `blake2s(config_words || preprocessed_root)`, built in-circuit. Mixed into
+    /// the Fiat-Shamir transcript by [`claims_to_mix`](Self::claims_to_mix) to bind the circuit's
+    /// identity.
+    pub circuit_hash: HashValue<Var>,
 }
 impl<Value: IValue> CircuitStatement<Value> {
     pub fn new(
@@ -45,12 +50,8 @@ impl<Value: IValue> CircuitStatement<Value> {
         circuit_config: &CircuitConfig,
         output_values: &[Var],
     ) -> Self {
-        let CircuitConfig {
-            config: _,
-            n_outputs,
-            preprocessed_column_log_sizes,
-            preprocessed_root,
-        } = circuit_config;
+        let CircuitConfig { config, n_outputs, preprocessed_column_log_sizes, preprocessed_root } =
+            circuit_config;
         assert_eq!(output_values.len(), *n_outputs);
         let output_values = output_values.to_vec();
         // Guess the preprocessed root. The guessed wires enter the hash that will be output by
@@ -62,18 +63,25 @@ impl<Value: IValue> CircuitStatement<Value> {
         .guess(context);
 
         let components = all_circuit_components::<Value>();
-        let component_log_sizes =
-            circuit_component_log_sizes(&components, preprocessed_column_log_sizes)
-                .values()
-                .cloned()
-                .collect_vec();
+        let component_log_sizes_map =
+            circuit_component_log_sizes(&components, preprocessed_column_log_sizes);
+        let component_log_sizes_values = component_log_sizes_map.values().cloned().collect_vec();
 
-        let n_components = component_log_sizes.len();
-        let packed_log_sizes = pack_into_qm31s(component_log_sizes.iter().cloned())
+        let n_components = component_log_sizes_values.len();
+        let packed_log_sizes = pack_into_qm31s(component_log_sizes_values.iter().cloned())
             .into_iter()
             .map(|qm31| context.constant(qm31))
             .collect_vec();
         let component_log_sizes = Simd::from_packed(packed_log_sizes, n_components);
+
+        // Bind the circuit's identity into the statement: hash the packed config together with the
+        // preprocessed root. Mixed into the Fiat-Shamir transcript by `claims_to_mix`.
+        let circuit_hash = compute_circuit_hash(
+            context,
+            &component_log_sizes_map,
+            config.fri_config.log_blowup_factor,
+            &preprocessed_root,
+        );
 
         Self {
             components,
@@ -82,15 +90,16 @@ impl<Value: IValue> CircuitStatement<Value> {
             component_log_sizes,
             preprocessed_column_log_sizes: preprocessed_column_log_sizes.clone(),
             preprocessed_root,
+            circuit_hash,
         }
     }
 }
 
 impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
     fn claims_to_mix(&self, context: &mut Context<Value>) -> Vec<Vec<U32Wrapper<Var>>> {
-        // Encode each output felt into its four coordinate u32 words so that `mix_u32s` produces
-        // the same transcript as mixing the felts directly.
-        vec![unpack_qm31s_to_u32_words(context, self.output_values.iter().copied())]
+        let circuit_hash_words = self.circuit_hash.iter().copied().collect_vec();
+        let output_words = unpack_qm31s_to_u32_words(context, self.output_values.iter().copied());
+        vec![circuit_hash_words, output_words]
     }
 
     fn get_components(&self) -> &IndexMap<&'static str, Box<dyn CircuitEval<Value>>> {
