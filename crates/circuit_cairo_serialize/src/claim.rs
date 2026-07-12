@@ -9,7 +9,10 @@
 //! Both `CairoSerialize` and `CairoDeserialize` are derived, giving symmetric serde so
 //! these types can round-trip in tests.
 
-use circuit_verifier::circuit_claim::{CircuitClaim, CircuitInteractionClaim};
+use circuit_verifier::{
+    circuit_claim::{CircuitClaim, CircuitInteractionClaim},
+    circuit_components::N_COMPONENTS,
+};
 use stwo::core::fields::qm31::QM31;
 use stwo_cairo_serialize::{CairoDeserialize, CairoSerialize};
 
@@ -37,53 +40,16 @@ impl CairoCircuitClaim {
 
 /// Mirror of Cairo `CircuitInteractionClaim`.
 ///
-/// Cairo layout: 16 named QM31 fields in `ComponentList` order. The Rust prover stores
-/// the same data as `[QM31; 16]`; this struct just gives each entry a name so the derive
-/// macro can produce identical felt output.
+/// Holds the per-component claimed sums in canonical order.
 #[derive(Clone, Debug, PartialEq, Eq, CairoSerialize, CairoDeserialize)]
 pub struct CairoCircuitInteractionClaim {
-    pub eq: QM31,
-    pub qm31_ops: QM31,
-    pub triple_xor: QM31,
-    pub m_31_to_u_32: QM31,
-    pub blake_g_gate: QM31,
-    pub verify_bitwise_xor_8: QM31,
-    pub verify_bitwise_xor_12: QM31,
-    pub verify_bitwise_xor_4: QM31,
-    pub verify_bitwise_xor_7: QM31,
-    pub verify_bitwise_xor_9: QM31,
-    pub range_check_16: QM31,
+    pub claimed_sums: [QM31; N_COMPONENTS],
 }
 
 impl From<&CircuitInteractionClaim> for CairoCircuitInteractionClaim {
     fn from(c: &CircuitInteractionClaim) -> Self {
-        // Destructure positionally — order must match `ComponentList` in
-        // `circuit_verifier::circuit_components`.
-        let &[
-            eq,
-            qm31_ops,
-            triple_xor,
-            m_31_to_u_32,
-            blake_g_gate,
-            verify_bitwise_xor_8,
-            verify_bitwise_xor_12,
-            verify_bitwise_xor_4,
-            verify_bitwise_xor_7,
-            verify_bitwise_xor_9,
-            range_check_16,
-        ] = &c.claimed_sums;
-        Self {
-            eq,
-            qm31_ops,
-            triple_xor,
-            m_31_to_u_32,
-            blake_g_gate,
-            verify_bitwise_xor_8,
-            verify_bitwise_xor_12,
-            verify_bitwise_xor_4,
-            verify_bitwise_xor_7,
-            verify_bitwise_xor_9,
-            range_check_16,
-        }
+        let CircuitInteractionClaim { claimed_sums } = c;
+
+        Self { claimed_sums: *claimed_sums }
     }
 }
