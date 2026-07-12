@@ -277,13 +277,11 @@ impl ProofConfig {
                     log_last_layer_degree_bound,
                     fold_step,
                 },
-            lifting_log_size: Some(lifting_log_size),
-        } = pcs_config
-        else {
-            panic!("Lifting log size must be set");
-        };
+            min_lifting_log_size,
+        } = pcs_config;
+        assert_ne!(*min_lifting_log_size, 0, "Lifting log size must be set");
 
-        let log_trace_size = (*lifting_log_size - log_blowup_factor) as usize;
+        let log_trace_size = (*min_lifting_log_size - log_blowup_factor) as usize;
 
         Self {
             n_pow_bits: *pow_bits,
