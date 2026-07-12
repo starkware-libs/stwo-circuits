@@ -49,8 +49,12 @@ pub fn build_verification_circuit<Value: IValue>(
     public_data: CircuitPublicData,
 ) -> Result<FinalizedContext<Value>, String> {
     let mut context = Context::new(N_RESERVED);
-    let statement =
-        CircuitStatement::new(&mut context, &circuit_config, &public_data.output_values);
+    let output_values = public_data
+        .output_values
+        .iter()
+        .map(|value| Value::from_qm31(*value).guess(&mut context))
+        .collect_vec();
+    let statement = CircuitStatement::new(&mut context, &circuit_config, &output_values);
 
     let proof_config = ProofConfig::new(
         statement.get_components(),
@@ -67,10 +71,7 @@ pub fn build_verification_circuit<Value: IValue>(
     let preprocessed_root = statement.get_preprocessed_root(&mut context);
     let output_preimage: Vec<_> = preprocessed_root
         .into_iter()
-        .chain(unpack_qm31s_to_u32_words(
-            &mut context,
-            statement.get_output_values().iter().copied(),
-        ))
+        .chain(unpack_qm31s_to_u32_words(&mut context, output_values))
         .collect();
     let n_bytes = 4 * output_preimage.len();
     let output_hash = blake2s_u32s(&mut context, output_preimage, n_bytes);

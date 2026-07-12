@@ -15,6 +15,7 @@ use circuit_verifier::verify::{CircuitConfig, CircuitPublicData, verify_circuit}
 use circuits::blake::HashValue;
 use circuits::context::{Context, FinalizedContext};
 use circuits::ivalue::{IValue, NoValue};
+use circuits::ops::Guess;
 use circuits_stark_verifier::proof::{ProofConfig, ProofInfo};
 use circuits_stark_verifier::statement::Statement;
 use itertools::Itertools;
@@ -248,8 +249,12 @@ fn test_privacy_proof_info() {
     let public_data =
         CircuitPublicData { output_values: vec![QM31::zero(); preprocessed_circuit.n_outputs] };
     let mut context: Context<NoValue> = Context::new(N_RESERVED);
-    let statement =
-        CircuitStatement::new(&mut context, &circuit_config, &public_data.output_values);
+    let output_values = public_data
+        .output_values
+        .iter()
+        .map(|value| NoValue::from_qm31(*value).guess(&mut context))
+        .collect_vec();
+    let statement = CircuitStatement::new(&mut context, &circuit_config, &output_values);
 
     let proof_config = ProofConfig::new(
         statement.get_components(),
