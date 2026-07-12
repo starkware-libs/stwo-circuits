@@ -316,11 +316,13 @@ fn test_serialize_multiverifier_proof_for_cairo1_verifier() {
     // channel explicitly.
     let preprocessed_multiverifier =
         PreprocessedCircuit::preprocess_circuit(&mut multiverifier_context);
+
+    let cairo1_verifier_pcs_config = PcsConfig { lifting_log_size: None, ..PCS_CONFIG };
     let multi_circuit_proof = prove_circuit_assignment_with_channel::<Blake2sMerkleChannel>(
         multiverifier_context.values(),
         &preprocessed_multiverifier,
         &BaseColumnPool::<SimdBackend>::new(),
-        PCS_CONFIG,
+        cairo1_verifier_pcs_config,
     )
     .unwrap();
     let component_log_sizes = circuit_component_log_sizes(

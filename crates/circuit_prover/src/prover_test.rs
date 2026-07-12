@@ -1,6 +1,7 @@
 use crate::circuit_air::circuit_components::CircuitComponents;
 use crate::prover::prepare_circuit_proof_for_circuit_verifier;
 use crate::prover::{BaseColumnPool, CircuitProof, SimdBackend, prove_circuit_assignment};
+use crate::test_utils::default_circuit_pcs_config;
 use circuit_common::finalize::pad_context;
 use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_verifier::circuit_claim::CircuitInteractionElements;
@@ -22,7 +23,7 @@ use num_traits::{One, Zero};
 use stwo::core::channel::Blake2sM31Channel;
 use stwo::core::channel::Channel;
 use stwo::core::fields::qm31::QM31;
-use stwo::core::pcs::{CommitmentSchemeVerifier, PcsConfig};
+use stwo::core::pcs::CommitmentSchemeVerifier;
 use stwo::core::vcs::blake2_hash::Blake2sHash;
 use stwo::core::vcs_lifted::blake2_merkle::{Blake2sM31MerkleChannel, Blake2sMerkleHasher};
 // Not a power of 2 so that we can test component padding.
@@ -252,7 +253,7 @@ fn test_prove_and_stark_verify_blake_gate_context() {
         blake_context.values(),
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
-        PcsConfig::default(),
+        default_circuit_pcs_config(preprocessed_circuit.trace_log_size),
     )
     .unwrap();
     stwo_verify(circuit_proof, &preprocessed_circuit);
@@ -268,7 +269,7 @@ fn test_prove_and_stark_verify_permutation_context() {
         permutation_context.values(),
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
-        PcsConfig::default(),
+        default_circuit_pcs_config(preprocessed_circuit.trace_log_size),
     )
     .unwrap();
     stwo_verify(circuit_proof, &preprocessed_circuit);
@@ -284,7 +285,7 @@ fn test_prove_and_stark_verify_fibonacci_context() {
         fibonacci_context.values(),
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
-        PcsConfig::default(),
+        default_circuit_pcs_config(preprocessed_circuit.trace_log_size),
     )
     .unwrap();
     stwo_verify(circuit_proof, &preprocessed_circuit);
@@ -300,7 +301,7 @@ fn test_prove_and_stark_verify_triple_xor_context() {
         triple_xor_context.values(),
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
-        PcsConfig::default(),
+        default_circuit_pcs_config(preprocessed_circuit.trace_log_size),
     )
     .unwrap();
     stwo_verify(circuit_proof, &preprocessed_circuit);
@@ -316,7 +317,7 @@ fn test_prove_and_stark_verify_m31_to_u32_context() {
         m31_to_u32_context.values(),
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
-        PcsConfig::default(),
+        default_circuit_pcs_config(preprocessed_circuit.trace_log_size),
     )
     .unwrap();
     stwo_verify(circuit_proof, &preprocessed_circuit);
@@ -332,7 +333,7 @@ fn test_prove_and_stark_verify_blake_g_gate_context() {
         blake_g_gate_context.values(),
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
-        PcsConfig::default(),
+        default_circuit_pcs_config(preprocessed_circuit.trace_log_size),
     )
     .unwrap();
     stwo_verify(circuit_proof, &preprocessed_circuit);
@@ -365,7 +366,7 @@ fn test_prove_and_circuit_verify_triple_xor_context() {
         triple_xor_context.values(),
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
-        PcsConfig::default(),
+        default_circuit_pcs_config(preprocessed_circuit.trace_log_size),
     )
     .unwrap();
     let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);
@@ -391,7 +392,7 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
         fibonacci_context.values(),
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
-        PcsConfig::default(),
+        default_circuit_pcs_config(preprocessed_circuit.trace_log_size),
     )
     .unwrap();
     let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);
@@ -410,7 +411,7 @@ fn test_prove_and_circuit_verify_m31_to_u32_context() {
         m31_to_u32_context.values(),
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
-        PcsConfig::default(),
+        default_circuit_pcs_config(preprocessed_circuit.trace_log_size),
     )
     .unwrap();
     let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);
@@ -428,7 +429,7 @@ fn test_prove_and_circuit_verify_blake_g_gate_context() {
         blake_g_gate_context.values(),
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
-        PcsConfig::default(),
+        default_circuit_pcs_config(preprocessed_circuit.trace_log_size),
     )
     .unwrap();
     let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);

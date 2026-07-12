@@ -3,4 +3,6 @@
 
 pub mod circuit_air;
 pub mod prover;
+#[cfg(any(test, feature = "test-utils"))]
+pub mod test_utils;
 pub mod witness;

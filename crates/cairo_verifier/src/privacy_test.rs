@@ -9,6 +9,7 @@ use circuit_prover::prover::{
     BaseColumnPool, CircuitProof, SimdBackend, prepare_circuit_proof_for_circuit_verifier,
     prove_circuit_assignment,
 };
+use circuit_prover::test_utils::default_circuit_pcs_config;
 use circuit_serialize::serialize::CircuitSerialize;
 use circuit_verifier::statement::CircuitStatement;
 use circuit_verifier::verify::{CircuitConfig, CircuitPublicData, verify_circuit};
@@ -109,7 +110,7 @@ fn test_verify_privacy_with_recursion() {
         context.values(),
         &preprocessed,
         &BaseColumnPool::<SimdBackend>::new(),
-        PcsConfig::default(),
+        default_circuit_pcs_config(preprocessed.trace_log_size),
     )
     .unwrap();
 
@@ -167,7 +168,7 @@ fn test_privacy_recursion_with_preprocessed_context() {
         assignment_context.values(),
         &preprocessed,
         &BaseColumnPool::<SimdBackend>::new(),
-        PcsConfig::default(),
+        default_circuit_pcs_config(preprocessed.trace_log_size),
     )
     .unwrap();
 
@@ -179,7 +180,7 @@ fn test_privacy_recursion_with_preprocessed_context() {
         full_prove_context.values(),
         &full_preprocessed,
         &BaseColumnPool::<SimdBackend>::new(),
-        PcsConfig::default(),
+        default_circuit_pcs_config(full_preprocessed.trace_log_size),
     )
     .unwrap();
 
