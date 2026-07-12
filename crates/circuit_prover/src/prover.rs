@@ -59,16 +59,12 @@ where
     MC: MerkleChannel,
     SimdBackend: stwo::prover::backend::BackendForChannel<MC>,
 {
-    let trace_log_size = preprocessed_circuit.trace_log_size;
-    let lifting_log_size = trace_log_size + pcs_config.fri_config.log_blowup_factor;
-    let pcs_config = PcsConfig { lifting_log_size: Some(lifting_log_size), ..pcs_config };
-
     // Precompute twiddles.
     // Account for blowup factor and for composition polynomial calculation (taking the max since
     // the composition polynomial is split prior to LDE).
     let twiddles = SimdBackend::precompute_twiddles(
         CanonicCoset::new(
-            trace_log_size
+            preprocessed_circuit.trace_log_size
                 + std::cmp::max(
                     pcs_config.fri_config.log_blowup_factor,
                     COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND,

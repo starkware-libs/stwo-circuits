@@ -13,7 +13,7 @@ stwo-cairo-serialize.workspace = true
 
 [dev-dependencies]
 circuit-common.workspace = true
-circuit-prover.workspace = true
+circuit-prover = { workspace = true, features = ["test-utils"] }
 circuits.workspace = true
 itertools.workspace = true
 num-traits.workspace = true
