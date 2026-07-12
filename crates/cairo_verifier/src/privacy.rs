@@ -50,7 +50,7 @@ pub fn privacy_cairo_verifier_config(log_blowup_factor: u32) -> CairoVerifierCon
     let program = load_program(&program_path);
 
     CairoVerifierConfig {
-        preprocessed_root: get_preprocessed_root(pcs_config.lifting_log_size.unwrap()),
+        preprocessed_root: get_preprocessed_root(pcs_config.min_lifting_log_size),
         proof_config,
         enabled_bits,
         program,
@@ -138,5 +138,5 @@ pub const fn get_pcs_config(trace_log_size: u32, log_blowup_factor: u32) -> PcsC
     // Note that `fold_step` is hardcoded to 4.
     let fri_config =
         FriConfig { log_blowup_factor, log_last_layer_degree_bound: 0, n_queries, fold_step: 4 };
-    PcsConfig { pow_bits, fri_config, lifting_log_size: Some(trace_log_size + log_blowup_factor) }
+    PcsConfig { pow_bits, fri_config, min_lifting_log_size: trace_log_size + log_blowup_factor }
 }
