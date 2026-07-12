@@ -3,6 +3,7 @@ use std::iter::repeat_n;
 use crate::circuit_components::{N_COMPONENTS, sorted_component_order};
 use crate::relations::{CommonLookupElements, GATE_RELATION_ID};
 use crate::statement::all_circuit_components;
+use circuits::blake::BLAKE2S_DIGEST_N_WORDS;
 use circuits::context::{U_VALUE, U_VAR_IDX};
 use circuits::ivalue::NoValue;
 use circuits_stark_verifier::order_hash_map::OrderedHashMap;
@@ -11,6 +12,7 @@ use stwo::core::channel::Channel;
 use stwo::core::fields::FieldExpOps;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
+use stwo::core::vcs::blake2_hash::Blake2sHash;
 use stwo_constraint_framework::Relation;
 
 pub type ComponentLogSize = u32;
@@ -27,6 +29,15 @@ impl CircuitClaim {
         // mix the output values into the channel.
         channel.mix_felts(output_values);
     }
+}
+
+/// Mixes the circuit hash into the channel, committing the transcript to the circuit's identity.
+pub fn mix_circuit_hash(channel: &mut impl Channel, circuit_hash: &Blake2sHash) {
+    let circuit_hash_words: [u32; BLAKE2S_DIGEST_N_WORDS] = std::array::from_fn(|i| {
+        u32::from_le_bytes(circuit_hash.0[i * 4..i * 4 + 4].try_into().unwrap())
+    });
+
+    channel.mix_u32s(&circuit_hash_words);
 }
 
 /// Returns `[trace_log_sizes, interaction_log_sizes]` for `tree[1]` and `tree[2]`,
