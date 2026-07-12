@@ -111,7 +111,7 @@ cargo build
 # Test (circuit-prover and stwo use opt-level 3 in test profile)
 cargo test
 
-# Clippy (uses nightly-2025-07-14)
+# Clippy
 scripts/clippy.sh
 
 # Format
