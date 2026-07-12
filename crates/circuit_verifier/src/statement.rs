@@ -1,3 +1,4 @@
+use crate::circuit_hash::compute_circuit_hash;
 use crate::components::{
     blake_g_gate, eq::CircuitEqComponent, m_31_to_u_32, qm31_ops::CircuitQm31OpsComponent,
     range_check_16, triple_xor, verify_bitwise_xor_4, verify_bitwise_xor_7, verify_bitwise_xor_8,
@@ -38,6 +39,8 @@ pub struct CircuitStatement<Value: IValue> {
     pub preprocessed_column_log_sizes: OrderedHashMap<PreProcessedColumnId, u32>,
     /// The preprocessed trace root.
     pub preprocessed_root: HashValue<Var>,
+    /// The circuit hash.
+    pub circuit_hash: HashValue<Var>,
 }
 impl<Value: IValue> CircuitStatement<Value> {
     pub fn new(
@@ -45,12 +48,8 @@ impl<Value: IValue> CircuitStatement<Value> {
         circuit_config: &CircuitConfig,
         output_values: &[Var],
     ) -> Self {
-        let CircuitConfig {
-            config: _,
-            n_outputs,
-            preprocessed_column_log_sizes,
-            preprocessed_root,
-        } = circuit_config;
+        let CircuitConfig { config, n_outputs, preprocessed_column_log_sizes, preprocessed_root } =
+            circuit_config;
         assert_eq!(output_values.len(), *n_outputs);
         let output_values = output_values.to_vec();
         // Guess the preprocessed root. The guessed wires enter the hash that will be output by
@@ -69,6 +68,16 @@ impl<Value: IValue> CircuitStatement<Value> {
         // in-circuit query-column sort during decommitment.
         let components = all_circuit_components::<Value>();
         let log_sizes = circuit_component_log_sizes(&components, preprocessed_column_log_sizes);
+
+        // The circuit hash mixes component log sizes by `COMPONENT_NAMES` order, so it is
+        // independent of the sort below; compute it from the unsorted map.
+        let circuit_hash = compute_circuit_hash(
+            context,
+            &log_sizes,
+            config.fri_config.log_blowup_factor,
+            &preprocessed_root,
+        );
+
         let (sorted_components, sorted_log_sizes): (Vec<_>, Vec<_>) =
             zip_eq(components, log_sizes.into_iter().map(|(_, log_size)| log_size))
                 .sorted_by_key(|(_, log_size)| *log_size)
@@ -89,15 +98,16 @@ impl<Value: IValue> CircuitStatement<Value> {
             component_log_sizes,
             preprocessed_column_log_sizes: preprocessed_column_log_sizes.clone(),
             preprocessed_root,
+            circuit_hash,
         }
     }
 }
 
 impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
     fn claims_to_mix(&self, context: &mut Context<Value>) -> Vec<Vec<U32Wrapper<Var>>> {
-        // Encode each output felt into its four coordinate u32 words so that `mix_u32s` produces
-        // the same transcript as mixing the felts directly.
-        vec![unpack_qm31s_to_u32_words(context, self.output_values.iter().copied())]
+        let circuit_hash_words = self.circuit_hash.iter().copied().collect_vec();
+        let output_words = unpack_qm31s_to_u32_words(context, self.output_values.iter().copied());
+        vec![circuit_hash_words, output_words]
     }
 
     fn get_components(&self) -> &IndexMap<&'static str, Box<dyn CircuitEval<Value>>> {
