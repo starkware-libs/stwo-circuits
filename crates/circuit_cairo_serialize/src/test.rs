@@ -6,13 +6,13 @@
 
 use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_prover::prover::{BaseColumnPool, SimdBackend, prove_circuit_assignment};
-use circuit_prover::test_utils::default_circuit_pcs_config;
 use circuit_verifier::statement::{all_circuit_components, circuit_component_log_sizes};
 use circuits::context::Context;
 use circuits::ivalue::{NoValue, qm31_from_u32s};
 use circuits::ops::guess;
 use num_traits::{One, Zero};
 use stwo::core::fields::qm31::QM31;
+use stwo::core::pcs::PcsConfig;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sMerkleHasher;
 use stwo_cairo_serialize::{CairoDeserialize, CairoSerialize};
 
@@ -46,7 +46,7 @@ fn test_serialize_deserialize_cairo_proof() {
         ctx.values(),
         &preprocessed_circuit,
         &BaseColumnPool::<SimdBackend>::new(),
-        default_circuit_pcs_config(preprocessed_circuit.trace_log_size),
+        PcsConfig::default(),
     )
     .unwrap();
 

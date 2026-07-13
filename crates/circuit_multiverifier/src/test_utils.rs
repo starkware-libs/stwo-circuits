@@ -126,7 +126,7 @@ pub fn get_preprocessed_multiverifier_from_circuit(
     target_padding: Option<ComponentSizes>,
 ) -> (PreprocessedCircuit, FinalizedContext<NoValue>) {
     assert_eq!(
-        pcs_config.lifting_log_size.unwrap(),
+        pcs_config.min_lifting_log_size,
         preprocessed_leaf_circuit.trace_log_size + pcs_config.fri_config.log_blowup_factor
     );
     let all_circuit_components = &all_circuit_components::<NoValue>();
@@ -178,7 +178,7 @@ pub fn get_preprocessed_root(
         log_blowup_factor,
         &twiddles,
         true,
-        Some(lifting_log_size),
+        lifting_log_size,
         &BaseColumnPool::<SimdBackend>::new(),
     );
     preprocessed_tree.commitment.root().into()
