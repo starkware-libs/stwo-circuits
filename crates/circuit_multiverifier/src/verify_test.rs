@@ -159,7 +159,7 @@ fn build_cairo_input(proof: &Proof<QM31>) -> MultiverifierInput<QM31> {
     MultiverifierInput {
         proof: proof.clone(),
         preprocessed_root: HashValue::<QM31>::from(PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT),
-        output_values: PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES.map(QM31::pack_u32),
+        output_values: PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES,
     }
 }
 
@@ -367,20 +367,16 @@ fn test_verify_cairo_proof_and_multiverifier_proof() {
     let multiverifier_proof =
         deserialize_proof_with_config(&mut bytes.as_slice(), &shared_config.proof_config).unwrap();
     // Mirror the in-circuit preimage `build_multiverifier_circuit` hashes for each verified input:
-    // the eight full 32-bit words of the preprocessed root, followed by each output word split into
-    // its low/high 16-bit halves `[low, high, 0, 0]` (as `unpack_qm31s_to_u32_words` does).
+    // the eight full 32-bit words of the preprocessed root, followed by the eight raw output words.
     let cairo_input_preimage_words: Vec<u32> = PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT
         .into_iter()
-        .chain(
-            PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES.iter().flat_map(|&w| [w & 0xFFFF, w >> 16, 0, 0]),
-        )
+        .chain(PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES)
         .collect();
     // The proven multiverifier verified two identical Cairo verifier inputs.
     let payload_words: Vec<u32> =
         chain!(&cairo_input_preimage_words, &cairo_input_preimage_words).copied().collect();
     // The circuit keeps the full unreduced eight-word digest as its output.
-    let hash_of_payload: [QM31; N_RESERVED] =
-        HashValue::<QM31>::from(blake2s_u32s_host(&payload_words)).0.map(|w| *w.get());
+    let hash_of_payload: [u32; N_RESERVED] = blake2s_u32s_host(&payload_words);
 
     let multiverifier_of_two_cairo_input = MultiverifierInput {
         proof: multiverifier_proof,
