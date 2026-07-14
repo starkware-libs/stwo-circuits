@@ -3,14 +3,13 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::preprocessed_columns::MAX_SEQUENCE_LOG_SIZE;
-use crate::utils::safe_div;
 use crate::verify::enabled_components;
 use cairo_air::components::memory_address_to_id::MEMORY_ADDRESS_TO_ID_SPLIT;
 use cairo_air::flat_claims::FlatClaim;
 use cairo_air::relations::{
     MEMORY_ADDRESS_TO_ID_RELATION_ID, MEMORY_ID_TO_BIG_RELATION_ID, OPCODES_RELATION_ID,
 };
-use circuits::blake::{HashValue, blake2s, m31_to_u32};
+use circuits::blake::{HashValue, blake2s_u32s, m31_to_u32};
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::extract_bits::extract_bits;
@@ -192,7 +191,7 @@ pub struct CairoStatement<Value: IValue> {
     pub aux_data: AuxData,
     pub packed_component_log_sizes: Simd,
     pub program: Arc<[[M31; MEMORY_VALUES_LIMBS]]>,
-    pub packed_outputs: Simd,
+    pub outputs: Vec<[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]>,
     pub preprocessed_root: HashValue<QM31>,
     pub preprocessed_trace_variant: PreProcessedTraceVariant,
 }
@@ -220,8 +219,7 @@ impl<Value: IValue> CairoStatement<Value> {
         // Validate the output segment range.
         let diff =
             eval!(context, (output_segment_range.end.value) - (output_segment_range.start.value));
-        let n_outputs =
-            context.constant(safe_div(self.packed_outputs.len(), MEMORY_VALUES_LIMBS).into());
+        let n_outputs = context.constant(self.outputs.len().into());
         eq(context, diff, n_outputs);
 
         let builtin_segment_ranges = [
@@ -352,12 +350,13 @@ impl<Value: IValue> CairoStatement<Value> {
         let aux_data =
             AuxData::parse_from_vars(&aux_data_vars, n_outputs, program.len(), n_components);
 
-        let guessed_outputs: Vec<M31Wrapper<Var>> = outputs
+        let outputs: Vec<[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]> = outputs
             .into_iter()
-            .flatten()
-            .map(|m31| M31Wrapper::new_unsafe(Value::from_qm31(m31.into())).guess(context))
+            .map(|value_limbs| {
+                value_limbs
+                    .map(|m31| M31Wrapper::new_unsafe(Value::from_qm31(m31.into())).guess(context))
+            })
             .collect_vec();
-        let packed_outputs = Simd::pack(context, &guessed_outputs);
 
         let packed_component_log_sizes = Simd::pack(context, &aux_data.component_log_sizes[..]);
 
@@ -365,7 +364,7 @@ impl<Value: IValue> CairoStatement<Value> {
             aux_data,
             packed_component_log_sizes,
             program,
-            packed_outputs,
+            outputs,
             components,
             enabled_bits,
             preprocessed_root,
@@ -389,7 +388,7 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
             enabled_bits,
             aux_data,
             program,
-            packed_outputs,
+            outputs,
             preprocessed_root: _preprocessed_root,
             packed_component_log_sizes: _packed_component_log_sizes,
             preprocessed_trace_variant: _preprocessed_trace_variant,
@@ -445,8 +444,12 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         .collect_vec();
         let aux_data_words = to_padded_u32_words(context, aux_data_vars);
 
-        // Hash the output.
-        let output_hash = blake2s(context, packed_outputs.get_packed(), 4 * packed_outputs.len());
+        // Hash the output. Each output is a memory value of `MEMORY_VALUES_LIMBS` M31 limbs, and
+        // each limb becomes one 4-byte Blake2s message word.
+        let output_vars = outputs.iter().flatten().map(|limb| *limb.get()).collect_vec();
+        let n_output_bytes = 4 * output_vars.len();
+        let output_words = to_padded_u32_words(context, output_vars);
+        let output_hash = blake2s_u32s(context, output_words, n_output_bytes);
         context.set_outputs(&output_hash.iter().map(|word| *word.get()).collect_vec());
 
         // Compute the program hash at circuit construction time.
@@ -482,17 +485,11 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
             })
             .collect_vec();
 
-        let unpacked = Simd::unpack(context, &self.packed_outputs);
-        let outputs: Vec<[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]> = unpacked
-            .chunks(MEMORY_VALUES_LIMBS)
-            .map(|chunk| array::from_fn(|i| M31Wrapper::new_unsafe(chunk[i])))
-            .collect_vec();
-
         public_logup_sum(
             context,
             &self.aux_data,
             &program_as_constants,
-            &outputs,
+            &self.outputs,
             interaction_elements,
         )
     }
