@@ -9,6 +9,7 @@ use cairo_air::flat_claims::FlatClaim;
 use cairo_air::relations::{
     MEMORY_ADDRESS_TO_ID_RELATION_ID, MEMORY_ID_TO_BIG_RELATION_ID, OPCODES_RELATION_ID,
 };
+use circuit_common::N_RESERVED;
 use circuits::blake::{HashValue, blake2s_u32s, m31_to_u32};
 use circuits::context::{Context, Var};
 use circuits::eval;
@@ -24,7 +25,6 @@ use circuits_stark_verifier::statement::Statement;
 use circuits_stark_verifier::verify::RELATION_USES_NUM_ROWS_SHIFT;
 use indexmap::IndexMap;
 use itertools::{Itertools, chain, zip_eq};
-use num_traits::Zero;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::m31::P as M31_P;
 use stwo::core::fields::qm31::QM31;
@@ -35,7 +35,6 @@ use stwo_cairo_common::builtins::{
     RANGE_CHECK_96_BUILTIN_MEMORY_CELLS, RANGE_CHECK_BUILTIN_MEMORY_CELLS,
 };
 use stwo_cairo_common::preprocessed_columns::preprocessed_trace::PreProcessedTraceVariant;
-use stwo_cairo_common::prover_types::felt::split_f252;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 #[cfg(test)]
@@ -62,12 +61,12 @@ pub const AUX_DATA_FIXED_LEN: usize =
 
 const LIMB_BITS: usize = 9;
 /// Number of `LIMB_BITS`-wide limbs needed to hold a single 128-bit output value. The remaining
-/// limbs of an output memory cell are always zero (see [`output_limbs_from_output_hash`]).
+/// limbs of an output memory cell are always zero (see [`output_limbs_from_hash`]).
 ///
-/// Note that these limbs span `N_OUTPUT_VALUE_LIMBS * LIMB_BITS` = 135 bits, 7 more than a 128-bit
-/// value needs, and nothing here range-checks the extra bits away. This is not a soundness concern:
-/// the statement is only meaningful for the whitelisted bootloader programs, which are known to
-/// output exactly two u128s.
+/// The limbs are derived from a 128-bit value by [`output_limbs_from_hash`], so the top
+/// `N_OUTPUT_VALUE_LIMBS * LIMB_BITS - 128` bits of the last limb are structurally zero. Binding
+/// these derived cells to the public memory therefore rejects any proven output cell that does not
+/// fit in 128 bits.
 const N_OUTPUT_VALUE_LIMBS: usize = 128_usize.div_ceil(LIMB_BITS);
 const SMALL_VALUE_BITS: u32 = 29;
 const BUILTIN_USAGE_BITS: u32 = 27;
@@ -333,42 +332,54 @@ impl<Value: IValue> CairoStatement<Value> {
     }
 }
 
-/// Reconstructs the program's output memory cells from `output_hash` as guessed limb variables.
-///
-/// The program emits its output as a single Blake2s digest stored across [`N_OUTPUTS`] memory
-/// cells, each holding one 128-bit half of the digest (little-endian). This is the exact inverse
-/// of the packing the caller performs when building `output_hash` from the public memory output
-/// section, so the reconstructed cells equal the proven ones.
-///
-/// Each cell is a 128-bit value, so only its low [`N_OUTPUT_VALUE_LIMBS`] limbs can be nonzero; the
-/// high limbs are bound to the constant zero rather than prover-guessed.
-///
-/// The nonzero limbs are prover-guessed and not range-checked here; the id-to-value logup binds
-/// them to the proven memory value, whose limbs the AIR range-checks to 9 bits (see
-/// [`MEMORY_VALUES_LIMBS`]).
-fn output_limbs_from_output_hash<Value: IValue>(
+/// Number of 32-bit words in a 128-bit output cell value, i.e. how many `u32`s fit in a `u128`.
+/// The program's output is a Blake2s digest ([`N_RESERVED`] words) split across [`N_OUTPUTS`]
+/// cells, one 128-bit half each.
+const N_WORDS_PER_OUTPUT_CELL: usize = u128::BITS as usize / u32::BITS as usize;
+// The whole digest must map exactly onto the output cells.
+const _: () = assert!(N_OUTPUTS * N_WORDS_PER_OUTPUT_CELL == N_RESERVED);
+
+/// Returns the little-endian bit decomposition (LSB first) of a 32-bit `word`, as 32 single-bit
+/// [`Simd`]s. The word is stored as two 16-bit limbs `(low, high, 0, 0)`; each is decomposed and
+/// range-checked to 16 bits by [`extract_bits`].
+fn word_to_le_bits<Value: IValue>(
     context: &mut Context<Value>,
-    output_hash: HashValue<Value>,
+    word: &U32Wrapper<Var>,
+) -> Vec<Simd> {
+    let packed = Simd::from_packed(vec![*word.get()], 2);
+    let low = Simd::from_packed(vec![Simd::unpack_idx(context, &packed, 0)], 1);
+    let high = Simd::from_packed(vec![Simd::unpack_idx(context, &packed, 1)], 1);
+    chain!(extract_bits(context, &low, 16), extract_bits(context, &high, 16)).collect()
+}
+
+/// Splits the digest `hash` into its [`N_OUTPUTS`] `u128` halves, each decomposed into
+/// [`N_OUTPUT_VALUE_LIMBS`] nine-bit limbs (little-endian) and zero-padded to
+/// [`MEMORY_VALUES_LIMBS`] limbs — the layout of one output memory cell.
+fn output_limbs_from_hash<Value: IValue>(
+    context: &mut Context<Value>,
+    hash: &HashValue<Var>,
 ) -> Vec<[M31Wrapper<Var>; MEMORY_VALUES_LIMBS]> {
-    let words: [u32; 8] = array::from_fn(|i| output_hash[i].get().unpack_u32());
     let zero = M31Wrapper::new_unsafe(context.zero());
-    let outputs = words
-        .chunks(4)
-        .map(|half| {
-            // Each cell holds a 128-bit value: its low four words, high four words zero.
-            let mut felt = [0u32; 8];
-            felt[..4].copy_from_slice(half);
-            let limbs = split_f252(felt);
-            array::from_fn(|i| {
-                if i < N_OUTPUT_VALUE_LIMBS {
-                    M31Wrapper::new_unsafe(Value::from_qm31(limbs[i].into())).guess(context)
-                } else {
-                    assert!(limbs[i].is_zero());
-                    zero.clone()
-                }
-            })
-        })
-        .collect_vec();
+    let mut outputs = Vec::with_capacity(N_OUTPUTS);
+    for half in hash.chunks(N_WORDS_PER_OUTPUT_CELL) {
+        // Little-endian bit stream of the cell's 128-bit value (LSB first).
+        let mut bits = Vec::with_capacity(N_WORDS_PER_OUTPUT_CELL * 32);
+        for word in half {
+            bits.extend(word_to_le_bits(context, word));
+        }
+        // Regroup the bits into nine-bit limbs: the 128 bits fill the low `N_OUTPUT_VALUE_LIMBS`
+        // limbs (the last only partially), and the high limbs stay zero.
+        let cell: [M31Wrapper<Var>; MEMORY_VALUES_LIMBS] = array::from_fn(|i| {
+            if i >= N_OUTPUT_VALUE_LIMBS {
+                return zero.clone();
+            }
+            let start = i * LIMB_BITS;
+            let chunk = &bits[start..(start + LIMB_BITS).min(bits.len())];
+            let limb = Simd::combine_bits(context, chunk);
+            M31Wrapper::new_unsafe(Simd::unpack_idx(context, &limb, 0))
+        });
+        outputs.push(cell);
+    }
     debug_assert_eq!(outputs.len(), N_OUTPUTS);
     outputs
 }
@@ -379,9 +390,9 @@ impl<Value: IValue> CairoStatement<Value> {
     ///
     /// See AuxData::parse_from_vars for the layout of `serialized_aux_data`.
     ///
-    /// The output memory cells are reconstructed from `output_hash` (see
-    /// `output_limbs_from_output_hash`); they are the same cells the caller packed the digest from,
-    /// so the circuit binds them to the public memory exactly as it would the raw output values.
+    /// The digest words are guessed from `output_hash` and become the circuit's public output.
+    /// They are split back into 9-bit limbs (see `output_limbs_from_hash`) for the public logup
+    /// sum, which binds them to the proven public memory.
     ///
     /// The active components are derived from `enabled_bits` (which has one flag per component in
     /// the full list returned by `all_components()`).
@@ -396,6 +407,11 @@ impl<Value: IValue> CairoStatement<Value> {
     ) -> Self {
         let components = enabled_components::<Value>(&enabled_bits);
         let n_components = components.len();
+        let output_hash = output_hash.guess(context);
+        context.set_outputs(&output_hash.iter().map(|word| *word.get()).collect_vec());
+
+        let outputs = output_limbs_from_hash(context, &output_hash);
+
         let aux_data_len = AUX_DATA_FIXED_LEN + program.len() + n_components;
         assert_eq!(serialized_aux_data.len(), aux_data_len);
 
@@ -406,7 +422,6 @@ impl<Value: IValue> CairoStatement<Value> {
 
         let aux_data = AuxData::parse_from_vars(&aux_data_vars, program.len(), n_components);
         let packed_component_log_sizes = Simd::pack(context, &aux_data.component_log_sizes[..]);
-        let outputs = output_limbs_from_output_hash(context, output_hash);
 
         Self {
             aux_data,
@@ -492,13 +507,11 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         .collect_vec();
         let aux_data_words = to_padded_u32_words(context, aux_data_vars);
 
-        // Hash the output. Each output is a memory value of `MEMORY_VALUES_LIMBS` M31 limbs, and
-        // each limb becomes one 4-byte Blake2s message word.
-        let output_vars = outputs.iter().flatten().map(|limb| *limb.get()).collect_vec();
-        let n_output_bytes = 4 * output_vars.len();
-        let output_words = to_padded_u32_words(context, output_vars);
-        let output_hash = blake2s_u32s(context, output_words, n_output_bytes);
-        context.set_outputs(&output_hash.iter().map(|word| *word.get()).collect_vec());
+        // Mix the outputs as 9-bit limbs into the channel.
+        let output_limb_vars = outputs.iter().flatten().map(|limb| *limb.get()).collect_vec();
+        let n_output_bytes = 4 * output_limb_vars.len();
+        let output_limb_words = to_padded_u32_words(context, output_limb_vars);
+        let output_hash = blake2s_u32s(context, output_limb_words, n_output_bytes);
 
         // Compute the program hash at circuit construction time.
         let flat_program = pack_into_qm31s(program.iter().flatten().cloned());

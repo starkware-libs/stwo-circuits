@@ -243,7 +243,8 @@ pub fn verify_cairo_with_component_set(
 
     // The program's output is a single Blake2s digest stored across `N_OUTPUTS` memory cells, each
     // holding one 128-bit half. Pack those halves back into the digest; `CairoStatement::new`
-    // reconstructs the same cells from it (see `output_limbs_from_output_hash`).
+    // guesses it as the circuit's public output and splits it back into the same cells (see
+    // `output_limbs_from_hash`), binding them to the proven public memory.
     let output = &public_data.public_memory.output;
     if output.len() != N_OUTPUTS {
         return Err(format!(
