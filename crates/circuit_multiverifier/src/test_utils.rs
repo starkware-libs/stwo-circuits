@@ -41,15 +41,15 @@ pub const TARGET_PADDING_SIZES: ComponentSizes = ComponentSizes {
 };
 /// The number of preprocessed columns in a trace of a circuit.
 pub const CIRCUIT_N_PREPROCESSED_COLUMNS: usize = 45;
-/// The Blake2s digest of the output in the privacy Cairo verifier proof fixture
-/// (`test_data/circuit_multiverifier/proof_cairo.bin`).
+/// The Cairo verifier circuit's public output for the privacy proof fixture
+/// (`test_data/circuit_multiverifier/proof_cairo.bin`): the eight words of the program's output
+/// Blake2s digest, exposed directly (the output memory cells encode this digest).
 pub const PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES: [u32; 8] =
-    [3035180123, 3555538090, 587798257, 1881776298, 3385462846, 2102605012, 3369268656, 403460632];
+    [2238863647, 930608170, 3577551515, 250236175, 3905226011, 365840198, 2418738012, 3030158971];
 
 /// The preprocessed root of the privacy Cairo verifier circuit.
-pub const PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT: [u32; 8] = [
-    1125907304, 2600885958, 3347279899, 2207949821, 733293652, 2292535122, 1782590431, 1440187838,
-];
+pub const PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT: [u32; 8] =
+    [3580131499, 853571055, 2474568565, 4285427874, 2791872500, 2472518950, 3377645711, 789025722];
 
 /// The preprocessed root of the multiverifier circuit.
 pub const MULTIVERIFIER_PREPROCESSED_ROOT: [u32; 8] =
