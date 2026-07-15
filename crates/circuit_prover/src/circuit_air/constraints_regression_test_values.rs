@@ -4,7 +4,7 @@ pub const BLAKE_G: Expect = expect![[r#"
     (1764683956 + 1445328965i) + (1747106891 + 897069792i)u
 "#]];
 pub const BLAKE_G_GATE: Expect = expect![[r#"
-    (1821778611 + 324372422i) + (1838746257 + 2001370926i)u
+    (1521326994 + 1558819476i) + (524478452 + 1856781144i)u
 "#]];
 pub const BLAKE_GATE: Expect = expect![[r#"
 "#]];
@@ -17,32 +17,32 @@ pub const BLAKE_ROUND_SIGMA: Expect = expect![[r#"
 pub const CIRCUIT_BLAKE_ROUND: Expect = expect![[r#"
 "#]];
 pub const M_31_TO_U_32: Expect = expect![[r#"
-    (789166657 + 46563710i) + (663242899 + 1300432148i)u
+    (2021899343 + 236205997i) + (320574209 + 1929315023i)u
 "#]];
 pub const QM_31_OPS: Expect = expect![[r#"
-    (1788762958 + 1100891171i) + (538710207 + 1545850743i)u
+    (390906521 + 2047144348i) + (1587657629 + 941353825i)u
 "#]];
 pub const RANGE_CHECK_15: Expect = expect![[r#"
     (2052111311 + 1192528295i) + (686829220 + 1363764450i)u
 "#]];
 pub const RANGE_CHECK_16: Expect = expect![[r#"
-    (667904376 + 34949049i) + (420806061 + 1573330199i)u
+    (468645923 + 825426857i) + (1414222341 + 1345490780i)u
 "#]];
 pub const TRIPLE_XOR: Expect = expect![[r#"
-    (1371288620 + 713275058i) + (1771246253 + 534782712i)u
+    (914482770 + 1912998134i) + (343192498 + 971866381i)u
 "#]];
 pub const TRIPLE_XOR_32: Expect = expect![[r#"
     (1152376846 + 753053024i) + (1408555470 + 1523324023i)u
 "#]];
 pub const VERIFY_BITWISE_XOR_4: Expect = expect![[r#"
-    (1408196330 + 613398876i) + (902685482 + 1598646629i)u
+    (1989442030 + 354737447i) + (1017224845 + 993909400i)u
 "#]];
 pub const VERIFY_BITWISE_XOR_7: Expect = expect![[r#"
-    (1148280325 + 1727535771i) + (231268374 + 1904995666i)u
+    (144747908 + 545875633i) + (517815551 + 1019649583i)u
 "#]];
 pub const VERIFY_BITWISE_XOR_8: Expect = expect![[r#"
-    (2133776082 + 1230761515i) + (1058454893 + 1979176609i)u
+    (998149202 + 235538579i) + (1144376034 + 121409592i)u
 "#]];
 pub const VERIFY_BITWISE_XOR_9: Expect = expect![[r#"
-    (841088250 + 1499053200i) + (1122584495 + 937798316i)u
+    (1704264155 + 1827004954i) + (1982906079 + 397183327i)u
 "#]];
