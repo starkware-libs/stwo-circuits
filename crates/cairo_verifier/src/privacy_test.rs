@@ -137,9 +137,8 @@ fn test_verify_privacy_with_recursion() {
     if std::env::var("FIX_PROOF").is_ok() {
         std::fs::write(&fixture_path, &proof_bytes).unwrap();
     }
-    assert_eq!(
-        proof_bytes,
-        std::fs::read(&fixture_path).unwrap(),
+    assert!(
+        proof_bytes == std::fs::read(&fixture_path).unwrap(),
         "recursion proof fixture mismatch; regenerate with FIX_PROOF=1"
     );
 
@@ -197,7 +196,7 @@ fn test_privacy_recursion_with_preprocessed_context() {
 
     // Compare the verifier contexts.
     compare_contexts_topology(&assignment_verifier_context, &full_verifier_context);
-    assert_eq!(assignment_verifier_context.values(), full_verifier_context.values());
+    assert!(assignment_verifier_context.values() == full_verifier_context.values());
 }
 
 #[test]
