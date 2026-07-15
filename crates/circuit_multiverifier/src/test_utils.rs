@@ -157,7 +157,7 @@ pub fn get_preprocessed_multiverifier_from_circuit(
         output_values: [0u32; N_RESERVED],
     };
     let mut multiverifier_context =
-        build_multiverifier_circuit::<NoValue>(empty_input(), empty_input(), &shared_config);
+        build_multiverifier_circuit::<NoValue>(vec![empty_input(), empty_input()], &shared_config);
     if let Some(target_padding) = target_padding {
         pad_to_targets(&mut multiverifier_context, target_padding);
     }
