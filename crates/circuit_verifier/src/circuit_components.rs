@@ -44,18 +44,19 @@ macro_rules! define_component_list {
     };
 }
 
+// The component list, Ordered by ascending trace log size in the multiverifier circuit.
 define_component_list! {
-    Eq => eq,
-    Qm31Ops => qm31_ops,
-    TripleXor => triple_xor,
-    M31ToU32 => m_31_to_u_32,
-    BlakeGGate => blake_g_gate,
-    VerifyBitwiseXor8 => verify_bitwise_xor_8,
-    VerifyBitwiseXor12 => verify_bitwise_xor_12,
     VerifyBitwiseXor4 => verify_bitwise_xor_4,
     VerifyBitwiseXor7 => verify_bitwise_xor_7,
-    VerifyBitwiseXor9 => verify_bitwise_xor_9,
+    VerifyBitwiseXor8 => verify_bitwise_xor_8,
     RangeCheck16 => range_check_16,
+    Eq => eq,
+    TripleXor => triple_xor,
+    M31ToU32 => m_31_to_u_32,
+    VerifyBitwiseXor9 => verify_bitwise_xor_9,
+    BlakeGGate => blake_g_gate,
+    VerifyBitwiseXor12 => verify_bitwise_xor_12,
+    Qm31Ops => qm31_ops,
 }
 
 /// Returns the [`ComponentList`] indices ordered by ascending trace log size (stable, so ties keep

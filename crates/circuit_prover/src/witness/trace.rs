@@ -257,17 +257,17 @@ where
     let log_sizes: OrderedHashMap<&'static str, u32> = COMPONENT_NAMES
         .into_iter()
         .zip_eq([
-            eq_log_size,
-            qm31_ops_log_size,
-            triple_xor_claim.log_size,
-            m_31_to_u_32_claim.log_size,
-            blake_g_gate_claim.log_size,
-            crate::circuit_air::components::verify_bitwise_xor_8::LOG_SIZE,
-            crate::circuit_air::components::verify_bitwise_xor_12::LOG_SIZE,
             crate::circuit_air::components::verify_bitwise_xor_4::LOG_SIZE,
             crate::circuit_air::components::verify_bitwise_xor_7::LOG_SIZE,
-            crate::circuit_air::components::verify_bitwise_xor_9::LOG_SIZE,
+            crate::circuit_air::components::verify_bitwise_xor_8::LOG_SIZE,
             crate::circuit_air::components::range_check_16::LOG_SIZE,
+            eq_log_size,
+            triple_xor_claim.log_size,
+            m_31_to_u_32_claim.log_size,
+            crate::circuit_air::components::verify_bitwise_xor_9::LOG_SIZE,
+            blake_g_gate_claim.log_size,
+            crate::circuit_air::components::verify_bitwise_xor_12::LOG_SIZE,
+            qm31_ops_log_size,
         ])
         .collect();
 
@@ -275,17 +275,17 @@ where
     // committed column layout coincides with the natural component order, letting the verifier
     // skip the in-circuit query-column sort during decommitment.
     let component_trace_polys = [
-        eq_polys,
-        qm31_ops_polys,
-        triple_xor_polys,
-        m_31_to_u_32_polys,
-        blake_g_gate_polys,
-        verify_bitwise_xor_8_polys,
-        verify_bitwise_xor_12_polys,
         verify_bitwise_xor_4_polys,
         verify_bitwise_xor_7_polys,
-        verify_bitwise_xor_9_polys,
+        verify_bitwise_xor_8_polys,
         range_check_16_polys,
+        eq_polys,
+        triple_xor_polys,
+        m_31_to_u_32_polys,
+        verify_bitwise_xor_9_polys,
+        blake_g_gate_polys,
+        verify_bitwise_xor_12_polys,
+        qm31_ops_polys,
     ];
     let mut component_trace_polys = component_trace_polys.map(Some);
     for &i in sorted_component_order(&log_sizes).iter() {

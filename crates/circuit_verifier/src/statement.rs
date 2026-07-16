@@ -170,17 +170,17 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
 pub fn all_circuit_components<Value: IValue>() -> IndexMap<&'static str, Box<dyn CircuitEval<Value>>>
 {
     let components = PerComponent::<Box<dyn CircuitEval<Value>>> {
-        eq: Box::new(CircuitEqComponent {}),
-        qm31_ops: Box::new(CircuitQm31OpsComponent {}),
-        triple_xor: Box::new(triple_xor::Component {}),
-        m_31_to_u_32: Box::new(m_31_to_u_32::Component {}),
-        blake_g_gate: Box::new(blake_g_gate::Component {}),
-        verify_bitwise_xor_8: Box::new(verify_bitwise_xor_8::Component {}),
-        verify_bitwise_xor_12: Box::new(verify_bitwise_xor_12::Component {}),
         verify_bitwise_xor_4: Box::new(verify_bitwise_xor_4::Component {}),
         verify_bitwise_xor_7: Box::new(verify_bitwise_xor_7::Component {}),
-        verify_bitwise_xor_9: Box::new(verify_bitwise_xor_9::Component {}),
+        verify_bitwise_xor_8: Box::new(verify_bitwise_xor_8::Component {}),
         range_check_16: Box::new(range_check_16::Component {}),
+        eq: Box::new(CircuitEqComponent {}),
+        triple_xor: Box::new(triple_xor::Component {}),
+        m_31_to_u_32: Box::new(m_31_to_u_32::Component {}),
+        verify_bitwise_xor_9: Box::new(verify_bitwise_xor_9::Component {}),
+        blake_g_gate: Box::new(blake_g_gate::Component {}),
+        verify_bitwise_xor_12: Box::new(verify_bitwise_xor_12::Component {}),
+        qm31_ops: Box::new(CircuitQm31OpsComponent {}),
     };
     IndexMap::from_iter(components.into_named_iter())
 }

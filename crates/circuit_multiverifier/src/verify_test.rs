@@ -16,6 +16,7 @@ use circuit_prover::prover::{
 };
 use circuit_serialize::deserialize::deserialize_proof_with_config;
 use circuit_serialize::serialize::CircuitSerialize;
+use circuit_verifier::circuit_components::{COMPONENT_NAMES, N_COMPONENTS, sorted_component_order};
 use circuit_verifier::statement::{
     INTERACTION_POW_BITS, all_circuit_components, circuit_component_log_sizes,
 };
@@ -66,6 +67,26 @@ fn cairo_verifier_proof_config() -> ProofConfig {
     let log_sizes = circuit_component_log_sizes(&components, &preprocessed_column_log_sizes);
     components.sort_by(|a, _, b, _| log_sizes[*a].cmp(&log_sizes[*b]));
     ProofConfig::new(&components, CIRCUIT_N_PREPROCESSED_COLUMNS, &PCS_CONFIG, INTERACTION_POW_BITS)
+}
+
+/// The `define_component_list!` invocation in `circuit_verifier::circuit_components` must list
+/// components in ascending multiverifier trace-log-size order.
+#[test]
+fn test_component_list_sorted_by_multiverifier_size() {
+    let log_sizes = circuit_component_log_sizes(
+        &all_circuit_components::<NoValue>(),
+        &multiverifier_preprocessed_column_log_sizes(),
+    );
+    let order = sorted_component_order(&log_sizes);
+
+    let identity: [usize; N_COMPONENTS] = std::array::from_fn(|i| i);
+    assert_eq!(
+        order,
+        identity,
+        "ComponentList is not sorted by ascending multiverifier size; sizes in ComponentList \
+         order: {:?}",
+        COMPONENT_NAMES.map(|name| (name, log_sizes[name])),
+    );
 }
 
 /// Builds a `NoValue` Cairo verifier circuit (with configs of privacy) and preprocesses it.

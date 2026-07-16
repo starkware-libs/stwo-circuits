@@ -33,6 +33,9 @@ impl CircuitComponents {
         let lookup_elements = &interaction_elements.common_lookup_elements;
         let claimed_sums = &interaction_claim.claimed_sums;
 
+        // Constructor closures are keyed by name, so `into_named_iter()` pairs each with its own
+        // component regardless of the field order below; the literal is kept in `ComponentList`
+        // order (ascending trace log size) for readability.
         let constructors = PerComponent::<
             Box<
                 dyn FnMut(
@@ -42,20 +45,50 @@ impl CircuitComponents {
                 ) -> Box<dyn ComponentProver<SimdBackend>>,
             >,
         > {
+            verify_bitwise_xor_4: Box::new(|tsp, _log_size, claimed_sum| {
+                Box::new(verify_bitwise_xor_4::Component::new(
+                    tsp,
+                    verify_bitwise_xor_4::Eval {
+                        claim: verify_bitwise_xor_4::Claim {},
+                        common_lookup_elements: lookup_elements.clone(),
+                    },
+                    claimed_sum,
+                )) as Box<dyn ComponentProver<SimdBackend>>
+            }),
+            verify_bitwise_xor_7: Box::new(|tsp, _log_size, claimed_sum| {
+                Box::new(verify_bitwise_xor_7::Component::new(
+                    tsp,
+                    verify_bitwise_xor_7::Eval {
+                        claim: verify_bitwise_xor_7::Claim {},
+                        common_lookup_elements: lookup_elements.clone(),
+                    },
+                    claimed_sum,
+                )) as Box<dyn ComponentProver<SimdBackend>>
+            }),
+            verify_bitwise_xor_8: Box::new(|tsp, _log_size, claimed_sum| {
+                Box::new(verify_bitwise_xor_8::Component::new(
+                    tsp,
+                    verify_bitwise_xor_8::Eval {
+                        claim: verify_bitwise_xor_8::Claim {},
+                        common_lookup_elements: lookup_elements.clone(),
+                    },
+                    claimed_sum,
+                )) as Box<dyn ComponentProver<SimdBackend>>
+            }),
+            range_check_16: Box::new(|tsp, _log_size, claimed_sum| {
+                Box::new(range_check_16::Component::new(
+                    tsp,
+                    range_check_16::Eval {
+                        claim: range_check_16::Claim {},
+                        common_lookup_elements: lookup_elements.clone(),
+                    },
+                    claimed_sum,
+                )) as Box<dyn ComponentProver<SimdBackend>>
+            }),
             eq: Box::new(|tsp, log_size, claimed_sum| {
                 Box::new(eq::Component::new(
                     tsp,
                     eq::Eval { log_size, common_lookup_elements: lookup_elements.clone() },
-                    claimed_sum,
-                )) as Box<dyn ComponentProver<SimdBackend>>
-            }),
-            qm31_ops: Box::new(|tsp, log_size, claimed_sum| {
-                Box::new(qm_31_ops::Component::new(
-                    tsp,
-                    qm_31_ops::Eval {
-                        claim: qm_31_ops::Claim { log_size },
-                        common_lookup_elements: lookup_elements.clone(),
-                    },
                     claimed_sum,
                 )) as Box<dyn ComponentProver<SimdBackend>>
             }),
@@ -79,21 +112,21 @@ impl CircuitComponents {
                     claimed_sum,
                 )) as Box<dyn ComponentProver<SimdBackend>>
             }),
-            blake_g_gate: Box::new(|tsp, log_size, claimed_sum| {
-                Box::new(blake_g_gate::Component::new(
+            verify_bitwise_xor_9: Box::new(|tsp, _log_size, claimed_sum| {
+                Box::new(verify_bitwise_xor_9::Component::new(
                     tsp,
-                    blake_g_gate::Eval {
-                        claim: blake_g_gate::Claim { log_size },
+                    verify_bitwise_xor_9::Eval {
+                        claim: verify_bitwise_xor_9::Claim {},
                         common_lookup_elements: lookup_elements.clone(),
                     },
                     claimed_sum,
                 )) as Box<dyn ComponentProver<SimdBackend>>
             }),
-            verify_bitwise_xor_8: Box::new(|tsp, _log_size, claimed_sum| {
-                Box::new(verify_bitwise_xor_8::Component::new(
+            blake_g_gate: Box::new(|tsp, log_size, claimed_sum| {
+                Box::new(blake_g_gate::Component::new(
                     tsp,
-                    verify_bitwise_xor_8::Eval {
-                        claim: verify_bitwise_xor_8::Claim {},
+                    blake_g_gate::Eval {
+                        claim: blake_g_gate::Claim { log_size },
                         common_lookup_elements: lookup_elements.clone(),
                     },
                     claimed_sum,
@@ -109,41 +142,11 @@ impl CircuitComponents {
                     claimed_sum,
                 )) as Box<dyn ComponentProver<SimdBackend>>
             }),
-            verify_bitwise_xor_4: Box::new(|tsp, _log_size, claimed_sum| {
-                Box::new(verify_bitwise_xor_4::Component::new(
+            qm31_ops: Box::new(|tsp, log_size, claimed_sum| {
+                Box::new(qm_31_ops::Component::new(
                     tsp,
-                    verify_bitwise_xor_4::Eval {
-                        claim: verify_bitwise_xor_4::Claim {},
-                        common_lookup_elements: lookup_elements.clone(),
-                    },
-                    claimed_sum,
-                )) as Box<dyn ComponentProver<SimdBackend>>
-            }),
-            verify_bitwise_xor_7: Box::new(|tsp, _log_size, claimed_sum| {
-                Box::new(verify_bitwise_xor_7::Component::new(
-                    tsp,
-                    verify_bitwise_xor_7::Eval {
-                        claim: verify_bitwise_xor_7::Claim {},
-                        common_lookup_elements: lookup_elements.clone(),
-                    },
-                    claimed_sum,
-                )) as Box<dyn ComponentProver<SimdBackend>>
-            }),
-            verify_bitwise_xor_9: Box::new(|tsp, _log_size, claimed_sum| {
-                Box::new(verify_bitwise_xor_9::Component::new(
-                    tsp,
-                    verify_bitwise_xor_9::Eval {
-                        claim: verify_bitwise_xor_9::Claim {},
-                        common_lookup_elements: lookup_elements.clone(),
-                    },
-                    claimed_sum,
-                )) as Box<dyn ComponentProver<SimdBackend>>
-            }),
-            range_check_16: Box::new(|tsp, _log_size, claimed_sum| {
-                Box::new(range_check_16::Component::new(
-                    tsp,
-                    range_check_16::Eval {
-                        claim: range_check_16::Claim {},
+                    qm_31_ops::Eval {
+                        claim: qm_31_ops::Claim { log_size },
                         common_lookup_elements: lookup_elements.clone(),
                     },
                     claimed_sum,
