@@ -45,7 +45,6 @@ const N_SAFE_CALL_IDS: usize = 2;
 
 // A memory value is stored as 28 9bit limbs.
 pub const MEMORY_VALUES_LIMBS: usize = 28;
-pub const PUB_MEMORY_VALUE_LEN: usize = 1 + MEMORY_VALUES_LIMBS;
 const PUB_MEMORY_VALUE_M31_LEN: usize = 2;
 const STATE_LEN: usize = 3;
 pub const AUX_DATA_FIXED_LEN: usize =
