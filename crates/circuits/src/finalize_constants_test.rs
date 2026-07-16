@@ -21,8 +21,7 @@ fn test_finalize_constants_passes_check_vars_used() {
 
 #[test]
 fn test_find_max_consecutive_no_gap() {
-    // Values 0..=4 are all present with no gap, so `position` never finds a mismatch and
-    // `find_max_consecutive` falls back to `m31_constants.len()` via `unwrap_or`.
+    // Values 0..=4 are all present with no gap.
     let m31_constants = IndexMap::from([
         (0.into(), Var { idx: 0 }),
         (1.into(), Var { idx: 1 }),
@@ -35,9 +34,35 @@ fn test_find_max_consecutive_no_gap() {
 
 #[test]
 fn test_find_max_consecutive_only_zero() {
-    // Only `0` is present, hitting the same `unwrap_or` fallback with `m31_constants.len() == 1`.
+    // Only `0` is present.
     let m31_constants = IndexMap::from([(0.into(), Var { idx: 0 })]);
     assert_eq!(find_max_consecutive(&m31_constants), 0);
+}
+
+#[test]
+fn test_find_max_consecutive_two_gaps() {
+    // Two separate gaps (at 2..=3 and 5..=6); the result should reflect only the first one.
+    let m31_constants = IndexMap::from([
+        (0.into(), Var { idx: 0 }),
+        (1.into(), Var { idx: 1 }),
+        (4.into(), Var { idx: 2 }),
+        (7.into(), Var { idx: 3 }),
+    ]);
+    assert_eq!(find_max_consecutive(&m31_constants), 1);
+}
+
+#[test]
+#[should_panic(expected = "m31_constants.contains_key(&M31(0))")]
+fn test_find_max_consecutive_empty_panics() {
+    let m31_constants = IndexMap::<M31, Var>::new();
+    find_max_consecutive(&m31_constants);
+}
+
+#[test]
+#[should_panic(expected = "m31_constants.contains_key(&M31(0))")]
+fn test_find_max_consecutive_missing_zero_panics() {
+    let m31_constants = IndexMap::from([(1.into(), Var { idx: 0 })]);
+    find_max_consecutive(&m31_constants);
 }
 
 #[test]
