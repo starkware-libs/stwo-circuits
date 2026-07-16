@@ -10,6 +10,7 @@ use crate::ivalue::{IValue, qm31_from_u32s};
 use crate::ops::{Guess, eq, guess};
 use crate::stats::Stats;
 use crate::test_utils::finalize_guessed_vars;
+use crate::utils::bytes_from_le_u32s;
 
 #[rstest]
 #[case::success(false)]
@@ -118,11 +119,7 @@ fn test_hash_value_guess() {
         0xCAFE_BABE,
         0x8000_0001,
     ];
-    let mut bytes = [0u8; 32];
-    for (i, word) in words.iter().enumerate() {
-        bytes[i * 4..i * 4 + 4].copy_from_slice(&word.to_le_bytes());
-    }
-    let hash_value = HashValue::from(Blake2sHash(bytes));
+    let hash_value = HashValue::from(Blake2sHash(bytes_from_le_u32s(words)));
     let guessed = hash_value.guess(&mut context);
 
     // Each guessed word must round-trip back to the original raw u32 in full (no `M31::P`

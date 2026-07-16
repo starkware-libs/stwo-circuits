@@ -9,6 +9,7 @@ use crate::eval;
 use crate::ivalue::{IValue, NoValue, qm31_from_u32s};
 use crate::ops::{Guess, from_partial_evals};
 use crate::simd::Simd;
+use crate::utils::le_u32s_from_bytes;
 use crate::wrappers::U32Wrapper;
 
 #[cfg(test)]
@@ -60,10 +61,8 @@ impl From<Blake2sHash> for HashValue<QM31> {
     /// Encodes the [`Blake2sHash`] into eight [`U32Wrapper`]s, one per 32-bit (little-endian)
     /// hash word, each word is held as a QM31 `(low_u16, high_u16, 0, 0)`.
     fn from(value: Blake2sHash) -> Self {
-        HashValue(std::array::from_fn(|i| {
-            let word = u32::from_le_bytes(value.0[i * 4..i * 4 + 4].try_into().unwrap());
-            U32Wrapper::new_unsafe(IValue::pack_u32(word))
-        }))
+        let words: [u32; BLAKE2S_DIGEST_N_WORDS] = le_u32s_from_bytes(value.0);
+        HashValue::from(words)
     }
 }
 

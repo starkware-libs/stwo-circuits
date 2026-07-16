@@ -17,6 +17,7 @@ use circuits::eval;
 use circuits::ivalue::NoValue;
 use circuits::ivalue::{IValue, qm31_from_u32s};
 use circuits::ops::permute;
+use circuits::utils::le_u32s_from_bytes;
 use circuits::{context::Context, ops::guess};
 use expect_test::expect;
 use num_traits::{One, Zero};
@@ -379,7 +380,7 @@ fn test_prove_and_circuit_verify_triple_xor_context() {
 /// `[u32; 8]`, matching the layout `ReducedHashValue<QM31>` consumes via `From<[u32; 8]>`.
 fn preprocessed_root_from_proof(circuit_proof: &CircuitProof<Blake2sMerkleHasher>) -> [u32; 8] {
     let hash: Blake2sHash = circuit_proof.stark_proof.proof.commitments[0];
-    std::array::from_fn(|i| u32::from_le_bytes(hash.0[i * 4..(i + 1) * 4].try_into().unwrap()))
+    le_u32s_from_bytes(hash.0)
 }
 
 #[test]

@@ -5,6 +5,7 @@ use stwo::core::fields::qm31::QM31;
 use stwo::core::fields::{cm31::CM31, m31::M31};
 
 use crate::blake::{BLAKE2S_DIGEST_N_WORDS, HashValue};
+use crate::utils::le_u32s_from_bytes;
 use crate::wrappers::U32Wrapper;
 
 #[cfg(test)]
@@ -108,8 +109,7 @@ impl IValue for QM31 {
         hasher.update(&input_bytes[0..n_bytes]);
         let hash: [u8; 32] = hasher.finalize().into();
 
-        let words: [u32; BLAKE2S_DIGEST_N_WORDS] =
-            std::array::from_fn(|i| u32::from_le_bytes(hash[i * 4..i * 4 + 4].try_into().unwrap()));
+        let words: [u32; BLAKE2S_DIGEST_N_WORDS] = le_u32s_from_bytes(hash);
         HashValue::from(words)
     }
 
