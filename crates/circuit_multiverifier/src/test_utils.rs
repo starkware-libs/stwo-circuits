@@ -9,7 +9,9 @@ use circuit_verifier::{
     statement::{INTERACTION_POW_BITS, all_circuit_components, circuit_component_log_sizes},
     verify::CircuitConfig,
 };
-use circuits::{blake::HashValue, context::FinalizedContext, ivalue::NoValue};
+use circuits::{
+    blake::HashValue, context::FinalizedContext, ivalue::NoValue, utils::le_u32s_from_bytes,
+};
 use circuits_stark_verifier::order_hash_map::OrderedHashMap;
 use circuits_stark_verifier::proof::{ProofConfig, empty_proof};
 use stwo::core::{fields::qm31::QM31, pcs::PcsConfig};
@@ -62,7 +64,7 @@ pub fn blake2s_u32s_host(words: &[u32]) -> [u32; 8] {
         hasher.update(word.to_le_bytes());
     }
     let hash: [u8; 32] = hasher.finalize().into();
-    std::array::from_fn(|i| u32::from_le_bytes(hash[i * 4..i * 4 + 4].try_into().unwrap()))
+    le_u32s_from_bytes(hash)
 }
 
 pub fn multiverifier_preprocessed_column_log_sizes() -> OrderedHashMap<PreProcessedColumnId, u32> {
