@@ -27,10 +27,10 @@ use stwo_cairo_dev_utils::vm_utils::{ProgramType, run_and_adapt};
 use stwo_cairo_prover::prover::{ChannelHash, ProverParameters, prove_cairo};
 
 use crate::all_components::all_components;
-use crate::preprocessed_columns::MAX_SEQUENCE_LOG_SIZE;
 use crate::statement::{AUX_DATA_FIXED_LEN, CairoStatement, MEMORY_VALUES_LIMBS};
 use crate::utils::get_proof_file_path;
 use crate::verify::{enabled_components, get_preprocessed_root, verify_cairo_with_component_set};
+use stwo_cairo_common::preprocessed_columns::preprocessed_trace::SMALL_MAX_SEQUENCE_LOG_SIZE;
 
 /// Circuit Verifies a [CairoProof].
 pub fn verify_cairo(
@@ -50,7 +50,7 @@ fn test_verify() {
     let mut pcs_config = PcsConfig::default();
     pcs_config.fri_config.fold_step = 4;
     pcs_config.min_lifting_log_size =
-        MAX_SEQUENCE_LOG_SIZE as u32 + pcs_config.fri_config.log_blowup_factor;
+        SMALL_MAX_SEQUENCE_LOG_SIZE + pcs_config.fri_config.log_blowup_factor;
 
     let mut novalue_context: Context<NoValue> = Context::new(N_RESERVED);
     let output_len = 1;

@@ -2,7 +2,6 @@ use std::array;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::preprocessed_columns::MAX_SEQUENCE_LOG_SIZE;
 use crate::verify::enabled_components;
 use cairo_air::components::memory_address_to_id::MEMORY_ADDRESS_TO_ID_SPLIT;
 use cairo_air::flat_claims::FlatClaim;
@@ -33,7 +32,9 @@ use stwo_cairo_common::builtins::{
     PEDERSEN_BUILTIN_MEMORY_CELLS, POSEIDON_BUILTIN_MEMORY_CELLS,
     RANGE_CHECK_96_BUILTIN_MEMORY_CELLS, RANGE_CHECK_BUILTIN_MEMORY_CELLS,
 };
-use stwo_cairo_common::preprocessed_columns::preprocessed_trace::PreProcessedTraceVariant;
+use stwo_cairo_common::preprocessed_columns::preprocessed_trace::{
+    MAX_SEQUENCE_LOG_SIZE, PreProcessedTraceVariant,
+};
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 #[cfg(test)]
