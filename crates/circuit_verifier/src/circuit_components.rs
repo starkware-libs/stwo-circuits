@@ -35,6 +35,11 @@ macro_rules! define_component_list {
             pub fn into_array(self) -> [T; N_COMPONENTS] {
                 [$(self.$field),*]
             }
+
+            /// Consumes `self`, yielding (name, value) pairs in `ComponentList` order.
+            pub fn into_named_iter(self) -> impl Iterator<Item = (&'static str, T)> {
+                itertools::zip_eq(COMPONENT_NAMES, self.into_array())
+            }
         }
     };
 }

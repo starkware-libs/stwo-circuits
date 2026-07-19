@@ -5,9 +5,9 @@ use crate::circuit_air::components::{
 use circuit_verifier::circuit_claim::{
     CircuitInteractionClaim, CircuitInteractionElements, ClaimedSum,
 };
-use circuit_verifier::circuit_components::{COMPONENT_NAMES, PerComponent};
+use circuit_verifier::circuit_components::PerComponent;
 use circuits_stark_verifier::order_hash_map::OrderedHashMap;
-use itertools::{Itertools, zip_eq};
+use itertools::Itertools;
 use stwo::core::air::Component;
 use stwo::prover::ComponentProver;
 use stwo::prover::backend::simd::SimdBackend;
@@ -151,17 +151,17 @@ impl CircuitComponents {
             }),
         };
 
-        // `into_array()` and `COMPONENT_NAMES` are both in `ComponentList` order, so look up each
-        // component's log size by name rather than relying on the map's iteration order.
-        let components: Vec<Box<dyn ComponentProver<SimdBackend>>> =
-            zip_eq(COMPONENT_NAMES, constructors.into_array())
-                .map(|(name, constructor)| (component_log_sizes[name], constructor))
-                .sorted_by_key(|(log_size, _)| *log_size)
-                .zip_eq(claimed_sums)
-                .map(|((log_size, mut constructor), claimed_sum)| {
-                    constructor(&mut *tree_span_provider, log_size, *claimed_sum)
-                })
-                .collect();
+        // Each constructor is paired with its own component's name, so look up the log size by
+        // name rather than relying on the map's iteration order.
+        let components: Vec<Box<dyn ComponentProver<SimdBackend>>> = constructors
+            .into_named_iter()
+            .map(|(name, constructor)| (component_log_sizes[name], constructor))
+            .sorted_by_key(|(log_size, _)| *log_size)
+            .zip_eq(claimed_sums)
+            .map(|((log_size, mut constructor), claimed_sum)| {
+                constructor(&mut *tree_span_provider, log_size, *claimed_sum)
+            })
+            .collect();
 
         Self { components }
     }

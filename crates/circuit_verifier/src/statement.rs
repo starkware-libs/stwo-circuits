@@ -1,3 +1,4 @@
+use crate::circuit_components::PerComponent;
 use crate::components::{
     blake_g_gate, eq::CircuitEqComponent, m_31_to_u_32, qm31_ops::CircuitQm31OpsComponent,
     range_check_16, triple_xor, verify_bitwise_xor_4, verify_bitwise_xor_7, verify_bitwise_xor_8,
@@ -168,34 +169,20 @@ impl<Value: IValue> Statement<Value> for CircuitStatement<Value> {
 
 pub fn all_circuit_components<Value: IValue>() -> IndexMap<&'static str, Box<dyn CircuitEval<Value>>>
 {
-    IndexMap::from([
-        ("eq", Box::new(CircuitEqComponent {}) as Box<dyn CircuitEval<Value>>),
-        ("qm31_ops", Box::new(CircuitQm31OpsComponent {}) as Box<dyn CircuitEval<Value>>),
-        ("triple_xor", Box::new(triple_xor::Component {}) as Box<dyn CircuitEval<Value>>),
-        ("m_31_to_u_32", Box::new(m_31_to_u_32::Component {}) as Box<dyn CircuitEval<Value>>),
-        ("blake_g_gate", Box::new(blake_g_gate::Component {}) as Box<dyn CircuitEval<Value>>),
-        (
-            "verify_bitwise_xor_8",
-            Box::new(verify_bitwise_xor_8::Component {}) as Box<dyn CircuitEval<Value>>,
-        ),
-        (
-            "verify_bitwise_xor_12",
-            Box::new(verify_bitwise_xor_12::Component {}) as Box<dyn CircuitEval<Value>>,
-        ),
-        (
-            "verify_bitwise_xor_4",
-            Box::new(verify_bitwise_xor_4::Component {}) as Box<dyn CircuitEval<Value>>,
-        ),
-        (
-            "verify_bitwise_xor_7",
-            Box::new(verify_bitwise_xor_7::Component {}) as Box<dyn CircuitEval<Value>>,
-        ),
-        (
-            "verify_bitwise_xor_9",
-            Box::new(verify_bitwise_xor_9::Component {}) as Box<dyn CircuitEval<Value>>,
-        ),
-        ("range_check_16", Box::new(range_check_16::Component {}) as Box<dyn CircuitEval<Value>>),
-    ])
+    let components = PerComponent::<Box<dyn CircuitEval<Value>>> {
+        eq: Box::new(CircuitEqComponent {}),
+        qm31_ops: Box::new(CircuitQm31OpsComponent {}),
+        triple_xor: Box::new(triple_xor::Component {}),
+        m_31_to_u_32: Box::new(m_31_to_u_32::Component {}),
+        blake_g_gate: Box::new(blake_g_gate::Component {}),
+        verify_bitwise_xor_8: Box::new(verify_bitwise_xor_8::Component {}),
+        verify_bitwise_xor_12: Box::new(verify_bitwise_xor_12::Component {}),
+        verify_bitwise_xor_4: Box::new(verify_bitwise_xor_4::Component {}),
+        verify_bitwise_xor_7: Box::new(verify_bitwise_xor_7::Component {}),
+        verify_bitwise_xor_9: Box::new(verify_bitwise_xor_9::Component {}),
+        range_check_16: Box::new(range_check_16::Component {}),
+    };
+    IndexMap::from_iter(components.into_named_iter())
 }
 
 /// Resolves the (static) log size of every circuit component, keyed by component name.
