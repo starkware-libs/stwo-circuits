@@ -89,7 +89,8 @@ pub fn verify_fixed_cairo_circuit(
     if outputs.len() != verifier_config.n_outputs {
         return Err("The proof claim does not match the expected number of outputs.".to_string());
     }
-    let context = build_fixed_cairo_circuit(verifier_config, proof, serialized_aux_data, outputs);
+    let context =
+        build_and_fill_cairo_verifier_circuit(verifier_config, proof, serialized_aux_data, outputs);
 
     // Check the verifier circuit gates topology only in test mode.
     #[cfg(test)]
@@ -113,10 +114,13 @@ pub fn enabled_components<V: IValue>(
         .collect()
 }
 
-/// Builds the Cairo verifier circuit context for a fixed circuit configuration.
+/// Builds the Cairo verifier circuit context and sets its values from the given proof.
+///
+/// The circuit topology depends only on `verifier_config`. The proof,
+/// claim and output are used to set the inputs to the circuit.
 ///
 /// The context can be used for proof verification or recursive proving.
-pub fn build_fixed_cairo_circuit(
+pub fn build_and_fill_cairo_verifier_circuit(
     verifier_config: &CairoVerifierConfig,
     proof: Proof<QM31>,
     serialized_aux_data: Vec<M31>,
