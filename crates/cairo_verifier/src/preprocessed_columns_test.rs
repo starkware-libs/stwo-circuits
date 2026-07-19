@@ -1,7 +1,8 @@
 use itertools::zip_eq;
 use stwo_cairo_prover::witness::prelude::PreProcessedTrace;
 
-use crate::preprocessed_columns::{CANONICAL_SMALL_PREPROCESSED_COLUMNS, MAX_SEQUENCE_LOG_SIZE};
+use crate::preprocessed_columns::CANONICAL_SMALL_PREPROCESSED_COLUMNS;
+use stwo_cairo_common::preprocessed_columns::preprocessed_trace::SMALL_MAX_SEQUENCE_LOG_SIZE;
 
 #[test]
 fn test_canonical_small_preprocessed_columns() {
@@ -16,6 +17,6 @@ fn test_canonical_small_preprocessed_columns() {
     let last_seq =
         CANONICAL_SMALL_PREPROCESSED_COLUMNS.iter().rfind(|name| name.starts_with("seq_"));
 
-    let expected = format!("seq_{MAX_SEQUENCE_LOG_SIZE}");
+    let expected = format!("seq_{SMALL_MAX_SEQUENCE_LOG_SIZE}");
     assert_eq!(last_seq, Some(&expected.as_str()));
 }
