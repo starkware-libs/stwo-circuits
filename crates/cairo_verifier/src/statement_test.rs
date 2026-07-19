@@ -1,4 +1,4 @@
-use crate::statement::{AuxData, CasmState, PubMemoryM31Value, SegmentRange, public_logup_sum};
+use crate::statement::{AuxData, CasmState, PubMemoryAddress, SegmentRange, public_logup_sum};
 use circuits::context::{TraceContext, Var};
 use circuits::ivalue::qm31_from_u32s;
 use circuits::wrappers::M31Wrapper;
@@ -36,121 +36,121 @@ fn test_public_logup_sum() {
     let segment_ranges = [
         // output: id=228, value=2520
         SegmentRange {
-            start: PubMemoryM31Value {
+            start: PubMemoryAddress {
                 id: context.constant(qm31_from_u32s(228, 0, 0, 0)),
                 value: context.constant(qm31_from_u32s(2520, 0, 0, 0)),
             },
-            end: PubMemoryM31Value {
+            end: PubMemoryAddress {
                 id: context.constant(qm31_from_u32s(228, 0, 0, 0)),
                 value: context.constant(qm31_from_u32s(2520, 0, 0, 0)),
             },
         },
         // pedersen: id=228, value=2520
         SegmentRange {
-            start: PubMemoryM31Value {
+            start: PubMemoryAddress {
                 id: context.constant(qm31_from_u32s(228, 0, 0, 0)),
                 value: context.constant(qm31_from_u32s(2520, 0, 0, 0)),
             },
-            end: PubMemoryM31Value {
+            end: PubMemoryAddress {
                 id: context.constant(qm31_from_u32s(228, 0, 0, 0)),
                 value: context.constant(qm31_from_u32s(2520, 0, 0, 0)),
             },
         },
         // range_check_128: id=228, value=2520
         SegmentRange {
-            start: PubMemoryM31Value {
+            start: PubMemoryAddress {
                 id: context.constant(qm31_from_u32s(228, 0, 0, 0)),
                 value: context.constant(qm31_from_u32s(2520, 0, 0, 0)),
             },
-            end: PubMemoryM31Value {
+            end: PubMemoryAddress {
                 id: context.constant(qm31_from_u32s(228, 0, 0, 0)),
                 value: context.constant(qm31_from_u32s(2520, 0, 0, 0)),
             },
         },
         // ecdsa: id=5, value=0
         SegmentRange {
-            start: PubMemoryM31Value {
+            start: PubMemoryAddress {
                 id: context.constant(qm31_from_u32s(5, 0, 0, 0)),
                 value: context.constant(qm31_from_u32s(0, 0, 0, 0)),
             },
-            end: PubMemoryM31Value {
+            end: PubMemoryAddress {
                 id: context.constant(qm31_from_u32s(5, 0, 0, 0)),
                 value: context.constant(qm31_from_u32s(0, 0, 0, 0)),
             },
         },
         // bitwise: id=228, value=2520
         SegmentRange {
-            start: PubMemoryM31Value {
+            start: PubMemoryAddress {
                 id: context.constant(qm31_from_u32s(228, 0, 0, 0)),
                 value: context.constant(qm31_from_u32s(2520, 0, 0, 0)),
             },
-            end: PubMemoryM31Value {
+            end: PubMemoryAddress {
                 id: context.constant(qm31_from_u32s(228, 0, 0, 0)),
                 value: context.constant(qm31_from_u32s(2520, 0, 0, 0)),
             },
         },
         // ec_op: id=5, value=0
         SegmentRange {
-            start: PubMemoryM31Value {
+            start: PubMemoryAddress {
                 id: context.constant(qm31_from_u32s(5, 0, 0, 0)),
                 value: context.constant(qm31_from_u32s(0, 0, 0, 0)),
             },
-            end: PubMemoryM31Value {
+            end: PubMemoryAddress {
                 id: context.constant(qm31_from_u32s(5, 0, 0, 0)),
                 value: context.constant(qm31_from_u32s(0, 0, 0, 0)),
             },
         },
         // keccak: id=5, value=0
         SegmentRange {
-            start: PubMemoryM31Value {
+            start: PubMemoryAddress {
                 id: context.constant(qm31_from_u32s(5, 0, 0, 0)),
                 value: context.constant(qm31_from_u32s(0, 0, 0, 0)),
             },
-            end: PubMemoryM31Value {
+            end: PubMemoryAddress {
                 id: context.constant(qm31_from_u32s(5, 0, 0, 0)),
                 value: context.constant(qm31_from_u32s(0, 0, 0, 0)),
             },
         },
         // poseidon: id=228, value=2520
         SegmentRange {
-            start: PubMemoryM31Value {
+            start: PubMemoryAddress {
                 id: context.constant(qm31_from_u32s(228, 0, 0, 0)),
                 value: context.constant(qm31_from_u32s(2520, 0, 0, 0)),
             },
-            end: PubMemoryM31Value {
+            end: PubMemoryAddress {
                 id: context.constant(qm31_from_u32s(228, 0, 0, 0)),
                 value: context.constant(qm31_from_u32s(2520, 0, 0, 0)),
             },
         },
         // range_check_96: id=228, value=2520
         SegmentRange {
-            start: PubMemoryM31Value {
+            start: PubMemoryAddress {
                 id: context.constant(qm31_from_u32s(228, 0, 0, 0)),
                 value: context.constant(qm31_from_u32s(2520, 0, 0, 0)),
             },
-            end: PubMemoryM31Value {
+            end: PubMemoryAddress {
                 id: context.constant(qm31_from_u32s(228, 0, 0, 0)),
                 value: context.constant(qm31_from_u32s(2520, 0, 0, 0)),
             },
         },
         // add_mod: id=228, value=2520
         SegmentRange {
-            start: PubMemoryM31Value {
+            start: PubMemoryAddress {
                 id: context.constant(qm31_from_u32s(228, 0, 0, 0)),
                 value: context.constant(qm31_from_u32s(2520, 0, 0, 0)),
             },
-            end: PubMemoryM31Value {
+            end: PubMemoryAddress {
                 id: context.constant(qm31_from_u32s(228, 0, 0, 0)),
                 value: context.constant(qm31_from_u32s(2520, 0, 0, 0)),
             },
         },
         // mul_mod: id=228, value=2520
         SegmentRange {
-            start: PubMemoryM31Value {
+            start: PubMemoryAddress {
                 id: context.constant(qm31_from_u32s(228, 0, 0, 0)),
                 value: context.constant(qm31_from_u32s(2520, 0, 0, 0)),
             },
-            end: PubMemoryM31Value {
+            end: PubMemoryAddress {
                 id: context.constant(qm31_from_u32s(228, 0, 0, 0)),
                 value: context.constant(qm31_from_u32s(2520, 0, 0, 0)),
             },
