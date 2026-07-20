@@ -1,6 +1,7 @@
 use crate::components::prelude::*;
-use crate::preprocessed_columns::MAX_SEQUENCE_LOG_SIZE;
+
 use stwo::core::fields::m31::P as M31_P;
+use stwo_cairo_common::preprocessed_columns::preprocessed_trace::MAX_SEQUENCE_LOG_SIZE;
 
 const LARGE_MEMORY_VALUE_ID_BASE: u32 = 0x40000000; // 2^30.
 const ID_TO_BIG_MAX_ROWS: u32 = 1 << MAX_SEQUENCE_LOG_SIZE;
@@ -171,7 +172,9 @@ impl<Value: IValue> CircuitEval<Value> for Component {
         );
 
         // Verify size <= ID_TO_BIG_MAX_ROWS (otherwise it will overlap with the next component)
-        for bit_pos in (MAX_SEQUENCE_LOG_SIZE + 1)..component_data.max_component_size_bits() {
+        const { assert!(ID_TO_BIG_MAX_ROWS == (1 << MAX_SEQUENCE_LOG_SIZE)) };
+        let max_sequence_log_size = usize::try_from(MAX_SEQUENCE_LOG_SIZE).unwrap();
+        for bit_pos in (max_sequence_log_size + 1)..component_data.max_component_size_bits() {
             let bit = component_data.get_n_instances_bit(context, bit_pos);
             eq(context, bit, context.zero());
         }

@@ -1,5 +1,3 @@
-pub const MAX_SEQUENCE_LOG_SIZE: usize = 20;
-
 #[cfg(test)]
 #[path = "preprocessed_columns_test.rs"]
 mod test;
