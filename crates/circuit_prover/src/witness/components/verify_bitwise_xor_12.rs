@@ -2,11 +2,11 @@
 #![allow(dead_code)]
 use std::simd::u32x16;
 
+use itertools::{Itertools, chain};
+
 use crate::circuit_air::components::verify_bitwise_xor_12::{
     Claim, EXPAND_BITS, InteractionClaim, LIMB_BITS, LOG_SIZE, N_MULT_COLUMNS,
 };
-use itertools::{Itertools, chain};
-
 use crate::witness::components::prelude::*;
 
 pub type InputType = [M31; 3];

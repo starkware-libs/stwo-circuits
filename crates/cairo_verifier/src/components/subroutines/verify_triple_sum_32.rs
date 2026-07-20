@@ -31,7 +31,7 @@ pub fn accumulate_constraints<Value: IValue>(
             * (32768)
     );
 
-    //carry low is 0 or 1 or 2.
+    // carry low is 0 or 1 or 2.
     let constraint_1_value = eval!(
         context,
         ((carry_low_tmp_a7b7a_0) * ((carry_low_tmp_a7b7a_0) - (1)))
@@ -48,7 +48,7 @@ pub fn accumulate_constraints<Value: IValue>(
             * (32768)
     );
 
-    //carry high is 0 or 1 or 2.
+    // carry high is 0 or 1 or 2.
     let constraint_3_value = eval!(
         context,
         ((carry_high_tmp_a7b7a_1) * ((carry_high_tmp_a7b7a_1) - (1)))

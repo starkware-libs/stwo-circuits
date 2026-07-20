@@ -1,7 +1,8 @@
-use crate::statement::{AuxData, CasmState, PubMemoryAddress, SegmentRange, public_logup_sum};
 use circuits::context::{TraceContext, Var};
 use circuits::ivalue::qm31_from_u32s;
 use circuits::wrappers::M31Wrapper;
+
+use crate::statement::{AuxData, CasmState, PubMemoryAddress, SegmentRange, public_logup_sum};
 
 #[test]
 fn test_public_logup_sum() {

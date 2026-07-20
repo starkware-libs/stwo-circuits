@@ -1,13 +1,13 @@
-use stwo::core::fields::qm31::QM31;
-
-use crate::deserialize::deserialize_proof_with_config;
-use crate::serialize::CircuitSerialize;
 use circuits_stark_verifier::proof::{ProofConfig, ProofInfo};
 use circuits_stark_verifier::proof_from_stark_proof::proof_from_stark_proof;
 use circuits_stark_verifier_examples::simple_air::create_proof;
 use circuits_stark_verifier_examples::simple_statement::{
     PREPROCESSED_COLUMN_LOG_SIZES, simple_statement_components,
 };
+use stwo::core::fields::qm31::QM31;
+
+use crate::deserialize::deserialize_proof_with_config;
+use crate::serialize::CircuitSerialize;
 
 #[test]
 fn test_serialize_deserialize() {

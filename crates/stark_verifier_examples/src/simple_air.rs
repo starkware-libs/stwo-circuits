@@ -1,5 +1,4 @@
 use circuits_stark_verifier::proof_from_stark_proof::pack_public_claim;
-
 use itertools::{Itertools, zip_eq};
 use num_traits::One;
 use stwo::core::ColumnVec;
@@ -13,13 +12,11 @@ use stwo::core::poly::circle::CanonicCoset;
 use stwo::core::proof::ExtendedStarkProof;
 use stwo::core::proof_of_work::GrindOps;
 use stwo::core::vcs_lifted::blake2_merkle::{Blake2sM31MerkleChannel, Blake2sMerkleHasher};
-
-use stwo::prover::backend::Col;
-use stwo::prover::backend::Column;
 use stwo::prover::backend::simd::SimdBackend;
 use stwo::prover::backend::simd::column::BaseColumn;
 use stwo::prover::backend::simd::m31::{LOG_N_LANES, PackedBaseField};
 use stwo::prover::backend::simd::qm31::PackedSecureField;
+use stwo::prover::backend::{Col, Column};
 use stwo::prover::poly::BitReversedOrder;
 use stwo::prover::poly::circle::{CircleEvaluation, PolyOps};
 use stwo::prover::{CommitmentSchemeProver, prove_ex};

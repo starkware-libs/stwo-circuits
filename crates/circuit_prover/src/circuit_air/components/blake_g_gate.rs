@@ -1,12 +1,13 @@
 // This file was created by the AIR team.
 
-use crate::circuit_air::components::prelude::*;
 use subroutines::triple_sum_32::TripleSum32;
 use subroutines::verify_triple_sum_32::VerifyTripleSum32;
 use subroutines::verify_xor_rot_32_r_7::VerifyXorRot32R7;
 use subroutines::verify_xor_rot_32_r_8::VerifyXorRot32R8;
 use subroutines::xor_rot_32_r_12::XorRot32R12;
 use subroutines::xor_rot_32_r_16::XorRot32R16;
+
+use crate::circuit_air::components::prelude::*;
 
 pub const N_TRACE_COLUMNS: usize = 52;
 pub const RELATION_USES_PER_ROW: [RelationUse; 7] = [

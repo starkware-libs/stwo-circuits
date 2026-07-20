@@ -20,11 +20,11 @@ pub fn accumulate_constraints<Value: IValue>(
         ap_update_add_1_col2,
     ] = input.try_into().unwrap();
 
-    //Flag dst_base_fp is a bit.
+    // Flag dst_base_fp is a bit.
     let constraint_0_value = eval!(context, (dst_base_fp_col1) * ((1) - (dst_base_fp_col1)));
     acc.add_constraint(context, constraint_0_value);
 
-    //Flag ap_update_add_1 is a bit.
+    // Flag ap_update_add_1 is a bit.
     let constraint_1_value =
         eval!(context, (ap_update_add_1_col2) * ((1) - (ap_update_add_1_col2)));
     acc.add_constraint(context, constraint_1_value);

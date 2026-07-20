@@ -38,7 +38,7 @@ impl VerifyTripleSum32 {
                 - verify_triple_sum_32_input_limb_6.clone())
                 * M31_32768.clone()),
         );
-        //carry low is 0 or 1 or 2.
+        // carry low is 0 or 1 or 2.
         eval.add_constraint(
             ((carry_low_tmp_a7b7a_0.clone() * (carry_low_tmp_a7b7a_0.clone() - M31_1.clone()))
                 * (carry_low_tmp_a7b7a_0.clone() - M31_2.clone())),
@@ -51,7 +51,7 @@ impl VerifyTripleSum32 {
                 - verify_triple_sum_32_input_limb_7.clone())
                 * M31_32768.clone()),
         );
-        //carry high is 0 or 1 or 2.
+        // carry high is 0 or 1 or 2.
         eval.add_constraint(
             ((carry_high_tmp_a7b7a_1.clone() * (carry_high_tmp_a7b7a_1.clone() - M31_1.clone()))
                 * (carry_high_tmp_a7b7a_1.clone() - M31_2.clone())),

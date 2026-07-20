@@ -1,12 +1,11 @@
-use stwo::core::fields::m31::M31;
-use stwo::core::fields::qm31::QM31;
-
 use circuits::blake::{HashValue, ReducedHashValue};
 use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::fri_proof::{FriCommitProof, FriProof, FriWitness};
 use circuits_stark_verifier::merkle::{AuthPath, AuthPaths};
 use circuits_stark_verifier::oods::EvalDomainSamples;
 use circuits_stark_verifier::proof::{InteractionAtOods, Proof};
+use stwo::core::fields::m31::M31;
+use stwo::core::fields::qm31::QM31;
 
 pub trait CircuitSerialize {
     fn serialize(&self, output: &mut Vec<u8>);

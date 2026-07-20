@@ -1,8 +1,5 @@
 use std::iter::repeat_n;
 
-use crate::circuit_components::{N_COMPONENTS, sorted_component_order};
-use crate::relations::{CommonLookupElements, GATE_RELATION_ID};
-use crate::statement::all_circuit_components;
 use circuits::context::{U_VALUE, U_VAR_IDX};
 use circuits::ivalue::NoValue;
 use circuits_stark_verifier::order_hash_map::OrderedHashMap;
@@ -12,6 +9,10 @@ use stwo::core::fields::FieldExpOps;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 use stwo_constraint_framework::Relation;
+
+use crate::circuit_components::{N_COMPONENTS, sorted_component_order};
+use crate::relations::{CommonLookupElements, GATE_RELATION_ID};
+use crate::statement::all_circuit_components;
 
 pub type ComponentLogSize = u32;
 pub type ClaimedSum = QM31;

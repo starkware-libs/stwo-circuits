@@ -77,7 +77,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_1 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_1, tuple_1);
 
-    //delta_ab doesn't equal 0.
+    // delta_ab doesn't equal 0.
     let constraint_2_value = eval!(
         context,
         (((((((value_limb_0_col1) + (value_limb_1_col2)) + (value_limb_2_col3))
@@ -91,7 +91,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_2_value);
 
-    //delta_cd doesn't equal 0.
+    // delta_cd doesn't equal 0.
     let constraint_3_value = eval!(
         context,
         (((((((value_limb_8_col9) + (value_limb_9_col10)) + (value_limb_10_col11))

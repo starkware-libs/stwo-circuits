@@ -1,4 +1,9 @@
 use circuits::blake::HashValue;
+use circuits::context::{Context, Var};
+use circuits::eval;
+use circuits::ivalue::IValue;
+use circuits::ops::{eq, mul};
+use circuits::simd::Simd;
 use circuits::utils::select_by_index;
 use itertools::{Itertools, zip_eq};
 use stwo::core::circle::CirclePoint;
@@ -12,11 +17,6 @@ use crate::circle::{
 use crate::fri_proof::{FriCommitProof, FriConfig, FriProof, FriWitness};
 use crate::merkle::{hash_leaf_qm31, hash_node, hash_packed_leaf_qm31s, verify_merkle_path};
 use crate::select_queries::Queries;
-use circuits::context::{Context, Var};
-use circuits::eval;
-use circuits::ivalue::IValue;
-use circuits::ops::{eq, mul};
-use circuits::simd::Simd;
 
 #[cfg(test)]
 #[path = "fri_test.rs"]

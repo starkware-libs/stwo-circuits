@@ -1,10 +1,5 @@
 use std::collections::HashMap;
 
-use crate::circle::denom_inverse;
-use crate::logup::{LogupTerm, logup_term, pair_logup_constraint, single_logup_constraint};
-use crate::order_hash_map::OrderedHashMap;
-use crate::proof::{InteractionAtOods, ProofConfig};
-use crate::statement::{EvaluateArgs, Statement};
 use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::ivalue::IValue;
@@ -13,6 +8,12 @@ use circuits::simd::Simd;
 use itertools::{Itertools, zip_eq};
 use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
+
+use crate::circle::denom_inverse;
+use crate::logup::{LogupTerm, logup_term, pair_logup_constraint, single_logup_constraint};
+use crate::order_hash_map::OrderedHashMap;
+use crate::proof::{InteractionAtOods, ProofConfig};
+use crate::statement::{EvaluateArgs, Statement};
 
 #[derive(Debug)]
 pub struct RelationUse {

@@ -1,30 +1,22 @@
-pub use crate::witness::utils::pack_values;
-pub use circuit_common::Qm31OpsTraceGenerator;
-pub use circuit_common::preprocessed::PreProcessedTrace;
-pub use circuit_verifier::circuit_claim::ClaimedSum;
-pub use circuit_verifier::circuit_claim::ComponentLogSize;
-pub use circuit_verifier::relations;
-pub use itertools::Itertools;
-pub use itertools::multizip;
-pub use num_traits::One;
-pub use num_traits::Zero;
-pub use rayon::iter::IndexedParallelIterator;
-pub use rayon::iter::IntoParallelIterator;
-pub use rayon::iter::IntoParallelRefIterator;
-pub use rayon::iter::IntoParallelRefMutIterator;
-pub use rayon::iter::ParallelIterator;
 pub use std::array::from_fn;
 pub use std::collections::HashMap;
-pub use std::simd::Simd;
-pub use std::simd::num::SimdInt;
-pub use std::simd::num::SimdUint;
-pub use std::simd::u32x16;
+pub use std::simd::num::{SimdInt, SimdUint};
+pub use std::simd::{Simd, u32x16};
 pub use std::sync::Arc;
-pub use std::sync::atomic::AtomicU32;
-pub use std::sync::atomic::Ordering;
+pub use std::sync::atomic::{AtomicU32, Ordering};
+
+pub use circuit_common::Qm31OpsTraceGenerator;
+pub use circuit_common::preprocessed::PreProcessedTrace;
+pub use circuit_verifier::circuit_claim::{ClaimedSum, ComponentLogSize};
+pub use circuit_verifier::relations;
+pub use itertools::{Itertools, multizip};
+pub use num_traits::{One, Zero};
+pub use rayon::iter::{
+    IndexedParallelIterator, IntoParallelIterator, IntoParallelRefIterator,
+    IntoParallelRefMutIterator, ParallelIterator,
+};
 pub use stwo::core::fields::m31::M31;
-pub use stwo::core::fields::qm31::QM31;
-pub use stwo::core::fields::qm31::SecureField;
+pub use stwo::core::fields::qm31::{QM31, SecureField};
 pub use stwo::core::poly::circle::CanonicCoset;
 pub use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 pub use stwo::prover::TreeBuilder;
@@ -50,9 +42,10 @@ pub use stwo_cairo_prover::witness::fast_deduction::blake::{
     G_STATE_INDICES, PackedBlakeRoundSigma, PackedTripleXor32,
 };
 pub use stwo_cairo_prover::witness::utils::{AtomicMultiplicityColumn, Enabler};
-pub use stwo_constraint_framework::LogupTraceGenerator;
-pub use stwo_constraint_framework::Relation;
 pub use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
+pub use stwo_constraint_framework::{LogupTraceGenerator, Relation};
+
+pub use crate::witness::utils::pack_values;
 
 const NUM_INPUT_WORDS_G: usize = 6;
 const NUM_OUTPUT_WORDS_G: usize = 4;

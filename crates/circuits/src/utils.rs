@@ -1,12 +1,10 @@
 use itertools::zip_eq;
 use stwo::core::utils::SliceExt;
 
-use crate::{
-    context::{Context, Var},
-    eval,
-    ivalue::IValue,
-    ops::sub,
-};
+use crate::context::{Context, Var};
+use crate::eval;
+use crate::ivalue::IValue;
+use crate::ops::sub;
 
 /// Concatenates the little-endian byte encodings of each u32 in `words`.
 ///

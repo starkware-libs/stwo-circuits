@@ -1,7 +1,3 @@
-use crate::circuit_air::components::{
-    blake_g_gate, eq, m_31_to_u_32, qm_31_ops, range_check_16, triple_xor, verify_bitwise_xor_4,
-    verify_bitwise_xor_7, verify_bitwise_xor_8, verify_bitwise_xor_9, verify_bitwise_xor_12,
-};
 use circuit_verifier::circuit_claim::{
     CircuitInteractionClaim, CircuitInteractionElements, ClaimedSum,
 };
@@ -13,6 +9,11 @@ use stwo::prover::ComponentProver;
 use stwo::prover::backend::simd::SimdBackend;
 use stwo_constraint_framework::TraceLocationAllocator;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
+
+use crate::circuit_air::components::{
+    blake_g_gate, eq, m_31_to_u_32, qm_31_ops, range_check_16, triple_xor, verify_bitwise_xor_4,
+    verify_bitwise_xor_7, verify_bitwise_xor_8, verify_bitwise_xor_9, verify_bitwise_xor_12,
+};
 
 pub struct CircuitComponents {
     /// The component provers, in ascending trace-log-size order (may differ from

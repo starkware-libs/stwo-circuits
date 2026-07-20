@@ -1,12 +1,11 @@
 use std::collections::HashMap;
 
-use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
-
 use circuits::context::*;
 use circuits::eval;
 use circuits::ivalue::IValue;
 use circuits::ops::eq;
 use circuits_stark_verifier::constraint_eval::*;
+use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 // Create a variable with the evaluation of seq_k where k is the log-height of
 // the component. The height is taken from component_data.get_n_instances_bits.

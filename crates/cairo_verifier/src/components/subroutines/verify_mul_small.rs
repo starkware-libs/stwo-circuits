@@ -40,7 +40,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_0 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_0, tuple_0);
 
-    //carry 1 definition.
+    // carry 1 definition.
     let constraint_1_value = eval!(
         context,
         ((carry_1_col0) * (262144))
@@ -58,7 +58,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_2 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_2, tuple_2);
 
-    //carry 3 definition.
+    // carry 3 definition.
     let constraint_3_value = eval!(
         context,
         ((carry_3_col1) * (262144))
@@ -82,7 +82,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_4 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_4, tuple_4);
 
-    //carry 5 definition.
+    // carry 5 definition.
     let constraint_5_value = eval!(
         context,
         ((carry_5_col2) * (262144))
@@ -98,7 +98,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_5_value);
 
-    //final limb constraint.
+    // final limb constraint.
     let constraint_6_value = eval!(
         context,
         (((carry_5_col2)

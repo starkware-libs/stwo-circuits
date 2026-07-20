@@ -1,6 +1,3 @@
-use crate::channel::Channel;
-use crate::fri::{fold_coset, validate_query_position_in_coset};
-use crate::fri_proof::FriCommitProof;
 use circuits::blake::HashValue;
 use circuits::context::TraceContext;
 use circuits::ivalue::qm31_from_u32s;
@@ -13,6 +10,9 @@ use stwo::core::poly::line::LineDomain;
 use stwo::core::utils::bit_reverse_index;
 
 use super::fri_commit;
+use crate::channel::Channel;
+use crate::fri::{fold_coset, validate_query_position_in_coset};
+use crate::fri_proof::FriCommitProof;
 
 #[test]
 fn test_fri_commit_regression() {

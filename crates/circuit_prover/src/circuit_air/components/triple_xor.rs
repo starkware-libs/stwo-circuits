@@ -1,8 +1,9 @@
 // This file was created by the AIR team.
 
-use crate::circuit_air::components::prelude::*;
 use subroutines::bitwise_xor_num_bits_8::BitwiseXorNumBits8;
 use subroutines::split_16_low_part_size_8::Split16LowPartSize8;
+
+use crate::circuit_air::components::prelude::*;
 
 pub const N_TRACE_COLUMNS: usize = 20;
 pub const RELATION_USES_PER_ROW: [RelationUse; 2] = [

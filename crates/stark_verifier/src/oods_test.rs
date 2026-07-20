@@ -1,3 +1,8 @@
+use circuits::context::{Context, TraceContext};
+use circuits::ivalue::{NoValue, qm31_from_u32s};
+use circuits::ops::Guess;
+use circuits::test_utils::{finalize_guessed_vars, simd_from_u32s};
+use circuits::wrappers::M31Wrapper;
 use expect_test::expect;
 use stwo::core::circle::CirclePoint;
 use stwo::core::fields::m31::M31;
@@ -7,11 +12,6 @@ use crate::oods::{
     extract_expected_composition_eval,
 };
 use crate::select_queries::select_queries;
-use circuits::context::{Context, TraceContext};
-use circuits::ivalue::{NoValue, qm31_from_u32s};
-use circuits::ops::Guess;
-use circuits::test_utils::{finalize_guessed_vars, simd_from_u32s};
-use circuits::wrappers::M31Wrapper;
 
 #[test]
 fn test_eval_domain_samples_guess_circuit() {

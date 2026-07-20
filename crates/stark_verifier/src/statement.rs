@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 
 use circuits::blake::HashValue;
+use circuits::context::{Context, Var};
+use circuits::ivalue::IValue;
+use circuits::simd::Simd;
+use circuits::wrappers::U32Wrapper;
 use indexmap::IndexMap;
 use stwo::core::circle::CirclePoint;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 use crate::constraint_eval::CircuitEval;
 use crate::proof::InteractionAtOods;
-use circuits::context::{Context, Var};
-use circuits::ivalue::IValue;
-use circuits::simd::Simd;
-use circuits::wrappers::U32Wrapper;
 
 /// Values at the OODS point (and its previous point where applicable).
 pub struct OodsSamples<'a> {

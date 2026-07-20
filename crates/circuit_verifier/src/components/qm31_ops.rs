@@ -1,5 +1,6 @@
-use super::prelude::*;
 use stwo::core::fields::qm31::SecureField;
+
+use super::prelude::*;
 
 pub const N_TRACE_COLUMNS: usize = 12;
 pub const N_INTERACTION_COLUMNS: usize = 8;

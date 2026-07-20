@@ -1,3 +1,8 @@
+use circuits::blake::HashValue;
+use circuits::context::{TraceContext, Var};
+use circuits::ivalue::qm31_from_u32s;
+use circuits::ops::Guess;
+use circuits::wrappers::{M31Wrapper, U32Wrapper};
 use rstest::rstest;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
@@ -8,11 +13,6 @@ use crate::merkle::{
     verify_merkle_path,
 };
 use crate::oods::EvalDomainSamples;
-use circuits::blake::HashValue;
-use circuits::context::{TraceContext, Var};
-use circuits::ivalue::qm31_from_u32s;
-use circuits::ops::Guess;
-use circuits::wrappers::{M31Wrapper, U32Wrapper};
 
 /// Reads the circuit's value of a [`HashValue<Var>`] back as a [`HashValue<QM31>`].
 fn get_hash(context: &TraceContext, hash: HashValue<Var>) -> HashValue<QM31> {

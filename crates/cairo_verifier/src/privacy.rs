@@ -1,9 +1,10 @@
+use std::collections::HashSet;
+
 use cairo_air::verifier::INTERACTION_POW_BITS;
 use circuits::ivalue::NoValue;
 use circuits_stark_verifier::constraint_eval::CircuitEval;
 use circuits_stark_verifier::proof::ProofConfig;
 use indexmap::IndexMap;
-use std::collections::HashSet;
 use stwo::core::fri::FriConfig;
 use stwo::core::pcs::PcsConfig;
 use stwo_cairo_common::preprocessed_columns::preprocessed_trace::PreProcessedTraceVariant;

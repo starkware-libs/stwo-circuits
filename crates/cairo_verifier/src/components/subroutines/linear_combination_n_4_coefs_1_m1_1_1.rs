@@ -159,7 +159,7 @@ pub fn accumulate_constraints<Value: IValue>(
             * (16)
     );
 
-    //final limb constraint.
+    // final limb constraint.
     let constraint_9_value = eval!(
         context,
         ((((((carry_8_tmp_c08fd_10) + (linear_combination_n_4_coefs_1_m1_1_1_input_limb_9))

@@ -41,7 +41,7 @@ pub fn accumulate_constraints<Value: IValue>(
         range_check_29_bot11bits_col16,
     ] = input.try_into().unwrap();
 
-    //Enabler is a bit.
+    // Enabler is a bit.
     let constraint_0_value = eval!(context, ((enabler_col0) * (enabler_col0)) - (enabler_col0));
     acc.add_constraint(context, constraint_0_value);
 
@@ -63,14 +63,14 @@ pub fn accumulate_constraints<Value: IValue>(
     .try_into()
     .unwrap();
 
-    //if imm then offset2 is 1.
+    // if imm then offset2 is 1.
     let constraint_2_value = eval!(
         context,
         (op1_imm_col5) * ((1) - (decode_instruction_89ffb_output_tmp_44683_6_offset2))
     );
     acc.add_constraint(context, constraint_2_value);
 
-    //mem1_base.
+    // mem1_base.
     let constraint_3_value = eval!(
         context,
         (mem1_base_col7)
@@ -174,17 +174,17 @@ impl<Value: IValue> CircuitEval<Value> for Component {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
-    use stwo::core::fields::qm31::QM31;
 
-    #[allow(unused_imports)]
-    use crate::components::prelude::PreProcessedColumnId;
-    use crate::sample_evaluations::*;
     use circuits::context::Context;
     use circuits::ivalue::qm31_from_u32s;
     use circuits_stark_verifier::constraint_eval::*;
     use circuits_stark_verifier::test_utils::TestComponentData;
+    use stwo::core::fields::qm31::QM31;
 
     use super::Component;
+    #[allow(unused_imports)]
+    use crate::components::prelude::PreProcessedColumnId;
+    use crate::sample_evaluations::*;
 
     #[test]
     fn test_evaluation_result() {

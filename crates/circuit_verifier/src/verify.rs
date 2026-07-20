@@ -1,18 +1,15 @@
 use circuit_common::N_RESERVED;
-use circuits::{
-    blake::{HashValue, blake2s_u32s, unpack_qm31s_to_u32_words},
-    context::{Context, FinalizedContext},
-    ivalue::IValue,
-    ops::Guess,
-};
+use circuits::blake::{HashValue, blake2s_u32s, unpack_qm31s_to_u32_words};
+use circuits::context::{Context, FinalizedContext};
+use circuits::ivalue::IValue;
+use circuits::ops::Guess;
 use circuits_stark_verifier::order_hash_map::OrderedHashMap;
-use circuits_stark_verifier::{
-    proof::{Proof, ProofConfig},
-    statement::Statement,
-    verify::verify,
-};
+use circuits_stark_verifier::proof::{Proof, ProofConfig};
+use circuits_stark_verifier::statement::Statement;
+use circuits_stark_verifier::verify::verify;
 use itertools::Itertools;
-use stwo::core::{fields::qm31::QM31, pcs::PcsConfig};
+use stwo::core::fields::qm31::QM31;
+use stwo::core::pcs::PcsConfig;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 use crate::statement::{CircuitStatement, INTERACTION_POW_BITS};

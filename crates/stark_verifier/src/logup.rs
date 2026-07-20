@@ -1,5 +1,4 @@
-use circuits::context::Context;
-use circuits::context::Var;
+use circuits::context::{Context, Var};
 use circuits::eval;
 use circuits::ivalue::IValue;
 use circuits::ops::inv;

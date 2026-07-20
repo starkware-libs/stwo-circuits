@@ -5,9 +5,7 @@ use stwo::core::fields::qm31::QM31;
 
 use crate::context::{Context, GuessVar, Var};
 use crate::eval;
-use crate::ivalue::IValue;
-use crate::ivalue::NoValue;
-use crate::ivalue::qm31_from_u32s;
+use crate::ivalue::{IValue, NoValue, qm31_from_u32s};
 use crate::ops::{Guess, guess_m31};
 
 #[cfg(test)]

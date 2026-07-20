@@ -15,7 +15,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let [decode_instruction_edfb6_input_pc, enabler, offset2_col0, op1_base_fp_col1] =
         input.try_into().unwrap();
 
-    //Flag op1_base_fp is a bit.
+    // Flag op1_base_fp is a bit.
     let constraint_0_value = eval!(context, (op1_base_fp_col1) * ((1) - (op1_base_fp_col1)));
     acc.add_constraint(context, constraint_0_value);
 

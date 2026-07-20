@@ -1,4 +1,3 @@
-use crate::preprocessed::PreprocessedCircuit;
 use circuits::circuit::{
     Add, BlakeGGate, Circuit, Eq, M31ToU32, Mul, Output, PointwiseMul, Sub, TripleXor,
 };
@@ -6,6 +5,8 @@ use expect_test::expect;
 use itertools::Itertools;
 use stwo::prover::backend::Column;
 use stwo::prover::backend::simd::SimdBackend;
+
+use crate::preprocessed::PreprocessedCircuit;
 
 #[test]
 fn test_preprocess_circuit() {

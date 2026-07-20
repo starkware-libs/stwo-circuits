@@ -1,11 +1,10 @@
-use circuits::{
-    context::{Context, Var},
-    ivalue::IValue,
-};
+use circuits::context::{Context, Var};
+use circuits::ivalue::IValue;
 use itertools::Itertools;
 use stwo::core::fields::qm31::QM31;
 
-use crate::{constraint_eval::ComponentDataTrait, proof::InteractionAtOods};
+use crate::constraint_eval::ComponentDataTrait;
+use crate::proof::InteractionAtOods;
 
 pub struct TestComponentData {
     trace: Vec<Var>,

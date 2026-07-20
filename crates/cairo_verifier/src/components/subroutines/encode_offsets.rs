@@ -29,14 +29,14 @@ pub fn accumulate_constraints<Value: IValue>(
         offset2_high_col7,
     ] = input.try_into().unwrap();
 
-    //Reconstructed offset0 is correct.
+    // Reconstructed offset0 is correct.
     let constraint_0_value = eval!(
         context,
         ((offset0_low_col0) + ((offset0_mid_col1) * (512))) - (encode_offsets_input_offset0)
     );
     acc.add_constraint(context, constraint_0_value);
 
-    //Reconstructed offset1 is correct.
+    // Reconstructed offset1 is correct.
     let constraint_1_value = eval!(
         context,
         (((offset1_low_col2) + ((offset1_mid_col3) * (4))) + ((offset1_high_col4) * (2048)))
@@ -44,7 +44,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_1_value);
 
-    //Reconstructed offset2 is correct.
+    // Reconstructed offset2 is correct.
     let constraint_2_value = eval!(
         context,
         (((offset2_low_col5) + ((offset2_mid_col6) * (16))) + ((offset2_high_col7) * (8192)))

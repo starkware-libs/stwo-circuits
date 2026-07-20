@@ -1,17 +1,12 @@
-#[cfg(feature = "prover")]
-use crate::N_LANES;
-use crate::Qm31OpsTraceGenerator;
-use crate::finalize::pad_context;
-use circuits::circuit::Gate;
-use circuits::circuit::M31ToU32;
+use std::sync::Arc;
+
 use circuits::circuit::{
-    Add, BlakeGGate, Circuit, Eq, Mul, Permutation, PointwiseMul, Sub, TripleXor,
+    Add, BlakeGGate, Circuit, Eq, Gate, M31ToU32, Mul, Permutation, PointwiseMul, Sub, TripleXor,
 };
 use circuits::context::FinalizedContext;
 use circuits::ivalue::IValue;
 use circuits_stark_verifier::order_hash_map::OrderedHashMap;
 use itertools::zip_eq;
-use std::sync::Arc;
 #[cfg(feature = "prover")]
 use stwo::core::fields::m31::BaseField;
 #[cfg(feature = "prover")]
@@ -26,6 +21,11 @@ use stwo::prover::poly::BitReversedOrder;
 use stwo::prover::poly::circle::CircleEvaluation;
 pub use stwo_cairo_common::preprocessed_columns::blake::BLAKE_SIGMA;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
+
+#[cfg(feature = "prover")]
+use crate::N_LANES;
+use crate::Qm31OpsTraceGenerator;
+use crate::finalize::pad_context;
 
 #[cfg(feature = "prover")]
 #[cfg(test)]

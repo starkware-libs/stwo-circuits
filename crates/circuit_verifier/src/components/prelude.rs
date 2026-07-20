@@ -1,4 +1,3 @@
-pub use crate::components::subroutines::*;
 pub use circuit_common::component_utils::*;
 pub use circuits::context::{Context, Var};
 pub use circuits::eval;
@@ -11,3 +10,5 @@ pub use circuits_stark_verifier::order_hash_map::OrderedHashMap;
 pub use stwo::core::fields::m31::M31;
 pub use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
 pub use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
+
+pub use crate::components::subroutines::*;

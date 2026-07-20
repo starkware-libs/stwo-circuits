@@ -333,7 +333,7 @@ pub fn accumulate_constraints<Value: IValue>(
         carry_26_col296,
     ] = input.try_into().unwrap();
 
-    //Enabler is a bit.
+    // Enabler is a bit.
     let constraint_0_value = eval!(context, ((enabler_col0) * (enabler_col0)) - (enabler_col0));
     acc.add_constraint(context, constraint_0_value);
 
@@ -886,17 +886,17 @@ impl<Value: IValue> CircuitEval<Value> for Component {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
-    use stwo::core::fields::qm31::QM31;
 
-    #[allow(unused_imports)]
-    use crate::components::prelude::PreProcessedColumnId;
-    use crate::sample_evaluations::*;
     use circuits::context::Context;
     use circuits::ivalue::qm31_from_u32s;
     use circuits_stark_verifier::constraint_eval::*;
     use circuits_stark_verifier::test_utils::TestComponentData;
+    use stwo::core::fields::qm31::QM31;
 
     use super::Component;
+    #[allow(unused_imports)]
+    use crate::components::prelude::PreProcessedColumnId;
+    use crate::sample_evaluations::*;
 
     #[test]
     fn test_evaluation_result() {

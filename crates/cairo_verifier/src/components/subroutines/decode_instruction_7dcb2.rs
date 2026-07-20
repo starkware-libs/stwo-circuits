@@ -15,7 +15,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let [decode_instruction_7dcb2_input_pc, enabler, ap_update_add_1_col0] =
         input.try_into().unwrap();
 
-    //Flag ap_update_add_1 is a bit.
+    // Flag ap_update_add_1 is a bit.
     let constraint_0_value =
         eval!(context, (ap_update_add_1_col0) * ((1) - (ap_update_add_1_col0)));
     acc.add_constraint(context, constraint_0_value);

@@ -1,3 +1,6 @@
+use circuits::context::TraceContext;
+use circuits::ivalue::qm31_from_u32s;
+use circuits::test_utils::{packed_values, simd_from_u32s};
 use itertools::Itertools;
 use num_traits::{One, Zero};
 use stwo::core::circle::CirclePoint;
@@ -6,9 +9,6 @@ use stwo::core::fields::m31::M31;
 use crate::channel::Channel;
 use crate::circle::generator_point;
 use crate::select_queries::{get_query_selection_input_from_channel, select_queries};
-use circuits::context::TraceContext;
-use circuits::ivalue::qm31_from_u32s;
-use circuits::test_utils::{packed_values, simd_from_u32s};
 
 #[test]
 fn test_select_queries() {

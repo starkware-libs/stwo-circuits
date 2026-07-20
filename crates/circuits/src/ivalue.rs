@@ -1,8 +1,9 @@
 use blake2::{Blake2s256, Digest};
 use itertools::Itertools;
 use num_traits::Zero;
+use stwo::core::fields::cm31::CM31;
+use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
-use stwo::core::fields::{cm31::CM31, m31::M31};
 
 use crate::blake::{BLAKE2S_DIGEST_N_WORDS, HashValue};
 use crate::utils::le_u32s_from_bytes;

@@ -1,5 +1,7 @@
 // AIR version a022abac
-use stwo::core::fields::{cm31::CM31, m31::M31, qm31::QM31};
+use stwo::core::fields::cm31::CM31;
+use stwo::core::fields::m31::M31;
+use stwo::core::fields::qm31::QM31;
 pub const ADD_AP_OPCODE_SAMPLE_EVAL_RESULT: QM31 =
     QM31(CM31(M31(1516192237), M31(1259442050)), CM31(M31(910917927), M31(730364471)));
 pub const ADD_MOD_BUILTIN_SAMPLE_EVAL_RESULT: QM31 =

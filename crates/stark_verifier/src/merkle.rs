@@ -1,16 +1,16 @@
 use std::collections::HashMap;
 
+use circuits::blake::{HashValue, blake2s, blake2s_u32s, m31_to_u32};
+use circuits::context::{Context, Var};
+use circuits::ivalue::IValue;
+use circuits::ops::{Guess, cond_flip, eq};
+use circuits::wrappers::{M31Wrapper, U32Wrapper};
 use itertools::{Itertools, zip_eq};
 use stwo::core::vcs_lifted::verifier::PACKED_LEAF_SIZE;
 
 use crate::oods::EvalDomainSamples;
 use crate::proof::N_TRACES;
 use crate::sort_queries::QuerySorter;
-use circuits::blake::{HashValue, blake2s, blake2s_u32s, m31_to_u32};
-use circuits::context::{Context, Var};
-use circuits::ivalue::IValue;
-use circuits::ops::{Guess, cond_flip, eq};
-use circuits::wrappers::{M31Wrapper, U32Wrapper};
 
 #[cfg(test)]
 #[path = "merkle_test.rs"]

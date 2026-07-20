@@ -1,18 +1,14 @@
 use circuit_common::N_RESERVED;
 use circuit_verifier::statement::CircuitStatement;
 use circuit_verifier::verify::CircuitConfig;
+use circuits::blake::{HashValue, blake2s_u32s};
 use circuits::context::{Context, FinalizedContext};
+use circuits::ivalue::IValue;
+use circuits::ops::Guess;
 use circuits::wrappers::U32Wrapper;
-use circuits::{
-    blake::{HashValue, blake2s_u32s},
-    ivalue::IValue,
-    ops::Guess,
-};
 use circuits_stark_verifier::order_hash_map::OrderedHashMap;
-use circuits_stark_verifier::{
-    proof::{Proof, ProofConfig},
-    verify::verify,
-};
+use circuits_stark_verifier::proof::{Proof, ProofConfig};
+use circuits_stark_verifier::verify::verify;
 use itertools::{Itertools, chain};
 use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::PcsConfig;

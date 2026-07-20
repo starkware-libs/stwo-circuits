@@ -15,17 +15,17 @@ pub fn accumulate_constraints<Value: IValue>(
     let [decode_instruction_89ffb_input_pc, enabler, offset2_col0, op1_imm_col1, op1_base_fp_col2] =
         input.try_into().unwrap();
 
-    //Flag op1_imm is a bit.
+    // Flag op1_imm is a bit.
     let constraint_0_value = eval!(context, (op1_imm_col1) * ((1) - (op1_imm_col1)));
     acc.add_constraint(context, constraint_0_value);
 
-    //Flag op1_base_fp is a bit.
+    // Flag op1_base_fp is a bit.
     let constraint_1_value = eval!(context, (op1_base_fp_col2) * ((1) - (op1_base_fp_col2)));
     acc.add_constraint(context, constraint_1_value);
 
     let op1_base_ap_tmp_89ffb_5 = eval!(context, ((1) - (op1_imm_col1)) - (op1_base_fp_col2));
 
-    //Flag op1_base_ap is a bit.
+    // Flag op1_base_ap is a bit.
     let constraint_3_value =
         eval!(context, (op1_base_ap_tmp_89ffb_5) * ((1) - (op1_base_ap_tmp_89ffb_5)));
     acc.add_constraint(context, constraint_3_value);

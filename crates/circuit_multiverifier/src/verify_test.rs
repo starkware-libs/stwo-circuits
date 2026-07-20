@@ -5,8 +5,9 @@ use cairo_air::utils::binary_deserialize_from_file;
 use circuit_cairo_serialize::prepare_circuit_proof_for_cairo_verifier;
 use circuit_cairo_verifier::privacy::{privacy_cairo_verifier_config, privacy_components};
 use circuit_cairo_verifier::utils::get_proof_file_path;
-use circuit_cairo_verifier::verify::build_cairo_verifier_circuit;
-use circuit_cairo_verifier::verify::verify_cairo_with_component_set;
+use circuit_cairo_verifier::verify::{
+    build_cairo_verifier_circuit, verify_cairo_with_component_set,
+};
 use circuit_common::N_RESERVED;
 use circuit_common::finalize::{ComponentSizes, compute_padded_sizes, pad_to_targets};
 use circuit_common::preprocessed::PreprocessedCircuit;

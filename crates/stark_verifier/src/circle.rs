@@ -1,15 +1,12 @@
+use circuits::context::{Context, Var};
+use circuits::eval;
+use circuits::ivalue::IValue;
+use circuits::ops::inv;
+use circuits::simd::Simd;
+use circuits::wrappers::M31Wrapper;
 use num_traits::CheckedSub;
 use stwo::core::circle::{CirclePoint, M31_CIRCLE_GEN};
 use stwo::core::fields::m31::M31;
-
-use circuits::{
-    context::{Context, Var},
-    eval,
-    ivalue::IValue,
-    ops::inv,
-    simd::Simd,
-    wrappers::M31Wrapper,
-};
 
 #[cfg(test)]
 #[path = "circle_test.rs"]

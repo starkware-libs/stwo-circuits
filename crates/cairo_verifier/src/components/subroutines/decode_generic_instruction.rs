@@ -72,7 +72,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let op1_base_op0_tmp_e6fd8_21 =
         eval!(context, (((1) - (op1_imm_col5)) - (op1_base_fp_col6)) - (op1_base_ap_col7));
 
-    //op1_src is 0, 1, 2, or 4.
+    // op1_src is 0, 1, 2, or 4.
     let constraint_2_value =
         eval!(context, (op1_base_op0_tmp_e6fd8_21) * ((1) - (op1_base_op0_tmp_e6fd8_21)));
     acc.add_constraint(context, constraint_2_value);
@@ -80,7 +80,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let res_op1_tmp_e6fd8_22 =
         eval!(context, (((1) - (res_add_col8)) - (res_mul_col9)) - (pc_update_jnz_col12));
 
-    //res_logic is 0, 1, or 2.
+    // res_logic is 0, 1, or 2.
     let constraint_4_value =
         eval!(context, (res_op1_tmp_e6fd8_22) * ((1) - (res_op1_tmp_e6fd8_22)));
     acc.add_constraint(context, constraint_4_value);
@@ -90,7 +90,7 @@ pub fn accumulate_constraints<Value: IValue>(
         (((1) - (pc_update_jump_col10)) - (pc_update_jump_rel_col11)) - (pc_update_jnz_col12)
     );
 
-    //pc_update is 0, 1, 2, or 4.
+    // pc_update is 0, 1, 2, or 4.
     let constraint_6_value =
         eval!(context, (pc_update_regular_tmp_e6fd8_23) * ((1) - (pc_update_regular_tmp_e6fd8_23)));
     acc.add_constraint(context, constraint_6_value);
@@ -100,7 +100,7 @@ pub fn accumulate_constraints<Value: IValue>(
         (((1) - (ap_update_add_col13)) - (ap_update_add_1_col14)) - (opcode_call_col15)
     );
 
-    //ap_update is 0, 1, 2, or 4.
+    // ap_update is 0, 1, 2, or 4.
     let constraint_8_value =
         eval!(context, (ap_update_regular_tmp_e6fd8_24) * ((1) - (ap_update_regular_tmp_e6fd8_24)));
     acc.add_constraint(context, constraint_8_value);
@@ -108,7 +108,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let fp_update_regular_tmp_e6fd8_25 =
         eval!(context, ((1) - (opcode_call_col15)) - (opcode_ret_col16));
 
-    //opcode is 0, 1, 2, or 4.
+    // opcode is 0, 1, 2, or 4.
     let constraint_10_value =
         eval!(context, (fp_update_regular_tmp_e6fd8_25) * ((1) - (fp_update_regular_tmp_e6fd8_25)));
     acc.add_constraint(context, constraint_10_value);

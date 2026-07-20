@@ -25,19 +25,19 @@ pub fn accumulate_constraints<Value: IValue>(
         opcode_extension_col7,
     ] = input.try_into().unwrap();
 
-    //Flag dst_base_fp is a bit.
+    // Flag dst_base_fp is a bit.
     let constraint_0_value = eval!(context, (dst_base_fp_col3) * ((1) - (dst_base_fp_col3)));
     acc.add_constraint(context, constraint_0_value);
 
-    //Flag op0_base_fp is a bit.
+    // Flag op0_base_fp is a bit.
     let constraint_1_value = eval!(context, (op0_base_fp_col4) * ((1) - (op0_base_fp_col4)));
     acc.add_constraint(context, constraint_1_value);
 
-    //Flag op1_base_fp is a bit.
+    // Flag op1_base_fp is a bit.
     let constraint_2_value = eval!(context, (op1_base_fp_col5) * ((1) - (op1_base_fp_col5)));
     acc.add_constraint(context, constraint_2_value);
 
-    //Flag ap_update_add_1 is a bit.
+    // Flag ap_update_add_1 is a bit.
     let constraint_3_value =
         eval!(context, (ap_update_add_1_col6) * ((1) - (ap_update_add_1_col6)));
     acc.add_constraint(context, constraint_3_value);

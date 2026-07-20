@@ -1,5 +1,12 @@
 use std::collections::HashMap;
 
+use circuits::context::{Context, Var};
+use circuits::eval;
+use circuits::extract_bits::extract_bits;
+use circuits::ivalue::IValue;
+use circuits::ops::eq;
+use circuits::simd::Simd;
+use circuits::wrappers::M31Wrapper;
 use itertools::{Itertools, chain, zip_eq};
 use stwo::core::fields::m31::{M31, P};
 use stwo::core::verifier::COMPOSITION_LOG_SPLIT;
@@ -13,13 +20,6 @@ use crate::oods::{collect_oods_responses, compute_fri_input, extract_expected_co
 use crate::proof::{Proof, ProofConfig};
 use crate::select_queries::{get_query_selection_input_from_channel, select_queries};
 use crate::statement::{EvaluateArgs, OodsSamples, Statement};
-use circuits::context::{Context, Var};
-use circuits::eval;
-use circuits::extract_bits::extract_bits;
-use circuits::ivalue::IValue;
-use circuits::ops::eq;
-use circuits::simd::Simd;
-use circuits::wrappers::M31Wrapper;
 
 /// Number of bits used to represent a component log-size in the packed claim format.
 /// Must satisfy `2^LOG_SIZE_BITS >= max(log_trace_size) + 1`.

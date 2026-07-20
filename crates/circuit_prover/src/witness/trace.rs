@@ -1,26 +1,14 @@
 use std::mem::MaybeUninit;
 use std::sync::Arc;
 
-use crate::witness::components::blake_g_gate;
-use crate::witness::components::eq;
-use crate::witness::components::m_31_to_u_32;
-use crate::witness::components::qm31_ops;
-use crate::witness::components::range_check_16;
-use crate::witness::components::triple_xor;
-use crate::witness::components::verify_bitwise_xor_4;
-use crate::witness::components::verify_bitwise_xor_7;
-use crate::witness::components::verify_bitwise_xor_8;
-use crate::witness::components::verify_bitwise_xor_9;
-use crate::witness::components::verify_bitwise_xor_12;
 use circuit_common::Qm31OpsTraceGenerator;
 use circuit_common::preprocessed::PreProcessedTrace;
-use circuit_verifier::circuit_claim::CircuitClaim;
-use circuit_verifier::circuit_claim::CircuitInteractionClaim;
-use circuit_verifier::circuit_claim::CircuitInteractionElements;
-use circuit_verifier::circuit_components::COMPONENT_NAMES;
-use circuit_verifier::circuit_components::ComponentList;
-use circuit_verifier::circuit_components::PerComponent;
-use circuit_verifier::circuit_components::sorted_component_order;
+use circuit_verifier::circuit_claim::{
+    CircuitClaim, CircuitInteractionClaim, CircuitInteractionElements,
+};
+use circuit_verifier::circuit_components::{
+    COMPONENT_NAMES, ComponentList, PerComponent, sorted_component_order,
+};
 use circuits::context::U_VAR_IDX;
 use circuits_stark_verifier::order_hash_map::OrderedHashMap;
 use itertools::Itertools;
@@ -32,6 +20,11 @@ use stwo::prover::backend::BackendForChannel;
 use stwo::prover::backend::simd::SimdBackend;
 use stwo::prover::poly::circle::PolyOps;
 use stwo::prover::poly::twiddles::TwiddleTree;
+
+use crate::witness::components::{
+    blake_g_gate, eq, m_31_to_u_32, qm31_ops, range_check_16, triple_xor, verify_bitwise_xor_4,
+    verify_bitwise_xor_7, verify_bitwise_xor_8, verify_bitwise_xor_9, verify_bitwise_xor_12,
+};
 
 pub struct TraceGenerator {
     pub qm31_ops_trace_generator: Qm31OpsTraceGenerator,

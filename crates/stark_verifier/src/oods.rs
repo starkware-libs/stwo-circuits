@@ -1,3 +1,9 @@
+use circuits::context::{Context, Var};
+use circuits::ivalue::{IValue, NoValue, qm31_from_u32s};
+use circuits::ops::{Guess, div, from_partial_evals, im, inv};
+use circuits::simd::Simd;
+use circuits::wrappers::M31Wrapper;
+use circuits::{EXTENSION_DEGREE, eval};
 use indexmap::IndexMap;
 use itertools::{Itertools, chain, zip_eq};
 use num_traits::zero;
@@ -8,13 +14,6 @@ use stwo::core::fields::qm31::QM31;
 use crate::circle::{add_points, double_point, double_x, generator_point};
 use crate::proof::{Proof, ProofConfig};
 use crate::select_queries::Queries;
-use circuits::EXTENSION_DEGREE;
-use circuits::context::{Context, Var};
-use circuits::eval;
-use circuits::ivalue::{IValue, NoValue, qm31_from_u32s};
-use circuits::ops::{Guess, div, from_partial_evals, im, inv};
-use circuits::simd::Simd;
-use circuits::wrappers::M31Wrapper;
 
 const COMPOSITION_SPLIT: usize = 2;
 pub const N_COMPOSITION_COLUMNS: usize = COMPOSITION_SPLIT * EXTENSION_DEGREE;
