@@ -1,16 +1,10 @@
-use crate::circuit_air::circuit_components::CircuitComponents;
-use crate::witness::trace::TraceGenerator;
-use crate::witness::trace::write_interaction_trace;
-use crate::witness::trace::write_trace;
 use circuit_common::Qm31OpsTraceGenerator;
 use circuit_common::preprocessed::PreprocessedCircuit;
 use circuit_verifier::circuit_claim::{CircuitInteractionElements, lookup_sum};
 pub use circuit_verifier::circuit_proof::CircuitProof;
-use circuit_verifier::statement::INTERACTION_POW_BITS;
-use circuit_verifier::statement::all_circuit_components;
+use circuit_verifier::statement::{INTERACTION_POW_BITS, all_circuit_components};
 use circuit_verifier::verify::CircuitPublicData;
-use circuits_stark_verifier::proof::Proof;
-use circuits_stark_verifier::proof::ProofConfig;
+use circuits_stark_verifier::proof::{Proof, ProofConfig};
 use circuits_stark_verifier::proof_from_stark_proof::proof_from_stark_proof;
 use num_traits::Zero;
 use stwo::core::channel::{Channel, MerkleChannel};
@@ -20,14 +14,15 @@ use stwo::core::poly::circle::CanonicCoset;
 use stwo::core::proof_of_work::GrindOps;
 use stwo::core::utils::MaybeOwned;
 use stwo::core::vcs_lifted::blake2_merkle::{Blake2sM31MerkleChannel, Blake2sMerkleHasher};
-use stwo::prover::CommitmentSchemeProver;
-use stwo::prover::CommitmentTreeProver;
 pub use stwo::prover::backend::simd::SimdBackend;
 pub use stwo::prover::mempool::BaseColumnPool;
 use stwo::prover::poly::circle::PolyOps;
 use stwo::prover::poly::twiddles::TwiddleTree;
-use stwo::prover::{ProvingError, prove_ex};
+use stwo::prover::{CommitmentSchemeProver, CommitmentTreeProver, ProvingError, prove_ex};
 use stwo_constraint_framework::PREPROCESSED_TRACE_IDX;
+
+use crate::circuit_air::circuit_components::CircuitComponents;
+use crate::witness::trace::{TraceGenerator, write_interaction_trace, write_trace};
 
 const COMPOSITION_POLYNOMIAL_LOG_DEGREE_BOUND: u32 = 1;
 

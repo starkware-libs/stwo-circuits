@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::path::PathBuf;
 use std::sync::Arc;
+
 use stwo::core::fields::m31::M31;
 use stwo_cairo_common::prover_types::felt::split_f252;
 

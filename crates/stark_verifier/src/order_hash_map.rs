@@ -9,8 +9,8 @@ type BHImpl = std::collections::hash_map::RandomState;
 #[serde(transparent)]
 #[serde(bound(
     serialize = "Key: serde::Serialize, Value: serde::Serialize",
-    deserialize = "Key: serde::Deserialize<'de> + Hash + Eq, Value: serde::Deserialize<'de>, \
-                   BH: BuildHasher + Default"
+    deserialize = "Key: serde::Deserialize<'de> + Hash + Eq, Value: serde::Deserialize<'de>, BH: \
+                   BuildHasher + Default"
 ))]
 pub struct OrderedHashMap<Key, Value, BH = BHImpl>(IndexMap<Key, Value, BH>);
 

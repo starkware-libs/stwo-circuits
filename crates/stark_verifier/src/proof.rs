@@ -1,9 +1,3 @@
-use crate::channel::Channel;
-use crate::constraint_eval::CircuitEval;
-use crate::fri_proof::{FriConfig, FriProof, compute_all_fold_steps, empty_fri_proof};
-use crate::merkle::{AuthPath, AuthPaths};
-use crate::oods::{EvalDomainSamples, N_COMPOSITION_COLUMNS, empty_eval_domain_samples};
-use crate::proof_from_stark_proof::pack_into_qm31s;
 use circuits::blake::HashValue;
 use circuits::context::{Context, Var};
 use circuits::ivalue::{IValue, NoValue};
@@ -11,9 +5,15 @@ use circuits::ops::Guess;
 use circuits::wrappers::U32Wrapper;
 use indexmap::IndexMap;
 use itertools::{Itertools, zip_eq};
-
 use stwo::core::fields::qm31::SECURE_EXTENSION_DEGREE;
 use stwo::core::pcs::PcsConfig;
+
+use crate::channel::Channel;
+use crate::constraint_eval::CircuitEval;
+use crate::fri_proof::{FriConfig, FriProof, compute_all_fold_steps, empty_fri_proof};
+use crate::merkle::{AuthPath, AuthPaths};
+use crate::oods::{EvalDomainSamples, N_COMPOSITION_COLUMNS, empty_eval_domain_samples};
+use crate::proof_from_stark_proof::pack_into_qm31s;
 
 pub const N_TRACES: usize = 4;
 const N_U8S_PER_U32: usize = 4;
@@ -286,7 +286,7 @@ impl ProofConfig {
         } = pcs_config;
         let log_trace_size = min_lifting_log_size.checked_sub(*log_blowup_factor).expect(
             "The circuit verifier expects min_lifting_log_size to be log_trace_size + \
-                 log_blowup_factor",
+             log_blowup_factor",
         ) as usize;
 
         Self {

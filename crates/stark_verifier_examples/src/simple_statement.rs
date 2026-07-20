@@ -1,5 +1,3 @@
-use super::simple_air::FIB_SEQUENCE_LENGTH;
-use crate::simple_air::{FIB_PREPROCESSED_COLUMNS, LOG_SIZE_LONG, LOG_SIZE_SHORT};
 use circuits::blake::HashValue;
 use circuits::context::{Context, Var};
 use circuits::eval;
@@ -7,9 +5,8 @@ use circuits::ivalue::IValue;
 use circuits::ops::{Guess, inv, mul};
 use circuits::simd::Simd;
 use circuits::wrappers::U32Wrapper;
-use circuits_stark_verifier::constraint_eval::RelationUse;
 use circuits_stark_verifier::constraint_eval::{
-    CircuitEval, ComponentDataTrait, CompositionConstraintAccumulator,
+    CircuitEval, ComponentDataTrait, CompositionConstraintAccumulator, RelationUse,
 };
 use circuits_stark_verifier::logup::combine_term;
 use circuits_stark_verifier::order_hash_map::OrderedHashMap;
@@ -20,6 +17,9 @@ use num_traits::One;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
+
+use super::simple_air::FIB_SEQUENCE_LENGTH;
+use crate::simple_air::{FIB_PREPROCESSED_COLUMNS, LOG_SIZE_LONG, LOG_SIZE_SHORT};
 
 /// Log sizes of the components in [`SimpleStatement`].
 pub const COMPONENT_LOG_SIZES: [u32; 2] = [LOG_SIZE_LONG, LOG_SIZE_SHORT];

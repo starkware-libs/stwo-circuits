@@ -7,12 +7,11 @@ use stwo::core::fields::cm31::CM31;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
 
-use crate::EXTENSION_DEGREE;
 use crate::context::{Context, Var};
-use crate::eval;
 use crate::ivalue::{IValue, qm31_from_u32s};
 use crate::ops::{Guess, add, eq, mul, pointwise_mul, sub};
 use crate::wrappers::M31Wrapper;
+use crate::{EXTENSION_DEGREE, eval};
 
 #[cfg(test)]
 #[path = "simd_test.rs"]

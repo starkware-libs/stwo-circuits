@@ -1,32 +1,32 @@
-use crate::circuit_air::circuit_components::CircuitComponents;
-use crate::prover::prepare_circuit_proof_for_circuit_verifier;
-use crate::prover::{BaseColumnPool, CircuitProof, SimdBackend, prove_circuit_assignment};
-use crate::test_utils::default_circuit_pcs_config;
 use circuit_common::finalize::pad_context;
 use circuit_common::preprocessed::PreprocessedCircuit;
-use circuit_verifier::circuit_claim::CircuitInteractionElements;
-use circuit_verifier::circuit_claim::column_log_sizes_per_tree;
-use circuit_verifier::circuit_claim::lookup_sum;
+use circuit_verifier::circuit_claim::{
+    CircuitInteractionElements, column_log_sizes_per_tree, lookup_sum,
+};
 use circuit_verifier::statement::{
     INTERACTION_POW_BITS, all_circuit_components, circuit_component_log_sizes,
 };
 use circuit_verifier::verify::{CircuitConfig, verify_circuit};
 use circuits::blake::{blake_g_gate, blake2s_m31, m31_to_u32, triple_xor};
-use circuits::context::Var;
+use circuits::context::{Context, Var};
 use circuits::eval;
-use circuits::ivalue::NoValue;
-use circuits::ivalue::{IValue, qm31_from_u32s};
-use circuits::ops::permute;
+use circuits::ivalue::{IValue, NoValue, qm31_from_u32s};
+use circuits::ops::{guess, permute};
 use circuits::utils::le_u32s_from_bytes;
-use circuits::{context::Context, ops::guess};
 use expect_test::expect;
 use num_traits::{One, Zero};
-use stwo::core::channel::Blake2sM31Channel;
-use stwo::core::channel::Channel;
+use stwo::core::channel::{Blake2sM31Channel, Channel};
 use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::CommitmentSchemeVerifier;
 use stwo::core::vcs::blake2_hash::Blake2sHash;
 use stwo::core::vcs_lifted::blake2_merkle::{Blake2sM31MerkleChannel, Blake2sMerkleHasher};
+
+use crate::circuit_air::circuit_components::CircuitComponents;
+use crate::prover::{
+    BaseColumnPool, CircuitProof, SimdBackend, prepare_circuit_proof_for_circuit_verifier,
+    prove_circuit_assignment,
+};
+use crate::test_utils::default_circuit_pcs_config;
 // Not a power of 2 so that we can test component padding.
 const N: usize = 1030;
 
@@ -371,7 +371,10 @@ fn test_prove_and_circuit_verify_triple_xor_context() {
     )
     .unwrap();
     let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);
-    expect!["[559383118, 1255857488, 1344354401, 2360263672, 3046958987, 2092103241, 1295830770, 660589166]"]
+    expect![
+        "[559383118, 1255857488, 1344354401, 2360263672, 3046958987, 2092103241, 1295830770, \
+         660589166]"
+    ]
     .assert_eq(&format!("{preprocessed_root:?}"));
     circuit_verify(circuit_proof, &preprocessed_circuit, preprocessed_root);
 }
@@ -397,7 +400,10 @@ fn test_prove_and_circuit_verify_fibonacci_context() {
     )
     .unwrap();
     let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);
-    expect!["[834735002, 594172773, 1583316646, 3249196940, 741016670, 2295728685, 4109491583, 2430221502]"]
+    expect![
+        "[834735002, 594172773, 1583316646, 3249196940, 741016670, 2295728685, 4109491583, \
+         2430221502]"
+    ]
     .assert_eq(&format!("{preprocessed_root:?}"));
     circuit_verify(circuit_proof, &preprocessed_circuit, preprocessed_root);
 }
@@ -416,7 +422,11 @@ fn test_prove_and_circuit_verify_m31_to_u32_context() {
     )
     .unwrap();
     let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);
-    expect!["[3771636404, 3055692813, 1894577333, 698197554, 2504506842, 900992605, 91068715, 318976758]"].assert_eq(&format!("{preprocessed_root:?}"));
+    expect![
+        "[3771636404, 3055692813, 1894577333, 698197554, 2504506842, 900992605, 91068715, \
+         318976758]"
+    ]
+    .assert_eq(&format!("{preprocessed_root:?}"));
     circuit_verify(circuit_proof, &preprocessed_circuit, preprocessed_root);
 }
 
@@ -434,7 +444,11 @@ fn test_prove_and_circuit_verify_blake_g_gate_context() {
     )
     .unwrap();
     let preprocessed_root = preprocessed_root_from_proof(&circuit_proof);
-    expect!["[3717424067, 4197539191, 3778294694, 2399208116, 4267247572, 1361721549, 951663472, 1298806664]"].assert_eq(&format!("{preprocessed_root:?}"));
+    expect![
+        "[3717424067, 4197539191, 3778294694, 2399208116, 4267247572, 1361721549, 951663472, \
+         1298806664]"
+    ]
+    .assert_eq(&format!("{preprocessed_root:?}"));
     circuit_verify(circuit_proof, &preprocessed_circuit, preprocessed_root);
 }
 

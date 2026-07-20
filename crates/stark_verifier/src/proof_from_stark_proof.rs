@@ -1,9 +1,8 @@
 use std::array;
 
+use circuits::ivalue::qm31_from_u32s;
 use hashbrown::HashMap;
-use itertools::Itertools;
-use itertools::chain;
-use itertools::zip_eq;
+use itertools::{Itertools, chain, zip_eq};
 use num_traits::Zero;
 use stwo::core::fields::m31::M31;
 use stwo::core::fields::qm31::QM31;
@@ -11,13 +10,10 @@ use stwo::core::proof::ExtendedStarkProof;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sMerkleHasher;
 use stwo::core::vcs_lifted::verifier::LOG_PACKED_LEAF_SIZE;
 
-use crate::fri_proof::FriWitness;
-use crate::fri_proof::compute_all_fold_steps;
-use crate::fri_proof::{FriCommitProof, FriProof};
+use crate::fri_proof::{FriCommitProof, FriProof, FriWitness, compute_all_fold_steps};
 use crate::merkle::{AuthPath, AuthPaths};
 use crate::oods::EvalDomainSamples;
 use crate::proof::{InteractionAtOods, N_TRACES, Proof, ProofConfig};
-use circuits::ivalue::qm31_from_u32s;
 
 /// Constructs [Proof] with the values from the given proof ([ExtendedStarkProof]).
 pub fn proof_from_stark_proof(

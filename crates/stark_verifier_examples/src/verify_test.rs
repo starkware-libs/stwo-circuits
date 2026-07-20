@@ -1,3 +1,11 @@
+use circuit_serialize::serialize::CircuitSerialize;
+use circuits::context::{Context, TraceContext};
+use circuits::ivalue::NoValue;
+use circuits::ops::Guess;
+use circuits_stark_verifier::fri_proof::compute_all_fold_steps;
+use circuits_stark_verifier::proof::{ProofConfig, ProofInfo, empty_proof};
+use circuits_stark_verifier::proof_from_stark_proof::proof_from_stark_proof;
+use circuits_stark_verifier::verify::verify;
 use num_traits::One;
 use rstest::rstest;
 use stwo::core::fields::qm31::QM31;
@@ -7,14 +15,6 @@ use crate::simple_air::{create_proof, create_proof_with_fold_step};
 use crate::simple_statement::{
     PREPROCESSED_COLUMN_LOG_SIZES, SimpleStatement, simple_statement_components,
 };
-use circuit_serialize::serialize::CircuitSerialize;
-use circuits::context::{Context, TraceContext};
-use circuits::ivalue::NoValue;
-use circuits::ops::Guess;
-use circuits_stark_verifier::fri_proof::compute_all_fold_steps;
-use circuits_stark_verifier::proof::{ProofConfig, ProofInfo, empty_proof};
-use circuits_stark_verifier::proof_from_stark_proof::proof_from_stark_proof;
-use circuits_stark_verifier::verify::verify;
 
 enum ProofModifier {
     /// Keep the proof unchanged.

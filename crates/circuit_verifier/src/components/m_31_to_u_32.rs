@@ -42,12 +42,12 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_2 = eval!(context, 1);
     acc.add_to_relation(context, numerator_2, tuple_2);
 
-    //input is zero then limb_low is zero.
+    // input is zero then limb_low is zero.
     let constraint_3_value =
         eval!(context, (((input_m31_col0) * (inv_or_one_col3)) - (1)) * (input_u32_limb_0_col1));
     acc.add_constraint(context, constraint_3_value);
 
-    //input reconstruction.
+    // input reconstruction.
     let constraint_4_value = eval!(
         context,
         (input_m31_col0) - ((input_u32_limb_0_col1) + ((input_u32_limb_1_col2) * (65536)))
@@ -113,17 +113,17 @@ impl<Value: IValue> CircuitEval<Value> for Component {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
-    use stwo::core::fields::qm31::QM31;
 
-    #[allow(unused_imports)]
-    use crate::components::prelude::PreProcessedColumnId;
-    use crate::sample_evaluations::*;
     use circuits::context::Context;
     use circuits::ivalue::qm31_from_u32s;
     use circuits_stark_verifier::constraint_eval::*;
     use circuits_stark_verifier::test_utils::TestComponentData;
+    use stwo::core::fields::qm31::QM31;
 
     use super::Component;
+    #[allow(unused_imports)]
+    use crate::components::prelude::PreProcessedColumnId;
+    use crate::sample_evaluations::*;
 
     #[test]
     fn test_evaluation_result() {

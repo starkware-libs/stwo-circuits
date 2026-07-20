@@ -1,13 +1,12 @@
-use rstest::rstest;
-use stwo::core::channel::{Blake2sM31Channel, Channel as StwoChannel};
-use stwo::core::fields::qm31::QM31;
-
 use circuits::blake::{HashValue, ReducedHashValue, unpack_qm31s_to_u32_words};
 use circuits::context::TraceContext;
 use circuits::ivalue::{IValue, qm31_from_u32s};
 use circuits::ops::Guess;
 use circuits::stats::Stats;
 use circuits::wrappers::U32Wrapper;
+use rstest::rstest;
+use stwo::core::channel::{Blake2sM31Channel, Channel as StwoChannel};
+use stwo::core::fields::qm31::QM31;
 
 use super::Channel;
 

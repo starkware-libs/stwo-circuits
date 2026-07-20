@@ -31,7 +31,7 @@ pub fn accumulate_constraints<Value: IValue>(
         acc,
     );
 
-    //The two ids are equal if the condition is met.
+    // The two ids are equal if the condition is met.
     let constraint_1_value = eval!(
         context,
         ((id_col0) - (mem_cond_verify_equal_known_id_input_limb_1))

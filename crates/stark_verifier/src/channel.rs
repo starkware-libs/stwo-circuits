@@ -1,6 +1,3 @@
-use stwo::core::circle::CirclePoint;
-use stwo::core::fields::m31::MODULUS_BITS;
-
 use circuits::blake::{
     HashValue, ReducedHashValue, blake2s_m31, blake2s_u32s, reduce_hash_value,
     unpack_qm31s_to_u32_words,
@@ -12,6 +9,8 @@ use circuits::ivalue::{IValue, qm31_from_u32s};
 use circuits::ops::{eq, inv, pointwise_mul};
 use circuits::simd::Simd;
 use circuits::wrappers::U32Wrapper;
+use stwo::core::circle::CirclePoint;
+use stwo::core::fields::m31::MODULUS_BITS;
 
 #[cfg(test)]
 #[path = "channel_test.rs"]

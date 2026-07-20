@@ -1,10 +1,11 @@
-use crate::merkle::{AuthPath, AuthPaths};
 use circuits::blake::HashValue;
 use circuits::context::{Context, Var};
 use circuits::ivalue::{IValue, NoValue};
 use circuits::ops::Guess;
 use circuits::wrappers::U32Wrapper;
 use itertools::zip_eq;
+
+use crate::merkle::{AuthPath, AuthPaths};
 
 /// Represents the structure of a FRI proof.
 #[derive(Debug, PartialEq, Clone)]

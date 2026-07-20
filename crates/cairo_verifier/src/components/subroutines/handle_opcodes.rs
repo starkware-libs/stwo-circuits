@@ -311,17 +311,17 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_27_value);
 
-    //ret opcode offset0 equals -2.
+    // ret opcode offset0 equals -2.
     let constraint_28_value =
         eval!(context, (handle_opcodes_input_opcode_ret) * ((handle_opcodes_input_offset0) + (2)));
     acc.add_constraint(context, constraint_28_value);
 
-    //ret opcode offset2 equals -1.
+    // ret opcode offset2 equals -1.
     let constraint_29_value =
         eval!(context, (handle_opcodes_input_opcode_ret) * ((handle_opcodes_input_offset2) + (1)));
     acc.add_constraint(context, constraint_29_value);
 
-    //ret opcode flags pc_update_jump and dst_base_fp and op1_base_fp_and_res_op1 are on.
+    // ret opcode flags pc_update_jump and dst_base_fp and op1_base_fp_and_res_op1 are on.
     let constraint_30_value = eval!(
         context,
         (handle_opcodes_input_opcode_ret)
@@ -332,17 +332,17 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_30_value);
 
-    //call opcode offset0 equals 0.
+    // call opcode offset0 equals 0.
     let constraint_31_value =
         eval!(context, (handle_opcodes_input_opcode_call) * (handle_opcodes_input_offset0));
     acc.add_constraint(context, constraint_31_value);
 
-    //call opcode offset1 equals 1.
+    // call opcode offset1 equals 1.
     let constraint_32_value =
         eval!(context, (handle_opcodes_input_opcode_call) * ((1) - (handle_opcodes_input_offset1)));
     acc.add_constraint(context, constraint_32_value);
 
-    //call opcode flags op0_base_fp and dst_base_fp are off.
+    // call opcode flags op0_base_fp and dst_base_fp are off.
     let constraint_33_value = eval!(
         context,
         (handle_opcodes_input_opcode_call)

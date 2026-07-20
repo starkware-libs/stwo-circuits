@@ -553,11 +553,11 @@ pub fn accumulate_constraints<Value: IValue>(
         acc,
     );
 
-    //make sure sub_p_bit is 0 or 1..
+    // make sure sub_p_bit is 0 or 1..
     let constraint_1_value = eval!(context, ((sub_p_bit_col252) - (1)) * (sub_p_bit_col252));
     acc.add_constraint(context, constraint_1_value);
 
-    //carry_0.
+    // carry_0.
     let constraint_2_value = eval!(
         context,
         (carry_0_col253)
@@ -573,12 +573,12 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_2_value);
 
-    //carry is 0 or 1 or -1..
+    // carry is 0 or 1 or -1..
     let constraint_3_value =
         eval!(context, (carry_0_col253) * (((carry_0_col253) * (carry_0_col253)) - (1)));
     acc.add_constraint(context, constraint_3_value);
 
-    //carry_1.
+    // carry_1.
     let constraint_4_value = eval!(
         context,
         (carry_1_col254)
@@ -595,12 +595,12 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_4_value);
 
-    //carry is 0 or 1 or -1..
+    // carry is 0 or 1 or -1..
     let constraint_5_value =
         eval!(context, (carry_1_col254) * (((carry_1_col254) * (carry_1_col254)) - (1)));
     acc.add_constraint(context, constraint_5_value);
 
-    //carry_2.
+    // carry_2.
     let constraint_6_value = eval!(
         context,
         (carry_2_col255)
@@ -617,12 +617,12 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_6_value);
 
-    //carry is 0 or 1 or -1..
+    // carry is 0 or 1 or -1..
     let constraint_7_value =
         eval!(context, (carry_2_col255) * (((carry_2_col255) * (carry_2_col255)) - (1)));
     acc.add_constraint(context, constraint_7_value);
 
-    //carry_3.
+    // carry_3.
     let constraint_8_value = eval!(
         context,
         (carry_3_col256)
@@ -639,12 +639,12 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_8_value);
 
-    //carry is 0 or 1 or -1..
+    // carry is 0 or 1 or -1..
     let constraint_9_value =
         eval!(context, (carry_3_col256) * (((carry_3_col256) * (carry_3_col256)) - (1)));
     acc.add_constraint(context, constraint_9_value);
 
-    //carry_4.
+    // carry_4.
     let constraint_10_value = eval!(
         context,
         (carry_4_col257)
@@ -661,12 +661,12 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_10_value);
 
-    //carry is 0 or 1 or -1..
+    // carry is 0 or 1 or -1..
     let constraint_11_value =
         eval!(context, (carry_4_col257) * (((carry_4_col257) * (carry_4_col257)) - (1)));
     acc.add_constraint(context, constraint_11_value);
 
-    //carry_5.
+    // carry_5.
     let constraint_12_value = eval!(
         context,
         (carry_5_col258)
@@ -683,12 +683,12 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_12_value);
 
-    //carry is 0 or 1 or -1..
+    // carry is 0 or 1 or -1..
     let constraint_13_value =
         eval!(context, (carry_5_col258) * (((carry_5_col258) * (carry_5_col258)) - (1)));
     acc.add_constraint(context, constraint_13_value);
 
-    //carry_6.
+    // carry_6.
     let constraint_14_value = eval!(
         context,
         (carry_6_col259)
@@ -705,12 +705,12 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_14_value);
 
-    //carry is 0 or 1 or -1..
+    // carry is 0 or 1 or -1..
     let constraint_15_value =
         eval!(context, (carry_6_col259) * (((carry_6_col259) * (carry_6_col259)) - (1)));
     acc.add_constraint(context, constraint_15_value);
 
-    //carry_7.
+    // carry_7.
     let constraint_16_value = eval!(
         context,
         (carry_7_col260)
@@ -727,12 +727,12 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_16_value);
 
-    //carry is 0 or 1 or -1..
+    // carry is 0 or 1 or -1..
     let constraint_17_value =
         eval!(context, (carry_7_col260) * (((carry_7_col260) * (carry_7_col260)) - (1)));
     acc.add_constraint(context, constraint_17_value);
 
-    //carry_8.
+    // carry_8.
     let constraint_18_value = eval!(
         context,
         (carry_8_col261)
@@ -749,12 +749,12 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_18_value);
 
-    //carry is 0 or 1 or -1..
+    // carry is 0 or 1 or -1..
     let constraint_19_value =
         eval!(context, (carry_8_col261) * (((carry_8_col261) * (carry_8_col261)) - (1)));
     acc.add_constraint(context, constraint_19_value);
 
-    //carry_9.
+    // carry_9.
     let constraint_20_value = eval!(
         context,
         (carry_9_col262)
@@ -771,12 +771,12 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_20_value);
 
-    //carry is 0 or 1 or -1..
+    // carry is 0 or 1 or -1..
     let constraint_21_value =
         eval!(context, (carry_9_col262) * (((carry_9_col262) * (carry_9_col262)) - (1)));
     acc.add_constraint(context, constraint_21_value);
 
-    //carry_10.
+    // carry_10.
     let constraint_22_value = eval!(
         context,
         (carry_10_col263)
@@ -793,12 +793,12 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_22_value);
 
-    //carry is 0 or 1 or -1..
+    // carry is 0 or 1 or -1..
     let constraint_23_value =
         eval!(context, (carry_10_col263) * (((carry_10_col263) * (carry_10_col263)) - (1)));
     acc.add_constraint(context, constraint_23_value);
 
-    //carry_11.
+    // carry_11.
     let constraint_24_value = eval!(
         context,
         (carry_11_col264)
@@ -815,12 +815,12 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_24_value);
 
-    //carry is 0 or 1 or -1..
+    // carry is 0 or 1 or -1..
     let constraint_25_value =
         eval!(context, (carry_11_col264) * (((carry_11_col264) * (carry_11_col264)) - (1)));
     acc.add_constraint(context, constraint_25_value);
 
-    //carry_12.
+    // carry_12.
     let constraint_26_value = eval!(
         context,
         (carry_12_col265)
@@ -837,12 +837,12 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_26_value);
 
-    //carry is 0 or 1 or -1..
+    // carry is 0 or 1 or -1..
     let constraint_27_value =
         eval!(context, (carry_12_col265) * (((carry_12_col265) * (carry_12_col265)) - (1)));
     acc.add_constraint(context, constraint_27_value);
 
-    //carry_13.
+    // carry_13.
     let constraint_28_value = eval!(
         context,
         (carry_13_col266)
@@ -859,12 +859,12 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_28_value);
 
-    //carry is 0 or 1 or -1..
+    // carry is 0 or 1 or -1..
     let constraint_29_value =
         eval!(context, (carry_13_col266) * (((carry_13_col266) * (carry_13_col266)) - (1)));
     acc.add_constraint(context, constraint_29_value);
 
-    //last carry needs to be 0..
+    // last carry needs to be 0..
     let constraint_30_value = eval!(
         context,
         ((carry_13_col266)
@@ -914,17 +914,17 @@ impl<Value: IValue> CircuitEval<Value> for Component {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
-    use stwo::core::fields::qm31::QM31;
 
-    #[allow(unused_imports)]
-    use crate::components::prelude::PreProcessedColumnId;
-    use crate::sample_evaluations::*;
     use circuits::context::Context;
     use circuits::ivalue::qm31_from_u32s;
     use circuits_stark_verifier::constraint_eval::*;
     use circuits_stark_verifier::test_utils::TestComponentData;
+    use stwo::core::fields::qm31::QM31;
 
     use super::Component;
+    #[allow(unused_imports)]
+    use crate::components::prelude::PreProcessedColumnId;
+    use crate::sample_evaluations::*;
 
     #[test]
     fn test_evaluation_result() {

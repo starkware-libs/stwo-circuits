@@ -18,7 +18,7 @@ pub fn accumulate_constraints<Value: IValue>(
         partial_limb_msb_col0,
     ] = input.try_into().unwrap();
 
-    //msb is a bit or condition is 0.
+    // msb is a bit or condition is 0.
     let constraint_0_value = eval!(
         context,
         ((partial_limb_msb_col0) * ((1) - (partial_limb_msb_col0)))
@@ -29,7 +29,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let partial_limb_bit_before_msb_tmp_36c3a_1 =
         eval!(context, (cond_range_check_2_input_limb_0) - ((partial_limb_msb_col0) * (2)));
 
-    //bit before msb is a bit or condition is 0.
+    // bit before msb is a bit or condition is 0.
     let constraint_2_value = eval!(
         context,
         ((partial_limb_bit_before_msb_tmp_36c3a_1)

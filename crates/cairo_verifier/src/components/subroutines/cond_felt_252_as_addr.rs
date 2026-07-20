@@ -45,7 +45,7 @@ pub fn accumulate_constraints<Value: IValue>(
         partial_limb_msb_col0,
     ] = input.try_into().unwrap();
 
-    //When the condition holds, the high limbs must be zero for an address.
+    // When the condition holds, the high limbs must be zero for an address.
     let constraint_0_value = eval!(
         context,
         (cond_felt_252_as_addr_input_limb_28)

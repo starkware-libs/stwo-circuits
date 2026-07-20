@@ -1,11 +1,3 @@
-use crate::circuit_components::PerComponent;
-use crate::components::{
-    blake_g_gate, eq::CircuitEqComponent, m_31_to_u_32, qm31_ops::CircuitQm31OpsComponent,
-    range_check_16, triple_xor, verify_bitwise_xor_4, verify_bitwise_xor_7, verify_bitwise_xor_8,
-    verify_bitwise_xor_9, verify_bitwise_xor_12,
-};
-use crate::relations::GATE_RELATION_ID;
-use crate::verify::CircuitConfig;
 use circuits::blake::{HashValue, unpack_qm31s_to_u32_words};
 use circuits::context::{Context, U_VAR_IDX, Var};
 use circuits::eval;
@@ -21,6 +13,16 @@ use circuits_stark_verifier::statement::Statement;
 use indexmap::IndexMap;
 use itertools::{Itertools, chain, zip_eq};
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
+
+use crate::circuit_components::PerComponent;
+use crate::components::eq::CircuitEqComponent;
+use crate::components::qm31_ops::CircuitQm31OpsComponent;
+use crate::components::{
+    blake_g_gate, m_31_to_u_32, range_check_16, triple_xor, verify_bitwise_xor_4,
+    verify_bitwise_xor_7, verify_bitwise_xor_8, verify_bitwise_xor_9, verify_bitwise_xor_12,
+};
+use crate::relations::GATE_RELATION_ID;
+use crate::verify::CircuitConfig;
 
 // TODO(ilya): Update this to the correct values.
 pub const INTERACTION_POW_BITS: u32 = 20;

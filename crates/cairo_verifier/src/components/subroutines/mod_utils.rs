@@ -272,11 +272,11 @@ pub fn accumulate_constraints<Value: IValue>(
         c3_limb_10_col251,
     ] = input.try_into().unwrap();
 
-    //is_instance_0 is 0 or 1..
+    // is_instance_0 is 0 or 1..
     let constraint_0_value = eval!(context, (is_instance_0_col0) * ((is_instance_0_col0) - (1)));
     acc.add_constraint(context, constraint_0_value);
 
-    //is_instance_0 is 0 when instance_num is not 0..
+    // is_instance_0 is 0 when instance_num is not 0..
     let constraint_1_value = eval!(context, (is_instance_0_col0) * (mod_utils_input_instance_num));
     acc.add_constraint(context, constraint_1_value);
 
@@ -474,7 +474,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let block_reset_condition_tmp_e0805_61 =
         eval!(context, (n_prev_minus_1_tmp_e0805_59) * (is_instance_0_minus_1_tmp_e0805_1));
 
-    //Progression of n between instances..
+    // Progression of n between instances..
     let constraint_17_value = eval!(
         context,
         (block_reset_condition_tmp_e0805_61)
@@ -485,7 +485,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_17_value);
 
-    //Progression of offsets_ptr between instances..
+    // Progression of offsets_ptr between instances..
     let constraint_18_value = eval!(
         context,
         (block_reset_condition_tmp_e0805_61)

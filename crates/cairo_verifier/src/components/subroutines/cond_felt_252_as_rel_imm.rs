@@ -79,7 +79,7 @@ pub fn accumulate_constraints<Value: IValue>(
         acc,
     );
 
-    //When the condition holds, limbs 4-20 must be zero or 0x1ff.
+    // When the condition holds, limbs 4-20 must be zero or 0x1ff.
     let constraint_3_value = eval!(
         context,
         (cond_felt_252_as_rel_imm_input_limb_28)
@@ -104,7 +104,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_3_value);
 
-    //When the condition holds, limb 21 must be 0x0, 0x88 or 0x87.
+    // When the condition holds, limb 21 must be 0x0, 0x88 or 0x87.
     let constraint_4_value = eval!(
         context,
         (cond_felt_252_as_rel_imm_input_limb_28)
@@ -113,7 +113,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_4_value);
 
-    //When the condition holds, limbs 22-26 must be zero.
+    // When the condition holds, limbs 22-26 must be zero.
     let constraint_5_value = eval!(
         context,
         (cond_felt_252_as_rel_imm_input_limb_28)
@@ -125,7 +125,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_5_value);
 
-    //When the condition holds, limb 27 must be 0x0 or 0x100.
+    // When the condition holds, limb 27 must be 0x0 or 0x100.
     let constraint_6_value = eval!(
         context,
         (cond_felt_252_as_rel_imm_input_limb_28)

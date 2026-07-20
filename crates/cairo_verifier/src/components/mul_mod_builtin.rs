@@ -1633,7 +1633,7 @@ pub fn accumulate_constraints<Value: IValue>(
     .try_into()
     .unwrap();
 
-    //carry_0.
+    // carry_0.
     let constraint_43_value = eval!(
         context,
         (carry_0_col364)
@@ -1649,7 +1649,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_44 = eval!(context, 1);
     acc.add_to_relation(context, numerator_44, tuple_44);
 
-    //carry_1.
+    // carry_1.
     let constraint_45_value = eval!(
         context,
         (carry_1_col365)
@@ -1665,7 +1665,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_46 = eval!(context, 1);
     acc.add_to_relation(context, numerator_46, tuple_46);
 
-    //carry_2.
+    // carry_2.
     let constraint_47_value = eval!(
         context,
         (carry_2_col366)
@@ -1681,7 +1681,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_48 = eval!(context, 1);
     acc.add_to_relation(context, numerator_48, tuple_48);
 
-    //carry_3.
+    // carry_3.
     let constraint_49_value = eval!(
         context,
         (carry_3_col367)
@@ -1697,7 +1697,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_50 = eval!(context, 1);
     acc.add_to_relation(context, numerator_50, tuple_50);
 
-    //carry_4.
+    // carry_4.
     let constraint_51_value = eval!(
         context,
         (carry_4_col368)
@@ -1713,7 +1713,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_52 = eval!(context, 1);
     acc.add_to_relation(context, numerator_52, tuple_52);
 
-    //carry_5.
+    // carry_5.
     let constraint_53_value = eval!(
         context,
         (carry_5_col369)
@@ -1729,7 +1729,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_54 = eval!(context, 1);
     acc.add_to_relation(context, numerator_54, tuple_54);
 
-    //carry_6.
+    // carry_6.
     let constraint_55_value = eval!(
         context,
         (carry_6_col370)
@@ -1745,7 +1745,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_56 = eval!(context, 1);
     acc.add_to_relation(context, numerator_56, tuple_56);
 
-    //carry_7.
+    // carry_7.
     let constraint_57_value = eval!(
         context,
         (carry_7_col371)
@@ -1761,7 +1761,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_58 = eval!(context, 1);
     acc.add_to_relation(context, numerator_58, tuple_58);
 
-    //carry_8.
+    // carry_8.
     let constraint_59_value = eval!(
         context,
         (carry_8_col372)
@@ -1777,7 +1777,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_60 = eval!(context, 1);
     acc.add_to_relation(context, numerator_60, tuple_60);
 
-    //carry_9.
+    // carry_9.
     let constraint_61_value = eval!(
         context,
         (carry_9_col373)
@@ -1793,7 +1793,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_62 = eval!(context, 1);
     acc.add_to_relation(context, numerator_62, tuple_62);
 
-    //carry_10.
+    // carry_10.
     let constraint_63_value = eval!(
         context,
         (carry_10_col374)
@@ -1809,7 +1809,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_64 = eval!(context, 1);
     acc.add_to_relation(context, numerator_64, tuple_64);
 
-    //carry_11.
+    // carry_11.
     let constraint_65_value = eval!(
         context,
         (carry_11_col375)
@@ -1825,7 +1825,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_66 = eval!(context, 1);
     acc.add_to_relation(context, numerator_66, tuple_66);
 
-    //carry_12.
+    // carry_12.
     let constraint_67_value = eval!(
         context,
         (carry_12_col376)
@@ -1841,7 +1841,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_68 = eval!(context, 1);
     acc.add_to_relation(context, numerator_68, tuple_68);
 
-    //carry_13.
+    // carry_13.
     let constraint_69_value = eval!(
         context,
         (carry_13_col377)
@@ -1857,7 +1857,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_70 = eval!(context, 1);
     acc.add_to_relation(context, numerator_70, tuple_70);
 
-    //carry_14.
+    // carry_14.
     let constraint_71_value = eval!(
         context,
         (carry_14_col378)
@@ -1873,7 +1873,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_72 = eval!(context, 1);
     acc.add_to_relation(context, numerator_72, tuple_72);
 
-    //carry_15.
+    // carry_15.
     let constraint_73_value = eval!(
         context,
         (carry_15_col379)
@@ -1889,7 +1889,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_74 = eval!(context, 1);
     acc.add_to_relation(context, numerator_74, tuple_74);
 
-    //carry_16.
+    // carry_16.
     let constraint_75_value = eval!(
         context,
         (carry_16_col380)
@@ -1905,7 +1905,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_76 = eval!(context, 1);
     acc.add_to_relation(context, numerator_76, tuple_76);
 
-    //carry_17.
+    // carry_17.
     let constraint_77_value = eval!(
         context,
         (carry_17_col381)
@@ -1921,7 +1921,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_78 = eval!(context, 1);
     acc.add_to_relation(context, numerator_78, tuple_78);
 
-    //carry_18.
+    // carry_18.
     let constraint_79_value = eval!(
         context,
         (carry_18_col382)
@@ -1937,7 +1937,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_80 = eval!(context, 1);
     acc.add_to_relation(context, numerator_80, tuple_80);
 
-    //carry_19.
+    // carry_19.
     let constraint_81_value = eval!(
         context,
         (carry_19_col383)
@@ -1953,7 +1953,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_82 = eval!(context, 1);
     acc.add_to_relation(context, numerator_82, tuple_82);
 
-    //carry_20.
+    // carry_20.
     let constraint_83_value = eval!(
         context,
         (carry_20_col384)
@@ -1969,7 +1969,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_84 = eval!(context, 1);
     acc.add_to_relation(context, numerator_84, tuple_84);
 
-    //carry_21.
+    // carry_21.
     let constraint_85_value = eval!(
         context,
         (carry_21_col385)
@@ -1985,7 +1985,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_86 = eval!(context, 1);
     acc.add_to_relation(context, numerator_86, tuple_86);
 
-    //carry_22.
+    // carry_22.
     let constraint_87_value = eval!(
         context,
         (carry_22_col386)
@@ -2001,7 +2001,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_88 = eval!(context, 1);
     acc.add_to_relation(context, numerator_88, tuple_88);
 
-    //carry_23.
+    // carry_23.
     let constraint_89_value = eval!(
         context,
         (carry_23_col387)
@@ -2017,7 +2017,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_90 = eval!(context, 1);
     acc.add_to_relation(context, numerator_90, tuple_90);
 
-    //carry_24.
+    // carry_24.
     let constraint_91_value = eval!(
         context,
         (carry_24_col388)
@@ -2033,7 +2033,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_92 = eval!(context, 1);
     acc.add_to_relation(context, numerator_92, tuple_92);
 
-    //carry_25.
+    // carry_25.
     let constraint_93_value = eval!(
         context,
         (carry_25_col389)
@@ -2049,7 +2049,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_94 = eval!(context, 1);
     acc.add_to_relation(context, numerator_94, tuple_94);
 
-    //carry_26.
+    // carry_26.
     let constraint_95_value = eval!(
         context,
         (carry_26_col390)
@@ -2065,7 +2065,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_96 = eval!(context, 1);
     acc.add_to_relation(context, numerator_96, tuple_96);
 
-    //carry_27.
+    // carry_27.
     let constraint_97_value = eval!(
         context,
         (carry_27_col391)
@@ -2081,7 +2081,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_98 = eval!(context, 1);
     acc.add_to_relation(context, numerator_98, tuple_98);
 
-    //carry_28.
+    // carry_28.
     let constraint_99_value = eval!(
         context,
         (carry_28_col392)
@@ -2097,7 +2097,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_100 = eval!(context, 1);
     acc.add_to_relation(context, numerator_100, tuple_100);
 
-    //carry_29.
+    // carry_29.
     let constraint_101_value = eval!(
         context,
         (carry_29_col393)
@@ -2113,7 +2113,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_102 = eval!(context, 1);
     acc.add_to_relation(context, numerator_102, tuple_102);
 
-    //carry_30.
+    // carry_30.
     let constraint_103_value = eval!(
         context,
         (carry_30_col394)
@@ -2129,7 +2129,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_104 = eval!(context, 1);
     acc.add_to_relation(context, numerator_104, tuple_104);
 
-    //carry_31.
+    // carry_31.
     let constraint_105_value = eval!(
         context,
         (carry_31_col395)
@@ -2145,7 +2145,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_106 = eval!(context, 1);
     acc.add_to_relation(context, numerator_106, tuple_106);
 
-    //carry_32.
+    // carry_32.
     let constraint_107_value = eval!(
         context,
         (carry_32_col396)
@@ -2161,7 +2161,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_108 = eval!(context, 1);
     acc.add_to_relation(context, numerator_108, tuple_108);
 
-    //carry_33.
+    // carry_33.
     let constraint_109_value = eval!(
         context,
         (carry_33_col397)
@@ -2177,7 +2177,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_110 = eval!(context, 1);
     acc.add_to_relation(context, numerator_110, tuple_110);
 
-    //carry_34.
+    // carry_34.
     let constraint_111_value = eval!(
         context,
         (carry_34_col398)
@@ -2193,7 +2193,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_112 = eval!(context, 1);
     acc.add_to_relation(context, numerator_112, tuple_112);
 
-    //carry_35.
+    // carry_35.
     let constraint_113_value = eval!(
         context,
         (carry_35_col399)
@@ -2209,7 +2209,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_114 = eval!(context, 1);
     acc.add_to_relation(context, numerator_114, tuple_114);
 
-    //carry_36.
+    // carry_36.
     let constraint_115_value = eval!(
         context,
         (carry_36_col400)
@@ -2225,7 +2225,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_116 = eval!(context, 1);
     acc.add_to_relation(context, numerator_116, tuple_116);
 
-    //carry_37.
+    // carry_37.
     let constraint_117_value = eval!(
         context,
         (carry_37_col401)
@@ -2241,7 +2241,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_118 = eval!(context, 1);
     acc.add_to_relation(context, numerator_118, tuple_118);
 
-    //carry_38.
+    // carry_38.
     let constraint_119_value = eval!(
         context,
         (carry_38_col402)
@@ -2257,7 +2257,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_120 = eval!(context, 1);
     acc.add_to_relation(context, numerator_120, tuple_120);
 
-    //carry_39.
+    // carry_39.
     let constraint_121_value = eval!(
         context,
         (carry_39_col403)
@@ -2273,7 +2273,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_122 = eval!(context, 1);
     acc.add_to_relation(context, numerator_122, tuple_122);
 
-    //carry_40.
+    // carry_40.
     let constraint_123_value = eval!(
         context,
         (carry_40_col404)
@@ -2289,7 +2289,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_124 = eval!(context, 1);
     acc.add_to_relation(context, numerator_124, tuple_124);
 
-    //carry_41.
+    // carry_41.
     let constraint_125_value = eval!(
         context,
         (carry_41_col405)
@@ -2305,7 +2305,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_126 = eval!(context, 1);
     acc.add_to_relation(context, numerator_126, tuple_126);
 
-    //carry_42.
+    // carry_42.
     let constraint_127_value = eval!(
         context,
         (carry_42_col406)
@@ -2321,7 +2321,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_128 = eval!(context, 1);
     acc.add_to_relation(context, numerator_128, tuple_128);
 
-    //carry_43.
+    // carry_43.
     let constraint_129_value = eval!(
         context,
         (carry_43_col407)
@@ -2337,7 +2337,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_130 = eval!(context, 1);
     acc.add_to_relation(context, numerator_130, tuple_130);
 
-    //carry_44.
+    // carry_44.
     let constraint_131_value = eval!(
         context,
         (carry_44_col408)
@@ -2353,7 +2353,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_132 = eval!(context, 1);
     acc.add_to_relation(context, numerator_132, tuple_132);
 
-    //carry_45.
+    // carry_45.
     let constraint_133_value = eval!(
         context,
         (carry_45_col409)
@@ -2369,7 +2369,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_134 = eval!(context, 1);
     acc.add_to_relation(context, numerator_134, tuple_134);
 
-    //carry_46.
+    // carry_46.
     let constraint_135_value = eval!(
         context,
         (carry_46_col410)
@@ -2385,7 +2385,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_136 = eval!(context, 1);
     acc.add_to_relation(context, numerator_136, tuple_136);
 
-    //carry_47.
+    // carry_47.
     let constraint_137_value = eval!(
         context,
         (carry_47_col411)
@@ -2401,7 +2401,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_138 = eval!(context, 1);
     acc.add_to_relation(context, numerator_138, tuple_138);
 
-    //carry_48.
+    // carry_48.
     let constraint_139_value = eval!(
         context,
         (carry_48_col412)
@@ -2417,7 +2417,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_140 = eval!(context, 1);
     acc.add_to_relation(context, numerator_140, tuple_140);
 
-    //carry_49.
+    // carry_49.
     let constraint_141_value = eval!(
         context,
         (carry_49_col413)
@@ -2433,7 +2433,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_142 = eval!(context, 1);
     acc.add_to_relation(context, numerator_142, tuple_142);
 
-    //carry_50.
+    // carry_50.
     let constraint_143_value = eval!(
         context,
         (carry_50_col414)
@@ -2449,7 +2449,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_144 = eval!(context, 1);
     acc.add_to_relation(context, numerator_144, tuple_144);
 
-    //carry_51.
+    // carry_51.
     let constraint_145_value = eval!(
         context,
         (carry_51_col415)
@@ -2465,7 +2465,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_146 = eval!(context, 1);
     acc.add_to_relation(context, numerator_146, tuple_146);
 
-    //carry_52.
+    // carry_52.
     let constraint_147_value = eval!(
         context,
         (carry_52_col416)
@@ -2481,7 +2481,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_148 = eval!(context, 1);
     acc.add_to_relation(context, numerator_148, tuple_148);
 
-    //carry_53.
+    // carry_53.
     let constraint_149_value = eval!(
         context,
         (carry_53_col417)
@@ -2497,7 +2497,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_150 = eval!(context, 1);
     acc.add_to_relation(context, numerator_150, tuple_150);
 
-    //carry_54.
+    // carry_54.
     let constraint_151_value = eval!(
         context,
         (carry_54_col418)
@@ -2513,7 +2513,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_152 = eval!(context, 1);
     acc.add_to_relation(context, numerator_152, tuple_152);
 
-    //carry_55.
+    // carry_55.
     let constraint_153_value = eval!(
         context,
         (carry_55_col419)
@@ -2529,7 +2529,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_154 = eval!(context, 1);
     acc.add_to_relation(context, numerator_154, tuple_154);
 
-    //carry_56.
+    // carry_56.
     let constraint_155_value = eval!(
         context,
         (carry_56_col420)
@@ -2545,7 +2545,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_156 = eval!(context, 1);
     acc.add_to_relation(context, numerator_156, tuple_156);
 
-    //carry_57.
+    // carry_57.
     let constraint_157_value = eval!(
         context,
         (carry_57_col421)
@@ -2561,7 +2561,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_158 = eval!(context, 1);
     acc.add_to_relation(context, numerator_158, tuple_158);
 
-    //carry_58.
+    // carry_58.
     let constraint_159_value = eval!(
         context,
         (carry_58_col422)
@@ -2577,7 +2577,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_160 = eval!(context, 1);
     acc.add_to_relation(context, numerator_160, tuple_160);
 
-    //carry_59.
+    // carry_59.
     let constraint_161_value = eval!(
         context,
         (carry_59_col423)
@@ -2593,7 +2593,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_162 = eval!(context, 1);
     acc.add_to_relation(context, numerator_162, tuple_162);
 
-    //carry_60.
+    // carry_60.
     let constraint_163_value = eval!(
         context,
         (carry_60_col424)
@@ -2609,7 +2609,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_164 = eval!(context, 1);
     acc.add_to_relation(context, numerator_164, tuple_164);
 
-    //carry_61.
+    // carry_61.
     let constraint_165_value = eval!(
         context,
         (carry_61_col425)
@@ -2625,7 +2625,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_166 = eval!(context, 1);
     acc.add_to_relation(context, numerator_166, tuple_166);
 
-    //final limb constraint.
+    // final limb constraint.
     let constraint_167_value = eval!(
         context,
         ((double_karatsuba_9cdb9_output_tmp_f64f9_350_limb_62) + (carry_61_col425))
@@ -2671,17 +2671,17 @@ impl<Value: IValue> CircuitEval<Value> for Component {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
-    use stwo::core::fields::qm31::QM31;
 
-    #[allow(unused_imports)]
-    use crate::components::prelude::PreProcessedColumnId;
-    use crate::sample_evaluations::*;
     use circuits::context::Context;
     use circuits::ivalue::qm31_from_u32s;
     use circuits_stark_verifier::constraint_eval::*;
     use circuits_stark_verifier::test_utils::TestComponentData;
+    use stwo::core::fields::qm31::QM31;
 
     use super::Component;
+    #[allow(unused_imports)]
+    use crate::components::prelude::PreProcessedColumnId;
+    use crate::sample_evaluations::*;
 
     #[test]
     fn test_evaluation_result() {

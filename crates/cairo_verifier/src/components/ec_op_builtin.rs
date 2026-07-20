@@ -826,7 +826,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_8 = eval!(context, 1);
     acc.add_to_relation(context, numerator_8, tuple_8);
 
-    //final m is zero.
+    // final m is zero.
     let constraint_9_value = eval!(context, partial_ec_mul_generic_output_m_limb_0_col148);
     acc.add_constraint(context, constraint_9_value);
 
@@ -946,17 +946,17 @@ impl<Value: IValue> CircuitEval<Value> for Component {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
-    use stwo::core::fields::qm31::QM31;
 
-    #[allow(unused_imports)]
-    use crate::components::prelude::PreProcessedColumnId;
-    use crate::sample_evaluations::*;
     use circuits::context::Context;
     use circuits::ivalue::qm31_from_u32s;
     use circuits_stark_verifier::constraint_eval::*;
     use circuits_stark_verifier::test_utils::TestComponentData;
+    use stwo::core::fields::qm31::QM31;
 
     use super::Component;
+    #[allow(unused_imports)]
+    use crate::components::prelude::PreProcessedColumnId;
+    use crate::sample_evaluations::*;
 
     #[test]
     fn test_evaluation_result() {

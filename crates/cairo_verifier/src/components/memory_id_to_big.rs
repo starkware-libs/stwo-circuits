@@ -1,7 +1,7 @@
-use crate::components::prelude::*;
-
 use stwo::core::fields::m31::P as M31_P;
 use stwo_cairo_common::preprocessed_columns::preprocessed_trace::MAX_SEQUENCE_LOG_SIZE;
+
+use crate::components::prelude::*;
 
 const LARGE_MEMORY_VALUE_ID_BASE: u32 = 0x40000000; // 2^30.
 const ID_TO_BIG_MAX_ROWS: u32 = 1 << MAX_SEQUENCE_LOG_SIZE;

@@ -1,5 +1,7 @@
 // AIR version a022abac
-use stwo::core::fields::{cm31::CM31, m31::M31, qm31::QM31};
+use stwo::core::fields::cm31::CM31;
+use stwo::core::fields::m31::M31;
+use stwo::core::fields::qm31::QM31;
 pub const BLAKE_G_GATE_SAMPLE_EVAL_RESULT: QM31 =
     QM31(CM31(M31(29058099), M31(2109881126)), CM31(M31(476797340), M31(793415792)));
 pub const M_31_TO_U_32_SAMPLE_EVAL_RESULT: QM31 =

@@ -2,11 +2,10 @@
 #![allow(clippy::too_many_arguments)]
 use crate::circuit_air::components::blake_g_gate::{Claim, InteractionClaim, N_TRACE_COLUMNS};
 use crate::witness::components::prelude::*;
-use crate::witness::components::verify_bitwise_xor_4;
-use crate::witness::components::verify_bitwise_xor_7;
-use crate::witness::components::verify_bitwise_xor_8;
-use crate::witness::components::verify_bitwise_xor_9;
-use crate::witness::components::verify_bitwise_xor_12;
+use crate::witness::components::{
+    verify_bitwise_xor_4, verify_bitwise_xor_7, verify_bitwise_xor_8, verify_bitwise_xor_9,
+    verify_bitwise_xor_12,
+};
 
 pub type InputType = [UInt32; 10];
 pub type PackedInputType = [PackedUInt32; 10];
@@ -885,7 +884,7 @@ impl InteractionClaimGenerator {
     ) -> (Vec<CircleEvaluation<SimdBackend, M31, BitReversedOrder>>, InteractionClaim) {
         let mut logup_gen = unsafe { LogupTraceGenerator::uninitialized(self.log_size) };
 
-        //Sum logup terms in pairs.
+        // Sum logup terms in pairs.
         let mut col_gen = logup_gen.new_col();
         (
             col_gen.par_iter_mut(),

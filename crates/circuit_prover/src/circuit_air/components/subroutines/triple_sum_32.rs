@@ -1,7 +1,8 @@
 // This file was created by the AIR team.
 
-use crate::circuit_air::components::prelude::*;
 use subroutines::verify_triple_sum_32::VerifyTripleSum32;
+
+use crate::circuit_air::components::prelude::*;
 
 #[derive(Copy, Clone)]
 pub struct TripleSum32 {}

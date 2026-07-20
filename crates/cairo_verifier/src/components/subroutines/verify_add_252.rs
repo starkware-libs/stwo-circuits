@@ -100,7 +100,7 @@ pub fn accumulate_constraints<Value: IValue>(
         sub_p_bit_col0,
     ] = input.try_into().unwrap();
 
-    //sub_p_bit is a bit.
+    // sub_p_bit is a bit.
     let constraint_0_value = eval!(context, (sub_p_bit_col0) * ((sub_p_bit_col0) - (1)));
     acc.add_constraint(context, constraint_0_value);
 

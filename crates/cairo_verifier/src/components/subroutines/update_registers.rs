@@ -225,7 +225,7 @@ pub fn accumulate_constraints<Value: IValue>(
 
     let diff_from_p_tmp_1f3b5_12 = eval!(context, (update_registers_input_dst_limb_27) - (256));
 
-    //dst_not_p.
+    // dst_not_p.
     let constraint_5_value = eval!(
         context,
         ((((((((((((((((((((((((((((((diff_from_p_tmp_1f3b5_10)
@@ -294,7 +294,7 @@ pub fn accumulate_constraints<Value: IValue>(
             + (update_registers_input_dst_limb_27)
     );
 
-    //op1_as_rel_imm_cond.
+    // op1_as_rel_imm_cond.
     let constraint_7_value = eval!(
         context,
         (op1_as_rel_imm_cond_col6)
@@ -346,7 +346,7 @@ pub fn accumulate_constraints<Value: IValue>(
         .try_into()
         .unwrap();
 
-    //Constraint1 for conditional jump.
+    // Constraint1 for conditional jump.
     let constraint_9_value = eval!(
         context,
         ((next_pc_jnz_col10)
@@ -355,7 +355,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_9_value);
 
-    //Constraint2 for conditional jump.
+    // Constraint2 for conditional jump.
     let constraint_10_value = eval!(
         context,
         ((next_pc_jnz_col10)
@@ -364,7 +364,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_10_value);
 
-    //next_pc.
+    // next_pc.
     let constraint_11_value = eval!(
         context,
         (next_pc_col11)
@@ -379,7 +379,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_11_value);
 
-    //next_ap.
+    // next_ap.
     let constraint_12_value = eval!(
         context,
         (next_ap_col12)
@@ -402,7 +402,7 @@ pub fn accumulate_constraints<Value: IValue>(
         acc,
     );
 
-    //next_fp.
+    // next_fp.
     let constraint_14_value = eval!(
         context,
         (next_fp_col14)

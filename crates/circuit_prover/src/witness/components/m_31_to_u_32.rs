@@ -1,10 +1,11 @@
 #![allow(unused_parens)]
-use crate::circuit_air::components::m_31_to_u_32::{Claim, InteractionClaim, N_TRACE_COLUMNS};
-use crate::witness::components::prelude::*;
-use crate::witness::components::range_check_16;
 use stwo::core::fields::FieldExpOps;
 use stwo::core::fields::qm31::QM31;
 use stwo_cairo_common::prover_types::simd::EqExtend;
+
+use crate::circuit_air::components::m_31_to_u_32::{Claim, InteractionClaim, N_TRACE_COLUMNS};
+use crate::witness::components::prelude::*;
+use crate::witness::components::range_check_16;
 
 pub type InputType = (M31, UInt32);
 pub type PackedInputType = (PackedM31, PackedUInt32);
@@ -165,7 +166,7 @@ impl InteractionClaimGenerator {
         let common_lookup_elements = _common_lookup_elements;
         let mut logup_gen = unsafe { LogupTraceGenerator::uninitialized(self.log_size) };
 
-        //Sum logup terms in pairs.
+        // Sum logup terms in pairs.
         let mut col_gen = logup_gen.new_col();
         (
             col_gen.par_iter_mut(),
@@ -190,7 +191,7 @@ impl InteractionClaimGenerator {
             });
         col_gen.finalize_col();
 
-        //Sum last logup term.
+        // Sum last logup term.
         let mut col_gen = logup_gen.new_col();
         (col_gen.par_iter_mut(), &self.lookup_data.gate_1, &self.lookup_data.mults_0)
             .into_par_iter()

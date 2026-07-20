@@ -1,4 +1,8 @@
+use circuits::context::TraceContext;
+use circuits::ops::Guess;
 use circuits::simd::Simd;
+use circuits::test_utils::{packed_values, simd_from_u32s};
+use circuits::wrappers::M31Wrapper;
 use itertools::Itertools;
 use num_traits::Zero;
 use stwo::core::circle::CirclePoint;
@@ -9,10 +13,6 @@ use stwo::core::fields::qm31::QM31;
 use crate::circle::{
     add_points, add_points_simd, double_point, double_point_simd, double_x, double_x_simd,
 };
-use circuits::context::TraceContext;
-use circuits::ops::Guess;
-use circuits::test_utils::{packed_values, simd_from_u32s};
-use circuits::wrappers::M31Wrapper;
 
 #[test]
 fn test_double_x() {

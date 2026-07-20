@@ -20,7 +20,6 @@ use stwo::core::fri::{ExtendedFriProof, FriConfig};
 use stwo::core::poly::circle::CircleDomain;
 use stwo::core::queries::Queries;
 use stwo::core::vcs_lifted::blake2_merkle::{Blake2sM31MerkleChannel, Blake2sMerkleHasher};
-
 use stwo::core::vcs_lifted::verifier::LOG_PACKED_LEAF_SIZE;
 use stwo::prover::backend::CpuBackend;
 use stwo::prover::backend::cpu::CpuCirclePoly;

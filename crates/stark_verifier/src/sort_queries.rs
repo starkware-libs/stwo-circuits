@@ -1,17 +1,14 @@
+use circuits::context::{Context, Var};
+use circuits::eval;
+use circuits::extract_bits::extract_bits;
+use circuits::ivalue::{IValue, qm31_from_u32s};
+use circuits::ops::{eq, permute, pointwise_mul};
+use circuits::simd::Simd;
+use circuits::wrappers::M31Wrapper;
 use itertools::{Itertools, zip_eq};
 use stwo::core::fields::FieldExpOps;
 
 use crate::verify::LOG_SIZE_BITS;
-use circuits::eval;
-use circuits::{
-    context::{Context, Var},
-    ivalue::{IValue, qm31_from_u32s},
-    ops::{eq, permute, pointwise_mul},
-    simd::Simd,
-    wrappers::M31Wrapper,
-};
-
-use circuits::extract_bits::extract_bits;
 
 /// Generates the keys for sorting the query values by the column indices and log sizes.
 /// The key for the i'th column is (log_size * column_idx_bound + i) * u, where

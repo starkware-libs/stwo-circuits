@@ -1,12 +1,12 @@
-use stwo::core::circle::CirclePoint;
-
-use crate::channel::Channel;
-use crate::circle::{add_points_simd, generator_point_simd};
 use circuits::EXTENSION_DEGREE;
 use circuits::context::Context;
 use circuits::extract_bits::extract_bits;
 use circuits::ivalue::IValue;
 use circuits::simd::Simd;
+use stwo::core::circle::CirclePoint;
+
+use crate::channel::Channel;
+use crate::circle::{add_points_simd, generator_point_simd};
 
 #[cfg(test)]
 #[path = "select_queries_test.rs"]

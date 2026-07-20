@@ -1,29 +1,29 @@
 use blake2::{Blake2s256, Digest};
 use circuit_cairo_verifier::privacy::get_pcs_config;
-use circuit_common::{
-    N_RESERVED,
-    finalize::{ComponentSizes, pad_to_targets},
-    preprocessed::PreprocessedCircuit,
+use circuit_common::N_RESERVED;
+use circuit_common::finalize::{ComponentSizes, pad_to_targets};
+use circuit_common::preprocessed::PreprocessedCircuit;
+use circuit_verifier::statement::{
+    INTERACTION_POW_BITS, all_circuit_components, circuit_component_log_sizes,
 };
-use circuit_verifier::{
-    statement::{INTERACTION_POW_BITS, all_circuit_components, circuit_component_log_sizes},
-    verify::CircuitConfig,
-};
-use circuits::{
-    blake::HashValue, context::FinalizedContext, ivalue::NoValue, utils::le_u32s_from_bytes,
-};
+use circuit_verifier::verify::CircuitConfig;
+use circuits::blake::HashValue;
+use circuits::context::FinalizedContext;
+use circuits::ivalue::NoValue;
+use circuits::utils::le_u32s_from_bytes;
 use circuits_stark_verifier::order_hash_map::OrderedHashMap;
 use circuits_stark_verifier::proof::{ProofConfig, empty_proof};
-use stwo::core::{fields::qm31::QM31, pcs::PcsConfig};
-use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
-
-use crate::verify::{MultiverifierInput, SharedConfig, build_multiverifier_circuit};
+use stwo::core::fields::qm31::QM31;
+use stwo::core::pcs::PcsConfig;
 use stwo::core::poly::circle::CanonicCoset;
 use stwo::core::vcs_lifted::blake2_merkle::Blake2sM31MerkleChannel;
 use stwo::prover::CommitmentTreeProver;
 use stwo::prover::backend::simd::SimdBackend;
 use stwo::prover::mempool::BaseColumnPool;
 use stwo::prover::poly::circle::PolyOps;
+use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
+
+use crate::verify::{MultiverifierInput, SharedConfig, build_multiverifier_circuit};
 
 // Shared test fixtures: config constants, target padding sizes, and helpers used by the
 // multiverifier test modules (`verify_test` and `backward_compatibility_test`).

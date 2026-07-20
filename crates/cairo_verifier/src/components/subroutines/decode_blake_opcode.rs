@@ -83,12 +83,12 @@ pub fn accumulate_constraints<Value: IValue>(
     .try_into()
     .unwrap();
 
-    //OpcodeExtension is either Blake or BlakeFinalize.
+    // OpcodeExtension is either Blake or BlakeFinalize.
     let constraint_1_value =
         eval!(context, ((opcode_extension_col7) - (1)) * ((opcode_extension_col7) - (2)));
     acc.add_constraint(context, constraint_1_value);
 
-    //mem0_base.
+    // mem0_base.
     let constraint_2_value = eval!(
         context,
         (mem0_base_col8)
@@ -116,7 +116,7 @@ pub fn accumulate_constraints<Value: IValue>(
         acc,
     );
 
-    //mem1_base.
+    // mem1_base.
     let constraint_4_value = eval!(
         context,
         (mem1_base_col15)
@@ -161,7 +161,7 @@ pub fn accumulate_constraints<Value: IValue>(
         acc,
     );
 
-    //mem_dst_base.
+    // mem_dst_base.
     let constraint_7_value = eval!(
         context,
         (mem_dst_base_col28)

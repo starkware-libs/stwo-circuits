@@ -47,11 +47,11 @@ pub fn accumulate_constraints<Value: IValue>(
         rc_input_col2,
     ] = input.try_into().unwrap();
 
-    //ms_max is bit.
+    // ms_max is bit.
     let constraint_0_value = eval!(context, (ms_limb_is_max_col0) * ((1) - (ms_limb_is_max_col0)));
     acc.add_constraint(context, constraint_0_value);
 
-    //both_max is bit.
+    // both_max is bit.
     let constraint_1_value =
         eval!(context, (ms_and_mid_limbs_are_max_col1) * ((1) - (ms_and_mid_limbs_are_max_col1)));
     acc.add_constraint(context, constraint_1_value);
@@ -64,7 +64,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_2 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_2, tuple_2);
 
-    //If the MS limb is max, high limbs should be 0.
+    // If the MS limb is max, high limbs should be 0.
     let constraint_3_value = eval!(
         context,
         (ms_limb_is_max_col0)
@@ -75,7 +75,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_3_value);
 
-    //rc_input.
+    // rc_input.
     let constraint_4_value = eval!(
         context,
         (rc_input_col2)
@@ -89,7 +89,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let numerator_5 = eval!(context, enabler);
     acc.add_to_relation(context, numerator_5, tuple_5);
 
-    //If the MS and mid limbs are max, low limbs should be 0.
+    // If the MS and mid limbs are max, low limbs should be 0.
     let constraint_6_value = eval!(
         context,
         (ms_and_mid_limbs_are_max_col1)

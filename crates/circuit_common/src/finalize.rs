@@ -1,4 +1,3 @@
-use crate::N_LANES;
 use circuits::blake::{blake_g_gate, m31_to_u32, triple_xor};
 use circuits::circuit::Circuit;
 use circuits::context::{Context, FinalizedContext, Var};
@@ -6,6 +5,8 @@ use circuits::eval;
 use circuits::ivalue::{IValue, qm31_from_u32s};
 use circuits::ops::{add_into, eq};
 use rand_chacha::rand_core::{RngCore, SeedableRng};
+
+use crate::N_LANES;
 
 fn pad_qm31_ops(context: &mut Context<impl IValue>, target: usize) {
     let qm31_ops_n_rows = qm31_ops_n_rows(&context.circuit);
@@ -188,12 +189,18 @@ pub struct ComponentSizes {
 impl std::fmt::Display for ComponentSizes {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(&format!(
-            "eq={:>2} (log: {}),  qm31_ops={:>2} (log: {}), m31_to_u32={:>2} (log: {}), triple_xor={:>2} (log: {}), blake_g_gate={:>2} (log: {})",
-            self.eq, self.eq.next_power_of_two().ilog2(),
-            self.qm31_ops, self.qm31_ops.next_power_of_two().ilog2(),
-            self.m31_to_u32, self.m31_to_u32.next_power_of_two().ilog2(),
-            self.triple_xor, self.triple_xor.next_power_of_two().ilog2(),
-            self.blake_g_gate, self.blake_g_gate.next_power_of_two().ilog2(),
+            "eq={:>2} (log: {}),  qm31_ops={:>2} (log: {}), m31_to_u32={:>2} (log: {}), \
+             triple_xor={:>2} (log: {}), blake_g_gate={:>2} (log: {})",
+            self.eq,
+            self.eq.next_power_of_two().ilog2(),
+            self.qm31_ops,
+            self.qm31_ops.next_power_of_two().ilog2(),
+            self.m31_to_u32,
+            self.m31_to_u32.next_power_of_two().ilog2(),
+            self.triple_xor,
+            self.triple_xor.next_power_of_two().ilog2(),
+            self.blake_g_gate,
+            self.blake_g_gate.next_power_of_two().ilog2(),
         ))
     }
 }

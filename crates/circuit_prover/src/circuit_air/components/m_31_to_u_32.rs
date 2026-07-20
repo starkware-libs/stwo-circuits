@@ -82,12 +82,12 @@ impl FrameworkEval for Eval {
             &[M31_1008385708.clone(), (M31_32767.clone() - input_u32_limb_1_col2.clone())],
         ));
 
-        //input is zero then limb_low is zero.
+        // input is zero then limb_low is zero.
         eval.add_constraint(
             (((input_m31_col0.clone() * inv_or_one_col3.clone()) - M31_1.clone())
                 * input_u32_limb_0_col1.clone()),
         );
-        //input reconstruction.
+        // input reconstruction.
         eval.add_constraint(
             (input_m31_col0.clone()
                 - (input_u32_limb_0_col1.clone()

@@ -1,9 +1,5 @@
 use std::fmt;
 
-use stwo::core::fields::m31::{M31, P};
-use stwo::core::fields::qm31::QM31;
-use stwo::core::vcs::blake2_hash::Blake2sHash;
-
 use circuits::blake::{HashValue, ReducedHashValue};
 use circuits::wrappers::M31Wrapper;
 use circuits_stark_verifier::fri_proof::{
@@ -12,6 +8,9 @@ use circuits_stark_verifier::fri_proof::{
 use circuits_stark_verifier::merkle::{AuthPath, AuthPaths};
 use circuits_stark_verifier::oods::{EvalDomainSamples, N_COMPOSITION_COLUMNS};
 use circuits_stark_verifier::proof::{InteractionAtOods, N_TRACES, Proof, ProofConfig};
+use stwo::core::fields::m31::{M31, P};
+use stwo::core::fields::qm31::QM31;
+use stwo::core::vcs::blake2_hash::Blake2sHash;
 
 #[derive(Debug)]
 pub enum DeserializeError {

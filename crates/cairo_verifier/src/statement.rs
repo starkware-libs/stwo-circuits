@@ -2,7 +2,6 @@ use std::array;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use crate::verify::enabled_components;
 use cairo_air::components::memory_address_to_id::MEMORY_ADDRESS_TO_ID_SPLIT;
 use cairo_air::flat_claims::FlatClaim;
 use cairo_air::relations::{
@@ -23,8 +22,7 @@ use circuits_stark_verifier::statement::Statement;
 use circuits_stark_verifier::verify::RELATION_USES_NUM_ROWS_SHIFT;
 use indexmap::IndexMap;
 use itertools::{Itertools, chain, zip_eq};
-use stwo::core::fields::m31::M31;
-use stwo::core::fields::m31::P as M31_P;
+use stwo::core::fields::m31::{M31, P as M31_P};
 use stwo::core::fields::qm31::QM31;
 use stwo_cairo_common::builtins::{
     ADD_MOD_BUILTIN_MEMORY_CELLS, BITWISE_BUILTIN_MEMORY_CELLS, EC_OP_BUILTIN_MEMORY_CELLS,
@@ -36,6 +34,8 @@ use stwo_cairo_common::preprocessed_columns::preprocessed_trace::{
     MAX_SEQUENCE_LOG_SIZE, PreProcessedTraceVariant,
 };
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
+
+use crate::verify::enabled_components;
 
 #[cfg(test)]
 #[path = "statement_test.rs"]

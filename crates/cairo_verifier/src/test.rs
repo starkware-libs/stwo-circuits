@@ -20,8 +20,9 @@ use stwo::core::fields::qm31::QM31;
 use stwo::core::fri::FriConfig;
 use stwo::core::pcs::PcsConfig;
 use stwo::core::vcs_lifted::blake2_merkle::{Blake2sM31MerkleChannel, Blake2sMerkleHasher};
-
-use stwo_cairo_common::preprocessed_columns::preprocessed_trace::PreProcessedTraceVariant;
+use stwo_cairo_common::preprocessed_columns::preprocessed_trace::{
+    PreProcessedTraceVariant, SMALL_MAX_SEQUENCE_LOG_SIZE,
+};
 use stwo_cairo_dev_utils::utils::get_compiled_cairo_program_path;
 use stwo_cairo_dev_utils::vm_utils::{ProgramType, run_and_adapt};
 use stwo_cairo_prover::prover::{ChannelHash, ProverParameters, prove_cairo};
@@ -30,7 +31,6 @@ use crate::all_components::all_components;
 use crate::statement::{AUX_DATA_FIXED_LEN, CairoStatement, MEMORY_VALUES_LIMBS};
 use crate::utils::get_proof_file_path;
 use crate::verify::{enabled_components, get_preprocessed_root, verify_cairo_with_component_set};
-use stwo_cairo_common::preprocessed_columns::preprocessed_trace::SMALL_MAX_SEQUENCE_LOG_SIZE;
 
 /// Circuit Verifies a [CairoProof].
 pub fn verify_cairo(

@@ -35,66 +35,66 @@ pub fn accumulate_constraints<Value: IValue>(
         opcode_assert_eq_col17,
     ] = input.try_into().unwrap();
 
-    //Flag dst_base_fp is a bit.
+    // Flag dst_base_fp is a bit.
     let constraint_0_value = eval!(context, (dst_base_fp_col3) * ((1) - (dst_base_fp_col3)));
     acc.add_constraint(context, constraint_0_value);
 
-    //Flag op0_base_fp is a bit.
+    // Flag op0_base_fp is a bit.
     let constraint_1_value = eval!(context, (op0_base_fp_col4) * ((1) - (op0_base_fp_col4)));
     acc.add_constraint(context, constraint_1_value);
 
-    //Flag op1_imm is a bit.
+    // Flag op1_imm is a bit.
     let constraint_2_value = eval!(context, (op1_imm_col5) * ((1) - (op1_imm_col5)));
     acc.add_constraint(context, constraint_2_value);
 
-    //Flag op1_base_fp is a bit.
+    // Flag op1_base_fp is a bit.
     let constraint_3_value = eval!(context, (op1_base_fp_col6) * ((1) - (op1_base_fp_col6)));
     acc.add_constraint(context, constraint_3_value);
 
-    //Flag op1_base_ap is a bit.
+    // Flag op1_base_ap is a bit.
     let constraint_4_value = eval!(context, (op1_base_ap_col7) * ((1) - (op1_base_ap_col7)));
     acc.add_constraint(context, constraint_4_value);
 
-    //Flag res_add is a bit.
+    // Flag res_add is a bit.
     let constraint_5_value = eval!(context, (res_add_col8) * ((1) - (res_add_col8)));
     acc.add_constraint(context, constraint_5_value);
 
-    //Flag res_mul is a bit.
+    // Flag res_mul is a bit.
     let constraint_6_value = eval!(context, (res_mul_col9) * ((1) - (res_mul_col9)));
     acc.add_constraint(context, constraint_6_value);
 
-    //Flag pc_update_jump is a bit.
+    // Flag pc_update_jump is a bit.
     let constraint_7_value =
         eval!(context, (pc_update_jump_col10) * ((1) - (pc_update_jump_col10)));
     acc.add_constraint(context, constraint_7_value);
 
-    //Flag pc_update_jump_rel is a bit.
+    // Flag pc_update_jump_rel is a bit.
     let constraint_8_value =
         eval!(context, (pc_update_jump_rel_col11) * ((1) - (pc_update_jump_rel_col11)));
     acc.add_constraint(context, constraint_8_value);
 
-    //Flag pc_update_jnz is a bit.
+    // Flag pc_update_jnz is a bit.
     let constraint_9_value = eval!(context, (pc_update_jnz_col12) * ((1) - (pc_update_jnz_col12)));
     acc.add_constraint(context, constraint_9_value);
 
-    //Flag ap_update_add is a bit.
+    // Flag ap_update_add is a bit.
     let constraint_10_value = eval!(context, (ap_update_add_col13) * ((1) - (ap_update_add_col13)));
     acc.add_constraint(context, constraint_10_value);
 
-    //Flag ap_update_add_1 is a bit.
+    // Flag ap_update_add_1 is a bit.
     let constraint_11_value =
         eval!(context, (ap_update_add_1_col14) * ((1) - (ap_update_add_1_col14)));
     acc.add_constraint(context, constraint_11_value);
 
-    //Flag opcode_call is a bit.
+    // Flag opcode_call is a bit.
     let constraint_12_value = eval!(context, (opcode_call_col15) * ((1) - (opcode_call_col15)));
     acc.add_constraint(context, constraint_12_value);
 
-    //Flag opcode_ret is a bit.
+    // Flag opcode_ret is a bit.
     let constraint_13_value = eval!(context, (opcode_ret_col16) * ((1) - (opcode_ret_col16)));
     acc.add_constraint(context, constraint_13_value);
 
-    //Flag opcode_assert_eq is a bit.
+    // Flag opcode_assert_eq is a bit.
     let constraint_14_value =
         eval!(context, (opcode_assert_eq_col17) * ((1) - (opcode_assert_eq_col17)));
     acc.add_constraint(context, constraint_14_value);

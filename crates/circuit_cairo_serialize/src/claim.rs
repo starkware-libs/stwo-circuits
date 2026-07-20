@@ -12,10 +12,8 @@
 //! Both `CairoSerialize` and `CairoDeserialize` are derived, giving symmetric serde so
 //! these types can round-trip in tests.
 
-use circuit_verifier::{
-    circuit_claim::{CircuitClaim, CircuitInteractionClaim},
-    circuit_components::N_COMPONENTS,
-};
+use circuit_verifier::circuit_claim::{CircuitClaim, CircuitInteractionClaim};
+use circuit_verifier::circuit_components::N_COMPONENTS;
 use stwo::core::fields::qm31::QM31;
 use stwo_cairo_serialize::{CairoDeserialize, CairoSerialize};
 

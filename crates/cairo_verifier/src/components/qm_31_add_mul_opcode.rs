@@ -96,7 +96,7 @@ pub fn accumulate_constraints<Value: IValue>(
         op1_delta_cd_inv_col72,
     ] = input.try_into().unwrap();
 
-    //Enabler is a bit.
+    // Enabler is a bit.
     let constraint_0_value = eval!(context, ((enabler_col0) * (enabler_col0)) - (enabler_col0));
     acc.add_constraint(context, constraint_0_value);
 
@@ -127,14 +127,14 @@ pub fn accumulate_constraints<Value: IValue>(
     .try_into()
     .unwrap();
 
-    //Either flag op1_imm is off or offset2 is equal to 1.
+    // Either flag op1_imm is off or offset2 is equal to 1.
     let constraint_2_value = eval!(
         context,
         (op1_imm_col9) * ((decode_instruction_c67a5_output_tmp_48ee6_12_offset2) - (1))
     );
     acc.add_constraint(context, constraint_2_value);
 
-    //mem_dst_base.
+    // mem_dst_base.
     let constraint_3_value = eval!(
         context,
         (mem_dst_base_col13)
@@ -143,7 +143,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_3_value);
 
-    //mem0_base.
+    // mem0_base.
     let constraint_4_value = eval!(
         context,
         (mem0_base_col14)
@@ -152,7 +152,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_4_value);
 
-    //mem1_base.
+    // mem1_base.
     let constraint_5_value = eval!(
         context,
         (mem1_base_col15)
@@ -279,7 +279,7 @@ pub fn accumulate_constraints<Value: IValue>(
     .try_into()
     .unwrap();
 
-    //dst equals (op0 * op1)*flag_res_mul + (op0 + op1)*(1-flag_res_mul).
+    // dst equals (op0 * op1)*flag_res_mul + (op0 + op1)*(1-flag_res_mul).
     let constraint_9_value = eval!(
         context,
         ((qm_31_read_reduced_output_tmp_48ee6_18_limb_0)
@@ -303,7 +303,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_9_value);
 
-    //dst equals (op0 * op1)*flag_res_mul + (op0 + op1)*(1-flag_res_mul).
+    // dst equals (op0 * op1)*flag_res_mul + (op0 + op1)*(1-flag_res_mul).
     let constraint_10_value = eval!(
         context,
         ((qm_31_read_reduced_output_tmp_48ee6_18_limb_1)
@@ -327,7 +327,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_10_value);
 
-    //dst equals (op0 * op1)*flag_res_mul + (op0 + op1)*(1-flag_res_mul).
+    // dst equals (op0 * op1)*flag_res_mul + (op0 + op1)*(1-flag_res_mul).
     let constraint_11_value = eval!(
         context,
         ((qm_31_read_reduced_output_tmp_48ee6_18_limb_2)
@@ -346,7 +346,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_11_value);
 
-    //dst equals (op0 * op1)*flag_res_mul + (op0 + op1)*(1-flag_res_mul).
+    // dst equals (op0 * op1)*flag_res_mul + (op0 + op1)*(1-flag_res_mul).
     let constraint_12_value = eval!(
         context,
         ((qm_31_read_reduced_output_tmp_48ee6_18_limb_3)
@@ -423,17 +423,17 @@ impl<Value: IValue> CircuitEval<Value> for Component {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
-    use stwo::core::fields::qm31::QM31;
 
-    #[allow(unused_imports)]
-    use crate::components::prelude::PreProcessedColumnId;
-    use crate::sample_evaluations::*;
     use circuits::context::Context;
     use circuits::ivalue::qm31_from_u32s;
     use circuits_stark_verifier::constraint_eval::*;
     use circuits_stark_verifier::test_utils::TestComponentData;
+    use stwo::core::fields::qm31::QM31;
 
     use super::Component;
+    #[allow(unused_imports)]
+    use crate::components::prelude::PreProcessedColumnId;
+    use crate::sample_evaluations::*;
 
     #[test]
     fn test_evaluation_result() {

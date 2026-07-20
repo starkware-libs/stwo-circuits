@@ -1,11 +1,11 @@
 //! Analyzes the Cairo-verifier [`circuits::circuit::Circuit`].
 
-use hashbrown::{HashMap, HashSet};
 use std::ops::Deref;
 
 use circuits::circuit::{Add, BlakeGGate, Circuit, M31ToU32, Mul, PointwiseMul, Sub, TripleXor};
 use circuits::context::Var;
 use circuits::ivalue::{IValue, qm31_from_u32s};
+use hashbrown::{HashMap, HashSet};
 use num_traits::{One, Zero};
 use stwo::core::fields::qm31::QM31;
 

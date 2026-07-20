@@ -2,7 +2,6 @@
 use crate::circuit_air::components::verify_bitwise_xor_4::{
     Claim, InteractionClaim, LOG_SIZE, N_TRACE_COLUMNS,
 };
-
 use crate::witness::components::prelude::*;
 
 pub type InputType = [M31; 3];

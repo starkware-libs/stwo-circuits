@@ -100,7 +100,7 @@ pub fn accumulate_constraints<Value: IValue>(
             * (16)
     );
 
-    //final limb constraint.
+    // final limb constraint.
     let constraint_9_value = eval!(
         context,
         (((carry_8_tmp_e3263_10) + ((2) * (linear_combination_n_1_coefs_2_input_limb_9)))
@@ -109,14 +109,14 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_9_value);
 
-    //carry constraint 0.
+    // carry constraint 0.
     let constraint_10_value =
         eval!(context, (((p_coef_col10) * (p_coef_col10)) * (p_coef_col10)) - (p_coef_col10));
     acc.add_constraint(context, constraint_10_value);
 
     let biased_carry_1_tmp_e3263_11 = eval!(context, carry_0_tmp_e3263_2);
 
-    //carry constraint 1.
+    // carry constraint 1.
     let constraint_12_value = eval!(
         context,
         (((biased_carry_1_tmp_e3263_11) * (biased_carry_1_tmp_e3263_11))
@@ -127,7 +127,7 @@ pub fn accumulate_constraints<Value: IValue>(
 
     let biased_carry_2_tmp_e3263_12 = eval!(context, carry_1_tmp_e3263_3);
 
-    //carry constraint 2.
+    // carry constraint 2.
     let constraint_14_value = eval!(
         context,
         (((biased_carry_2_tmp_e3263_12) * (biased_carry_2_tmp_e3263_12))
@@ -138,7 +138,7 @@ pub fn accumulate_constraints<Value: IValue>(
 
     let biased_carry_3_tmp_e3263_13 = eval!(context, carry_2_tmp_e3263_4);
 
-    //carry constraint 3.
+    // carry constraint 3.
     let constraint_16_value = eval!(
         context,
         (((biased_carry_3_tmp_e3263_13) * (biased_carry_3_tmp_e3263_13))
@@ -149,7 +149,7 @@ pub fn accumulate_constraints<Value: IValue>(
 
     let biased_carry_4_tmp_e3263_14 = eval!(context, carry_3_tmp_e3263_5);
 
-    //carry constraint 4.
+    // carry constraint 4.
     let constraint_18_value = eval!(
         context,
         (((biased_carry_4_tmp_e3263_14) * (biased_carry_4_tmp_e3263_14))
@@ -160,7 +160,7 @@ pub fn accumulate_constraints<Value: IValue>(
 
     let biased_carry_5_tmp_e3263_15 = eval!(context, carry_4_tmp_e3263_6);
 
-    //carry constraint 5.
+    // carry constraint 5.
     let constraint_20_value = eval!(
         context,
         (((biased_carry_5_tmp_e3263_15) * (biased_carry_5_tmp_e3263_15))
@@ -171,7 +171,7 @@ pub fn accumulate_constraints<Value: IValue>(
 
     let biased_carry_6_tmp_e3263_16 = eval!(context, carry_5_tmp_e3263_7);
 
-    //carry constraint 6.
+    // carry constraint 6.
     let constraint_22_value = eval!(
         context,
         (((biased_carry_6_tmp_e3263_16) * (biased_carry_6_tmp_e3263_16))
@@ -182,7 +182,7 @@ pub fn accumulate_constraints<Value: IValue>(
 
     let biased_carry_7_tmp_e3263_17 = eval!(context, carry_6_tmp_e3263_8);
 
-    //carry constraint 7.
+    // carry constraint 7.
     let constraint_24_value = eval!(
         context,
         (((biased_carry_7_tmp_e3263_17) * (biased_carry_7_tmp_e3263_17))
@@ -193,7 +193,7 @@ pub fn accumulate_constraints<Value: IValue>(
 
     let biased_carry_8_tmp_e3263_18 = eval!(context, carry_7_tmp_e3263_9);
 
-    //carry constraint 8.
+    // carry constraint 8.
     let constraint_26_value = eval!(
         context,
         (((biased_carry_8_tmp_e3263_18) * (biased_carry_8_tmp_e3263_18))
@@ -204,7 +204,7 @@ pub fn accumulate_constraints<Value: IValue>(
 
     let biased_carry_9_tmp_e3263_19 = eval!(context, carry_8_tmp_e3263_10);
 
-    //carry constraint 9.
+    // carry constraint 9.
     let constraint_28_value = eval!(
         context,
         (((biased_carry_9_tmp_e3263_19) * (biased_carry_9_tmp_e3263_19))

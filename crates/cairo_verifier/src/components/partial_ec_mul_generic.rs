@@ -660,11 +660,11 @@ pub fn accumulate_constraints<Value: IValue>(
         carry_26_col623,
     ] = input.try_into().unwrap();
 
-    //Enabler is a bit.
+    // Enabler is a bit.
     let constraint_0_value = eval!(context, ((enabler_col0) * (enabler_col0)) - (enabler_col0));
     acc.add_constraint(context, constraint_0_value);
 
-    //to_add_bit is bool.
+    // to_add_bit is bool.
     let constraint_1_value = eval!(context, (to_add_bit_col126) * ((1) - (to_add_bit_col126)));
     acc.add_constraint(context, constraint_1_value);
 
@@ -673,19 +673,19 @@ pub fn accumulate_constraints<Value: IValue>(
     let counter_inverse_inverse_tmp_8dc28_6 =
         eval!(context, (input_counter_col125) + (is_special_round_col127));
 
-    //is_special_round is bool.
+    // is_special_round is bool.
     let constraint_4_value =
         eval!(context, (is_special_round_col127) * (not_is_special_round_tmp_8dc28_5));
     acc.add_constraint(context, constraint_4_value);
 
-    //is_special_round = (counter == 0).
+    // is_special_round = (counter == 0).
     let constraint_5_value = eval!(
         context,
         ((input_counter_col125) * (counter_inverse_col128)) - (not_is_special_round_tmp_8dc28_5)
     );
     acc.add_constraint(context, constraint_5_value);
 
-    //counter_inverse != 0.
+    // counter_inverse != 0.
     let constraint_6_value =
         eval!(context, ((counter_inverse_col128) * (counter_inverse_inverse_tmp_8dc28_6)) - (1));
     acc.add_constraint(context, constraint_6_value);
@@ -693,12 +693,12 @@ pub fn accumulate_constraints<Value: IValue>(
     let m0_minus_to_add_bit_tmp_8dc28_8 =
         eval!(context, (input_m_limb_0_col3) - (to_add_bit_col126));
 
-    //m0 is exhausted at the end of special rounds.
+    // m0 is exhausted at the end of special rounds.
     let constraint_8_value =
         eval!(context, (m0_minus_to_add_bit_tmp_8dc28_8) * (is_special_round_col127));
     acc.add_constraint(context, constraint_8_value);
 
-    //next_m_0.
+    // next_m_0.
     let constraint_9_value = eval!(
         context,
         (next_m_0_col129)
@@ -708,7 +708,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_9_value);
 
-    //next_m_1.
+    // next_m_1.
     let constraint_10_value = eval!(
         context,
         (next_m_1_col130)
@@ -718,7 +718,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_10_value);
 
-    //next_m_2.
+    // next_m_2.
     let constraint_11_value = eval!(
         context,
         (next_m_2_col131)
@@ -728,7 +728,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_11_value);
 
-    //next_m_3.
+    // next_m_3.
     let constraint_12_value = eval!(
         context,
         (next_m_3_col132)
@@ -738,7 +738,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_12_value);
 
-    //next_m_4.
+    // next_m_4.
     let constraint_13_value = eval!(
         context,
         (next_m_4_col133)
@@ -748,7 +748,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_13_value);
 
-    //next_m_5.
+    // next_m_5.
     let constraint_14_value = eval!(
         context,
         (next_m_5_col134)
@@ -758,7 +758,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_14_value);
 
-    //next_m_6.
+    // next_m_6.
     let constraint_15_value = eval!(
         context,
         (next_m_6_col135)
@@ -768,7 +768,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_15_value);
 
-    //next_m_7.
+    // next_m_7.
     let constraint_16_value = eval!(
         context,
         (next_m_7_col136)
@@ -778,7 +778,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_16_value);
 
-    //next_m_8.
+    // next_m_8.
     let constraint_17_value = eval!(
         context,
         (next_m_8_col137)
@@ -788,14 +788,14 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_17_value);
 
-    //next_m_9.
+    // next_m_9.
     let constraint_18_value = eval!(
         context,
         (next_m_9_col138) - ((input_m_limb_9_col12) * (not_is_special_round_tmp_8dc28_5))
     );
     acc.add_constraint(context, constraint_18_value);
 
-    //next_counter.
+    // next_counter.
     let constraint_19_value = eval!(
         context,
         (next_counter_col139)
@@ -968,7 +968,7 @@ pub fn accumulate_constraints<Value: IValue>(
     let q_acc_diff_tmp_8dc28_40 =
         eval!(context, (input_q_x_limb_27_col40) - (input_accumulator_x_limb_27_col96));
 
-    //accumulator.x doesn't equal q.x.
+    // accumulator.x doesn't equal q.x.
     let constraint_50_value = eval!(
         context,
         ((((((((((((((((((((((((((((((q_acc_diff_tmp_8dc28_13)
@@ -1294,7 +1294,7 @@ pub fn accumulate_constraints<Value: IValue>(
         acc,
     );
 
-    //new_acculumator_0_0.
+    // new_acculumator_0_0.
     let constraint_52_value = eval!(
         context,
         (new_acculumator_0_0_col315)
@@ -1304,7 +1304,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_52_value);
 
-    //new_acculumator_0_1.
+    // new_acculumator_0_1.
     let constraint_53_value = eval!(
         context,
         (new_acculumator_0_1_col316)
@@ -1314,7 +1314,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_53_value);
 
-    //new_acculumator_0_2.
+    // new_acculumator_0_2.
     let constraint_54_value = eval!(
         context,
         (new_acculumator_0_2_col317)
@@ -1324,7 +1324,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_54_value);
 
-    //new_acculumator_0_3.
+    // new_acculumator_0_3.
     let constraint_55_value = eval!(
         context,
         (new_acculumator_0_3_col318)
@@ -1334,7 +1334,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_55_value);
 
-    //new_acculumator_0_4.
+    // new_acculumator_0_4.
     let constraint_56_value = eval!(
         context,
         (new_acculumator_0_4_col319)
@@ -1344,7 +1344,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_56_value);
 
-    //new_acculumator_0_5.
+    // new_acculumator_0_5.
     let constraint_57_value = eval!(
         context,
         (new_acculumator_0_5_col320)
@@ -1354,7 +1354,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_57_value);
 
-    //new_acculumator_0_6.
+    // new_acculumator_0_6.
     let constraint_58_value = eval!(
         context,
         (new_acculumator_0_6_col321)
@@ -1364,7 +1364,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_58_value);
 
-    //new_acculumator_0_7.
+    // new_acculumator_0_7.
     let constraint_59_value = eval!(
         context,
         (new_acculumator_0_7_col322)
@@ -1374,7 +1374,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_59_value);
 
-    //new_acculumator_0_8.
+    // new_acculumator_0_8.
     let constraint_60_value = eval!(
         context,
         (new_acculumator_0_8_col323)
@@ -1384,7 +1384,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_60_value);
 
-    //new_acculumator_0_9.
+    // new_acculumator_0_9.
     let constraint_61_value = eval!(
         context,
         (new_acculumator_0_9_col324)
@@ -1394,7 +1394,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_61_value);
 
-    //new_acculumator_0_10.
+    // new_acculumator_0_10.
     let constraint_62_value = eval!(
         context,
         (new_acculumator_0_10_col325)
@@ -1404,7 +1404,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_62_value);
 
-    //new_acculumator_0_11.
+    // new_acculumator_0_11.
     let constraint_63_value = eval!(
         context,
         (new_acculumator_0_11_col326)
@@ -1414,7 +1414,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_63_value);
 
-    //new_acculumator_0_12.
+    // new_acculumator_0_12.
     let constraint_64_value = eval!(
         context,
         (new_acculumator_0_12_col327)
@@ -1424,7 +1424,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_64_value);
 
-    //new_acculumator_0_13.
+    // new_acculumator_0_13.
     let constraint_65_value = eval!(
         context,
         (new_acculumator_0_13_col328)
@@ -1434,7 +1434,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_65_value);
 
-    //new_acculumator_0_14.
+    // new_acculumator_0_14.
     let constraint_66_value = eval!(
         context,
         (new_acculumator_0_14_col329)
@@ -1444,7 +1444,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_66_value);
 
-    //new_acculumator_0_15.
+    // new_acculumator_0_15.
     let constraint_67_value = eval!(
         context,
         (new_acculumator_0_15_col330)
@@ -1454,7 +1454,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_67_value);
 
-    //new_acculumator_0_16.
+    // new_acculumator_0_16.
     let constraint_68_value = eval!(
         context,
         (new_acculumator_0_16_col331)
@@ -1464,7 +1464,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_68_value);
 
-    //new_acculumator_0_17.
+    // new_acculumator_0_17.
     let constraint_69_value = eval!(
         context,
         (new_acculumator_0_17_col332)
@@ -1474,7 +1474,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_69_value);
 
-    //new_acculumator_0_18.
+    // new_acculumator_0_18.
     let constraint_70_value = eval!(
         context,
         (new_acculumator_0_18_col333)
@@ -1484,7 +1484,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_70_value);
 
-    //new_acculumator_0_19.
+    // new_acculumator_0_19.
     let constraint_71_value = eval!(
         context,
         (new_acculumator_0_19_col334)
@@ -1494,7 +1494,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_71_value);
 
-    //new_acculumator_0_20.
+    // new_acculumator_0_20.
     let constraint_72_value = eval!(
         context,
         (new_acculumator_0_20_col335)
@@ -1504,7 +1504,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_72_value);
 
-    //new_acculumator_0_21.
+    // new_acculumator_0_21.
     let constraint_73_value = eval!(
         context,
         (new_acculumator_0_21_col336)
@@ -1514,7 +1514,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_73_value);
 
-    //new_acculumator_0_22.
+    // new_acculumator_0_22.
     let constraint_74_value = eval!(
         context,
         (new_acculumator_0_22_col337)
@@ -1524,7 +1524,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_74_value);
 
-    //new_acculumator_0_23.
+    // new_acculumator_0_23.
     let constraint_75_value = eval!(
         context,
         (new_acculumator_0_23_col338)
@@ -1534,7 +1534,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_75_value);
 
-    //new_acculumator_0_24.
+    // new_acculumator_0_24.
     let constraint_76_value = eval!(
         context,
         (new_acculumator_0_24_col339)
@@ -1544,7 +1544,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_76_value);
 
-    //new_acculumator_0_25.
+    // new_acculumator_0_25.
     let constraint_77_value = eval!(
         context,
         (new_acculumator_0_25_col340)
@@ -1554,7 +1554,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_77_value);
 
-    //new_acculumator_0_26.
+    // new_acculumator_0_26.
     let constraint_78_value = eval!(
         context,
         (new_acculumator_0_26_col341)
@@ -1564,7 +1564,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_78_value);
 
-    //new_acculumator_0_27.
+    // new_acculumator_0_27.
     let constraint_79_value = eval!(
         context,
         (new_acculumator_0_27_col342)
@@ -1574,7 +1574,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_79_value);
 
-    //new_acculumator_1_0.
+    // new_acculumator_1_0.
     let constraint_80_value = eval!(
         context,
         (new_acculumator_1_0_col343)
@@ -1584,7 +1584,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_80_value);
 
-    //new_acculumator_1_1.
+    // new_acculumator_1_1.
     let constraint_81_value = eval!(
         context,
         (new_acculumator_1_1_col344)
@@ -1594,7 +1594,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_81_value);
 
-    //new_acculumator_1_2.
+    // new_acculumator_1_2.
     let constraint_82_value = eval!(
         context,
         (new_acculumator_1_2_col345)
@@ -1604,7 +1604,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_82_value);
 
-    //new_acculumator_1_3.
+    // new_acculumator_1_3.
     let constraint_83_value = eval!(
         context,
         (new_acculumator_1_3_col346)
@@ -1614,7 +1614,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_83_value);
 
-    //new_acculumator_1_4.
+    // new_acculumator_1_4.
     let constraint_84_value = eval!(
         context,
         (new_acculumator_1_4_col347)
@@ -1624,7 +1624,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_84_value);
 
-    //new_acculumator_1_5.
+    // new_acculumator_1_5.
     let constraint_85_value = eval!(
         context,
         (new_acculumator_1_5_col348)
@@ -1634,7 +1634,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_85_value);
 
-    //new_acculumator_1_6.
+    // new_acculumator_1_6.
     let constraint_86_value = eval!(
         context,
         (new_acculumator_1_6_col349)
@@ -1644,7 +1644,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_86_value);
 
-    //new_acculumator_1_7.
+    // new_acculumator_1_7.
     let constraint_87_value = eval!(
         context,
         (new_acculumator_1_7_col350)
@@ -1654,7 +1654,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_87_value);
 
-    //new_acculumator_1_8.
+    // new_acculumator_1_8.
     let constraint_88_value = eval!(
         context,
         (new_acculumator_1_8_col351)
@@ -1664,7 +1664,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_88_value);
 
-    //new_acculumator_1_9.
+    // new_acculumator_1_9.
     let constraint_89_value = eval!(
         context,
         (new_acculumator_1_9_col352)
@@ -1674,7 +1674,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_89_value);
 
-    //new_acculumator_1_10.
+    // new_acculumator_1_10.
     let constraint_90_value = eval!(
         context,
         (new_acculumator_1_10_col353)
@@ -1684,7 +1684,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_90_value);
 
-    //new_acculumator_1_11.
+    // new_acculumator_1_11.
     let constraint_91_value = eval!(
         context,
         (new_acculumator_1_11_col354)
@@ -1694,7 +1694,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_91_value);
 
-    //new_acculumator_1_12.
+    // new_acculumator_1_12.
     let constraint_92_value = eval!(
         context,
         (new_acculumator_1_12_col355)
@@ -1704,7 +1704,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_92_value);
 
-    //new_acculumator_1_13.
+    // new_acculumator_1_13.
     let constraint_93_value = eval!(
         context,
         (new_acculumator_1_13_col356)
@@ -1714,7 +1714,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_93_value);
 
-    //new_acculumator_1_14.
+    // new_acculumator_1_14.
     let constraint_94_value = eval!(
         context,
         (new_acculumator_1_14_col357)
@@ -1724,7 +1724,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_94_value);
 
-    //new_acculumator_1_15.
+    // new_acculumator_1_15.
     let constraint_95_value = eval!(
         context,
         (new_acculumator_1_15_col358)
@@ -1734,7 +1734,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_95_value);
 
-    //new_acculumator_1_16.
+    // new_acculumator_1_16.
     let constraint_96_value = eval!(
         context,
         (new_acculumator_1_16_col359)
@@ -1744,7 +1744,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_96_value);
 
-    //new_acculumator_1_17.
+    // new_acculumator_1_17.
     let constraint_97_value = eval!(
         context,
         (new_acculumator_1_17_col360)
@@ -1754,7 +1754,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_97_value);
 
-    //new_acculumator_1_18.
+    // new_acculumator_1_18.
     let constraint_98_value = eval!(
         context,
         (new_acculumator_1_18_col361)
@@ -1764,7 +1764,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_98_value);
 
-    //new_acculumator_1_19.
+    // new_acculumator_1_19.
     let constraint_99_value = eval!(
         context,
         (new_acculumator_1_19_col362)
@@ -1774,7 +1774,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_99_value);
 
-    //new_acculumator_1_20.
+    // new_acculumator_1_20.
     let constraint_100_value = eval!(
         context,
         (new_acculumator_1_20_col363)
@@ -1784,7 +1784,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_100_value);
 
-    //new_acculumator_1_21.
+    // new_acculumator_1_21.
     let constraint_101_value = eval!(
         context,
         (new_acculumator_1_21_col364)
@@ -1794,7 +1794,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_101_value);
 
-    //new_acculumator_1_22.
+    // new_acculumator_1_22.
     let constraint_102_value = eval!(
         context,
         (new_acculumator_1_22_col365)
@@ -1804,7 +1804,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_102_value);
 
-    //new_acculumator_1_23.
+    // new_acculumator_1_23.
     let constraint_103_value = eval!(
         context,
         (new_acculumator_1_23_col366)
@@ -1814,7 +1814,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_103_value);
 
-    //new_acculumator_1_24.
+    // new_acculumator_1_24.
     let constraint_104_value = eval!(
         context,
         (new_acculumator_1_24_col367)
@@ -1824,7 +1824,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_104_value);
 
-    //new_acculumator_1_25.
+    // new_acculumator_1_25.
     let constraint_105_value = eval!(
         context,
         (new_acculumator_1_25_col368)
@@ -1834,7 +1834,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_105_value);
 
-    //new_acculumator_1_26.
+    // new_acculumator_1_26.
     let constraint_106_value = eval!(
         context,
         (new_acculumator_1_26_col369)
@@ -1844,7 +1844,7 @@ pub fn accumulate_constraints<Value: IValue>(
     );
     acc.add_constraint(context, constraint_106_value);
 
-    //new_acculumator_1_27.
+    // new_acculumator_1_27.
     let constraint_107_value = eval!(
         context,
         (new_acculumator_1_27_col370)
@@ -2474,17 +2474,17 @@ impl<Value: IValue> CircuitEval<Value> for Component {
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
-    use stwo::core::fields::qm31::QM31;
 
-    #[allow(unused_imports)]
-    use crate::components::prelude::PreProcessedColumnId;
-    use crate::sample_evaluations::*;
     use circuits::context::Context;
     use circuits::ivalue::qm31_from_u32s;
     use circuits_stark_verifier::constraint_eval::*;
     use circuits_stark_verifier::test_utils::TestComponentData;
+    use stwo::core::fields::qm31::QM31;
 
     use super::Component;
+    #[allow(unused_imports)]
+    use crate::components::prelude::PreProcessedColumnId;
+    use crate::sample_evaluations::*;
 
     #[test]
     fn test_evaluation_result() {
