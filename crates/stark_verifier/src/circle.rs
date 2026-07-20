@@ -1,3 +1,4 @@
+use num_traits::CheckedSub;
 use stwo::core::circle::{CirclePoint, M31_CIRCLE_GEN};
 use stwo::core::fields::m31::M31;
 
@@ -92,7 +93,7 @@ pub fn add_points_simd(
 
 /// Computes the generator point of the subgroup of size `2^log_domain_size`.
 pub fn generator_point(log_domain_size: usize) -> CirclePoint<M31> {
-    M31_CIRCLE_GEN.repeated_double((31 - log_domain_size) as u32)
+    M31_CIRCLE_GEN.repeated_double(31.checked_sub(&log_domain_size).unwrap() as u32)
 }
 
 /// Computes the generator point of the subgroup of size `2^log_domain_size`, repeated `size` times.

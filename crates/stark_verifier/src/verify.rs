@@ -53,7 +53,8 @@ pub fn verify<Value: IValue>(
     statement: &impl Statement<Value>,
 ) {
     proof.validate_structure(config);
-    assert!(config.log_trace_size() <= 30);
+    // The largest canonical coset and hence evaluation domain size is 2^30.
+    assert!(config.log_evaluation_domain_size() <= 30);
     let mut channel = Channel::new(context);
 
     // Mix the channel salt.
