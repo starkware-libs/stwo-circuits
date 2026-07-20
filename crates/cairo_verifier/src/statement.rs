@@ -565,11 +565,9 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
         );
         extract_bits(context, &rc_simd, SMALL_VALUE_BITS);
 
-        // Sanity check: ensure that the maximum address in the address_to_id component fits within
-        // a 29-bit address space (i.e., is less than 2**29).
-        // Higher addresses are not supported by components that assume 29-bit addresses.
-        // Assumes that there is only one ADDRESS_TO_ID component and it uses Seq.
-        const { assert!(MEMORY_ADDRESS_TO_ID_SPLIT * MAX_SEQUENCE_LOG_SIZE < 1 << 29) };
+        // Sanity check: ensure that the maximum address in the address_to_id is at most 2**29.
+        // Assumes that there is only one ADDRESS_TO_ID component and that it uses Seq.
+        const { assert!(MEMORY_ADDRESS_TO_ID_SPLIT * (1 << MAX_SEQUENCE_LOG_SIZE) <= (1 << 29)) };
 
         let shifted_opcode_relation_uses =
             Simd::from_packed(vec![shifted_relation_uses["Opcodes"]], 1);
