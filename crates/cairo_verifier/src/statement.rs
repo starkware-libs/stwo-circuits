@@ -51,7 +51,7 @@ pub const AUX_DATA_FIXED_LEN: usize =
     2 * STATE_LEN + 2 * PUB_MEMORY_VALUE_M31_LEN * N_SEGMENTS + N_SAFE_CALL_IDS;
 
 const LIMB_BITS: usize = 9;
-const SMALL_VALUE_BITS: u32 = 29;
+const MEMORY_ADDRESS_BITS: u32 = 29;
 const BUILTIN_USAGE_BITS: u32 = 27;
 
 pub struct CasmState<T> {
@@ -72,14 +72,14 @@ impl CasmState<Var> {
 }
 
 // A public memory value that fits in 29 bits.
-pub struct PubMemoryM31Value<T> {
+pub struct PubMemoryAddress<T> {
     pub id: T,
     pub value: T,
 }
 
-pub fn split_29bit_value_to_9bit_limbs(context: &mut Context<impl IValue>, value: Var) -> [Var; 4] {
+pub fn split_address_to_9bit_limbs(context: &mut Context<impl IValue>, value: Var) -> [Var; 4] {
     let simd = Simd::from_packed(vec![value], 1);
-    let extracted_bits = extract_bits(context, &simd, SMALL_VALUE_BITS);
+    let extracted_bits = extract_bits(context, &simd, MEMORY_ADDRESS_BITS);
 
     let mut limbs_iter = extracted_bits.chunks(LIMB_BITS).map(|limb_bits| {
         let limb = Simd::combine_bits(context, limb_bits);
@@ -89,8 +89,8 @@ pub fn split_29bit_value_to_9bit_limbs(context: &mut Context<impl IValue>, value
 }
 
 pub struct SegmentRange<T> {
-    pub start: PubMemoryM31Value<T>,
-    pub end: PubMemoryM31Value<T>,
+    pub start: PubMemoryAddress<T>,
+    pub end: PubMemoryAddress<T>,
 }
 
 // Auxiliary data that is used for verifying an execution of a Cairo program.
@@ -131,8 +131,8 @@ impl AuxData {
         };
 
         let segment_ranges = array::from_fn(|_| SegmentRange {
-            start: PubMemoryM31Value { id: *iter.next().unwrap(), value: *iter.next().unwrap() },
-            end: PubMemoryM31Value { id: *iter.next().unwrap(), value: *iter.next().unwrap() },
+            start: PubMemoryAddress { id: *iter.next().unwrap(), value: *iter.next().unwrap() },
+            end: PubMemoryAddress { id: *iter.next().unwrap(), value: *iter.next().unwrap() },
         });
 
         let safe_call_ids = [*iter.next().unwrap(), *iter.next().unwrap()];
@@ -310,7 +310,7 @@ impl<Value: IValue> CairoStatement<Value> {
             range_checks.push(M31Wrapper::new_unsafe(diff));
         }
         assert!(
-            (1 << SMALL_VALUE_BITS)
+            (1 << MEMORY_ADDRESS_BITS)
                 + (1 << BUILTIN_USAGE_BITS) * max_supported_builtin_instance_size
                 < usize::try_from(M31_P).unwrap(),
         );
@@ -563,18 +563,23 @@ impl<Value: IValue> Statement<Value> for CairoStatement<Value> {
             context,
             &range_checks.iter().map(|value| M31Wrapper::new_unsafe(*value)).collect_vec(),
         );
-        extract_bits(context, &rc_simd, SMALL_VALUE_BITS);
+        extract_bits(context, &rc_simd, MEMORY_ADDRESS_BITS);
 
         // Sanity check: ensure that the maximum address in the address_to_id is at most 2**29.
         // Assumes that there is only one ADDRESS_TO_ID component and that it uses Seq.
-        const { assert!(MEMORY_ADDRESS_TO_ID_SPLIT * (1 << MAX_SEQUENCE_LOG_SIZE) <= (1 << 29)) };
+        const {
+            assert!(
+                MEMORY_ADDRESS_TO_ID_SPLIT * (1 << MAX_SEQUENCE_LOG_SIZE)
+                    <= (1 << MEMORY_ADDRESS_BITS)
+            )
+        };
 
         let shifted_opcode_relation_uses =
             Simd::from_packed(vec![shifted_relation_uses["Opcodes"]], 1);
         extract_bits(
             context,
             &shifted_opcode_relation_uses,
-            (29 - RELATION_USES_NUM_ROWS_SHIFT).try_into().unwrap(),
+            MEMORY_ADDRESS_BITS - u32::try_from(RELATION_USES_NUM_ROWS_SHIFT).unwrap(),
         );
     }
 
@@ -600,7 +605,7 @@ pub fn segment_ranges_logup_sum(
             return_value_address = eval!(context, (return_value_address) + (one));
         }
 
-        let start_value_limbs = split_29bit_value_to_9bit_limbs(context, segment_range.start.value);
+        let start_value_limbs = split_address_to_9bit_limbs(context, segment_range.start.value);
         let segment_start_logup_term = public_memory_logup_terms(
             context,
             interaction_elements,
@@ -609,7 +614,7 @@ pub fn segment_ranges_logup_sum(
             &start_value_limbs,
         );
         sum = eval!(context, (sum) + (segment_start_logup_term));
-        let end_value_limbs = split_29bit_value_to_9bit_limbs(context, segment_range.end.value);
+        let end_value_limbs = split_address_to_9bit_limbs(context, segment_range.end.value);
         let segment_end_logup_term = public_memory_logup_terms(
             context,
             interaction_elements,
@@ -707,7 +712,7 @@ pub fn public_logup_sum(
     // Enforce correct initialization of the safe call memory section:
     // memory[initial_ap - 2] = (safe_call_id0, initial_ap)
     // memory[initial_ap - 1] = (safe_call_id1, 0).
-    let split_initial_ap = split_29bit_value_to_9bit_limbs(context, initial_ap);
+    let split_initial_ap = split_address_to_9bit_limbs(context, initial_ap);
     // The value of memory[initial_ap - 1] is 0, so its 9-bit limbs are all zeros.
     // Passing an empty slice to id_to_big_logup_term is equivalent to passing [0, 0, 0, 0]
     // because trailing zeros don't affect the polynomial combination in combine_term.
