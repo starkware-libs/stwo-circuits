@@ -218,7 +218,7 @@ pub fn compute_padded_sizes(context: &FinalizedContext<impl IValue>) -> Componen
 }
 
 /// Computes the number of rows in the qm31_ops AIR component.
-fn qm31_ops_n_rows(circuit: &Circuit) -> usize {
+pub fn qm31_ops_n_rows(circuit: &Circuit) -> usize {
     circuit.add.len()
         + circuit.sub.len()
         + circuit.mul.len()
@@ -226,6 +226,6 @@ fn qm31_ops_n_rows(circuit: &Circuit) -> usize {
         + circuit.permutation.iter().map(|p| p.inputs.len() + p.outputs.len()).sum::<usize>()
 }
 
-fn padded_size(n_rows: usize) -> usize {
+pub fn padded_size(n_rows: usize) -> usize {
     std::cmp::max(n_rows.next_power_of_two(), N_LANES)
 }
