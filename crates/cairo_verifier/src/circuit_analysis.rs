@@ -544,6 +544,18 @@ fn validate_logup_summand(
     panic!("Summand [{s}] is not a valid logup summand.");
 }
 
+/// Asserts that every main-trace column at the OODS point participates in the composition
+/// polynomial.
+fn validate_trace_columns_used(composition_vars: &HashSet<usize>, trace_at_oods: &[Var]) {
+    for (i, column) in trace_at_oods.iter().enumerate() {
+        assert!(
+            composition_vars.contains(&column.idx),
+            "Trace column {i} ([{}]) is not used in the composition polynomial.",
+            column.idx
+        );
+    }
+}
+
 /// Analyzes the circuit and writes the classified logup-sum summands to `summands.txt`.
 pub fn analyze(circuit: &Circuit, debug_info: &DebugInfo) {
     let c = build_analysis(circuit);
@@ -568,6 +580,8 @@ pub fn analyze(circuit: &Circuit, debug_info: &DebugInfo) {
 
     let composition_eval = debug_info.vars["composition_eval"].idx;
     let composition_vars = add_mul_cone(&c, &const_values, composition_eval);
+
+    validate_trace_columns_used(&composition_vars, &debug_info.lists["trace_at_oods"]);
 
     for s in summands {
         validate_logup_summand(
