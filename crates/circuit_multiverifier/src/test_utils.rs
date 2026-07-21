@@ -3,16 +3,14 @@ use circuit_cairo_verifier::privacy::get_pcs_config;
 use circuit_common::N_RESERVED;
 use circuit_common::finalize::{ComponentSizes, pad_to_targets};
 use circuit_common::preprocessed::PreprocessedCircuit;
-use circuit_verifier::statement::{
-    INTERACTION_POW_BITS, all_circuit_components, circuit_component_log_sizes,
-};
+use circuit_verifier::statement::circuit_verifier_proof_config;
 use circuit_verifier::verify::CircuitConfig;
 use circuits::blake::HashValue;
 use circuits::context::FinalizedContext;
 use circuits::ivalue::NoValue;
 use circuits::utils::le_u32s_from_bytes;
 use circuits_stark_verifier::order_hash_map::OrderedHashMap;
-use circuits_stark_verifier::proof::{ProofConfig, empty_proof};
+use circuits_stark_verifier::proof::empty_proof;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::pcs::PcsConfig;
 use stwo::core::poly::circle::CanonicCoset;
@@ -132,16 +130,7 @@ pub fn get_preprocessed_multiverifier_from_circuit(
         preprocessed_leaf_circuit.trace_log_size + pcs_config.fri_config.log_blowup_factor
     );
     let preprocessed_column_log_sizes = preprocessed_leaf_circuit.preprocessed_trace.log_sizes();
-    // `ProofConfig` expects the components in ascending log-size order.
-    let mut components = all_circuit_components::<NoValue>();
-    let log_sizes = circuit_component_log_sizes(&components, &preprocessed_column_log_sizes);
-    components.sort_by(|a, _, b, _| log_sizes[*a].cmp(&log_sizes[*b]));
-    let proof_config = ProofConfig::new(
-        &components,
-        preprocessed_leaf_circuit.preprocessed_trace.n_columns(),
-        &pcs_config,
-        INTERACTION_POW_BITS,
-    );
+    let proof_config = circuit_verifier_proof_config(&preprocessed_column_log_sizes, &pcs_config);
     let subcircuit_config = CircuitConfig {
         config: pcs_config,
         n_outputs: preprocessed_leaf_circuit.n_outputs,
