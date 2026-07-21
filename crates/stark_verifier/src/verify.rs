@@ -114,6 +114,8 @@ pub fn verify<Value: IValue>(
     let unpacked_component_sizes = Simd::unpack(context, &component_sizes);
     statement.verify_claim(context, &unpacked_component_sizes, &shifted_relation_uses);
 
+    context.debug_info.lists.insert("trace_at_oods".into(), proof.trace_at_oods.clone());
+
     // Mix the values at the OODS point (and its previous point where applicable) into the channel.
     let interaction_at_oods = proof
         .interaction_at_oods
