@@ -57,14 +57,13 @@ fn hash_value_to_u32s(hash: &HashValue<QM31>) -> [u32; 8] {
     std::array::from_fn(|i| hash[i].get().unpack_u32())
 }
 
-/// Builds the `ProofConfig` for a Cairo verifier sub-proof. The components are ordered by ascending
-/// trace log size to match the committed column layout that `CircuitStatement::new` iterates (and
-/// that `compute_composition_polynomial` zips `component_shapes` against); otherwise the per-column
-/// slices handed to each component evaluator would be misaligned.
-fn cairo_verifier_proof_config() -> ProofConfig {
+/// Builds the `ProofConfig` for the proofs of the inner verifiers.
+fn inner_verifier_proof_config() -> ProofConfig {
     let preprocessed_column_log_sizes = multiverifier_preprocessed_column_log_sizes();
     let mut components = all_circuit_components::<QM31>();
     let log_sizes = circuit_component_log_sizes(&components, &preprocessed_column_log_sizes);
+
+    // The circuit verifier expects the components to be ordered by ascending trace log size.
     components.sort_by(|a, _, b, _| log_sizes[*a].cmp(&log_sizes[*b]));
     ProofConfig::new(&components, CIRCUIT_N_PREPROCESSED_COLUMNS, &PCS_CONFIG, INTERACTION_POW_BITS)
 }
@@ -215,7 +214,7 @@ fn test_cairo_proof_regression() {
     let (proof, public_data) = prove_privacy_with_recursion_and_prepare();
     assert_eq!(public_data.output_values, PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES.map(QM31::pack_u32));
     if std::env::var("FIX_PROOF").is_err() {
-        let proof_config = cairo_verifier_proof_config();
+        let proof_config = inner_verifier_proof_config();
         let bytes = std::fs::read(PRIVACY_CAIRO_VERIFIER_PROOF_PATH).unwrap();
         let stored_proof =
             deserialize_proof_with_config(&mut bytes.as_slice(), &proof_config).unwrap();
@@ -243,7 +242,7 @@ fn test_cairo_proof_regression() {
 fn test_prove_multiverifier_of_two_cairo_subcircuits() {
     let shared_config = SharedConfig {
         pcs_config: PCS_CONFIG,
-        proof_config: cairo_verifier_proof_config(),
+        proof_config: inner_verifier_proof_config(),
         preprocessed_column_log_sizes: multiverifier_preprocessed_column_log_sizes(),
     };
     let bytes = std::fs::read(PRIVACY_CAIRO_VERIFIER_PROOF_PATH).unwrap();
@@ -294,7 +293,7 @@ fn test_prove_multiverifier_of_two_cairo_subcircuits() {
 fn test_serialize_multiverifier_proof_for_cairo1_verifier() {
     let shared_config = SharedConfig {
         pcs_config: PCS_CONFIG,
-        proof_config: cairo_verifier_proof_config(),
+        proof_config: inner_verifier_proof_config(),
         preprocessed_column_log_sizes: multiverifier_preprocessed_column_log_sizes(),
     };
     let bytes = std::fs::read(PRIVACY_CAIRO_VERIFIER_PROOF_PATH).unwrap();
@@ -351,7 +350,7 @@ fn test_verify_cairo_proof_and_multiverifier_proof() {
     // Build common config.
     let shared_config = SharedConfig {
         pcs_config: PCS_CONFIG,
-        proof_config: cairo_verifier_proof_config(),
+        proof_config: inner_verifier_proof_config(),
         preprocessed_column_log_sizes: multiverifier_preprocessed_column_log_sizes(),
     };
 

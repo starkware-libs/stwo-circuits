@@ -38,7 +38,7 @@ const BACKWARD_COMPATIBILITY_CAIRO_PROOF_PATH: &str = concat!(
 #[test]
 fn test_backward_compatibility() {
     // Order the components by ascending trace log size to match the committed column layout the
-    // proof fixtures are serialized with (see `cairo_verifier_proof_config` in `verify_test`).
+    // proof fixtures are serialized with (see `inner_verifier_proof_config` in `verify_test`).
     let preprocessed_column_log_sizes = multiverifier_preprocessed_column_log_sizes();
     let mut components = all_circuit_components::<QM31>();
     let log_sizes = circuit_component_log_sizes(&components, &preprocessed_column_log_sizes);
