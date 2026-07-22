@@ -105,6 +105,16 @@ pub fn verify<Value: IValue>(
     channel.mix_commitment(context, &proof.composition_polynomial_root);
 
     // Draw a random point for the OODS.
+    // Soundness: the OODS check verifies the polynomial identity composition_poly * vanishing =
+    // constraints. An honest prover makes P = composition_poly * vanishing - constraints the zero
+    // polynomial; a cheating prover has P != 0, so the check passes only if the OODS point is one
+    // of P's ≤ deg(P) roots. deg(P) ≤ 3 * 2^log_trace_size: the composition polynomial has degree
+    // ≤ 2 * 2^log_trace_size (its committed degree bound is 2^(log_trace_size + 1)) and the
+    // vanishing polynomial adds 2^log_trace_size. So for log_trace_size ≤ 30 the bad set is
+    // ≤ 3 * 2^30 = 2^30 * 3 = 2^(30 + log2 3) = 2^(30 + 1.585) ≈ 2^31.6 of QM31's ~2^124
+    // elements — soundness error
+    // ≤ 2^(-92). draw_qm31's slight non-uniformity (values 0, 1 per M31 limb ~1.5× likelier,
+    // since 2^32 = 2p + 2) costs ≤ log2(1.5^3) ≈ 1.75 bits, leaving ~90 bits.
     let oods_point = channel.draw_point(context);
 
     let shifted_relation_uses = check_relation_uses(context, statement, &component_sizes_bits);
