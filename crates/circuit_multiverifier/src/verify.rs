@@ -46,28 +46,34 @@ pub struct SharedConfig {
     pub preprocessed_column_log_sizes: OrderedHashMap<PreProcessedColumnId, u32>,
 }
 
-/// Builds a circuit that verifies two circuit proofs.
+/// Builds a circuit that verifies `k` circuit proofs (a `k`-to-1 fold node).
 ///
 /// For each [`MultiverifierInput`], the function reconstructs the inner
 /// [`CircuitStatement`] from `shared_config` and the per-proof
 /// `preprocessed_root` and `outputs`, and runs the STARK verifier.
 ///
-/// After both proofs are verified, the preprocessed roots and the inner
-/// circuits' output values are concatenated and hashed. The resulting unreduced Blake2s digest
-/// is written into the `N_RESERVED` reserved output variables of the outer circuit.
-/// The circuit is then finalized.
+/// After all `k` proofs are verified, the preprocessed roots and the inner
+/// circuits' output values are concatenated (in the fixed left-to-right order of `inputs`) and
+/// hashed. The resulting unreduced Blake2s digest is written into the `N_RESERVED` reserved output
+/// variables of the outer circuit. The circuit is then finalized.
 ///
-/// Both proofs must have been produced with the same [`SharedConfig`].
+/// All proofs must have been produced with the same [`SharedConfig`]. `inputs` must be non-empty;
+/// its length is the fold arity `k` (see `FOLD_ARITY` in `recursive_aggregate`).
+///
+/// The child ordering of the hash preimage is the single byte-identity contract shared with the
+/// out-of-circuit unpacker (`recursive_aggregate::prove_root_verification`): both concatenate the
+/// children left-to-right, and per child emit `[preprocessed_root words, output words]`. Any
+/// arity change must keep this ordering identical in both places.
 pub fn build_multiverifier_circuit<Value: IValue>(
-    input0: MultiverifierInput<Value>,
-    input1: MultiverifierInput<Value>,
+    inputs: Vec<MultiverifierInput<Value>>,
     shared_config: &SharedConfig,
 ) -> FinalizedContext<Value> {
+    assert!(!inputs.is_empty(), "multiverifier node needs at least one input");
     let mut context = Context::new(N_RESERVED);
 
     let mut outer_verifier_output_preimage = vec![];
-    // Verify sequentially the two proofs.
-    for multiverifier_input in [input0, input1] {
+    // Verify the `k` proofs sequentially, in the fixed left-to-right order of `inputs`.
+    for multiverifier_input in inputs {
         let MultiverifierInput { proof, preprocessed_root, output_values } = multiverifier_input;
 
         let circuit_config = CircuitConfig {
@@ -88,13 +94,13 @@ pub fn build_multiverifier_circuit<Value: IValue>(
         let preprocessed_root = statement.preprocessed_root.clone();
         outer_verifier_output_preimage.extend(chain!(preprocessed_root.into_iter(), output_values));
     }
-    // The payload to be hashed is, for each of the two circuits A and B, the eight 32-bit words of
-    // its preprocessed root followed by its `N_RESERVED` raw output words:
+    // The payload to be hashed is, for each of the `k` verified circuits (left to right), the eight
+    // 32-bit words of its preprocessed root followed by its `N_RESERVED` raw output words:
     // [
-    //      preprocessed_rootA (8 words), outputsA (N_RESERVED words),
-    //      preprocessed_rootB (8 words), outputsB (N_RESERVED words),
-    // ]
-    // where A, B are the two circuits being verified.
+    //      preprocessed_root_0 (8 words), outputs_0 (N_RESERVED words),
+    //      preprocessed_root_1 (8 words), outputs_1 (N_RESERVED words),
+    //      ... (k children total, in the order of `inputs`)
+    // ].
     let n_bytes = 4 * outer_verifier_output_preimage.len();
     let output_hash = blake2s_u32s(&mut context, outer_verifier_output_preimage, n_bytes);
     // Copy the unreduced digest words into the reserved variables.
