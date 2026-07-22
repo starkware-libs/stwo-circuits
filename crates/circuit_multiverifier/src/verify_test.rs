@@ -18,7 +18,7 @@ use circuit_prover::prover::{
 use circuit_serialize::deserialize::deserialize_proof_with_config;
 use circuit_serialize::serialize::CircuitSerialize;
 use circuit_verifier::statement::{
-    INTERACTION_POW_BITS, all_circuit_components, circuit_component_log_sizes,
+    all_circuit_components, circuit_component_log_sizes, circuit_verifier_proof_config,
 };
 use circuit_verifier::verify::CircuitPublicData;
 use circuits::blake::HashValue;
@@ -59,13 +59,7 @@ fn hash_value_to_u32s(hash: &HashValue<QM31>) -> [u32; 8] {
 
 /// Builds the `ProofConfig` for the proofs of the inner verifiers.
 fn inner_verifier_proof_config() -> ProofConfig {
-    let preprocessed_column_log_sizes = multiverifier_preprocessed_column_log_sizes();
-    let mut components = all_circuit_components::<QM31>();
-    let log_sizes = circuit_component_log_sizes(&components, &preprocessed_column_log_sizes);
-
-    // The circuit verifier expects the components to be ordered by ascending trace log size.
-    components.sort_by(|a, _, b, _| log_sizes[*a].cmp(&log_sizes[*b]));
-    ProofConfig::new(&components, CIRCUIT_N_PREPROCESSED_COLUMNS, &PCS_CONFIG, INTERACTION_POW_BITS)
+    circuit_verifier_proof_config(&multiverifier_preprocessed_column_log_sizes(), &PCS_CONFIG)
 }
 
 /// Builds a `NoValue` Cairo verifier circuit (with configs of privacy) and preprocesses it.

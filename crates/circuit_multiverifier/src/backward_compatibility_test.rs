@@ -1,18 +1,14 @@
 use circuit_common::N_RESERVED;
 use circuit_common::finalize::pad_to_targets;
 use circuit_serialize::deserialize::deserialize_proof_with_config;
-use circuit_verifier::statement::{
-    INTERACTION_POW_BITS, all_circuit_components, circuit_component_log_sizes,
-};
-use circuits_stark_verifier::proof::ProofConfig;
+use circuit_verifier::statement::circuit_verifier_proof_config;
 use itertools::chain;
 use stwo::core::fields::qm31::QM31;
 
 use crate::test_utils::{
-    CIRCUIT_N_PREPROCESSED_COLUMNS, MULTIVERIFIER_OF_TWO_CAIRO_PROOFS_PATH,
-    MULTIVERIFIER_PREPROCESSED_ROOT, PCS_CONFIG, PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES,
-    PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT, TARGET_PADDING_SIZES, blake2s_u32s_host,
-    multiverifier_preprocessed_column_log_sizes,
+    MULTIVERIFIER_OF_TWO_CAIRO_PROOFS_PATH, MULTIVERIFIER_PREPROCESSED_ROOT, PCS_CONFIG,
+    PRIVACY_CAIRO_VERIFIER_OUTPUT_VALUES, PRIVACY_CAIRO_VERIFIER_PREPROCESSED_ROOT,
+    TARGET_PADDING_SIZES, blake2s_u32s_host, multiverifier_preprocessed_column_log_sizes,
 };
 use crate::verify::{MultiverifierInput, SharedConfig, build_multiverifier_circuit};
 
@@ -35,20 +31,10 @@ const BACKWARD_COMPATIBILITY_CAIRO_PROOF_PATH: &str = concat!(
 /// in slot 0, and a multiverifier proof produced by the current version in slot 1.
 #[test]
 fn test_backward_compatibility() {
-    // Order the components by ascending trace log size to match the committed column layout the
-    // proof fixtures are serialized with (see `inner_verifier_proof_config` in `verify_test`).
     let preprocessed_column_log_sizes = multiverifier_preprocessed_column_log_sizes();
-    let mut components = all_circuit_components::<QM31>();
-    let log_sizes = circuit_component_log_sizes(&components, &preprocessed_column_log_sizes);
-    components.sort_by(|a, _, b, _| log_sizes[*a].cmp(&log_sizes[*b]));
     let shared_config = SharedConfig {
         pcs_config: PCS_CONFIG,
-        proof_config: ProofConfig::new(
-            &components,
-            CIRCUIT_N_PREPROCESSED_COLUMNS,
-            &PCS_CONFIG,
-            INTERACTION_POW_BITS,
-        ),
+        proof_config: circuit_verifier_proof_config(&preprocessed_column_log_sizes, &PCS_CONFIG),
         preprocessed_column_log_sizes,
     };
 

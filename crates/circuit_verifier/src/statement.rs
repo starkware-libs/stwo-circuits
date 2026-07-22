@@ -8,10 +8,13 @@ use circuits::wrappers::{M31Wrapper, U32Wrapper};
 use circuits_stark_verifier::constraint_eval::CircuitEval;
 use circuits_stark_verifier::logup::logup_use_term;
 use circuits_stark_verifier::order_hash_map::OrderedHashMap;
+use circuits_stark_verifier::proof::ProofConfig;
 use circuits_stark_verifier::proof_from_stark_proof::pack_into_qm31s;
 use circuits_stark_verifier::statement::Statement;
 use indexmap::IndexMap;
 use itertools::{Itertools, chain, zip_eq};
+use stwo::core::fields::qm31::QM31;
+use stwo::core::pcs::PcsConfig;
 use stwo_constraint_framework::preprocessed_columns::PreProcessedColumnId;
 
 use crate::circuit_components::PerComponent;
@@ -211,4 +214,21 @@ pub fn circuit_component_log_sizes<Value: IValue>(
             (*name, log_size)
         })
         .collect()
+}
+
+/// Builds the [`ProofConfig`] for the circuit verifier circuit, ordering the components by
+/// ascending trace log size (the column layout the circuit verifier expects).
+pub fn circuit_verifier_proof_config(
+    preprocessed_column_log_sizes: &OrderedHashMap<PreProcessedColumnId, u32>,
+    pcs_config: &PcsConfig,
+) -> ProofConfig {
+    let mut components = all_circuit_components::<QM31>();
+    let log_sizes = circuit_component_log_sizes(&components, preprocessed_column_log_sizes);
+    components.sort_by_key(|a, _| log_sizes[*a]);
+    ProofConfig::new(
+        &components,
+        preprocessed_column_log_sizes.len(),
+        pcs_config,
+        INTERACTION_POW_BITS,
+    )
 }
