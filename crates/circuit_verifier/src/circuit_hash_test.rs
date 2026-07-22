@@ -1,54 +1,42 @@
-use blake2::{Blake2s256, Digest};
-use circuits::blake::HashValue;
 use circuits::context::TraceContext;
-use circuits::ivalue::IValue;
 use circuits::ops::Guess;
-use circuits_stark_verifier::order_hash_map::OrderedHashMap;
-use stwo::core::fields::qm31::QM31;
 
 use super::*;
+use crate::circuit_components::PerComponent;
 
-fn sample_component_log_sizes() -> OrderedHashMap<&'static str, u32> {
-    COMPONENT_NAMES.iter().enumerate().map(|(i, name)| (*name, (i % 20) as u32)).collect()
-}
-
-/// Independent reference for [`compute_circuit_hash`] using the standard `blake2` crate.
-fn expected_circuit_hash(
-    component_log_sizes: &OrderedHashMap<&'static str, u32>,
-    log_blowup_factor: u32,
-    preprocessed_root: [u32; BLAKE2S_DIGEST_N_WORDS],
-) -> [u32; BLAKE2S_DIGEST_N_WORDS] {
-    let mut hasher = Blake2s256::new();
-    for word in
-        config_words(log_blowup_factor, component_log_sizes).into_iter().chain(preprocessed_root)
-    {
-        hasher.update(word.to_le_bytes());
+/// Golden test for computing the circuit hash.
+#[test]
+fn compute_circuit_hash_matches_golden() {
+    let component_log_sizes: OrderedHashMap<&'static str, u32> = PerComponent {
+        eq: 17,
+        qm31_ops: 21,
+        triple_xor: 17,
+        m_31_to_u_32: 18,
+        blake_g_gate: 20,
+        verify_bitwise_xor_8: 16,
+        verify_bitwise_xor_12: 20,
+        verify_bitwise_xor_4: 8,
+        verify_bitwise_xor_7: 14,
+        verify_bitwise_xor_9: 18,
+        range_check_16: 16,
     }
-    let digest: [u8; 4 * BLAKE2S_DIGEST_N_WORDS] = hasher.finalize().into();
-    std::array::from_fn(|i| u32::from_le_bytes(digest[i * 4..i * 4 + 4].try_into().unwrap()))
-}
+    .into_named_iter()
+    .collect();
 
-/// Computes the circuit hash in a fresh context and reads back the eight concrete output words.
-fn circuit_hash_words(
-    component_log_sizes: &OrderedHashMap<&'static str, u32>,
-    log_blowup_factor: u32,
-    preprocessed_root: [u32; BLAKE2S_DIGEST_N_WORDS],
-) -> [u32; BLAKE2S_DIGEST_N_WORDS] {
+    let log_blowup_factor = 3;
+    let preprocessed_root: [u32; BLAKE2S_DIGEST_N_WORDS] = std::array::from_fn(|i| i as u32);
+
+    // Compute the circuit hash in a fresh context and read back the eight concrete output words.
     let mut context = TraceContext::default();
     let root = HashValue::<QM31>::from(preprocessed_root).guess(&mut context);
-    let hash = compute_circuit_hash(&mut context, component_log_sizes, log_blowup_factor, &root);
-    std::array::from_fn(|i| context.get(*hash[i].get()).unpack_u32())
-}
+    let hash = compute_circuit_hash(&mut context, &component_log_sizes, log_blowup_factor, &root);
+    let in_circuit: [u32; BLAKE2S_DIGEST_N_WORDS] =
+        std::array::from_fn(|i| context.get(*hash[i].get()).unpack_u32());
 
-#[test]
-fn compute_circuit_hash_matches_expected() {
-    let sizes = sample_component_log_sizes();
-    let root = std::array::from_fn(|i| i as u32);
+    let expected: [u32; BLAKE2S_DIGEST_N_WORDS] = [
+        0xa8810641, 0x52391285, 0x90b37fd2, 0x905b887a, 0x7db7dc81, 0xa7c3a731, 0xd0d46b34,
+        0x8fa6a471,
+    ];
 
-    let expected = expected_circuit_hash(&sizes, 3, root);
-    let in_circuit = circuit_hash_words(&sizes, 3, root);
-
-    // The in-circuit builder must match the independent reference (the invariant the Fiat-Shamir
-    // transcript relies on).
-    assert_eq!(in_circuit, expected, "in-circuit builder must match the independent reference");
+    assert_eq!(in_circuit, expected);
 }
