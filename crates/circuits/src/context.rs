@@ -95,6 +95,8 @@ pub struct Context<Value: IValue> {
 pub struct DebugInfo {
     /// A map from name to the corresponding [Var].
     pub vars: HashMap<String, Var>,
+    /// A map from name to the corresponding list of [Var]s.
+    pub lists: HashMap<String, Vec<Var>>,
 }
 
 impl<Value: IValue> Context<Value> {
