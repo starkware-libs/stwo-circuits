@@ -86,8 +86,15 @@ pub struct Context<Value: IValue> {
     /// Debug only. If true, equality is asserted when adding the `eq` gate; if false, no
     /// assertion is made during construction and equality can be checked later at validation.
     pub assert_eq_on_eval: bool,
-    /// Debug only. A map from variable name to the corresponding [Var].
-    pub debug_info: HashMap<String, Var>,
+    /// Debug only. Named variables for testing purposes.
+    pub debug_info: DebugInfo,
+}
+
+/// Named variables for testing purposes.
+#[derive(Default)]
+pub struct DebugInfo {
+    /// A map from name to the corresponding [Var].
+    pub vars: HashMap<String, Var>,
 }
 
 impl<Value: IValue> Context<Value> {
@@ -264,7 +271,7 @@ impl<Value: IValue> Default for Context<Value> {
             guessed_vars: Some(vec![]),
             reserved_vars: vec![],
             assert_eq_on_eval: false,
-            debug_info: HashMap::new(),
+            debug_info: DebugInfo::default(),
         };
         // Register zero, one, and u as the first constants.
         res.constant(QM31::zero());
