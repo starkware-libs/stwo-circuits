@@ -55,11 +55,14 @@
 
 use circuits::blake::{HashValue, blake2s_u32s};
 use circuits::context::{Context, Var};
-use circuits::ivalue::{IValue, qm31_from_u32s};
-use circuits::ops::{Guess, add, eq, guess, mul};
+use circuits::ivalue::IValue;
+use circuits::ops::Guess;
 use circuits::wrappers::U32Wrapper;
 use stwo::core::fields::qm31::QM31;
 
+use crate::gadgets::{
+    guess_hash_value, guess_zero_hash, hash_value_of, is_zero_words, select_hash,
+};
 use crate::permutation::permute_units;
 use crate::tree::BinaryTree;
 
@@ -104,31 +107,6 @@ pub struct VerifiedMerkleTree {
     pub leaves: Vec<Node<Var>>,
 }
 
-/// Selects between two hash values word-by-word:
-/// `select(selector, if_zero, if_one) = if_zero + selector * (if_one - if_zero)`.
-///
-/// Assumes `selector` is `0` or `1`.
-fn select_hash<Value: IValue>(
-    context: &mut Context<Value>,
-    selector: Var,
-    if_zero: &HashValue<Var>,
-    if_one: &HashValue<Var>,
-) -> HashValue<Var> {
-    HashValue(std::array::from_fn(|i| {
-        let diff = circuits::eval!(context, (*if_one[i].get()) - (*if_zero[i].get()));
-        let result = circuits::eval!(context, (*if_zero[i].get()) + ((selector) * (diff)));
-        U32Wrapper::new_unsafe(result)
-    }))
-}
-
-/// Reads the concrete value of a [`HashValue<Var>`] back out of the context.
-fn hash_value_of<Value: IValue>(
-    context: &Context<Value>,
-    hash: &HashValue<Var>,
-) -> HashValue<Value> {
-    HashValue(std::array::from_fn(|i| U32Wrapper::new_unsafe(context.get(*hash[i].get()))))
-}
-
 /// Reads the concrete value of a [`Node<Var>`] back out of the context.
 fn node_value_of<Value: IValue>(context: &Context<Value>, node: &Node<Var>) -> Node<Value> {
     Node {
@@ -137,42 +115,14 @@ fn node_value_of<Value: IValue>(context: &Context<Value>, node: &Node<Var>) -> N
     }
 }
 
-/// Guesses a fresh all-zero hash `Z` as witness — every word is a freshly guessed variable holding
-/// zero (range-constrained to a valid `u32` like any other [`HashValue`] guess).
-///
-/// Crucially these are *distinct* variables, not the canonical zero constant (`Var { idx: 0 }`).
-/// [`add`]/[`mul`] constant-fold away any operand that *is* the canonical zero, so building padding
-/// from the zero constant would emit fewer gates than a real (non-zero) slot and make the gate
-/// count scale with the real-leaf count `n`. Guessing zeros instead keeps padding slots
-/// structurally identical to real slots, so the circuit depends only on `capacity`, never on `n` or
-/// tree shape.
+/// Guesses a fresh all-zero [`Node`] (both hashes zero) — see [`guess_zero_hash`] for why padding
+/// is guessed rather than built from the zero constant.
 ///
 /// Soundness is unaffected: a padding `Z` is unconstrained witness, but any non-zero value a prover
 /// puts here is a produced node the multiset must consume, so it gets hashed into the tree and
 /// changes the root — breaking the caller's binding to the claimed commitment.
-fn guess_zero_hash<Value: IValue>(context: &mut Context<Value>) -> HashValue<Var> {
-    let zero: HashValue<Value> =
-        HashValue(std::array::from_fn(|_| U32Wrapper::new_unsafe(Value::pack_u32(0))));
-    zero.guess(context)
-}
-
-/// Guesses a fresh all-zero [`Node`] (both hashes zero) — see [`guess_zero_hash`] for why padding
-/// is guessed rather than built from the zero constant.
 fn guess_zero_node<Value: IValue>(context: &mut Context<Value>) -> Node<Var> {
     Node { circuit_hash: guess_zero_hash(context), subtree_hash: guess_zero_hash(context) }
-}
-
-/// Guesses a concrete [`HashValue<QM31>`] as witness in the `Value` context, lifting each word's
-/// `QM31` value through [`IValue::from_qm31`] (a no-op for a `QM31` context; discarded for a value-
-/// less topology build). Each word is range-constrained like any other [`HashValue`] guess.
-fn guess_hash_value<Value: IValue>(
-    context: &mut Context<Value>,
-    hash: &HashValue<QM31>,
-) -> HashValue<Var> {
-    let value: HashValue<Value> = HashValue(std::array::from_fn(|i| {
-        U32Wrapper::new_unsafe(Value::from_qm31(*hash[i].get()))
-    }));
-    value.guess(context)
 }
 
 /// Guesses a concrete [`Node<QM31>`] (both hashes) as witness. See [`guess_hash_value`].
@@ -184,54 +134,11 @@ fn guess_node<Value: IValue>(context: &mut Context<Value>, node: &Node<QM31>) ->
 }
 
 /// Returns a `0/1` selector variable that is `1` iff `node` is the all-zero node `Z` (both hashes
-/// all zero).
-///
-/// The sixteen words are summed into a single field element `acc`. Because every word of a guessed
-/// [`HashValue`] is range-constrained to a valid `u32` packing `(low_u16, high_u16, 0, 0)` (see
-/// [`HashValue::guess`]), each coordinate of the sum stays below `16 · 2^16 < M31::P`, so the sum
-/// never wraps and `acc == 0` (in `QM31`) iff every word is zero, i.e. `node == Z`.
-///
-/// `is_zero` is then pinned to `[acc == 0]` by the standard is-zero gadget with witness
-/// `inv_or_zero`:
-/// * `acc * is_zero == 0` forces `is_zero` to be false (`0`) whenever `acc != 0`;
-/// * `acc * inv_or_zero + is_zero == 1` forces `is_zero` to be true (`1`) whenever `acc == 0`, and
-///   otherwise requires `inv_or_zero = 1/acc`.
-///
-/// Together these uniquely determine `is_zero ∈ {0, 1}` as a deterministic function of `node`, so
-/// the copy-up rule cannot be steered by a malicious prover.
+/// all zero). See [`is_zero_words`] for the gadget; its determinism guarantees the copy-up rule
+/// cannot be steered by a malicious prover.
 fn is_zero_node<Value: IValue>(context: &mut Context<Value>, node: &Node<Var>) -> Var {
-    let zero = context.zero();
-    let one = context.one();
-
-    // acc = sum of the sixteen words (circuit_hash then subtree_hash).
-
     // TODO(ilya): Condsider checking only the subtree_hash and keeping circuit_hash unconstrained.
-    let words = node.words();
-    let acc = words.iter().skip(1).fold(*words[0].get(), |acc, w| add(context, acc, *w.get()));
-
-    // Witness values for the is-zero gadget.
-    let acc_val = context.get(acc);
-    let is_zero = acc_val == Value::from_qm31(qm31_from_u32s(0, 0, 0, 0));
-    let (is_zero_val, inv_or_zero_val) = if is_zero {
-        (Value::from_qm31(qm31_from_u32s(1, 0, 0, 0)), Value::from_qm31(qm31_from_u32s(0, 0, 0, 0)))
-    } else {
-        (
-            Value::from_qm31(qm31_from_u32s(0, 0, 0, 0)),
-            Value::from_qm31(qm31_from_u32s(1, 0, 0, 0)) / acc_val,
-        )
-    };
-    let is_zero = guess(context, is_zero_val);
-    let inv_or_zero = guess(context, inv_or_zero_val);
-
-    // acc * is_zero == 0
-    let acc_is_zero = mul(context, acc, is_zero);
-    eq(context, acc_is_zero, zero);
-    // acc * inv_or_zero + is_zero == 1
-    let acc_inv_or_zero = mul(context, acc, inv_or_zero);
-    let acc_inv_or_zero_plus_is_zero = add(context, acc_inv_or_zero, is_zero);
-    eq(context, acc_inv_or_zero_plus_is_zero, one);
-
-    is_zero
+    is_zero_words(context, &node.words())
 }
 
 /// Computes an internal node's `subtree_hash` by hashing the concatenation
