@@ -3,7 +3,7 @@
 use std::ops::Deref;
 
 use circuits::circuit::{Add, BlakeGGate, Circuit, M31ToU32, Mul, PointwiseMul, Sub, TripleXor};
-use circuits::context::Var;
+use circuits::context::DebugInfo;
 use circuits::ivalue::{IValue, qm31_from_u32s};
 use hashbrown::{HashMap, HashSet};
 use num_traits::{One, Zero};
@@ -545,7 +545,7 @@ fn validate_logup_summand(
 }
 
 /// Analyzes the circuit and writes the classified logup-sum summands to `summands.txt`.
-pub fn analyze(circuit: &Circuit, debug_info: &HashMap<String, Var>) {
+pub fn analyze(circuit: &Circuit, debug_info: &DebugInfo) {
     let c = build_analysis(circuit);
     let const_values = propagate_constants(&c);
 
@@ -557,16 +557,16 @@ pub fn analyze(circuit: &Circuit, debug_info: &HashMap<String, Var>) {
     let ground = Ground { c: &c, const_values: &const_values, idiom: &idiom };
 
     // Seed each challenge's `grounded` cache with its dependency closure.
-    let int_z = debug_info["interaction_z"].idx;
+    let int_z = debug_info.vars["interaction_z"].idx;
     let mut int_z_cache = ground.init_grounding_cache(int_z);
 
-    let composition_coef = debug_info["composition_polynomial_coeff"].idx;
+    let composition_coef = debug_info.vars["composition_polynomial_coeff"].idx;
     let mut composition_coef_cache = ground.init_grounding_cache(composition_coef);
 
-    let logup_sum = debug_info["logup_sum"].idx;
+    let logup_sum = debug_info.vars["logup_sum"].idx;
     let summands = find_summands(&c, &const_values, logup_sum);
 
-    let composition_eval = debug_info["composition_eval"].idx;
+    let composition_eval = debug_info.vars["composition_eval"].idx;
     let composition_vars = add_mul_cone(&c, &const_values, composition_eval);
 
     for s in summands {
