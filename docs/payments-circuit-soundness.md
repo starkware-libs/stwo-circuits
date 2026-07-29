@@ -110,6 +110,24 @@ The existing code is already careful — `reference.rs` uses `BTreeMap`,
 `HashMap`s are lookup caches that are never iterated. New circuit-building code keeps that
 rule: **never iterate an unordered collection while emitting gates.**
 
+## Open-gap ledger
+
+What is knowingly **not** covered yet, and by what it must be closed. A gap recorded here with
+a test that pins its existence is a tracked obligation; the same gap unwritten is a soundness
+hole waiting to be assumed away. Every row must name the layer that closes it.
+
+| gap | pinned by | closed by |
+|---|---|---|
+| **Same-kind class migration.** Moving a `Leaf`-tagged unit from the leaf class into the sibling class leaves every tag, cardinality and the multiset balance valid, so the skeleton alone cannot detect it. | `skeleton_test::same_kind_class_migration_is_not_detected_here` (asserts the gap) | the caller binding each leaf slot to a batch key — `payments-state` (design doc step 3). Until then, a skeleton in isolation does **not** prove which class a leaf belongs to. |
+| **The empty trie has no skeleton.** `build_trie` returns `None` for an empty entry set, so there is no root unit for the multiset to hold out. **The nonce trie starts empty**, so this is on the payments critical path, not a corner case. | documented on `extract_skeleton`; callers must special-case the all-zero root | `patricia-skeleton`'s interface decision (design doc step 1): either a synthesized empty-root unit or an explicit empty-trie branch. |
+| **Sibling subtree authenticity.** A sibling's *kind* is partly constrained after all (an edge's `bottom.kind != Edge` by maximal merging; `Leaf ⟺ height == 0`), but whether its claimed hash is a real subtree of that kind is unverifiable in-circuit. | — | the written injectivity argument in `patricia-update` (design doc §6 Q3). Narrower than that doc assumes, so state exactly the residual assumption. |
+| **Absent keys emit no leaf unit.** Non-membership is carried by the diverging edge plus its opaque bottom, so leaf slots do not map 1:1 to batch keys. Interacts with row 1: a 1:1 binding would close the class-migration gap inside the skeleton. | `skeleton_test` absent-key cases | `patricia-skeleton` interface decision — synthesize a zero-leaf per absent key, or bind at the caller. |
+| **Signature verification (design doc P3).** v1 proves bookkeeping over *unauthenticated* transfers. | — | out of scope for v1; needs 252-bit field EC arithmetic the DSL lacks. Must be stated in the top-level circuit's own docs so nothing downstream over-claims. |
+
+Note on the §4.1 identity: it is `siblings = binary − leaf_units + 1`, **not** `− K`. With
+absent keys `leaf_units < K`, so a capacity sized from `K` stays correct while the
+witness-side check must count leaf *units*.
+
 ## Oracles worth exploiting
 
 * **`patricia::reference`** as a property-based twin: random `(N, K)` with the reference

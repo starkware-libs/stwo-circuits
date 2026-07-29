@@ -14,18 +14,23 @@ use std::collections::BTreeMap;
 
 use super::reference::{PatriciaTree, Word256, build_trie, word256_bit};
 
-const HEIGHT: u32 = 251;
+pub(super) const HEIGHT: u32 = 251;
 
 /// Slots a touched skeleton needs: binary and edge nodes on the union of the root-to-leaf paths
 /// of `keys`, plus the untouched sibling subtrees hanging off them.
+///
+/// An independent twin of [`extract_skeleton`](super::skeleton::extract_skeleton)'s walk, kept
+/// separate so a bug cannot hide in both; `skeleton_test` pins their agreement. It assumes every
+/// key is *present*: it descends an edge without checking the key against the compressed path, so
+/// an absent key would be counted as if its walk continued past the divergence.
 #[derive(Debug, Default, PartialEq, Eq)]
-struct SlotCounts {
-    binary: usize,
-    edge: usize,
-    siblings: usize,
+pub(super) struct SlotCounts {
+    pub(super) binary: usize,
+    pub(super) edge: usize,
+    pub(super) siblings: usize,
 }
 
-fn count_skeleton(tree: &PatriciaTree, height: u32, keys: &[Word256]) -> SlotCounts {
+pub(super) fn count_skeleton(tree: &PatriciaTree, height: u32, keys: &[Word256]) -> SlotCounts {
     if keys.is_empty() {
         return SlotCounts::default();
     }
@@ -55,7 +60,7 @@ fn count_skeleton(tree: &PatriciaTree, height: u32, keys: &[Word256]) -> SlotCou
 
 /// Deterministic pseudorandom 251-bit key from a counter (xorshift; no rand dependency, so the
 /// reported numbers are reproducible).
-fn key_of(i: u64) -> Word256 {
+pub(super) fn key_of(i: u64) -> Word256 {
     let mut state = i.wrapping_mul(0x9E37_79B9_7F4A_7C15).wrapping_add(0x1234_5678);
     let mut key = [0u32; 8];
     for word in key.iter_mut() {
@@ -68,7 +73,7 @@ fn key_of(i: u64) -> Word256 {
     key
 }
 
-fn trie_of(n_entries: u64) -> BTreeMap<Word256, Word256> {
+pub(super) fn trie_of(n_entries: u64) -> BTreeMap<Word256, Word256> {
     (0..n_entries).map(|i| (key_of(i), key_of(i + (1 << 40)))).collect()
 }
 

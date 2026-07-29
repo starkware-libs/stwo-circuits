@@ -8,8 +8,11 @@
 //! - [`mod@reference`] — the out-of-circuit reference implementation: the canonical trie build,
 //!   hashing, and batch updates. It is the witness generator and test twin for the in-circuit
 //!   Patricia verifiers.
+//! - [`mod@skeleton`] — extraction of the *touched skeleton* over a batch of keys: the witness the
+//!   skeleton circuit consumes, plus the invariants it owes.
 
 pub mod reference;
+pub mod skeleton;
 
 #[cfg(test)]
 #[path = "slot_count_test.rs"]
