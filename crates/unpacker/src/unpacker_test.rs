@@ -8,6 +8,7 @@ use rstest::rstest;
 use stwo::core::fields::qm31::QM31;
 use stwo::core::vcs::blake2_hash::{Blake2sHash, Blake2sHasher};
 
+use crate::fingerprint::circuit_fingerprint;
 use crate::tree::BinaryTree;
 use crate::unpacker::{Node, verify_merkle_commitment};
 
@@ -298,6 +299,26 @@ fn circuit_is_fixed_across_n(#[case] capacity: usize) {
         );
     }
 }
+
+/// Pins the emitted topology of the `capacity = 8` circuit across processes and machines.
+///
+/// The equality tests above compare two circuits built in ONE process, so they cannot see
+/// per-process nondeterminism: iterating a `HashMap`/`HashSet` while emitting gates picks up
+/// std's per-process random seed, which would reorder gates between `cargo test` runs while
+/// every same-process assertion still passed. A pinned fingerprint fails on that, and makes
+/// every intentional topology change explicit in the commit that causes it.
+#[test]
+fn fingerprint_is_pinned() {
+    let fingerprint = circuit_fingerprint(&build_circuit::<QM31>(3, 8)).to_string();
+    assert_eq!(
+        fingerprint, UNPACKER_CAPACITY_8_FINGERPRINT,
+        "the unpacker's topology changed (or its build is nondeterministic)"
+    );
+}
+
+/// See [`fingerprint_is_pinned`].
+const UNPACKER_CAPACITY_8_FINGERPRINT: &str =
+    "ed4edd522409f2694d70caa63f1dcc597e7cfa01f715b5df756097b5d2d9baf6";
 
 /// The circuit is also independent of tree *shape*: a balanced tree and a maximally unbalanced
 /// caterpillar over the same leaves at the same `capacity` emit a byte-identical circuit — the
