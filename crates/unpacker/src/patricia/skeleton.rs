@@ -56,8 +56,8 @@ use super::reference::{EMPTY_HASH, PatriciaTree, Word256, hash_binary, hash_edge
 mod test;
 
 #[cfg(test)]
-#[path = "skeleton_mutation.rs"]
-pub mod mutation;
+#[path = "skeleton_rejection.rs"]
+pub mod rejection;
 
 /// A unit's class tag. It is part of the hashed tuple, so it is the domain separator that stops a
 /// unit migrating between classes. Tag `0` is reserved for padding: no live node ever carries it.
@@ -185,8 +185,9 @@ impl SkeletonWitness {
 }
 
 /// The invariants [`witness_invariants`] applies, in the order it applies them. **The order is part
-/// of the contract**: per-unit and per-slot checks run before the global ones, so a local tampering
-/// is attributed to the constraint family it broke rather than to the multiset it also unbalanced.
+/// of the contract**: per-unit and per-slot checks run before the global ones, so a local
+/// modification is attributed to the constraint family it broke rather than to the multiset it also
+/// unbalanced.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Check {
     /// A padded slot is not fully inert, or an inert unit sits inside a live slot.

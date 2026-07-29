@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use rstest::rstest;
 
-use super::mutation::{Family, MUTATIONS, oracle};
+use super::rejection::{Family, REJECTION_CASES, oracle};
 use super::{
     BinarySlot, Check, EdgeSlot, INERT_UNIT, SkeletonCapacity, SkeletonKind, SkeletonUnit,
     SkeletonWitness, bottom_path, child_path, extract_skeleton, key_prefix, kind_of,
@@ -43,10 +43,10 @@ fn mixed_keys(present: usize, absent: usize) -> Vec<Word256> {
     present_keys(present).into_iter().chain(absent_keys(absent)).collect()
 }
 
-/// The witness every mutation is applied to: present keys for leaves and binaries, absent keys so
-/// that some edge slot has an opaque sibling bottom, over a trie deep enough to have siblings at
-/// many heights.
-fn mutation_fixture() -> SkeletonWitness {
+/// The witness every rejection case is applied to: present keys for leaves and binaries, absent
+/// keys so that some edge slot has an opaque sibling bottom, over a trie deep enough to have
+/// siblings at many heights.
+fn rejection_case_fixture() -> SkeletonWitness {
     extract_skeleton(&fixture_trie(), HEIGHT, &mixed_keys(6, 3))
 }
 
@@ -303,7 +303,7 @@ fn key_above_the_height_panics() {
 
 #[test]
 fn capacity_derives_the_sibling_count() {
-    let witness = mutation_fixture();
+    let witness = rejection_case_fixture();
     assert!(SkeletonCapacity::covering(&witness).n_siblings() == witness.siblings.len());
     assert!(SkeletonCapacity { n_leaves: 4, n_binary: 9, n_edge: 2 }.n_siblings() == 6);
 }
@@ -318,7 +318,7 @@ fn capacity_with_fewer_binaries_than_leaves_panics() {
 /// included — survives padding, because siblings are derived as `n_binary - n_leaves + 1`.
 #[test]
 fn padding_preserves_every_invariant() {
-    let witness = mutation_fixture();
+    let witness = rejection_case_fixture();
     let capacity = generous_capacity(&witness);
     let padded = witness.padded(&capacity);
     assert!(padded.leaves.len() == capacity.n_leaves);
@@ -333,7 +333,7 @@ fn padding_preserves_every_invariant() {
 #[test]
 #[should_panic(expected = "sibling slots but the witness needs")]
 fn padding_to_too_few_sibling_slots_panics() {
-    let witness = mutation_fixture();
+    let witness = rejection_case_fixture();
     let tight = SkeletonCapacity::covering(&witness);
     witness.padded(&SkeletonCapacity { n_leaves: tight.n_leaves + 8, ..tight });
 }
@@ -342,7 +342,7 @@ fn padding_to_too_few_sibling_slots_panics() {
 /// still validate, so no test here can be passing for an ordering reason.
 #[test]
 fn class_order_is_irrelevant() {
-    let base = mutation_fixture();
+    let base = rejection_case_fixture();
     let mut witness = base.padded(&generous_capacity(&base));
     witness.leaves.reverse();
     witness.siblings.reverse();
@@ -352,51 +352,53 @@ fn class_order_is_irrelevant() {
 }
 
 #[test]
-fn mutation_labels_are_unique() {
-    let labels: BTreeSet<&str> = MUTATIONS.iter().map(|mutation| mutation.label).collect();
-    assert!(labels.len() == MUTATIONS.len());
+fn rejection_case_labels_are_unique() {
+    let labels: BTreeSet<&str> = REJECTION_CASES.iter().map(|case| case.label).collect();
+    assert!(labels.len() == REJECTION_CASES.len());
 }
 
-/// Every mutation is rejected, and rejected by the invariant it targets — a rejection for an
+/// Every rejection case is rejected, and rejected by the invariant it targets — a rejection for an
 /// unintended reason proves nothing.
 #[test]
-fn every_mutation_is_rejected_by_the_check_it_targets() {
-    let base = mutation_fixture();
+fn every_rejection_case_is_rejected_by_the_check_it_targets() {
+    let base = rejection_case_fixture();
     let padded = base.padded(&generous_capacity(&base));
     oracle(&base).expect("the fixture must be valid");
     oracle(&padded).expect("the padded fixture must be valid");
-    for mutation in MUTATIONS {
-        let mut witness = if mutation.needs_padding { padded.clone() } else { base.clone() };
-        (mutation.apply)(&mut witness);
+    for case in REJECTION_CASES {
+        let mut witness = if case.needs_padding { padded.clone() } else { base.clone() };
+        (case.apply)(&mut witness);
         let violation =
-            oracle(&witness).expect_err(&format!("mutation '{}' was accepted", mutation.label));
+            oracle(&witness).expect_err(&format!("rejection case '{}' was accepted", case.label));
         assert!(
-            violation.check == mutation.detected_by,
-            "mutation '{}' targets {:?} but was rejected by {violation}",
-            mutation.label,
-            mutation.detected_by
+            violation.check == case.detected_by,
+            "rejection case '{}' targets {:?} but was rejected by {violation}",
+            case.label,
+            case.detected_by
         );
     }
 }
 
-/// Padding must not mask a tampering: the unpadded mutations still land on a padded witness.
+/// Padding must not mask a modification: the unpadded rejection_cases still land on a padded
+/// witness.
 #[test]
-fn mutations_are_still_rejected_after_padding() {
-    let base = mutation_fixture();
+fn rejection_cases_are_still_rejected_after_padding() {
+    let base = rejection_case_fixture();
     let padded = base.padded(&generous_capacity(&base));
-    for mutation in MUTATIONS.iter().filter(|mutation| !mutation.needs_padding) {
+    for case in REJECTION_CASES.iter().filter(|case| !case.needs_padding) {
         let mut witness = padded.clone();
-        (mutation.apply)(&mut witness);
+        (case.apply)(&mut witness);
         let violation = oracle(&witness)
-            .expect_err(&format!("padded mutation '{}' was accepted", mutation.label));
-        assert!(violation.check == mutation.detected_by, "{}: {violation}", mutation.label);
+            .expect_err(&format!("padded rejection case '{}' was accepted", case.label));
+        assert!(violation.check == case.detected_by, "{}: {violation}", case.label);
     }
 }
 
-/// Every invariant the oracle can report has a mutation exercising it, so no check is untested.
+/// Every invariant the oracle can report has a rejection case exercising it, so no check is
+/// untested.
 #[test]
-fn every_check_has_a_mutation() {
-    let covered: BTreeSet<Check> = MUTATIONS.iter().map(|mutation| mutation.detected_by).collect();
+fn every_check_has_a_rejection_case() {
+    let covered: BTreeSet<Check> = REJECTION_CASES.iter().map(|case| case.detected_by).collect();
     let all = [
         Check::Padding,
         Check::KindTag,
@@ -410,10 +412,10 @@ fn every_check_has_a_mutation() {
     assert!(covered == all.into_iter().collect::<BTreeSet<Check>>());
 }
 
-/// Every constraint family has a mutation attacking it — the mutation-matrix rows.
+/// Every constraint family has a rejection case reviewing it — the rejection-table rows.
 #[test]
-fn every_family_has_a_mutation() {
-    let covered: BTreeSet<Family> = MUTATIONS.iter().map(|mutation| mutation.family).collect();
+fn every_family_has_a_rejection_case() {
+    let covered: BTreeSet<Family> = REJECTION_CASES.iter().map(|case| case.family).collect();
     let all = [
         Family::KindConfusion,
         Family::PositionBinding,
@@ -432,7 +434,7 @@ fn every_family_has_a_mutation() {
 /// which lives outside the skeleton — recorded here so the gap stays explicit.
 #[test]
 fn same_kind_class_migration_is_not_detected_here() {
-    let mut witness = mutation_fixture();
+    let mut witness = rejection_case_fixture();
     let leaf = witness.leaves.remove(0);
     witness.siblings.push(leaf);
     assert!(witness_invariants(&witness).is_ok());

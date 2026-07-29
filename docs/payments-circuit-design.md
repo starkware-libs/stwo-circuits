@@ -1,7 +1,7 @@
 # Payments Circuit — Design & Handoff
 
 Status: **prerequisites landed; no constraints yet.** Branch `anatg/payments-circuit`. Beyond the
-assembled prerequisites it now carries the out-of-circuit skeleton extractor and its mutation
+assembled prerequisites it now carries the out-of-circuit skeleton extractor and its rejection case
 harness (`patricia/skeleton.rs`), golden vectors pinning the trie to the production hash
 convention (`patricia/golden_test.rs`), and a topology fingerprint (`fingerprint.rs`).
 `verify_patricia_skeleton` itself is still unwritten — see §5.
@@ -61,7 +61,7 @@ So neither a 251-bit account id nor a u128 balance can be a dict key or value di
 The bridge:
 
 - **Key = a batch-local account index**, small enough for the dict's range check. A separate
-  permutation/multiset argument binds each index to its 251-bit account id exactly once, so
+  perrejection case/multiset argument binds each index to its 251-bit account id exactly once, so
   the index is a faithful stand-in inside the dict and the real key is what reaches the
   Patricia update.
 - **Value = balance split across parallel dicts, one per limb**, sharing the same access
@@ -219,8 +219,8 @@ A stack of small, independently-reviewable PRs (`gt`-friendly), on top of this b
    `structure_is_witness_independent` / `circuit_is_fixed_across_shape` tests are the
    pattern).
 2. **`patricia-update`** — `verify_patricia_update`: two skeletons, shared sibling units,
-   in-circuit canonicity. *Acceptance:* negative tests — tampered sibling, non-canonical
-   encoding, insert/delete edge splits, phantom write.
+   in-circuit canonicity. *Acceptance:* negative tests — modified sibling, non-canonical
+   encoding, insert/delete edge splits, unbacked write.
 3. **`payments-state`** — the §2.1 bridge: index-keyed dicts → Patricia batch updates,
    including the index↔account binding argument and the balance-limb dicts.
 4. **`payments-transfer`** — per-transfer execution: Blake2s message hash, window checks,

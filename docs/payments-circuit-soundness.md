@@ -4,6 +4,19 @@ How soundness is established for the payments circuits, and what every PR in the
 Companion to `payments-circuit-design.md` (what is being built) — this is *how we know it is
 right*.
 
+## Vocabulary
+
+Fixed terms, so docs, tests and identifiers stay consistent:
+
+| term | meaning |
+|---|---|
+| **rejection case** | a modified witness that the constraints must reject; the catalogue lives in `patricia/skeleton_rejection.rs` |
+| **rejection table** | the per-PR table pairing each rejection case with the check that rejects it |
+| **derivation argument** | from any assignment satisfying the constraints, how the claimed object is recovered and why the relation follows |
+| **incompletely constrained** | a witness value the constraints do not pin down — the bug class the witness table exists to surface |
+| **independent review** | a review pass by someone other than the author, whose deliverable is an assignment satisfying the constraints without the statement |
+| **unconstrained prover** | the party choosing witness values freely; what a proof must hold for, not an assumed attacker |
+
 ## Why tests are not enough
 
 Soundness is a universal claim: **no** satisfying assignment proves a false transition. Tests
@@ -13,14 +26,14 @@ them.
 
 So each circuit ships two artifacts:
 
-1. a **mutation matrix** — per constraint, a witness that violates it and must be rejected,
+1. a **rejection table** — per constraint, a witness that violates it and must be rejected,
    *attributed* to that constraint rather than incidentally rejected by another;
-2. a **written extraction argument** — from any satisfying assignment, extract the object
+2. a **written derivation argument** — from any satisfying assignment, extract the object
    (a trie, a batch) and show the claimed relation must hold. Gaps here are the real
    findings; missing tests are merely missing tests.
 
 Negative tests are cheap: `Circuit::check(&values)` validates every gate against a concrete
-assignment with **no proving** (see `circuits/src/circuit_test.rs`), so a mutation costs
+assignment with **no proving** (see `circuits/src/circuit_test.rs`), so a rejection case costs
 milliseconds. Reserve `prove` + `verify` for a couple of end-to-end cases and the
 finalize/padding path.
 
@@ -36,29 +49,29 @@ inputs/outputs and what binds them.
 ### Witness table
 
 Every `guess()` site — every value the prover chooses freely — and what forces it. An entry
-whose "determined by" column reads *nothing* is an under-constraining bug.
+whose "determined by" column reads *nothing* is an incompletely constrained bug.
 
 | witness value | width / range | determined by |
 |---|---|---|
 | … | … | … |
 
-### Extraction argument
+### Derivation argument
 
 Given any assignment satisfying the constraints, how the claimed object is recovered and why
 the relation follows. For tries this is injectivity: root equality forces leaf-set equality,
 *given canonicity*. State where canonicity is enforced.
 
-### Mutation matrix
+### Rejection table
 
-| mutation | must be rejected by |
+| rejection case | must be rejected by |
 |---|---|
 | … | … |
 
-### Mutations required by P4 / P5
+### RejectionCases required by P4 / P5
 
 Three rows the harness owes once the leaf-slot and emptiness rules exist:
 
-| mutation | must be rejected by |
+| rejection case | must be rejected by |
 |---|---|
 | a present leaf's value zeroed (claimed absent) | the trie multiset — something consumed that leaf |
 | an absent leaf given a non-zero value (claimed present) with no divergence evidence | the trie structure / position binding |
@@ -84,7 +97,7 @@ Applied per PR; each line is a bug class seen in circuits of this kind.
       (and vice versa); the balance and nonce tries cannot exchange units.
 - [ ] **Kind confusion** — a leaf accepted where a binary child belongs, or an edge where a
       leaf belongs.
-- [ ] **Live padding** — padded slots are forced to a fixed inert tuple; stuffing live-looking
+- [ ] **Live padding** — padded slots are forced to a fixed inert tuple; populating live-looking
       data into padding is rejected.
 - [ ] **Position binding** — leaf path at height 0 *is* the key; `child.path = 2·parent.path +
       bit`; `bottom.path = parent.path·2^ℓ + edge.path` (variable 256-bit shift, design doc
@@ -153,22 +166,23 @@ it would have proven roots the sequencer never computes — an airtight proof of
 statement. `golden_test` now pins the convention against an independently computed vector, and
 deliberately breaking the truncation fails 8 tests.
 
-## Oracles worth exploiting
+## Oracles worth relying on
 
 * **`patricia::reference`** as a property-based twin: random `(N, K)` with the reference
   deciding validity, plus the corner shapes — empty trie, single leaf (full-height edge), keys
   differing only in the last bit, adjacent keys, `K = 1`, `K = capacity`, all-inserts (the
   nonce trie), all-deletes, mixed, duplicate keys in a batch, zero writes.
 * **The Cairo0 implementation** in `payment-threads/crates/payment_thread_prove`: it proves
-  the same statement and ships golden vectors plus a tamper matrix. Every
+  the same statement and ships golden vectors plus a rejection-case suite. Every
   `(prev_root, batch, new_root)` accepted by one must be accepted by the other, and every
-  tamper case it rejects must be rejected here. Two independent implementations disagreeing is
+  rejection case it rejects must be rejected here. Two independent implementations disagreeing is
   the cheapest spec-drift detector available — note its contract is the EVM variant
   (`main_up_evm`: 160-bit address keys, EIP-712 keccak digest as the nonce key, block
   timestamp and domain-separator words in the output).
 
-## Adversarial review
+## Independent review
 
-Every soundness-critical PR gets a review pass whose *only* goal is to construct a
-false-but-accepted witness, given the witness API and the mutation harness — performed by
-someone other than the author. Findings land as new matrix rows.
+Every soundness-critical PR gets a review pass whose *only* goal is to construct an assignment
+that satisfies the constraints without the statement, given the witness API and the
+rejection-case harness — performed by someone other than the author. Findings land as new
+rejection-table rows.
