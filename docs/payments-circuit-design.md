@@ -1,7 +1,12 @@
 # Payments Circuit — Design & Handoff
 
-Status: **design, not implemented.** This branch (`ilya/payments-base`) only assembles the
-prerequisites and records what the investigation found. No payments code exists yet.
+Status: **prerequisites landed; no constraints yet.** Branch `anatg/payments-circuit`. Beyond the
+assembled prerequisites it now carries the out-of-circuit skeleton extractor and its mutation
+harness (`patricia/skeleton.rs`), golden vectors pinning the trie to the production hash
+convention (`patricia/golden_test.rs`), and a topology fingerprint (`fingerprint.rs`).
+`verify_patricia_skeleton` itself is still unwritten — see §5.
+
+Soundness method, the open-gap ledger, and the per-PR obligations: `payments-circuit-soundness.md`.
 
 Audience: whoever picks this task up next. Read §1–§3 for the goal, §4 before writing any
 code (it corrects the Patricia design doc), §5 for the delivery plan.
@@ -40,6 +45,8 @@ different words.
 |---|---|---|
 | P1 | **Build in `stwo-circuits`**, branch `ilya/payments-base` off `ilya/circuit-dict` | The dict and the Patricia reference lived on separate branches of separate clones. This branch is their union — see §3. |
 | P2 | **Index-keyed dict + binding argument** for the dict↔Patricia bridge | `Dict` is M31 keys *and* values; Patricia keys/values are `Word256`. A 251-bit account and a u128 balance fit neither. See §2.1. |
+| P4 | **Absent keys get a leaf slot** — leaf slots are 1:1 with the batch's `K` keys; an absent key carries value `0` | Closes same-kind class migration inside the skeleton instead of deferring it to the step-3 bridge, fixes `n_leaves = K` for any present/absent mix, and makes the insert-dominated case (§4.3) first class. The absent flag is *derived*: a canonical trie has no zero-valued leaves, so `is_absent ⟺ is_zero(value)` — no new free witness. Splits the argument into two multisets: trie-structure (present leaves + binaries + edges + siblings) and batch-binding (all `K` leaf slots). |
+| P5 | **Emptiness is derived from the root, not witnessed** | An empty trie has no unit to hold out as the root. `is_empty = is_zero_words(prev_root)` reads a **public input**, so `root == 0` ⟹ all trie slots inert and all keys absent, with nothing for a prover to choose. Rejected: injecting a synthesized empty-root unit (produced by nothing, so it needs the same flag anyway, and collides with `hash = 0` padding) and a free boolean flag (a prover could claim empty for a non-empty trie). Seeding a genesis leaf in production so the case never arises is worth doing as well, but must not be *relied* on: that would make satisfiability a trusted input. |
 | P3 | **Signature verification out of scope for v1** | Nothing in stwo-circuits can verify a signature — no EC arithmetic, no keccak. `grep -ri 'secp256k1\|ecrecover\|keccak' crates/` hits only `cairo_verifier/src/statement.rs`, unrelated. v1 proves the state transition; signatures are an explicit unproven assumption. |
 
 ### 2.1 The dict↔Patricia bridge (P2)
@@ -176,13 +183,38 @@ For payments they are the main case:
 So the insert path belongs in the skeleton circuit's design from the start, not bolted on
 afterwards. This is the main open question in §6.
 
+### 4.4 The trie hashes 251-bit values, and the edge length is additive
+
+`reference.rs` originally hashed binary nodes as untruncated `blake2s(l ‖ r)` and edges as
+`blake2s(bottom ‖ path ‖ ℓ)`. Production (`payment_thread_patricia::Blake2s251`) and the Cairo0
+program both use
+
+```
+hash2(x, y) = LE_u32s(blake2s(LE32(x) ‖ LE32(y))) & (2^251 - 1)
+binary      = hash2(left, right)
+edge        = hash2(bottom, path) + ℓ          // ADDED to the hash, not hashed with it
+leaf        = value,   empty = 0
+```
+
+so the reference was committing to a different trie than the sequencer. Fixed, and pinned by
+`patricia/golden_test.rs` against vectors from a third independent implementation. Two
+consequences the slot-count cost model does not carry:
+
+- **Every node hash is a 251-bit value**, not 256. Each `HashValue` over this trie owes a
+  top-word range check (27 bits), and the "`hash = 0` means empty" reasoning that inert padding
+  leans on lives in the same 251-bit space.
+- **The edge hash needs a multi-limb add with carry** — `hash2(...) + ℓ` over eight u32 limbs —
+  in addition to the variable 256-bit shift of §4.2. Cheap next to the Blake2s gate the slot
+  already emits, but it is a second unspecified gadget in the same slot.
+
 ## 5. Delivery plan
 
 A stack of small, independently-reviewable PRs (`gt`-friendly), on top of this branch.
 
 1. **`patricia-skeleton`** — `verify_patricia_skeleton`: units-by-multiset over leaf /
    binary / edge / sibling slots, per-slot path and height constraints, the §4.2 shift
-   gadget. *Acceptance:* round-trips against `reference.rs` on random tries; circuit
+   gadget, the §4.4 top-word range check and additive-length gadget, and per P4/P5 the
+   two-multiset split with `is_zero`-derived absent and empty flags. *Acceptance:* round-trips against `reference.rs` on random tries; circuit
    topology provably independent of witness (the unpacker's
    `structure_is_witness_independent` / `circuit_is_fixed_across_shape` tests are the
    pattern).
@@ -201,13 +233,17 @@ Steps 1–2 are unavoidable prerequisites and are most of the effort.
 
 ## 6. Open questions for the assignee
 
-1. **Does the skeleton circuit handle absent keys (value 0) from the start?** Folding
-   DESIGN.md's PR-3 insert/delete work into step 1 because payments needs it (§4.3), or keep
-   the split and accept that the nonce tree cannot be proven until step 2 lands. This is the
-   first decision to make — it shapes step 1's interface.
-2. **How is capacity sized in production?** Given siblings scale with `log₂(N/K)`, a fixed
-   generous budget wastes gates on small blocks and breaks on large account sets. Options:
-   per-block capacity classes, or a capacity derived from a committed account count.
+1. ~~**Does the skeleton circuit handle absent keys (value 0) from the start?**~~ **Decided:
+   yes** — inserts and absent keys are in step 1 (P4), and the empty trie is handled by a
+   root-derived flag (P5). The nonce trie needs both: it is 100% inserts and starts empty.
+2. **How is capacity sized in production?** `n_leaves = K` is now fixed by P4, and siblings
+   are derived, so the open parameter is `n_binary` (plus `n_edge`). It scales as
+   `K·log₂(N/K)` — measured `binary/K ≈ log₂(N/K) + 0.5`, with `edges ≈ 1.6K` independent of
+   `N` — so a fixed generous budget wastes gates on small blocks and *breaks* on large account
+   sets. An undersized capacity is unsatisfiable (availability, not soundness), an oversized
+   one grows the padding surface that must be proven inert. Options: per-block capacity
+   classes, or a capacity derived from a *committed* account count — assuming it makes the
+   choice a trusted input.
 3. **Sibling canonicity.** A sibling is an opaque subtree; its claimed `kind` is not
    verifiable in-circuit. Injectivity of map → root is what update soundness leans on
    (DESIGN.md:33–40), so the argument for why unverifiable sibling kinds are safe needs
