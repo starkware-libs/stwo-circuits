@@ -10,3 +10,7 @@
 //!   Patricia verifiers.
 
 pub mod reference;
+
+#[cfg(test)]
+#[path = "slot_count_test.rs"]
+mod slot_count_test;
