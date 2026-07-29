@@ -11,11 +11,17 @@
 //!   writing `0` deletes it.
 //! - **Leaf** (height 0): hash = its value (non-zero for present keys).
 //! - **Binary node** (height `h ≥ 1`): two non-empty children at height `h - 1`; `hash =
-//!   blake2s(left_hash ‖ right_hash)` (64 bytes).
+//!   hash2(left_hash, right_hash)`.
 //! - **Edge node** (height `h`, length `1 ≤ ℓ ≤ h`): compresses `ℓ` single-child levels down to a
-//!   non-empty `bottom` at height `h - ℓ`; `hash = blake2s(bottom_hash ‖ path ‖ ℓ)` (8 + 8 + 1
-//!   little-endian `u32` words = 68 bytes). `path` holds the `ℓ` compressed key bits, LSB-aligned:
-//!   path bit `j` is key bit `h - ℓ + j`, and bits `≥ ℓ` are zero.
+//!   non-empty `bottom` at height `h - ℓ`; `hash = hash2(bottom_hash, path) + ℓ` — the length is
+//!   **added** to the hash, not hashed with it. `path` holds the `ℓ` compressed key bits,
+//!   LSB-aligned: path bit `j` is key bit `h - ℓ + j`, and bits `≥ ℓ` are zero.
+//!
+//! The inner hash is [`hash2`]: blake2s over the two operands' little-endian bytes, **truncated
+//! to 251 bits**. This is the production convention — `payment_thread_patricia::Blake2s251` and
+//! `blake_as_hash.cairo` in the Cairo0 program — so roots computed here equal the roots the
+//! sequencer commits and the Cairo0 program proves. Node hashes are therefore 251-bit values,
+//! which is what every in-circuit `HashValue` over this trie must range-check.
 //!
 //! # Canonical form
 //!
@@ -37,6 +43,10 @@ use stwo::core::vcs::blake2_hash::{Blake2sHash, Blake2sHasher};
 #[cfg(test)]
 #[path = "reference_test.rs"]
 mod test;
+
+#[cfg(test)]
+#[path = "golden_test.rs"]
+mod golden_test;
 
 /// Eight little-endian `u32` words (word 0 least significant) — the common shape of keys, values,
 /// and blake2s hashes.
@@ -74,22 +84,47 @@ fn hash_to_words(hash: Blake2sHash) -> Word256 {
     std::array::from_fn(|i| u32::from_le_bytes(hash.0[4 * i..4 * i + 4].try_into().unwrap()))
 }
 
-/// Binary-node hash: `blake2s(left ‖ right)` over the 64 bytes of both children's hash words.
-pub fn hash_binary(left: &Word256, right: &Word256) -> Word256 {
+/// Mask for the top word of a 251-bit hash: `hash2` truncates to 251 bits, so the most
+/// significant word keeps 27 of its 32 bits.
+const TOP_WORD_MASK: u32 = (1 << 27) - 1;
+
+/// `hash2(x, y) = LE_u32s(blake2s(LE32(x) ‖ LE32(y))) & (2^251 - 1)` — the production inner
+/// hash (`payment_thread_patricia::Blake2s251`, mirrored by `blake_as_hash.cairo`).
+pub fn hash2(x: &Word256, y: &Word256) -> Word256 {
     let mut hasher = Blake2sHasher::new();
-    for word in left.iter().chain(right.iter()) {
+    for word in x.iter().chain(y.iter()) {
         hasher.update(&word.to_le_bytes());
     }
-    hash_to_words(hasher.finalize())
+    let mut words = hash_to_words(hasher.finalize());
+    words[7] &= TOP_WORD_MASK;
+    words
 }
 
-/// Edge-node hash: `blake2s(bottom ‖ path ‖ length)` over 68 bytes (8 + 8 + 1 words).
+/// Binary-node hash: `hash2(left, right)`.
+pub fn hash_binary(left: &Word256, right: &Word256) -> Word256 {
+    hash2(left, right)
+}
+
+/// Edge-node hash: `hash2(bottom, path) + length` — the length is *added* to the truncated
+/// hash, not hashed with it. Sum of a 251-bit value and `length ≤ 251`, so it cannot overflow
+/// 256 bits and needs no reduction here.
 pub fn hash_edge(bottom: &Word256, path: &Word256, length: u32) -> Word256 {
-    let mut hasher = Blake2sHasher::new();
-    for word in bottom.iter().chain(path.iter()).chain(std::iter::once(&length)) {
-        hasher.update(&word.to_le_bytes());
+    add_small(hash2(bottom, path), length)
+}
+
+/// Adds a small scalar to a `Word256`, propagating carries.
+fn add_small(mut words: Word256, addend: u32) -> Word256 {
+    let mut carry = addend as u64;
+    for word in words.iter_mut() {
+        let sum = *word as u64 + carry;
+        *word = sum as u32;
+        carry = sum >> 32;
+        if carry == 0 {
+            break;
+        }
     }
-    hash_to_words(hasher.finalize())
+    debug_assert_eq!(carry, 0, "a 251-bit hash plus a length cannot overflow 256 bits");
+    words
 }
 
 impl PatriciaTree {

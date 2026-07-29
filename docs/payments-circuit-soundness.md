@@ -122,11 +122,22 @@ hole waiting to be assumed away. Every row must name the layer that closes it.
 | **The empty trie has no skeleton.** `build_trie` returns `None` for an empty entry set, so there is no root unit for the multiset to hold out. **The nonce trie starts empty**, so this is on the payments critical path, not a corner case. | documented on `extract_skeleton`; callers must special-case the all-zero root | `patricia-skeleton`'s interface decision (design doc step 1): either a synthesized empty-root unit or an explicit empty-trie branch. |
 | **Sibling subtree authenticity.** A sibling's *kind* is partly constrained after all (an edge's `bottom.kind != Edge` by maximal merging; `Leaf ⟺ height == 0`), but whether its claimed hash is a real subtree of that kind is unverifiable in-circuit. | — | the written injectivity argument in `patricia-update` (design doc §6 Q3). Narrower than that doc assumes, so state exactly the residual assumption. |
 | **Absent keys emit no leaf unit.** Non-membership is carried by the diverging edge plus its opaque bottom, so leaf slots do not map 1:1 to batch keys. Interacts with row 1: a 1:1 binding would close the class-migration gap inside the skeleton. | `skeleton_test` absent-key cases | `patricia-skeleton` interface decision — synthesize a zero-leaf per absent key, or bind at the caller. |
+| **Production canonical *construction* is not yet pinned.** The golden vectors pin the hash convention (`hash2` truncated to 251 bits, edge = `hash2(bottom, path) + ℓ`), but not that production builds the same canonical shape — specifically that `Felt::from(EdgePath)` uses the same LSB-aligned `path` layout as `reference.rs`. | `patricia::reference::golden_test` (pins the spec, not the agreement) | one test on the production side (`payment_thread_patricia`) asserting a shared vector; until then "reference == production" rests on reading both. |
 | **Signature verification (design doc P3).** v1 proves bookkeeping over *unauthenticated* transfers. | — | out of scope for v1; needs 252-bit field EC arithmetic the DSL lacks. Must be stated in the top-level circuit's own docs so nothing downstream over-claims. |
 
 Note on the §4.1 identity: it is `siblings = binary − leaf_units + 1`, **not** `− K`. With
 absent keys `leaf_units < K`, so a capacity sized from `K` stays correct while the
 witness-side check must count leaf *units*.
+
+### Why this ledger exists — a worked example
+
+The reference trie originally hashed binary nodes as untruncated `blake2s(l ‖ r)` and edges as
+`blake2s(bottom ‖ path ‖ ℓ)`, while production and the Cairo0 program use `hash2` truncated to
+251 bits with `+ ℓ` added to the edge hash. **All 107 tests passed** before and after the
+correction, because every one of them compared the reference against itself. A circuit built on
+it would have proven roots the sequencer never computes — an airtight proof of the wrong
+statement. `golden_test` now pins the convention against an independently computed vector, and
+deliberately breaking the truncation fails 8 tests.
 
 ## Oracles worth exploiting
 
