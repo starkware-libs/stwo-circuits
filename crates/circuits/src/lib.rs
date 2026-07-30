@@ -6,6 +6,7 @@ pub mod context;
 pub mod extract_bits;
 pub mod finalize_constants;
 pub mod ivalue;
+pub mod keccak;
 pub mod ops;
 pub mod simd;
 pub mod stats;
