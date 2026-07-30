@@ -192,7 +192,7 @@ fn circuit_is_fixed_across_witnesses() {
 #[test]
 fn fingerprint_is_pinned() {
     const SKELETON_2_6_4_FINGERPRINT: &str =
-        "0066d00c62894a60bc70b680a46779c13dace7d8ebf6dd27eff494eccb2cb5a6";
+        "ff156691c2304f42021465d5959e90292aa0092815ebd70a16c04dea8decf70e";
     let capacity = SkeletonCapacity { n_leaves: 2, n_binary: 6, n_edge: 4 };
     let witness = fixture_witness(2, 0);
     let fingerprint = circuit_fingerprint(&circuit_of::<QM31>(&witness, &capacity)).to_string();

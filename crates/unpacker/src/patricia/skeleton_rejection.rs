@@ -164,6 +164,20 @@ pub const REJECTION_CASES: &[RejectionCase] = &[
         apply: edge_bottom_claims_edge,
     },
     RejectionCase {
+        label: "edge bottom claims opaque above height 0",
+        family: Family::Canonicity,
+        detected_by: Check::Canonicity,
+        needs_padding: false,
+        apply: edge_bottom_claims_tall_opaque,
+    },
+    RejectionCase {
+        label: "leaf unit migrated into the sibling class",
+        family: Family::KindConfusion,
+        detected_by: Check::KindTag,
+        needs_padding: false,
+        apply: migrate_leaf_into_siblings,
+    },
+    RejectionCase {
         label: "sibling unit dropped",
         family: Family::MultisetBalance,
         detected_by: Check::SiblingCount,
@@ -298,16 +312,36 @@ fn edge_path_above_length(witness: &mut SkeletonWitness) {
     slot.edge_path[(bit / 32) as usize] |= 1 << (bit % 32);
 }
 
-/// Needs an edge whose `bottom` is an opaque sibling — the absent-key shape, since a present key's
-/// edge always has a touched bottom.
+/// A slot-only modification: consistent retagging would first trip the producer's derived kind,
+/// attributing away from the edge rule this case targets. The slot's local canonicity check runs
+/// before the multiset, so the attribution lands where aimed.
 fn edge_bottom_claims_edge(witness: &mut SkeletonWitness) {
-    let bottom = witness
+    let slot = tall_bottom_edge(witness);
+    slot.bottom.kind = SkeletonKind::Edge;
+}
+
+/// The P7 rule: an Opaque unit may sit under an edge only at height 0. Slot-only, as above.
+fn edge_bottom_claims_tall_opaque(witness: &mut SkeletonWitness) {
+    let slot = tall_bottom_edge(witness);
+    slot.bottom.kind = SkeletonKind::Opaque;
+}
+
+/// A `Leaf`-tagged unit moved into the sibling class — the same-kind class migration that was
+/// undetectable before P7 gave siblings their own tag.
+fn migrate_leaf_into_siblings(witness: &mut SkeletonWitness) {
+    let leaf = witness.leaves[0];
+    assert!(leaf.hash != EMPTY_HASH, "leaf 0 is absent; the fixture must lead with present keys");
+    witness.siblings.push(leaf);
+    witness.leaves[0] = SkeletonUnit { hash: EMPTY_HASH, ..leaf };
+}
+
+/// The first edge slot whose live bottom sits above height 0.
+fn tall_bottom_edge(witness: &mut SkeletonWitness) -> &mut EdgeSlot {
+    witness
         .edges
-        .iter()
-        .map(|slot| slot.bottom)
-        .find(|unit| unit.height > 0 && witness.siblings.contains(unit))
-        .expect("no edge slot with a sibling bottom above height 0; use an absent-key witness");
-    retag(witness, &bottom, SkeletonUnit { kind: SkeletonKind::Edge, ..bottom });
+        .iter_mut()
+        .find(|slot| !slot.out.is_inert() && slot.bottom.height > 0)
+        .expect("no edge slot with a bottom above height 0")
 }
 
 fn drop_sibling_unit(witness: &mut SkeletonWitness) {

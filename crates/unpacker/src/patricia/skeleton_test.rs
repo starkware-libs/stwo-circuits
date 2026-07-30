@@ -5,8 +5,7 @@ use rstest::rstest;
 use super::rejection::{Family, REJECTION_CASES, oracle};
 use super::{
     BinarySlot, Check, EdgeSlot, INERT_UNIT, SkeletonCapacity, SkeletonKind, SkeletonUnit,
-    SkeletonWitness, bottom_path, child_path, extract_skeleton, key_prefix, kind_of,
-    witness_invariants,
+    SkeletonWitness, bottom_path, child_path, extract_skeleton, key_prefix, witness_invariants,
 };
 use crate::patricia::reference::{PatriciaTree, Word256, build_trie, hash_binary, hash_edge};
 use crate::patricia::slot_count_test::{HEIGHT, SlotCounts, count_skeleton, key_of, trie_of};
@@ -230,8 +229,12 @@ fn no_keys_collapses_the_trie_into_one_sibling() {
     let tree = fixture_trie();
     let witness = extract_skeleton(Some(&tree), HEIGHT, &[]);
     assert!(witness.leaves.is_empty() && witness.binaries.is_empty() && witness.edges.is_empty());
-    let root =
-        SkeletonUnit { height: HEIGHT, path: [0; 8], kind: kind_of(&tree), hash: tree.hash() };
+    let root = SkeletonUnit {
+        height: HEIGHT,
+        path: [0; 8],
+        kind: SkeletonKind::Opaque,
+        hash: tree.hash(),
+    };
     assert!(witness.siblings == vec![root]);
     witness_invariants(&witness).unwrap();
 }
@@ -261,18 +264,22 @@ fn keys_differing_in_the_last_bit() {
     witness_invariants(&witness).unwrap();
 }
 
-/// An absent key diverges inside the shared edge, so the batch touches the edge but not its bottom
-/// — the non-membership evidence an insert needs. Its leaf slot carries the key with value 0.
+/// An absent key diverges inside the shared edge: the edge is touched, its untouched bottom sits
+/// above height 0 and so is opened one binary level (P7), leaving two opaque siblings.
 #[test]
 fn absent_key_ends_the_walk_at_the_diverging_edge() {
     let tree = build_trie(&[(w(0b110), value(0)), (w(0b111), value(1))].into(), 3).unwrap();
     let key = w(0b010);
     let witness = extract_skeleton(Some(&tree), 3, &[key]);
     let absent = SkeletonUnit { height: 0, path: key, kind: SkeletonKind::Leaf, hash: [0; 8] };
-    assert!(witness.leaves == vec![absent] && witness.binaries.is_empty());
-    assert!(witness.edges.len() == 1 && witness.siblings.len() == 1);
-    assert!(witness.siblings[0] == witness.edges[0].bottom);
-    assert!(witness.siblings[0].kind == SkeletonKind::Binary);
+    assert!(witness.leaves == vec![absent]);
+    assert!(witness.edges.len() == 1 && witness.binaries.len() == 1);
+    assert!(witness.edges[0].bottom == witness.binaries[0].out);
+    assert!(witness.binaries[0].out.kind == SkeletonKind::Binary);
+    assert!(witness.siblings.len() == 2);
+    assert!(witness.siblings.iter().all(|unit| unit.kind == SkeletonKind::Opaque));
+    assert!(witness.siblings.contains(&witness.binaries[0].left));
+    assert!(witness.siblings.contains(&witness.binaries[0].right));
     witness_invariants(&witness).unwrap();
 }
 
@@ -286,9 +293,22 @@ fn all_keys_absent_yields_zero_valued_leaf_slots() {
     assert!(witness.leaves.iter().all(|unit| unit.hash == [0; 8]));
     assert!(witness.leaves.iter().map(|unit| unit.path).eq(keys.iter().copied()));
     assert!(!witness.edges.is_empty() && !witness.binaries.is_empty());
-    let opaque =
-        witness.edges.iter().filter(|slot| witness.siblings.contains(&slot.bottom)).count();
-    assert!(opaque > 0, "an absent key must leave an edge with an opaque bottom");
+    // Each divergence opens the untouched bottom one binary level (P7): some binary slot has two
+    // opaque sibling children, and no edge bottom above height 0 is opaque.
+    let opened = witness
+        .binaries
+        .iter()
+        .filter(|slot| {
+            witness.siblings.contains(&slot.left) && witness.siblings.contains(&slot.right)
+        })
+        .count();
+    assert!(opened > 0, "an absent key must open the diverging edge's bottom");
+    assert!(
+        witness
+            .edges
+            .iter()
+            .all(|slot| { slot.bottom.kind != SkeletonKind::Opaque || slot.bottom.height == 0 })
+    );
     witness_invariants(&witness).unwrap();
 }
 
@@ -449,14 +469,15 @@ fn every_family_has_a_rejection_case() {
     assert!(covered == all.into_iter().collect::<BTreeSet<Family>>());
 }
 
-/// A leaf unit moved into the sibling class *without* changing its tag is invisible to these
-/// invariants: cardinalities and the multiset are untouched, and a height-0 `Leaf` unit is a
-/// structurally valid sibling. What forbids it is the caller binding each leaf slot to a batch key,
-/// which lives outside the skeleton — recorded here so the gap stays explicit.
+/// Before P7 a leaf unit moved into the sibling class was invisible to these invariants — a
+/// height-0 `Leaf` unit was a structurally valid sibling. The dedicated `Opaque` tag closes the
+/// gap out-of-circuit too: the migrated unit's tag betrays it. (The full case, with the vacated
+/// slot turned absent, is the `leaf unit migrated into the sibling class` rejection row.)
 #[test]
-fn same_kind_class_migration_is_not_detected_here() {
+fn same_kind_class_migration_is_detected_since_p7() {
     let mut witness = rejection_case_fixture();
     let leaf = witness.leaves.remove(0);
     witness.siblings.push(leaf);
-    assert!(witness_invariants(&witness).is_ok());
+    let violation = witness_invariants(&witness).expect_err("migration must be detected");
+    assert!(violation.check == Check::KindTag);
 }

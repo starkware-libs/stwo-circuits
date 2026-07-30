@@ -80,6 +80,10 @@ pub enum SkeletonKind {
     Leaf = 1,
     Binary = 2,
     Edge = 3,
+    /// An untouched sibling subtree (P7). A dedicated tag, so a sibling makes no structural
+    /// claim and can never cancel against a slot output. An Opaque unit may sit under an edge
+    /// only at height 0 — the extractor opens one binary level otherwise.
+    Opaque = 4,
 }
 
 impl SkeletonKind {
@@ -337,7 +341,7 @@ fn walk(
     units: &mut Units,
 ) -> SkeletonUnit {
     if keys.is_empty() {
-        let unit = SkeletonUnit { height, path, kind: kind_of(tree), hash: tree.hash() };
+        let unit = SkeletonUnit { height, path, kind: SkeletonKind::Opaque, hash: tree.hash() };
         units.siblings.push(unit);
         return unit;
     }
@@ -389,7 +393,14 @@ fn walk_edge(
     // A key whose bits disagree with the compressed run is absent: its walk ends at this edge.
     let below: Vec<Word256> =
         keys.iter().copied().filter(|key| key_prefix(key, below_height) == below_path).collect();
-    let bottom = walk(bottom, below_height, below_path, &below, units);
+    // P7: an Opaque unit may sit under an edge only at height 0. An untouched bottom above
+    // height 0 is a Binary (canonical form: non-edge by maximal merging, non-leaf above 0), so
+    // open exactly one level — its children become the opaque siblings.
+    let bottom = if below.is_empty() && below_height > 0 {
+        walk_binary(bottom, below_height, below_path, &below, units)
+    } else {
+        walk(bottom, below_height, below_path, &below, units)
+    };
     let out = SkeletonUnit {
         height,
         path,
@@ -398,14 +409,6 @@ fn walk_edge(
     };
     units.edges.push(EdgeSlot { out, bottom, length, edge_path });
     out
-}
-
-fn kind_of(tree: &PatriciaTree) -> SkeletonKind {
-    match tree {
-        PatriciaTree::Leaf { .. } => SkeletonKind::Leaf,
-        PatriciaTree::Binary { .. } => SkeletonKind::Binary,
-        PatriciaTree::Edge { .. } => SkeletonKind::Edge,
-    }
 }
 
 fn set_bit(word: &mut Word256, i: u32, bit: u32) {
@@ -473,6 +476,10 @@ fn check_units(witness: &SkeletonWitness) -> Result<(), Violation> {
     }
     for unit in &witness.siblings {
         check_unit(witness, unit, "sibling slot")?;
+        if !unit.is_inert() && unit.kind != SkeletonKind::Opaque {
+            let detail = format!("sibling slot holds a {:?} unit: {unit:?}", unit.kind);
+            return Err(violation(Check::KindTag, detail));
+        }
     }
     for slot in &witness.binaries {
         for unit in [&slot.out, &slot.left, &slot.right] {
@@ -509,7 +516,10 @@ fn check_unit(
         let detail = format!("{class} unit path has bits above its height: {unit:?}");
         return Err(violation(Check::Position, detail));
     }
-    if (unit.kind == SkeletonKind::Leaf) != (unit.height == 0) {
+    let leaf_level_tags = [SkeletonKind::Leaf, SkeletonKind::Opaque];
+    if (unit.kind == SkeletonKind::Leaf && unit.height != 0)
+        || (unit.height == 0 && !leaf_level_tags.contains(&unit.kind))
+    {
         let detail = format!("{class} unit tag disagrees with its height: {unit:?}");
         return Err(violation(Check::KindTag, detail));
     }
@@ -598,6 +608,10 @@ fn check_edge_canonicity(slot: &EdgeSlot) -> Result<(), Violation> {
     }
     if slot.bottom.kind == SkeletonKind::Edge {
         let detail = format!("edge over edge — the run is not maximally merged: {slot:?}");
+        return Err(violation(Check::Canonicity, detail));
+    }
+    if slot.bottom.kind == SkeletonKind::Opaque && slot.bottom.height > 0 {
+        let detail = format!("edge bottom is opaque above height 0 (P7): {slot:?}");
         return Err(violation(Check::Canonicity, detail));
     }
     Ok(())

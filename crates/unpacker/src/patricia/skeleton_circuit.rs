@@ -21,8 +21,9 @@
 //! * **Absent keys are unbound**: their key words are range-checked `u32`s and nothing more; the
 //!   caller owes the binding of every key, present or absent (in the payments stack, step 3's batch
 //!   binding).
-//! * **Sibling interiors are opaque**: a sibling's kind/height obey local shape rules, but whether
-//!   its hash is a real subtree of that kind is the update circuit's argument (design doc §6 Q3).
+//! * **Sibling interiors are opaque**: a sibling carries the dedicated `Opaque` kind (P7) and so
+//!   claims nothing structural; whether its hash is a real subtree at its position is what the
+//!   prev-side hash chain pins in the update circuit (design doc §6 Q3, decided).
 //!
 //! # Derivation argument (sketch)
 //!
@@ -42,11 +43,11 @@
 //! |---|---|---|
 //! | consumed unit fields (binary children, edge bottoms) | u16 + 16·u16 + u16 + 8·u32 | cancellation against a produced unit, whose fields its slot derives |
 //! | slot `out.path` | 16·u16 | the child relations below it plus cancellation above it |
-//! | sibling unit | 18 words | cancellation by its consumer; locally only shape rules (opaque **by design**, see above) |
+//! | sibling unit (height, path, hash; kind is derived) | u16 + 16·u16 + 8·u32 | cancellation by its consumer; locally only a non-empty hash (opaque **by design**, see above) |
 //! | leaf `key` / `value` | 8·u32 each | present: the multiset consumes `{0, key, Leaf, value}`; absent: **unbound** — the caller binds |
 //! | edge `ℓ` bits, `edge_path` limbs | 8·bool, 16·u16 | Blake preimage binding through the pinned `out.hash`, plus `ℓ ≥ 1`, `edge_path < 2^ℓ` |
 //! | root hash words | 8·u32 | the caller's public-input binding |
-//! | root kind | u16 | cancellation + the tag rules (`0` iff empty; `{2,3}` at height > 0) |
+//! | root kind | u16 | cancellation + the tag rules (`0` iff empty; `{2,3,4}` at height > 0, `{1,4}` at height 0) |
 //! | carries, borrows, lo/hi splits, `2^ℓ − 1 − ep` | bool / u16 | unique given the ranged relation they close |
 //! | is-zero / gated-inverse witnesses | field | the standard deterministic gadgets (`is_zero_words`, `value·w = flag`) |
 //!
@@ -126,23 +127,57 @@ pub fn verify_patricia_skeleton<Value: IValue>(
     capacity: &SkeletonCapacity,
 ) -> VerifiedSkeleton {
     let padded = witness.padded(capacity);
+    let keys: Vec<[U32Wrapper<Var>; 8]> =
+        padded.leaves.iter().map(|unit| guess_word256(ctx, &unit.path)).collect();
+    let siblings: Vec<SkeletonUnitVars> =
+        padded.siblings.iter().map(|unit| sibling_slot(ctx, unit)).collect();
+    let flow = skeleton_flow(ctx, &padded, &keys, &siblings);
+    permute_units(ctx, &flow.consumed, &flow.produced);
+    VerifiedSkeleton { root: flow.root, leaves: flow.leaves, siblings }
+}
+
+/// One skeleton's slot flow over externally supplied leaf keys and sibling units — the core both
+/// [`verify_patricia_skeleton`] and the update circuit instantiate (P6). The caller guesses the
+/// keys and siblings (shared between the update's two sides), runs one `permute_units` per flow,
+/// and binds the root.
+pub(crate) struct SkeletonFlow {
+    pub produced: Vec<Vec<U32Wrapper<Var>>>,
+    pub consumed: Vec<Vec<U32Wrapper<Var>>>,
+    pub root: HashValue<Var>,
+    pub leaves: Vec<VerifiedLeaf>,
+}
+
+/// Emits every slot of `padded` — leaf values against the shared `keys`, binaries, edges, the
+/// shared `siblings`' words, and the root entry — returning the flow for the caller's
+/// `permute_units`. `padded.leaves` must be aligned 1:1 with `keys`.
+pub(crate) fn skeleton_flow<Value: IValue>(
+    ctx: &mut Context<Value>,
+    padded: &SkeletonWitness,
+    keys: &[[U32Wrapper<Var>; 8]],
+    siblings: &[SkeletonUnitVars],
+) -> SkeletonFlow {
+    assert!(keys.len() == padded.leaves.len(), "keys are 1:1 with leaf slots");
+    assert!(siblings.len() == padded.siblings.len(), "shared siblings must fill every slot");
     let mut produced: Vec<Vec<U32Wrapper<Var>>> = Vec::new();
     let mut consumed: Vec<Vec<U32Wrapper<Var>>> = Vec::new();
 
-    let leaves: Vec<VerifiedLeaf> =
-        padded.leaves.iter().map(|unit| leaf_slot(ctx, unit, &mut produced)).collect();
+    let leaves: Vec<VerifiedLeaf> = padded
+        .leaves
+        .iter()
+        .zip(keys)
+        .map(|(unit, key)| leaf_slot(ctx, unit, key, &mut produced))
+        .collect();
     for slot in &padded.binaries {
         binary_slot(ctx, slot, &mut produced, &mut consumed);
     }
     for slot in &padded.edges {
         edge_slot(ctx, slot, &mut produced, &mut consumed);
     }
-    let siblings: Vec<SkeletonUnitVars> =
-        padded.siblings.iter().map(|unit| sibling_slot(ctx, unit, &mut produced)).collect();
-    let root = root_entry(ctx, &padded, &mut consumed);
-
-    permute_units(ctx, &consumed, &produced);
-    VerifiedSkeleton { root, leaves, siblings }
+    for sibling in siblings {
+        produced.push(sibling.words());
+    }
+    let root = root_entry(ctx, padded, &mut consumed);
+    SkeletonFlow { produced, consumed, root, leaves }
 }
 
 /// Guesses a unit's four fields, each range-constrained to its width.
@@ -155,29 +190,29 @@ fn guess_unit<Value: IValue>(ctx: &mut Context<Value>, unit: &SkeletonUnit) -> S
     }
 }
 
-/// A batch leaf slot (P4): guesses `key` and `value`, derives presence from the value, and
-/// contributes `{0, key, Leaf, value}` to the multiset when present and the inert unit otherwise —
-/// the entry's words are `is_present`-gated, never branched on.
+/// A batch leaf slot (P4): takes the shared `key` vars, guesses `value`, derives presence from
+/// the value, and contributes `{0, key, Leaf, value}` to the multiset when present and the inert
+/// unit otherwise — the entry's words are `is_present`-gated, never branched on.
 fn leaf_slot<Value: IValue>(
     ctx: &mut Context<Value>,
     unit: &SkeletonUnit,
+    key: &[U32Wrapper<Var>; 8],
     produced: &mut Vec<Vec<U32Wrapper<Var>>>,
 ) -> VerifiedLeaf {
-    let key = guess_word256(ctx, &unit.path);
     let value = guess_word256(ctx, &unit.hash);
     let value_zero = is_zero_words(ctx, &value);
     let one = ctx.one();
     let is_present = eval!(ctx, (one) - (value_zero));
 
     let mut entry = vec![U32Wrapper::new_unsafe(ctx.zero())];
-    for word in &key {
+    for word in key {
         entry.push(U32Wrapper::new_unsafe(mul(ctx, *word.get(), is_present)));
     }
     entry.push(U32Wrapper::new_unsafe(is_present));
     entry.extend(value);
     produced.push(entry);
 
-    VerifiedLeaf { key: HashValue(key), value: HashValue(value), is_present }
+    VerifiedLeaf { key: HashValue(*key), value: HashValue(value), is_present }
 }
 
 /// A binary slot: consumes two guessed children, produces `{h+1, path, Binary, hash2(l, r)}`.
@@ -259,6 +294,12 @@ fn edge_slot<Value: IValue>(
     let edge_tag = ctx.constant(qm31_from_u32s(SkeletonKind::Edge.tag(), 0, 0, 0));
     let not_edge = sub(ctx, bottom.kind, edge_tag);
     require_nonzero_when(ctx, not_edge, is_live);
+    // P7: an Opaque bottom is allowed only at height 0, so no structural claim about an
+    // untouched subtree ever feeds the no-edge-over-edge rule above.
+    let opaque_tag = ctx.constant(qm31_from_u32s(SkeletonKind::Opaque.tag(), 0, 0, 0));
+    let opaque_offset = sub(ctx, bottom.kind, opaque_tag);
+    let bottom_opaque = is_zero_words(ctx, &[U32Wrapper::new_unsafe(opaque_offset)]);
+    forbid_when(ctx, bottom.height, bottom_opaque);
     let bottom_empty = is_zero_words(ctx, &bottom.hash);
     forbid_when(ctx, bottom_empty, is_live);
 
@@ -287,44 +328,31 @@ fn edge_slot<Value: IValue>(
     produced.push(unit_words(out_height, &out_path.words, out_kind, &out_hash));
 }
 
-/// A sibling slot: produces one opaque guessed unit. Local shape rules only — kind is one of the
-/// live tags, `Leaf ⟺ height 0`, non-empty hash; everything else about a sibling is deliberately
-/// unproven here (module docs).
-fn sibling_slot<Value: IValue>(
+/// Guesses and shape-checks one sibling unit; the caller feeds its words into every flow that
+/// shares it. The kind is *derived* — `Opaque` when live, never guessed (P7) — so a sibling makes
+/// no structural claim and can never cancel against a slot output. The only shape rule is a
+/// non-empty hash; everything else about a sibling is deliberately opaque (module docs).
+pub(crate) fn sibling_slot<Value: IValue>(
     ctx: &mut Context<Value>,
     unit: &SkeletonUnit,
-    produced: &mut Vec<Vec<U32Wrapper<Var>>>,
 ) -> SkeletonUnitVars {
-    let sibling = guess_unit(ctx, unit);
-    let words = sibling.words();
-    let inert = is_zero_words(ctx, &words);
+    let height = guess_u16(ctx, unit.height);
+    let path = guess_limbed(ctx, &unit.path);
+    let hash = guess_word256(ctx, &unit.hash);
+    // Liveness from the claim-free fields, so deriving the kind from it is not circular.
+    let mut claim_free = vec![U32Wrapper::new_unsafe(height)];
+    claim_free.extend(path.words);
+    claim_free.extend(hash);
+    let inert = is_zero_words(ctx, &claim_free);
     let one = ctx.one();
     let is_live = eval!(ctx, (one) - (inert));
+    let opaque_tag = ctx.constant(qm31_from_u32s(SkeletonKind::Opaque.tag(), 0, 0, 0));
+    let kind = mul(ctx, is_live, opaque_tag);
 
-    let empty = is_zero_words(ctx, &sibling.hash);
+    let empty = is_zero_words(ctx, &hash);
     forbid_when(ctx, empty, is_live);
 
-    // kind ∈ {Leaf, Binary, Edge} when live.
-    let tags = [SkeletonKind::Leaf, SkeletonKind::Binary, SkeletonKind::Edge];
-    let offsets: Vec<Var> = tags
-        .iter()
-        .map(|tag| {
-            let tag = ctx.constant(qm31_from_u32s(tag.tag(), 0, 0, 0));
-            sub(ctx, sibling.kind, tag)
-        })
-        .collect();
-    let live_tags = eval!(ctx, ((offsets[0]) * (offsets[1])) * (offsets[2]));
-    forbid_when(ctx, live_tags, is_live);
-
-    // Leaf ⟺ height 0, both directions gated on liveness.
-    let height_zero = is_zero_words(ctx, &[U32Wrapper::new_unsafe(sibling.height)]);
-    let at_leaf_level = mul(ctx, is_live, height_zero);
-    forbid_when(ctx, offsets[0], at_leaf_level);
-    let above_leaf_level = eval!(ctx, (is_live) * ((one) - (height_zero)));
-    require_nonzero_when(ctx, offsets[0], above_leaf_level);
-
-    produced.push(words);
-    sibling
+    SkeletonUnitVars { height, path, kind, hash }
 }
 
 /// The root entry (P5): consumes `{H, 0, kind, root}` when the guessed root is non-zero and the
@@ -341,22 +369,22 @@ fn root_entry<Value: IValue>(
     let live = eval!(ctx, (one) - (is_empty));
     let kind = guess_u16(ctx, root_kind(witness));
 
-    // Empty ⇒ the padding tag; live at height > 0 ⇒ binary or edge; live at height 0 ⇒ the
-    // single leaf. The `height == 0` branch is a shape branch, not a witness branch.
+    // Empty ⇒ the padding tag; live at height > 0 ⇒ binary, edge, or a wholly untouched trie
+    // (an Opaque root, the no-keys shape); live at height 0 ⇒ the single leaf, touched or not.
+    // The `height == 0` branch is a shape branch, not a witness branch.
     forbid_when(ctx, kind, is_empty);
-    if witness.height == 0 {
-        eq(ctx, kind, live);
+    let allowed: &[SkeletonKind] = if witness.height == 0 {
+        &[SkeletonKind::Leaf, SkeletonKind::Opaque]
     } else {
-        let offsets: Vec<Var> = [SkeletonKind::Binary, SkeletonKind::Edge]
-            .iter()
-            .map(|tag| {
-                let tag = ctx.constant(qm31_from_u32s(tag.tag(), 0, 0, 0));
-                sub(ctx, kind, tag)
-            })
-            .collect();
-        let product = mul(ctx, offsets[0], offsets[1]);
-        forbid_when(ctx, product, live);
+        &[SkeletonKind::Binary, SkeletonKind::Edge, SkeletonKind::Opaque]
+    };
+    let mut product = ctx.one();
+    for tag in allowed {
+        let tag = ctx.constant(qm31_from_u32s(tag.tag(), 0, 0, 0));
+        let offset = sub(ctx, kind, tag);
+        product = mul(ctx, product, offset);
     }
+    forbid_when(ctx, product, live);
 
     let height_constant = ctx.constant(qm31_from_u32s(witness.height, 0, 0, 0));
     let height_word = mul(ctx, live, height_constant);
@@ -389,7 +417,10 @@ fn root_kind(witness: &SkeletonWitness) -> u32 {
 }
 
 /// Guesses eight `u32` words (each two ranged 16-bit halves).
-fn guess_word256<Value: IValue>(ctx: &mut Context<Value>, value: &Word256) -> [U32Wrapper<Var>; 8] {
+pub(crate) fn guess_word256<Value: IValue>(
+    ctx: &mut Context<Value>,
+    value: &Word256,
+) -> [U32Wrapper<Var>; 8] {
     std::array::from_fn(|i| U32Wrapper::new_unsafe(Value::pack_u32(value[i])).guess(ctx))
 }
 

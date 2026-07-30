@@ -1,6 +1,6 @@
 # Payments Circuit — Design & Handoff
 
-Status: **step 1 implemented.** Branch `anatg/payments-circuit`. `verify_patricia_skeleton`
+Status: **steps 1–2 implemented.** Branch `anatg/payments-circuit`. `verify_patricia_skeleton`
 (`patricia/skeleton_circuit.rs`) verifies the skeleton in-circuit — units-by-multiset over the
 four slot classes, the §4.2 shift and §4.4 truncation/additive-length gadgets
 (`patricia/word_gadgets.rs`), and the P4/P5 derived flags — with the full rejection catalogue
@@ -51,6 +51,10 @@ different words.
 | P2 | **Index-keyed dict + binding argument** for the dict↔Patricia bridge | `Dict` is M31 keys *and* values; Patricia keys/values are `Word256`. A 251-bit account and a u128 balance fit neither. See §2.1. |
 | P4 | **Absent keys get a leaf slot** — leaf slots are 1:1 with the batch's `K` keys; an absent key carries value `0` | Closes same-kind class migration inside the skeleton instead of deferring it to the step-3 bridge, fixes `n_leaves = K` for any present/absent mix, and makes the insert-dominated case (§4.3) first class. The absent flag is *derived*: a canonical trie has no zero-valued leaves, so `is_absent ⟺ is_zero(value)` — no new free witness. Splits the argument into two multisets: trie-structure (present leaves + binaries + edges + siblings) and batch-binding (all `K` leaf slots). |
 | P5 | **Emptiness is derived from the root, not witnessed** | An empty trie has no unit to hold out as the root. `is_empty = is_zero_words(prev_root)` reads a **public input**, so `root == 0` ⟹ all trie slots inert and all keys absent, with nothing for a prover to choose. Rejected: injecting a synthesized empty-root unit (produced by nothing, so it needs the same flag anyway, and collides with `hash = 0` padding) and a free boolean flag (a prover could claim empty for a non-empty trie). Seeding a genesis leaf in production so the case never arises is worth doing as well, but must not be *relied* on: that would make satisfiability a trusted input. |
+| P6 | **Structural sharing in the update circuit**: sibling units are guessed once and fed into *both* skeletons' multisets; per-row keys are shared vars; the slot builders are extracted into a `skeleton_core` reused by both `verify_patricia_skeleton` and `verify_patricia_update` | Sharing and cross-instance separation become structural facts (inexpressible to violate) instead of constraints; one copy of the canonicity rules that can never drift. Rejected: eq-bound sibling pairs (duplicated guesses + an alignment seam), one combined side-tagged multiset (turns "a prev unit cannot satisfy the new fold" into a tag argument). |
+| P7 | **Siblings carry a dedicated `Opaque` kind tag; an edge bottom may be Opaque only at height 0** — extraction opens one binary level below an edge whose bottom would otherwise be opaque above height 0 | Closes §6 Q3's kind residual: a mis-kinded sibling in the delete-merge shape could otherwise make `new_root` a *non-canonical encoding of the correct map*, breaking the canonical-prev induction across blocks. Cost ≈ one Blake gate per divergence; bonus: a sibling can never cancel against a slot output. |
+| P8 | **One shared capacity for both update sides** | `n_binary` is forced common anyway by the shared sibling count; a per-side `n_edge` saves only padded edge slots. |
+| P9 | **`(0, 0)` update rows are accepted and prove "unchanged", never absence** | Forbidding them makes honest delete-of-absent and net-zero batches unsatisfiable (an availability trap). The nonce path never produces them — every transfer is a `(0, 1)` insert, the proven-absence case. Recorded in the open-gap ledger. |
 | P3 | **Signature verification out of scope for v1** | Nothing in stwo-circuits can verify a signature — no EC arithmetic, no keccak. `grep -ri 'secp256k1\|ecrecover\|keccak' crates/` hits only `cairo_verifier/src/statement.rs`, unrelated. v1 proves the state transition; signatures are an explicit unproven assumption. |
 
 ### 2.1 The dict↔Patricia bridge (P2)
@@ -223,9 +227,14 @@ A stack of small, independently-reviewable PRs (`gt`-friendly), on top of this b
    acceptance and rejection coverage in `skeleton_circuit_test.rs`. One capacity consequence
    found during implementation: each absent key needs one spare binary slot
    (`SkeletonCapacity::covering`).
-2. **`patricia-update`** — `verify_patricia_update`: two skeletons, shared sibling units,
-   in-circuit canonicity. *Acceptance:* negative tests — modified sibling, non-canonical
-   encoding, insert/delete edge splits, unbacked write.
+2. **`patricia-update`** — **done** (`patricia/update_circuit.rs`): two `skeleton_flow`
+   instances over shared sibling units and shared row keys (P6), the `Opaque` sibling tag with
+   the height-0 edge-bottom rule (P7), one shared capacity (P8), and `(0, 0)` rows accepted with
+   "unchanged" semantics (P9). Witness extraction with frontier reconciliation and the
+   update-level oracle live in `patricia/update.rs`; the rejection catalogue
+   (`update_rejection.rs`) covers modified siblings (shared and one-sided), unbacked and dropped
+   writes, false absence, fake divergence, rebound keys and both root bindings, and runs through
+   both seams. Statement, closing argument and witness table: `update_circuit.rs` module docs.
 3. **`payments-state`** — the §2.1 bridge: index-keyed dicts → Patricia batch updates,
    including the index↔account binding argument and the balance-limb dicts.
 4. **`payments-transfer`** — per-transfer execution: Blake2s message hash, window checks,
@@ -249,10 +258,13 @@ Steps 1–2 are unavoidable prerequisites and are most of the effort.
    one grows the padding surface that must be proven inert. Options: per-block capacity
    classes, or a capacity derived from a *committed* account count — assuming it makes the
    choice a trusted input.
-3. **Sibling canonicity.** A sibling is an opaque subtree; its claimed `kind` is not
-   verifiable in-circuit. Injectivity of map → root is what update soundness leans on
-   (DESIGN.md:33–40), so the argument for why unverifiable sibling kinds are safe needs
-   writing down explicitly in step 2 — do not accept it as "probably fine".
+3. ~~**Sibling canonicity.**~~ **Decided (P7)**: siblings carry a dedicated `Opaque` tag and
+   an edge bottom may be Opaque only at height 0, so no structural claim about a sibling's
+   kind survives to be wrong. The residual assumptions of the injectivity argument reduce to
+   blake collision resistance — including its *shifted* variant, since the edge hash is
+   `hash2 + ℓ` with the length added (an offset-collision within `[−251, 251]` would open one
+   edge hash two ways; ≈9 bits against a 251-bit hash, stated rather than assumed) — plus a
+   canonical `prev_root` (genesis + induction, which full new-side canonicity supports).
 4. **Signature verification** (P3) is deferred, so v1 proves bookkeeping over
    *unauthenticated* transfers. `payment-threads` D9 is explicit that this attests
    bookkeeping, not validity. Confirm that is acceptable for the intended use, and track

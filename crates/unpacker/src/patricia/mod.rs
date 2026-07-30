@@ -11,13 +11,19 @@
 //! - [`mod@skeleton`] — extraction of the *touched skeleton* over a batch of keys: the witness the
 //!   skeleton circuit consumes, plus the invariants it owes.
 //! - [`mod@skeleton_circuit`] — `verify_patricia_skeleton`, the in-circuit skeleton verifier
-//!   (design doc §5 step 1).
+//!   (design doc §5 step 1), and the slot core the update circuit reuses (P6).
+//! - [`mod@update`] — the update witness: two skeletons over one shared sibling list, frontier
+//!   reconciliation, and the update-level invariants.
+//! - [`mod@update_circuit`] — `verify_patricia_update`, the in-circuit `prev_root → new_root`
+//!   verifier (design doc §5 step 2).
 //! - [`mod@word_gadgets`] — limb-level gadgets over 256-bit words: doubling, the variable shift,
 //!   the 251-bit truncation and the additive edge length.
 
 pub mod reference;
 pub mod skeleton;
 pub mod skeleton_circuit;
+pub mod update;
+pub mod update_circuit;
 pub mod word_gadgets;
 
 #[cfg(test)]
