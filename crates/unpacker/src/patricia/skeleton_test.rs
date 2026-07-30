@@ -47,14 +47,14 @@ fn mixed_keys(present: usize, absent: usize) -> Vec<Word256> {
 /// keys so that some edge slot has an opaque sibling bottom, over a trie deep enough to have
 /// siblings at many heights.
 fn rejection_case_fixture() -> SkeletonWitness {
-    extract_skeleton(&fixture_trie(), HEIGHT, &mixed_keys(6, 3))
+    extract_skeleton(Some(&fixture_trie()), HEIGHT, &mixed_keys(6, 3))
 }
 
-/// A budget with slack in every class, so every class gets padded slots.
+/// A budget with slack in every paddable class (leaf slots are the batch — never padded).
 fn generous_capacity(witness: &SkeletonWitness) -> SkeletonCapacity {
     let tight = SkeletonCapacity::covering(witness);
     SkeletonCapacity {
-        n_leaves: tight.n_leaves + 4,
+        n_leaves: tight.n_leaves,
         n_binary: tight.n_binary + 16,
         n_edge: tight.n_edge + 5,
     }
@@ -154,7 +154,7 @@ fn padding_tag_is_reserved() {
 fn unit_counts_match_count_skeleton(#[case] k: usize) {
     let tree = fixture_trie();
     let keys = present_keys(k);
-    let witness = extract_skeleton(&tree, HEIGHT, &keys);
+    let witness = extract_skeleton(Some(&tree), HEIGHT, &keys);
     let expected = count_skeleton(&tree, HEIGHT, &keys);
     let actual = SlotCounts {
         binary: witness.binaries.len(),
@@ -172,20 +172,21 @@ fn unit_counts_match_count_skeleton(#[case] k: usize) {
 #[case(6, 3)]
 #[case(16, 16)]
 fn sibling_identity_holds_on_the_extracted_witness(#[case] present: usize, #[case] absent: usize) {
-    let witness = extract_skeleton(&fixture_trie(), HEIGHT, &mixed_keys(present, absent));
+    let witness = extract_skeleton(Some(&fixture_trie()), HEIGHT, &mixed_keys(present, absent));
+    let present_leaves = witness.leaves.iter().filter(|unit| unit.hash != [0; 8]).count();
     assert!(
-        witness.siblings.len() == witness.binaries.len() + 1 - witness.leaves.len(),
-        "identity broken: {} siblings, {} binaries, {} leaves",
+        witness.siblings.len() == witness.binaries.len() + 1 - present_leaves,
+        "identity broken: {} siblings, {} binaries, {present_leaves} present leaves",
         witness.siblings.len(),
         witness.binaries.len(),
-        witness.leaves.len()
     );
+    assert!(witness.leaves.len() == present + absent, "leaf slots are 1:1 with the batch");
 }
 
 #[test]
 fn leaf_units_carry_their_keys() {
     let keys = present_keys(16);
-    let witness = extract_skeleton(&fixture_trie(), HEIGHT, &keys);
+    let witness = extract_skeleton(Some(&fixture_trie()), HEIGHT, &keys);
     let paths: BTreeSet<Word256> = witness.leaves.iter().map(|unit| unit.path).collect();
     assert!(paths == keys.iter().copied().collect::<BTreeSet<Word256>>());
     assert!(witness.leaves.iter().all(|unit| unit.height == 0));
@@ -200,7 +201,7 @@ fn leaf_units_carry_their_keys() {
 #[case(6, 3)]
 fn refolding_the_units_reproduces_the_root(#[case] present: usize, #[case] absent: usize) {
     let tree = fixture_trie();
-    let witness = extract_skeleton(&tree, HEIGHT, &mixed_keys(present, absent));
+    let witness = extract_skeleton(Some(&tree), HEIGHT, &mixed_keys(present, absent));
     assert!(witness.root == tree.hash());
     assert!(recompute_root(&witness) == tree.hash());
 }
@@ -213,21 +214,21 @@ fn refolding_the_units_reproduces_the_root(#[case] present: usize, #[case] absen
 #[case(6, 3)]
 #[case(64, 8)]
 fn extracted_witnesses_satisfy_the_invariants(#[case] present: usize, #[case] absent: usize) {
-    let witness = extract_skeleton(&fixture_trie(), HEIGHT, &mixed_keys(present, absent));
+    let witness = extract_skeleton(Some(&fixture_trie()), HEIGHT, &mixed_keys(present, absent));
     witness_invariants(&witness).expect("extracted witness must be valid");
 }
 
 #[test]
 fn empty_trie_has_no_skeleton() {
-    // The empty map has no node, so there is no root unit for the multiset to hold out; a caller
-    // must special-case the all-zero root rather than extract a skeleton.
+    // The empty map has no node, so there is no root unit for the multiset to hold out;
+    // `extract_skeleton(None, ..)` produces the all-absent witness instead (P5).
     assert!(build_trie(&BTreeMap::new(), HEIGHT).is_none());
 }
 
 #[test]
 fn no_keys_collapses_the_trie_into_one_sibling() {
     let tree = fixture_trie();
-    let witness = extract_skeleton(&tree, HEIGHT, &[]);
+    let witness = extract_skeleton(Some(&tree), HEIGHT, &[]);
     assert!(witness.leaves.is_empty() && witness.binaries.is_empty() && witness.edges.is_empty());
     let root =
         SkeletonUnit { height: HEIGHT, path: [0; 8], kind: kind_of(&tree), hash: tree.hash() };
@@ -239,7 +240,7 @@ fn no_keys_collapses_the_trie_into_one_sibling() {
 fn single_leaf_trie_is_one_full_height_edge() {
     let key = w(0b1011);
     let tree = build_trie(&[(key, value(0))].into_iter().collect(), 8).unwrap();
-    let witness = extract_skeleton(&tree, 8, &[key]);
+    let witness = extract_skeleton(Some(&tree), 8, &[key]);
     let leaf = SkeletonUnit { height: 0, path: key, kind: SkeletonKind::Leaf, hash: value(0) };
     assert!(witness.leaves == vec![leaf]);
     assert!(witness.binaries.is_empty() && witness.siblings.is_empty());
@@ -253,7 +254,7 @@ fn single_leaf_trie_is_one_full_height_edge() {
 #[test]
 fn keys_differing_in_the_last_bit() {
     let tree = build_trie(&[(w(0b110), value(0)), (w(0b111), value(1))].into(), 3).unwrap();
-    let witness = extract_skeleton(&tree, 3, &[w(0b110), w(0b111)]);
+    let witness = extract_skeleton(Some(&tree), 3, &[w(0b110), w(0b111)]);
     assert!(witness.leaves.len() == 2 && witness.binaries.len() == 1 && witness.edges.len() == 1);
     assert!(witness.siblings.is_empty());
     assert!(witness.binaries[0].out.height == 1);
@@ -261,24 +262,29 @@ fn keys_differing_in_the_last_bit() {
 }
 
 /// An absent key diverges inside the shared edge, so the batch touches the edge but not its bottom
-/// — the non-membership evidence an insert needs.
+/// — the non-membership evidence an insert needs. Its leaf slot carries the key with value 0.
 #[test]
 fn absent_key_ends_the_walk_at_the_diverging_edge() {
     let tree = build_trie(&[(w(0b110), value(0)), (w(0b111), value(1))].into(), 3).unwrap();
-    let witness = extract_skeleton(&tree, 3, &[w(0b010)]);
-    assert!(witness.leaves.is_empty() && witness.binaries.is_empty());
+    let key = w(0b010);
+    let witness = extract_skeleton(Some(&tree), 3, &[key]);
+    let absent = SkeletonUnit { height: 0, path: key, kind: SkeletonKind::Leaf, hash: [0; 8] };
+    assert!(witness.leaves == vec![absent] && witness.binaries.is_empty());
     assert!(witness.edges.len() == 1 && witness.siblings.len() == 1);
     assert!(witness.siblings[0] == witness.edges[0].bottom);
     assert!(witness.siblings[0].kind == SkeletonKind::Binary);
     witness_invariants(&witness).unwrap();
 }
 
-/// Pure inserts, the nonce-trie case: no leaf unit at all, and at least one edge left with an
-/// opaque bottom.
+/// Pure inserts, the nonce-trie case: every leaf slot is a zero-valued absent key, and at least
+/// one edge is left with an opaque bottom.
 #[test]
-fn all_keys_absent_yields_no_leaves() {
-    let witness = extract_skeleton(&fixture_trie(), HEIGHT, &absent_keys(8));
-    assert!(witness.leaves.is_empty());
+fn all_keys_absent_yields_zero_valued_leaf_slots() {
+    let keys = absent_keys(8);
+    let witness = extract_skeleton(Some(&fixture_trie()), HEIGHT, &keys);
+    assert!(witness.leaves.len() == keys.len());
+    assert!(witness.leaves.iter().all(|unit| unit.hash == [0; 8]));
+    assert!(witness.leaves.iter().map(|unit| unit.path).eq(keys.iter().copied()));
     assert!(!witness.edges.is_empty() && !witness.binaries.is_empty());
     let opaque =
         witness.edges.iter().filter(|slot| witness.siblings.contains(&slot.bottom)).count();
@@ -286,19 +292,32 @@ fn all_keys_absent_yields_no_leaves() {
     witness_invariants(&witness).unwrap();
 }
 
+/// The empty trie has no unit at all: its witness is the all-zero root with every key absent (P5).
 #[test]
-fn duplicate_keys_yield_the_same_witness() {
-    let tree = fixture_trie();
+fn empty_trie_witness_is_all_absent() {
+    let keys = absent_keys(4);
+    let witness = extract_skeleton(None, HEIGHT, &keys);
+    assert!(witness.root == [0; 8]);
+    assert!(witness.leaves.iter().all(|unit| unit.hash == [0; 8]));
+    assert!(witness.binaries.is_empty() && witness.edges.is_empty() && witness.siblings.is_empty());
+    witness_invariants(&witness).unwrap();
+    let padded = witness.padded(&SkeletonCapacity::covering(&witness));
+    witness_invariants(&padded).unwrap();
+}
+
+#[test]
+#[should_panic(expected = "keys repeat")]
+fn duplicate_keys_panic() {
     let keys = present_keys(4);
     let doubled: Vec<Word256> = keys.iter().chain(&keys).copied().collect();
-    assert!(extract_skeleton(&tree, HEIGHT, &doubled) == extract_skeleton(&tree, HEIGHT, &keys));
+    extract_skeleton(Some(&fixture_trie()), HEIGHT, &doubled);
 }
 
 #[test]
 #[should_panic(expected = "does not fit height")]
 fn key_above_the_height_panics() {
     let tree = build_trie(&[(w(0b110), value(0))].into(), 3).unwrap();
-    extract_skeleton(&tree, 3, &[w(0b1000)]);
+    extract_skeleton(Some(&tree), 3, &[w(0b1000)]);
 }
 
 #[test]
@@ -325,7 +344,6 @@ fn padding_preserves_every_invariant() {
     assert!(padded.binaries.len() == capacity.n_binary);
     assert!(padded.edges.len() == capacity.n_edge);
     assert!(padded.siblings.len() == capacity.n_siblings());
-    assert!(padded.leaves.iter().filter(|unit| unit.is_inert()).count() == 4);
     witness_invariants(&padded).expect("padded witness must be valid");
     assert!(recompute_root(&padded) == witness.root);
 }
@@ -333,9 +351,11 @@ fn padding_preserves_every_invariant() {
 #[test]
 #[should_panic(expected = "sibling slots but the witness needs")]
 fn padding_to_too_few_sibling_slots_panics() {
+    // Shrinking the binary budget below `covering` (which adds one slot per absent key) shrinks
+    // the derived sibling count below what the witness needs.
     let witness = rejection_case_fixture();
     let tight = SkeletonCapacity::covering(&witness);
-    witness.padded(&SkeletonCapacity { n_leaves: tight.n_leaves + 8, ..tight });
+    witness.padded(&SkeletonCapacity { n_binary: witness.binaries.len(), ..tight });
 }
 
 /// Order within a class is meaningless — that is what the multiset buys. Reversing every class must
@@ -424,6 +444,7 @@ fn every_family_has_a_rejection_case() {
         Family::MultisetBalance,
         Family::LivePadding,
         Family::RootBinding,
+        Family::PresenceBinding,
     ];
     assert!(covered == all.into_iter().collect::<BTreeSet<Family>>());
 }

@@ -10,9 +10,15 @@
 //!   Patricia verifiers.
 //! - [`mod@skeleton`] — extraction of the *touched skeleton* over a batch of keys: the witness the
 //!   skeleton circuit consumes, plus the invariants it owes.
+//! - [`mod@skeleton_circuit`] — `verify_patricia_skeleton`, the in-circuit skeleton verifier
+//!   (design doc §5 step 1).
+//! - [`mod@word_gadgets`] — limb-level gadgets over 256-bit words: doubling, the variable shift,
+//!   the 251-bit truncation and the additive edge length.
 
 pub mod reference;
 pub mod skeleton;
+pub mod skeleton_circuit;
+pub mod word_gadgets;
 
 #[cfg(test)]
 #[path = "slot_count_test.rs"]

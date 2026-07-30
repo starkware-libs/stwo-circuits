@@ -3,13 +3,13 @@
 //! in `docs/payments-circuit-soundness.md` — the constraint [`Family`] it failure modes and the
 //! [`Check`] that rejects it today.
 //!
-//! # The circuit seam
+//! # The two seams
 //!
-//! [`oracle`] is the single point that decides "rejected". Today it is the out-of-circuit
-//! [`witness_invariants`]; when `verify_patricia_skeleton` lands it becomes "build the circuit over
-//! this witness and call `Circuit::check`" — one function body, and every negative test keeps
-//! working. The `Check` a rejection case is attributed to then names the circuit's constraint
-//! family rather than an out-of-circuit invariant, which is the whole point of tagging them now.
+//! [`oracle`] — the out-of-circuit [`witness_invariants`] — decides "rejected" with attribution:
+//! `skeleton_test` asserts each case fails on the exact [`Check`] it targets. The circuit is the
+//! second seam: `skeleton_circuit_test::every_rejection_case_is_rejected_by_the_circuit` runs the
+//! same catalogue through `verify_patricia_skeleton` end to end (attribution there is coarser —
+//! rejection may surface as any failed constraint or as an unhostable witness).
 //!
 //! # Attribution
 //!
@@ -43,6 +43,9 @@ pub enum Family {
     LivePadding,
     /// The held-out root unit is the claimed root.
     RootBinding,
+    /// The derived presence and emptiness flags: `is_present ⟺ hash ≠ 0` per leaf slot (P4) and
+    /// `root = 0 ⟹ everything inert` (P5).
+    PresenceBinding,
 }
 
 /// One row of the rejection table.
@@ -102,11 +105,35 @@ pub const REJECTION_CASES: &[RejectionCase] = &[
         apply: corrupt_sibling_hash,
     },
     RejectionCase {
-        label: "leaf value zeroed (absent key posing as present)",
+        label: "present leaf value zeroed everywhere (its consumer holds an empty node)",
         family: Family::Canonicity,
         detected_by: Check::Canonicity,
         needs_padding: false,
         apply: zero_leaf_value,
+    },
+    // The two slot-only presence flips break the multiset (the flipped slot's contribution
+    // dangles or goes missing), but the live-count identity — a corollary of the same balance —
+    // breaks first in the oracle's declared order, so that is where they are attributed.
+    RejectionCase {
+        label: "present leaf value zeroed in its slot only (claimed absent)",
+        family: Family::PresenceBinding,
+        detected_by: Check::SiblingCount,
+        needs_padding: false,
+        apply: zero_leaf_value_slot_only,
+    },
+    RejectionCase {
+        label: "absent leaf slot given a live value (claimed present)",
+        family: Family::PresenceBinding,
+        detected_by: Check::SiblingCount,
+        needs_padding: false,
+        apply: fake_present_leaf,
+    },
+    RejectionCase {
+        label: "live skeleton claimed against the empty root",
+        family: Family::PresenceBinding,
+        detected_by: Check::Root,
+        needs_padding: false,
+        apply: claim_empty_root,
     },
     RejectionCase {
         label: "edge length 0",
@@ -163,13 +190,6 @@ pub const REJECTION_CASES: &[RejectionCase] = &[
         detected_by: Check::Multiset,
         needs_padding: false,
         apply: duplicate_edge_slot,
-    },
-    RejectionCase {
-        label: "padded leaf slot populated with a live leaf",
-        family: Family::LivePadding,
-        detected_by: Check::Multiset,
-        needs_padding: true,
-        apply: populate_padded_leaf_slot,
     },
     RejectionCase {
         label: "padded binary slot fed a live child",
@@ -231,9 +251,37 @@ fn corrupt_sibling_hash(witness: &mut SkeletonWitness) {
     retag(witness, &unit, SkeletonUnit { hash, ..unit });
 }
 
+/// Zeroes a present leaf's value in the slot *and* its consumer, so the multiset stays balanced:
+/// what rejects it is the consumer holding an empty-hash unit (no empty node).
 fn zero_leaf_value(witness: &mut SkeletonWitness) {
     let leaf = witness.leaves[0];
+    assert!(leaf.hash != EMPTY_HASH, "leaf 0 is absent; the fixture must lead with present keys");
     retag(witness, &leaf, SkeletonUnit { hash: EMPTY_HASH, ..leaf });
+}
+
+/// Zeroes a present leaf's value in its slot only — a false absence claim (P4). The slot's
+/// contribution turns inert while the parent still consumes the original unit, which now dangles.
+fn zero_leaf_value_slot_only(witness: &mut SkeletonWitness) {
+    let leaf = &mut witness.leaves[0];
+    assert!(leaf.hash != EMPTY_HASH, "leaf 0 is absent; the fixture must lead with present keys");
+    leaf.hash = EMPTY_HASH;
+}
+
+/// Gives an absent leaf slot a non-zero value — a false presence claim (P4). The slot's
+/// contribution turns live and nothing in the trie flow consumes it.
+fn fake_present_leaf(witness: &mut SkeletonWitness) {
+    let slot = witness
+        .leaves
+        .iter_mut()
+        .find(|unit| unit.hash == EMPTY_HASH)
+        .expect("no absent leaf slot; use a fixture with absent keys");
+    slot.hash = [0xdead_beef; 8];
+}
+
+/// Claims the empty root over a live skeleton (P5): `root = 0` must force everything inert.
+fn claim_empty_root(witness: &mut SkeletonWitness) {
+    assert!(witness.root != EMPTY_HASH, "the fixture is already empty");
+    witness.root = EMPTY_HASH;
 }
 
 fn zero_edge_length(witness: &mut SkeletonWitness) {
@@ -278,19 +326,6 @@ fn drop_edge_slot(witness: &mut SkeletonWitness) {
 fn duplicate_edge_slot(witness: &mut SkeletonWitness) {
     assert!(witness.edges.len() >= 2, "slot 0 would be the root slot");
     witness.edges.push(witness.edges[0]);
-}
-
-/// Live padding: a leaf slot has no local rule forcing it inert, so what must reject this is the
-/// multiset — nothing consumes the extra unit.
-fn populate_padded_leaf_slot(witness: &mut SkeletonWitness) {
-    let slot = witness.leaves.last_mut().expect("no leaf slots");
-    assert!(slot.is_inert(), "the last leaf slot is live; pad the witness first");
-    *slot = SkeletonUnit {
-        height: 0,
-        path: [1, 0, 0, 0, 0, 0, 0, 0],
-        kind: SkeletonKind::Leaf,
-        hash: [0xdead_beef; 8],
-    };
 }
 
 fn half_padded_binary_slot(witness: &mut SkeletonWitness) {

@@ -67,15 +67,18 @@ the relation follows. For tries this is injectivity: root equality forces leaf-s
 |---|---|
 | … | … |
 
-### RejectionCases required by P4 / P5
+### RejectionCases required by P4 / P5 — **landed**
 
-Three rows the harness owes once the leaf-slot and emptiness rules exist:
+The three rows now live in the catalogue (`Family::PresenceBinding`), rejected by both seams
+(oracle and circuit). Out-of-circuit the two slot-local presence flips are attributed to the
+live-count identity (`Check::SiblingCount`), a corollary of the multiset balance that the
+oracle checks first:
 
-| rejection case | must be rejected by |
+| rejection case | oracle attribution |
 |---|---|
-| a present leaf's value zeroed (claimed absent) | the trie multiset — something consumed that leaf |
-| an absent leaf given a non-zero value (claimed present) with no divergence evidence | the trie structure / position binding |
-| a non-empty trie proven against `prev_root = 0` | the derived emptiness flag forcing every slot inert |
+| `present leaf value zeroed in its slot only (claimed absent)` | `SiblingCount` (the consumed copy also dangles) |
+| `absent leaf slot given a live value (claimed present)` | `SiblingCount` (the produced unit also dangles) |
+| `live skeleton claimed against the empty root` | `Root` (P5: root 0 forces everything inert) |
 
 ### Deliberately unproven
 
@@ -145,11 +148,12 @@ hole waiting to be assumed away. Every row must name the layer that closes it.
 
 | gap | pinned by | closed by |
 |---|---|---|
-| **Same-kind class migration.** Moving a `Leaf`-tagged unit from the leaf class into the sibling class leaves every tag, cardinality and the multiset balance valid, so the *extractor's* invariants alone cannot detect it. | `skeleton_test::same_kind_class_migration_is_not_detected_here` (asserts the gap) | **closing in step 1** via design-doc P4: leaf slots are 1:1 with batch keys, so slot *i* is bound to key *i* and a leaf cannot migrate. Until `verify_patricia_skeleton` lands, the out-of-circuit witness invariants do not enforce it. |
-| **The empty trie has no skeleton.** `build_trie` returns `None` for an empty entry set, so there is no root unit for the multiset to hold out. **The nonce trie starts empty**, so this is on the payments critical path, not a corner case. | documented on `extract_skeleton`; callers must special-case the all-zero root | **decided** — design-doc P5: `is_empty = is_zero_words(prev_root)`, derived from a public input, so `root == 0` forces all trie slots inert and all keys absent. |
+| **Same-kind class migration.** Moving a `Leaf`-tagged unit from the leaf class into the sibling class leaves every tag, cardinality and the multiset balance valid, so the *extractor's* invariants alone cannot detect it. | `skeleton_test::same_kind_class_migration_is_not_detected_here` (asserts the out-of-circuit gap, which remains) | **closed in step 1** (P4): in `verify_patricia_skeleton` the leaf slots *are* the batch — a fixed slot list — so there is no class to migrate out of. |
+| **The empty trie has no skeleton.** `build_trie` returns `None` for an empty entry set, so there is no root unit for the multiset to hold out. **The nonce trie starts empty**, so this is on the payments critical path, not a corner case. | `skeleton_circuit_test::{empty_trie_is_accepted, nonzero_root_over_an_empty_skeleton_is_rejected}` and the `claim_empty_root` rejection case | **closed in step 1** (P5): the root entry is `is_zero_words(root)`-derived — `root == 0` consumes the inert unit, forcing every slot inert and every key absent; a non-zero root over an empty skeleton dangles. |
 | **Sibling subtree authenticity.** A sibling's *kind* is partly constrained after all (an edge's `bottom.kind != Edge` by maximal merging; `Leaf ⟺ height == 0`), but whether its claimed hash is a real subtree of that kind is unverifiable in-circuit. | — | the written injectivity argument in `patricia-update` (design doc §6 Q3). Narrower than that doc assumes, so state exactly the residual assumption. |
-| **Absent keys emit no leaf unit** *(extractor as it stands)*. Non-membership is carried by the diverging edge plus its opaque bottom, so extracted leaf units do not map 1:1 to batch keys. | `skeleton_test` absent-key cases | **decided** — design-doc P4: the circuit gives every batch key a leaf slot, absent ones carrying value `0`, with `is_absent ⟺ is_zero(value)`. The extractor grows a zero-leaf per absent key when step 1 lands. |
-| **Production canonical *construction* is not yet pinned.** The golden vectors pin the hash convention (`hash2` truncated to 251 bits, edge = `hash2(bottom, path) + ℓ`), but not that production builds the same canonical shape — specifically that `Felt::from(EdgePath)` uses the same LSB-aligned `path` layout as `reference.rs`. | `patricia::reference::golden_test` (pins the spec, not the agreement) | one test on the production side (`payment_thread_patricia`) asserting a shared vector; until then "reference == production" rests on reading both. |
+| **Absent keys emit no leaf unit** *(historical)*. | `skeleton_test` absent-key cases | **closed in step 1** (P4): the extractor emits a zero-valued leaf slot per absent key, 1:1 with the batch in key order, and the circuit derives `is_present ⟺ value ≠ 0`. Note the capacity consequence: each absent key needs one spare binary slot (`SkeletonCapacity::covering`). |
+| **Absence is a claim, not a proof.** An `is_present = 0` leaf slot contributes the inert unit to the multiset, so nothing forces the skeleton to walk to that key: a prover can claim any key absent by leaving its subtree opaque. Presence claims *are* proven (a live leaf unit must be consumed by the rooted fold). | stated in `skeleton_circuit`'s **Deliberately unproven**; the `fake_present_leaf` / `zero_leaf_value_slot_only` rejection cases cover the slot-local flips only | step 2 (`patricia-update`): an insert must split the diverging edge of the *prev* skeleton. A false absence then leaves two units at one position with a single root to consume them — the duplicate-position chain dangles. That argument is step 2's to write out and test. |
+| **Production canonical *construction* is not yet pinned.** The golden vectors pin the hash convention (`hash2` truncated to 251 bits, edge = `hash2(bottom, path) + ℓ`), but not that production builds the same canonical shape — specifically that `Felt::from(EdgePath)` uses the same LSB-aligned `path` layout as `reference.rs`. | `patricia::reference::golden_test` (pins the spec, not the agreement) | **deliberately deferred** (decision, 2026-07-29): the closing test lives in `payment_thread_patricia` (a separate repo) and is not being added for now; until then "reference == production" rests on reading both. |
 | **Signature verification (design doc P3).** v1 proves bookkeeping over *unauthenticated* transfers. | — | out of scope for v1; needs 252-bit field EC arithmetic the DSL lacks. Must be stated in the top-level circuit's own docs so nothing downstream over-claims. |
 
 Note on the §4.1 identity: it is `siblings = binary − leaf_units + 1`, **not** `− K`. With

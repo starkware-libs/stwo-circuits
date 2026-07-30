@@ -2,9 +2,10 @@
 //!
 //! The skeleton over a batch of `keys` is the union of their root-to-leaf walks: every binary and
 //! edge node they pass through, the leaves they land on, and one opaque **sibling** unit per
-//! untouched child of a touched node. It is what the (unimplemented) skeleton circuit consumes,
-//! and this module is its witness generator — plain Rust types, no circuit types; the circuit-side
-//! mirror comes later. [`witness_invariants`] is the witness analogue of
+//! untouched child of a touched node. It is what
+//! [`verify_patricia_skeleton`](super::skeleton_circuit::verify_patricia_skeleton) consumes, and
+//! this module is its witness generator — plain Rust types, no circuit types; the circuit side
+//! lives in [`mod@super::skeleton_circuit`]. [`witness_invariants`] is the witness analogue of
 //! [`PatriciaTree::is_canonical`]: everything a satisfying assignment will have to imply.
 //!
 //! # Position convention
@@ -22,19 +23,28 @@
 //! edge:   bottom.path = parent.path · 2^ℓ + edge.path
 //! ```
 //!
-//! # Absent keys
+//! # Absent keys and the batch binding (design doc P4)
 //!
-//! A key is absent iff its walk reaches an edge whose compressed path disagrees with the key's
-//! bits. The walk ends there: the diverging edge is still a touched unit, but its `bottom` is
-//! untouched and becomes a sibling. That is the non-membership evidence an insert needs, so the
-//! extractor supports absent keys from the start (design doc §4.3). Absent keys produce no leaf
-//! unit; `keys` may also repeat, and a repeated key still yields one leaf unit.
+//! Leaf slots are 1:1 with the batch's `keys`, in key order — they *are* the batch, which is what
+//! stops a leaf unit migrating into another class. A key present in the trie yields
+//! `{ height: 0, path: key, kind: Leaf, hash: value }`; an absent key yields the same unit with
+//! `hash = 0`, so presence is **derived** — `is_present ⟺ hash ≠ 0` — never witnessed. A key is
+//! absent iff its walk reaches an edge whose compressed path disagrees with the key's bits: the
+//! diverging edge is still a touched unit, but its `bottom` is untouched and becomes a sibling.
+//! Keys must be distinct (the upstream dict squashing already collapses repeats).
+//!
+//! In the multiset an absent leaf slot contributes [`INERT_UNIT`] instead of its unit, so absence
+//! claims never enter the trie flow. What an absence claim does **not** prove is non-membership:
+//! nothing forces the skeleton to walk to an absent key, so an unconstrained prover can claim any
+//! key absent by leaving its subtree opaque. See the open-gap ledger in the soundness doc — step
+//! 2's insert path is what closes this.
 //!
 //! # Inert padding
 //!
-//! A fixed-topology circuit pads every class up to a [`SkeletonCapacity`] with [`INERT_UNIT`] =
-//! `{ height: 0, path: 0, kind: Padding, hash: 0 }`. Two independent properties make it
-//! unmistakable for a live unit, so padding cannot be laundered into the live flow:
+//! A fixed-topology circuit pads the binary, edge and sibling classes up to a [`SkeletonCapacity`]
+//! with [`INERT_UNIT`] = `{ height: 0, path: 0, kind: Padding, hash: 0 }`. Leaf slots are never
+//! padded — they are the batch. Two independent properties make the inert unit unmistakable for a
+//! live one, so padding cannot be laundered into the live flow:
 //!
 //! * `kind = Padding` (tag `0`) is never emitted for a real node, and no live slot rule accepts it;
 //! * `hash = 0` is the empty-subtree hash — a live leaf's hash is its non-zero value and a live
@@ -42,9 +52,11 @@
 //!   the tag were ignored.
 //!
 //! The inert flow balances on its own: a padded binary slot consumes two inert units and produces
-//! one, a padded edge slot consumes and produces one, and padded leaf and sibling slots each
-//! produce one. That nets to zero *exactly* because sibling slots are derived as
-//! `n_binary - n_leaves + 1`, so padding never disturbs the multiset identity of design doc §4.1.
+//! one, a padded edge slot consumes and produces one, a padded sibling slot produces one, and an
+//! absent leaf slot contributes one (see above). That nets to zero *exactly* because sibling slots
+//! are derived as `n_binary - n_leaves + 1` — with the consequence that **each absent key needs
+//! one spare binary slot** to absorb its inert contribution, which is why
+//! [`SkeletonCapacity::covering`] budgets `n_binary = binaries + absent`.
 
 use std::collections::BTreeMap;
 use std::fmt;
@@ -147,22 +159,30 @@ impl SkeletonCapacity {
         self.n_binary + 1 - self.n_leaves
     }
 
-    /// The tight budget of `witness` — the smallest capacity it fits into.
+    /// The tight budget of `witness` — the smallest capacity it fits into. Each absent leaf
+    /// contributes an inert unit that only a padded binary slot can absorb (module docs), so the
+    /// binary budget is `binaries + absent`.
     pub fn covering(witness: &SkeletonWitness) -> Self {
+        let n_absent = witness.leaves.iter().filter(|unit| unit.hash == EMPTY_HASH).count();
         Self {
             n_leaves: witness.leaves.len(),
-            n_binary: witness.binaries.len(),
+            n_binary: witness.binaries.len() + n_absent,
             n_edge: witness.edges.len(),
         }
     }
 }
 
 impl SkeletonWitness {
-    /// Pads every class up to `capacity` with inert units. See the module docs for why the inert
-    /// flow balances. Panics if the witness does not fit, including the derived sibling budget.
+    /// Pads the binary, edge and sibling classes up to `capacity` with inert units; leaf slots are
+    /// the batch and must match `n_leaves` exactly. See the module docs for why the inert flow
+    /// balances. Panics if the witness does not fit, including the derived sibling budget.
     pub fn padded(&self, capacity: &SkeletonCapacity) -> SkeletonWitness {
         let n_siblings = capacity.n_siblings();
-        assert!(capacity.n_leaves >= self.leaves.len(), "leaf slots short of {capacity:?}");
+        assert!(
+            capacity.n_leaves == self.leaves.len(),
+            "leaf slots are 1:1 with the batch; {capacity:?} does not match {} keys",
+            self.leaves.len()
+        );
         assert!(capacity.n_binary >= self.binaries.len(), "binary slots short of {capacity:?}");
         assert!(capacity.n_edge >= self.edges.len(), "edge slots short of {capacity:?}");
         assert!(
@@ -176,7 +196,7 @@ impl SkeletonWitness {
         SkeletonWitness {
             height: self.height,
             root: self.root,
-            leaves: pad(&self.leaves, capacity.n_leaves, INERT_UNIT),
+            leaves: self.leaves.clone(),
             binaries: pad(&self.binaries, capacity.n_binary, inert_binary),
             edges: pad(&self.edges, capacity.n_edge, inert_edge),
             siblings: pad(&self.siblings, n_siblings, INERT_UNIT),
@@ -232,26 +252,50 @@ pub fn key_prefix(key: &Word256, height: u32) -> Word256 {
     out
 }
 
-/// Extracts the touched skeleton of `tree` (a canonical trie of `height`) over `keys`. Keys may be
-/// absent from the trie and may repeat. `keys` empty means the whole trie is one opaque sibling.
+/// Extracts the touched skeleton of `tree` (a canonical trie of `height`, `None` for the empty
+/// trie) over `keys`. Keys must be distinct and may be absent from the trie; leaf slots come out
+/// 1:1 with `keys` in key order, an absent key carrying `hash = 0` (module docs). `keys` empty
+/// means the whole trie is one opaque sibling; the empty trie has no unit at all — its witness is
+/// the all-zero root with every key absent (design doc P5).
 ///
-/// Panics if `tree` is not canonical at `height` or if a key has bits set at or above `height`.
-/// The *empty* trie has no skeleton at all: [`build_trie`](super::reference::build_trie) returns
-/// `None` for it, and with no node there is no root unit for the multiset to hold out.
-pub fn extract_skeleton(tree: &PatriciaTree, height: u32, keys: &[Word256]) -> SkeletonWitness {
-    assert!(tree.is_canonical(height), "tree is not canonical at height {height}");
+/// Panics if `tree` is not canonical at `height`, if a key has bits set at or above `height`, or
+/// if keys repeat.
+pub fn extract_skeleton(
+    tree: Option<&PatriciaTree>,
+    height: u32,
+    keys: &[Word256],
+) -> SkeletonWitness {
     for key in keys {
         assert!(
             (height..256).all(|i| word256_bit(key, i) == 0),
             "key {key:?} does not fit height {height}"
         );
     }
+    assert!(
+        keys.iter().collect::<std::collections::BTreeSet<_>>().len() == keys.len(),
+        "keys repeat; the leaf slots are 1:1 with distinct keys"
+    );
     let mut units = Units::default();
-    let root = walk(tree, height, [0; 8], keys, &mut units);
+    let root = tree.map(|tree| {
+        assert!(tree.is_canonical(height), "tree is not canonical at height {height}");
+        walk(tree, height, [0; 8], keys, &mut units)
+    });
+    // The walk emits present leaves in trie order; the leaf slots are the batch, in key order.
+    let by_key: BTreeMap<Word256, SkeletonUnit> =
+        units.leaves.iter().map(|unit| (unit.path, *unit)).collect();
+    let absent = |key: &Word256| SkeletonUnit {
+        height: 0,
+        path: *key,
+        kind: SkeletonKind::Leaf,
+        hash: EMPTY_HASH,
+    };
     SkeletonWitness {
         height,
-        root: root.hash,
-        leaves: units.leaves,
+        root: root.map_or(EMPTY_HASH, |unit| unit.hash),
+        leaves: keys
+            .iter()
+            .map(|key| by_key.get(key).copied().unwrap_or_else(|| absent(key)))
+            .collect(),
         binaries: units.binaries,
         edges: units.edges,
         siblings: units.siblings,
@@ -411,8 +455,18 @@ fn violation(check: Check, detail: String) -> Violation {
 
 fn check_units(witness: &SkeletonWitness) -> Result<(), Violation> {
     for unit in &witness.leaves {
+        // An absent key's slot (P4): the key with `hash = 0`. Its multiset contribution is the
+        // inert unit, so nothing else is owed here. This branch also rejects a padded (inert)
+        // leaf slot — leaf slots are the batch and are never padded.
+        if unit.hash == EMPTY_HASH {
+            if unit.height != 0 || unit.kind != SkeletonKind::Leaf {
+                let detail = format!("absent leaf slot is not a zero-valued leaf: {unit:?}");
+                return Err(violation(Check::KindTag, detail));
+            }
+            continue;
+        }
         check_unit(witness, unit, "leaf slot")?;
-        if !unit.is_inert() && unit.kind != SkeletonKind::Leaf {
+        if unit.kind != SkeletonKind::Leaf {
             let detail = format!("leaf slot holds a {:?} unit: {unit:?}", unit.kind);
             return Err(violation(Check::KindTag, detail));
         }
@@ -549,27 +603,49 @@ fn check_edge_canonicity(slot: &EdgeSlot) -> Result<(), Violation> {
     Ok(())
 }
 
-/// The identity of design doc §4.1, which holds for the extracted witness *and* for any capacity it
-/// is padded to. Checked before the multiset so a class-cardinality error is attributed here.
+/// The identity of design doc §4.1 over the *live* flow — `siblings = binaries − present + 1` —
+/// which holds for the extracted witness and for any capacity it is padded to (padding and absent
+/// keys drop out: they are inert on both sides). Checked before the multiset so a
+/// class-cardinality error is attributed here. Vacuous for the empty trie, which has no live flow.
 fn check_sibling_count(witness: &SkeletonWitness) -> Result<(), Violation> {
-    let expected = witness.binaries.len() + 1;
-    if witness.siblings.len() + witness.leaves.len() != expected {
+    if witness.root == EMPTY_HASH {
+        return Ok(());
+    }
+    let live_siblings = witness.siblings.iter().filter(|unit| !unit.is_inert()).count();
+    let live_binaries = witness.binaries.iter().filter(|slot| !slot.out.is_inert()).count();
+    let present = witness.leaves.iter().filter(|unit| unit.hash != EMPTY_HASH).count();
+    if live_siblings + present != live_binaries + 1 {
         let detail = format!(
-            "{} siblings + {} leaves != {} binaries + 1",
-            witness.siblings.len(),
-            witness.leaves.len(),
-            witness.binaries.len()
+            "{live_siblings} live siblings + {present} present leaves != {live_binaries} live \
+             binaries + 1",
         );
         return Err(violation(Check::SiblingCount, detail));
     }
     Ok(())
 }
 
-/// The bottom-up fold, expressed as the circuit expresses it: produced units (leaves, slot outputs,
-/// siblings) less consumed units (slot inputs) must leave exactly the root unit.
+/// The bottom-up fold, expressed as the circuit expresses it: produced units (leaf-slot
+/// contributions, slot outputs, siblings) less consumed units (slot inputs) must leave exactly the
+/// root unit. An absent leaf slot contributes the inert unit (P4), and the all-zero root has no
+/// unit at all — it forces every slot inert and every key absent (P5).
 fn check_multiset_and_root(witness: &SkeletonWitness) -> Result<(), Violation> {
+    if witness.root == EMPTY_HASH {
+        let all_absent = witness.leaves.iter().all(|unit| unit.hash == EMPTY_HASH);
+        let all_inert = witness.binaries.iter().all(|slot| slot.out.is_inert())
+            && witness.edges.iter().all(|slot| slot.out.is_inert())
+            && witness.siblings.iter().all(|unit| unit.is_inert());
+        if !(all_absent && all_inert) {
+            let detail = "root is the empty hash but the skeleton is live".to_string();
+            return Err(violation(Check::Root, detail));
+        }
+        return Ok(());
+    }
     let mut counts: BTreeMap<SkeletonUnit, i64> = BTreeMap::new();
-    for unit in witness.leaves.iter().chain(&witness.siblings) {
+    for unit in &witness.leaves {
+        let contribution = if unit.hash == EMPTY_HASH { INERT_UNIT } else { *unit };
+        *counts.entry(contribution).or_default() += 1;
+    }
+    for unit in &witness.siblings {
         *counts.entry(*unit).or_default() += 1;
     }
     for slot in &witness.binaries {
@@ -582,6 +658,16 @@ fn check_multiset_and_root(witness: &SkeletonWitness) -> Result<(), Violation> {
         *counts.entry(slot.bottom).or_default() -= 1;
     }
     counts.retain(|_, n| *n != 0);
+    // An unpadded witness leaves each absent key's inert unit unabsorbed — a padded binary slot
+    // is what consumes it — so a nonnegative inert surplus is fine (it is zero once padded).
+    match counts.remove(&INERT_UNIT) {
+        None => {}
+        Some(surplus) if surplus > 0 => {}
+        Some(deficit) => {
+            let detail = format!("{} more inert units consumed than produced", -deficit);
+            return Err(violation(Check::Multiset, detail));
+        }
+    }
     let leftover: Vec<(SkeletonUnit, i64)> = counts.into_iter().collect();
     let [(root, 1)] = leftover.as_slice() else {
         let detail = format!("produced minus consumed is not a single unit: {leftover:?}");

@@ -1,10 +1,14 @@
 # Payments Circuit — Design & Handoff
 
-Status: **prerequisites landed; no constraints yet.** Branch `anatg/payments-circuit`. Beyond the
-assembled prerequisites it now carries the out-of-circuit skeleton extractor and its rejection case
-harness (`patricia/skeleton.rs`), golden vectors pinning the trie to the production hash
-convention (`patricia/golden_test.rs`), and a topology fingerprint (`fingerprint.rs`).
-`verify_patricia_skeleton` itself is still unwritten — see §5.
+Status: **step 1 implemented.** Branch `anatg/payments-circuit`. `verify_patricia_skeleton`
+(`patricia/skeleton_circuit.rs`) verifies the skeleton in-circuit — units-by-multiset over the
+four slot classes, the §4.2 shift and §4.4 truncation/additive-length gadgets
+(`patricia/word_gadgets.rs`), and the P4/P5 derived flags — with the full rejection catalogue
+running through both the out-of-circuit oracle and the circuit, witness-independence, and a
+pinned cross-process fingerprint. Supporting layers: the skeleton extractor + rejection harness
+(`patricia/skeleton.rs`), golden vectors pinning the production hash convention
+(`patricia/golden_test.rs`), and the topology fingerprint (`fingerprint.rs`). Next: step 2,
+`verify_patricia_update` (§5).
 
 Soundness method, the open-gap ledger, and the per-PR obligations: `payments-circuit-soundness.md`.
 
@@ -211,13 +215,14 @@ consequences the slot-count cost model does not carry:
 
 A stack of small, independently-reviewable PRs (`gt`-friendly), on top of this branch.
 
-1. **`patricia-skeleton`** — `verify_patricia_skeleton`: units-by-multiset over leaf /
-   binary / edge / sibling slots, per-slot path and height constraints, the §4.2 shift
-   gadget, the §4.4 top-word range check and additive-length gadget, and per P4/P5 the
-   two-multiset split with `is_zero`-derived absent and empty flags. *Acceptance:* round-trips against `reference.rs` on random tries; circuit
-   topology provably independent of witness (the unpacker's
-   `structure_is_witness_independent` / `circuit_is_fixed_across_shape` tests are the
-   pattern).
+1. **`patricia-skeleton`** — **done** (`patricia/skeleton_circuit.rs`): units-by-multiset over
+   leaf / binary / edge / sibling slots plus a root entry on the consumed side, per-slot path
+   and height constraints, the §4.2 shift gadget, the §4.4 top-word truncation and
+   additive-length gadgets, and the P4/P5 `is_zero`-derived presence/emptiness flags.
+   Statement, witness table and the deliberately-unproven list live in the module docs;
+   acceptance and rejection coverage in `skeleton_circuit_test.rs`. One capacity consequence
+   found during implementation: each absent key needs one spare binary slot
+   (`SkeletonCapacity::covering`).
 2. **`patricia-update`** — `verify_patricia_update`: two skeletons, shared sibling units,
    in-circuit canonicity. *Acceptance:* negative tests — modified sibling, non-canonical
    encoding, insert/delete edge splits, unbacked write.
@@ -254,35 +259,22 @@ Steps 1–2 are unavoidable prerequisites and are most of the effort.
    what it would take to close: STARK-curve ECDSA needs 252-bit field EC arithmetic that
    this DSL does not have.
 
-## 7. Proposed interfaces
-
-Subject to question 1 above.
+## 7. Interfaces (as landed)
 
 ```rust
-/// Slot budget. `n_binary` must cover sibling-induced branch points, so it scales as
-/// K·log2(N/K), not K (see §4.1). Sibling units are derived: n_binary - n_leaves + 1.
-pub struct SkeletonCapacity {
-    pub n_leaves: usize,
-    pub n_binary: usize,
-    pub n_edge: usize,
-}
-
-/// A unit flowing through the multiset identity: 18 u32 words.
-/// `path` is the 256-bit position prefix; at height 0 it is the key itself, which is what
-/// binds a leaf's position to its key.
-pub struct SkeletonUnit<T> {
-    pub height: U32Wrapper<T>,
-    pub path: HashValue<T>,
-    pub kind: U32Wrapper<T>,
-    pub hash: HashValue<T>,
-}
+/// Slot budget. `n_binary` must cover sibling-induced branch points (K·log2(N/K), §4.1) plus
+/// one slot per absent key; siblings are derived: n_binary - n_leaves + 1. Leaf slots are the
+/// batch — n_leaves = K exactly, never padded.
+pub struct SkeletonCapacity { pub n_leaves: usize, pub n_binary: usize, pub n_edge: usize }
 
 pub fn verify_patricia_skeleton<Value: IValue>(
     context: &mut Context<Value>,
-    witness: &SkeletonWitness,
-    height: u32,
-    capacity: SkeletonCapacity,
-) -> VerifiedSkeleton; // { root, leaves, siblings }
+    witness: &SkeletonWitness,   // carries the trie height
+    capacity: &SkeletonCapacity,
+) -> VerifiedSkeleton;
+// { root: HashValue<Var>,                      — caller binds to the public input
+//   leaves: Vec<VerifiedLeaf>,                 — { key, value, is_present } per batch key
+//   siblings: Vec<SkeletonUnitVars> }          — for step 2's shared-sibling argument
 ```
 
 Note this replaces the `capacity: usize` of DESIGN.md:92, which propagates to
