@@ -209,6 +209,41 @@ fn a_no_op_row_hiding_a_present_key_is_accepted() {
     assert!(accepts(&witness, &capacity), "the (0,0) claim proves 'unchanged', and is accepted");
 }
 
+/// The complementary-pair finding, pinned: rows `(k, v, 0)` and `(k, 0, w)` are ACCEPTED —
+/// each fold sees one live entry at the position, and the pair jointly behaves as the
+/// overwrite `v → w` while each row's absence claim is false. The absence clauses of the
+/// statement therefore hold only under the caller's live-key-distinctness precondition
+/// (module docs; found by the Lean formalization).
+#[test]
+fn complementary_rows_on_one_key_act_as_an_overwrite() {
+    let key = key_of(0);
+    let single = fixture_witness(&[UpdateRow { key, prev_value: value(0), new_value: value(700) }]);
+    let mut witness = single.clone();
+    let slot = |hash| SkeletonUnit { height: 0, path: key, kind: SkeletonKind::Leaf, hash };
+    // Row A = (key, v, 0), row B = (key, 0, w): the overwrite's walk, split across two rows.
+    witness.prev.leaves = vec![slot(value(0)), slot([0; 8])];
+    witness.new.leaves = vec![slot([0; 8]), slot(value(700))];
+    let capacity = update_covering(&witness);
+    assert!(
+        accepts(&witness, &capacity),
+        "the complementary pair is accepted; absence claims need distinct live keys"
+    );
+}
+
+/// The direction the duplicate-position lemma genuinely covers: same-side duplicate live rows
+/// put two live units at one position in one fold, and one of them dangles.
+#[test]
+fn same_side_duplicate_live_keys_are_rejected() {
+    let key = key_of(0);
+    let single = fixture_witness(&[UpdateRow { key, prev_value: value(0), new_value: value(700) }]);
+    let mut witness = single.clone();
+    let slot = |hash| SkeletonUnit { height: 0, path: key, kind: SkeletonKind::Leaf, hash };
+    witness.prev.leaves = vec![slot(value(0)), slot(value(0))];
+    witness.new.leaves = vec![slot(value(700)), slot(value(700))];
+    let capacity = update_covering(&witness);
+    assert!(!accepts(&witness, &capacity));
+}
+
 #[test]
 fn structure_is_witness_independent() {
     let witness = fixture_witness(&mixed_rows(1, 1, 1, 1));

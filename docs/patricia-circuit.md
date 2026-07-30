@@ -9,10 +9,13 @@ circuit itself.
 ## 1. The statement
 
 `verify_patricia_update` proves: **for public `prev_root`, `new_root`, and a batch of `K` rows
-`(key, prev_value, new_value)` — given that `prev_root` commits to a canonical trie — there is a
-canonical trie `T_new` with `hash(T_new) = new_root` such that every live row's key maps to
-`prev_value` in the prev trie and to `new_value` in `T_new` (value `0` meaning *proven absent*),
-and every key outside the batch maps identically in both tries.**
+`(key, prev_value, new_value)` — given that `prev_root` commits to a canonical trie, and given
+that no two live rows share a key — there is a canonical trie `T_new` with
+`hash(T_new) = new_root` such that every live row's key maps to `prev_value` in the prev trie
+and to `new_value` in `T_new` (value `0` meaning *proven absent*), and every key outside the
+batch maps identically in both tries.** Live-key distinctness is a stated precondition, owed by
+the batch producer (§6.5) — the circuit does not enforce it, and without it the absence clauses
+fail (§6.5, the complementary-pair finding).
 
 The four operations — overwrite `v → v′`, insert `0 → v′`, delete `v → 0`, and the no-op
 `(0, 0)` — are just the four value patterns; the circuit has no operation logic. The one
@@ -176,7 +179,12 @@ There is no witnessed flag anywhere, so a prover never gets to choose which stat
 
 Soundness is the universal claim: *no* assignment satisfying the constraints proves a false
 statement. This section walks the claim in full — the assumptions, the argument for each part of
-the statement, and the exact boundary of what is not claimed.
+the statement, and the exact boundary of what is not claimed. A Lean 4 formalization of the statement
+and this argument lives in `lean/` — same assumption style as the cairo-lang Patricia
+verification, **all theorems proven** (no `sorry`s; axiom footprint `propext`,
+`Classical.choice`, `Quot.sound`). The formalization is also what found the two statement
+corrections recorded in §6.5 and `lean/README.md`; the modeling boundary (Lean model vs Rust
+gates) is stated there and is the part only human review covers.
 
 ### 6.1 Assumptions
 
@@ -226,7 +234,10 @@ must be consumed by the rooted structure; by (a) its consumer chain is the real 
 holds exactly `value` at `key`. Conversely the value cannot be misreported: the leaf's unit *is*
 the row's `value` vars, and the multiset admits no second unit at the same position (§5.3).
 
-**(c) Absence claims on live rows are true.** The insert direction: suppose row `(key, 0, v′)`
+**(c) Absence claims on live rows are true — under the live-key-distinctness precondition
+(§1).** Distinctness is load-bearing here: it guarantees no *other* live row plants a live leaf
+entry at this key's position in either fold, which is what lets the walk-exclusion arguments
+below speak for the whole fold. The insert direction: suppose row `(key, 0, v′)`
 while the prev trie holds `key ↦ v ≠ 0`. The prev fold does not walk to `key` (the row is absent
 on that side), so the real leaf lies inside some sibling `S` at a prefix position of `key` — and
 by (a) applied to the prev fold, `S`'s hash is the real subtree there. `S` is shared: the new
@@ -299,9 +310,16 @@ Stated so nothing downstream over-claims:
 - **A both-sides-absent row's key is unbound.** Its key words are range-checked u32s and nothing
   more; the caller owes the binding of every key (in the payments stack, the batch-binding
   layer). A live row's key, by contrast, is pinned by the walked side's leaf cancellation.
-- **Row distinctness is the batch producer's obligation.** Two *live* rows on one key are
-  rejected as a side effect (duplicate position); a live row plus a `(0, 0)` row on one key are
-  merely independent.
+- **Live-key distinctness is a precondition, not a circuit guarantee.** Two *same-side*
+  duplicate live rows on one key are rejected (two live units at one position in one fold), but
+  the **complementary pair** — a delete-shaped row `(k, v, 0)` plus an insert-shaped row
+  `(k, 0, w)` — is *accepted*: each fold sees exactly one live entry at the position, and the
+  pair jointly behaves as the overwrite `v → w` while each row's absence claim is false. Found
+  by the Lean formalization (the statement was unprovable as previously written); pinned by
+  `complementary_rows_on_one_key_act_as_an_overwrite`. Every consumer of row outputs must
+  guarantee live-key distinctness — the dict squashing emits one row per key by construction,
+  and nonce batches are insert-only (same-side, genuinely rejected). A live row plus a `(0, 0)`
+  row on one key remain merely independent.
 - **Sibling interiors.** A sibling's hash is pinned to the real prev subtree, but the circuit
   never looks inside it. Everything the statement claims is invariant to interiors; anything a
   caller wants to know about an untouched subtree must come from opening it in some update's

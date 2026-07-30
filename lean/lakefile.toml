@@ -1,0 +1,5 @@
+name = "patricia_circuit"
+defaultTargets = ["PatriciaCircuit"]
+
+[[lean_lib]]
+name = "PatriciaCircuit"

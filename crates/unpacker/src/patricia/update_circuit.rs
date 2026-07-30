@@ -7,9 +7,10 @@
 //! induction this very statement supports — every certified `new_root` is canonical), there is a
 //! canonical trie `T_new` with `hash(T_new) = new_root` such that
 //!
-//! 1. per live row (`(prev_value, new_value) ≠ (0, 0)`): the key maps to `prev_value` in the prev
-//!    trie and to `new_value` in `T_new`, `0` meaning **proven absent** — inserts and deletes
-//!    included (see the closing argument below);
+//! 1. per live row (`(prev_value, new_value) ≠ (0, 0)`), **given the caller's precondition that no
+//!    two live rows share a key**: the key maps to `prev_value` in the prev trie and to `new_value`
+//!    in `T_new`, `0` meaning **proven absent** — inserts and deletes included (see the closing
+//!    argument below and the distinctness bullet under *Deliberately unproven*);
 //! 2. off the row keys, `T_new` agrees with the prev trie everywhere — both folds consume the
 //!    *same* shared sibling units (P6), so untouched state is byte-identical;
 //! 3. a `(0, 0)` row proves only that its key is *unchanged* between the tries — possibly present
@@ -35,8 +36,13 @@
 //! * `(0, 0)` rows prove "unchanged", never absence — no caller may lean on them as non-membership
 //!   (open-gap ledger).
 //! * A both-sides-absent row's key is unbound; the caller owes every key binding.
-//! * Row keys' distinctness is not asserted; two *live* rows with one key are rejected as a side
-//!   effect (duplicate position), but a live row plus a `(0, 0)` row on one key are independent.
+//! * **Live-key distinctness is the caller's precondition**, not a circuit guarantee. Two
+//!   *same-side* duplicate live rows are rejected (two live units at one position in one fold), but
+//!   the complementary pair — `(k, v, 0)` plus `(k, 0, w)` — is accepted and jointly behaves as the
+//!   overwrite `v → w` while each row's absence claim is false. The absence clauses of the
+//!   statement hold only for batches with distinct live keys (the dict squashing emits one row per
+//!   key by construction; nonce batches are insert-only). A live row plus a `(0, 0)` row on one key
+//!   are independent.
 //!
 //! # Witness table (condensed — what is new over two skeleton instances)
 //!
