@@ -419,6 +419,16 @@ impl PreProcessedTrace {
         }
     }
 
+    /// The fixed lookup tables alone — the block-independent columns of every circuit. A
+    /// prover that keeps per-block columns elsewhere hands THIS to the witness generators of
+    /// the constant components (`verify_bitwise_xor_*`, `range_check_*`,
+    /// `keccak_rot_split_8`), which read nothing else.
+    pub fn fixed_only() -> Self {
+        let mut trace = Self::default();
+        Self::add_fixed_preprocessed_columns(&mut trace);
+        trace
+    }
+
     pub fn log_sizes(&self) -> OrderedHashMap<PreProcessedColumnId, u32> {
         self.columns.iter().map(|(id, column)| (id.clone(), column.len().ilog2())).collect()
     }
