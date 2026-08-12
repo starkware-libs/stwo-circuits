@@ -10,6 +10,10 @@ use stwo::core::fields::FieldExpOps;
 
 use crate::verify::LOG_SIZE_BITS;
 
+#[cfg(test)]
+#[path = "sort_queries_test.rs"]
+pub mod test;
+
 /// Generates the keys for sorting the query values by the column indices and log sizes.
 /// The key for the i'th column is (log_size * column_idx_bound + i) * u, where
 /// `column_idx_bound = 1 << column_idx_bits`.
